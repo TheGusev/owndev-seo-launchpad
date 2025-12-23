@@ -10,28 +10,25 @@ import Results from "@/components/Results";
 import FAQ from "@/components/FAQ";
 import ContactForm from "@/components/ContactForm";
 import Footer from "@/components/Footer";
-import { AuroraBackground } from "@/components/ui/digital-aurora";
 
 const Index = () => {
   return (
-    <AuroraBackground>
-      <div className="min-h-screen scroll-smooth">
-        <Header />
-        <main>
-          <Hero />
-          <ProblemsAndSolutions />
-          <Process />
-          <Capabilities />
-          <Portfolio />
-          <Pricing />
-          <ROICalculator />
-          <Results />
-          <FAQ />
-          <ContactForm />
-        </main>
-        <Footer />
-      </div>
-    </AuroraBackground>
+    <div className="min-h-screen bg-background scroll-smooth">
+      <Header />
+      <main>
+        <Hero />
+        <ProblemsAndSolutions />
+        <Process />
+        <Capabilities />
+        <Portfolio />
+        <Pricing />
+        <ROICalculator />
+        <Results />
+        <FAQ />
+        <ContactForm />
+      </main>
+      <Footer />
+    </div>
   );
 };
 
