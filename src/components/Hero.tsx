@@ -2,6 +2,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, TrendingUp, Shield, Clock } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
+import { Suspense, lazy } from "react";
+
+const GenerativeMountainScene = lazy(() => import("@/components/ui/mountain-scene"));
 
 const Hero = () => {
   const trustItems = [
@@ -12,16 +15,18 @@ const Hero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Background effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(174_72%_56%/0.12),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(217_91%_60%/0.08),transparent_50%)]" />
+      {/* 3D Mountain Background */}
+      <div className="absolute inset-0 z-0">
+        <Suspense fallback={<div className="w-full h-full bg-background" />}>
+          <GenerativeMountainScene />
+        </Suspense>
+      </div>
+      
+      {/* Dark overlay for text readability */}
+      <div className="absolute inset-0 bg-background/70 z-[1]" />
       
       {/* Grid pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(hsl(222_30%_18%/0.3)_1px,transparent_1px),linear-gradient(90deg,hsl(222_30%_18%/0.3)_1px,transparent_1px)] bg-[size:60px_60px]" />
-      
-      {/* Floating orbs */}
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/20 rounded-full blur-[100px] animate-pulse-glow" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/15 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: '1.5s' }} />
+      <div className="absolute inset-0 bg-[linear-gradient(hsl(222_30%_18%/0.3)_1px,transparent_1px),linear-gradient(90deg,hsl(222_30%_18%/0.3)_1px,transparent_1px)] bg-[size:60px_60px] z-[2]" />
       
       <div className="container relative z-10 px-4 md:px-6">
         <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
