@@ -3,6 +3,7 @@ import { useInView } from "react-intersection-observer";
 import { ExternalLink, TrendingUp, Phone, DollarSign, Star } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 const Portfolio = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -20,7 +21,8 @@ const Portfolio = () => {
         roi: "2 месяца",
         rating: "4.9"
       },
-      gradient: "from-pink-500/20 to-purple-500/20"
+      gradient: "from-pink-500/20 to-purple-500/20",
+      placeholderColor: "hsl(330 60% 15%)"
     },
     {
       title: "Ремонтная компания «СтройМастер»",
@@ -34,7 +36,8 @@ const Portfolio = () => {
         roi: "3 месяца",
         rating: "4.8"
       },
-      gradient: "from-orange-500/20 to-red-500/20"
+      gradient: "from-orange-500/20 to-red-500/20",
+      placeholderColor: "hsl(25 60% 15%)"
     },
     {
       title: "Логистика «ФастДеливери»",
@@ -48,7 +51,8 @@ const Portfolio = () => {
         roi: "4 месяца",
         rating: "4.7"
       },
-      gradient: "from-blue-500/20 to-cyan-500/20"
+      gradient: "from-blue-500/20 to-cyan-500/20",
+      placeholderColor: "hsl(200 60% 15%)"
     },
     {
       title: "Интернет-магазин «ТехноМир»",
@@ -62,7 +66,8 @@ const Portfolio = () => {
         roi: "2.5 месяца",
         rating: "4.9"
       },
-      gradient: "from-green-500/20 to-emerald-500/20"
+      gradient: "from-green-500/20 to-emerald-500/20",
+      placeholderColor: "hsl(140 60% 15%)"
     },
     {
       title: "Клиника «Здоровье Плюс»",
@@ -76,7 +81,8 @@ const Portfolio = () => {
         roi: "3 месяца",
         rating: "4.9"
       },
-      gradient: "from-teal-500/20 to-cyan-500/20"
+      gradient: "from-teal-500/20 to-cyan-500/20",
+      placeholderColor: "hsl(175 60% 15%)"
     },
     {
       title: "Фитнес-клуб «PowerGym»",
@@ -90,7 +96,8 @@ const Portfolio = () => {
         roi: "2 месяца",
         rating: "4.8"
       },
-      gradient: "from-violet-500/20 to-purple-500/20"
+      gradient: "from-violet-500/20 to-purple-500/20",
+      placeholderColor: "hsl(270 60% 15%)"
     }
   ];
 
@@ -132,11 +139,12 @@ const Portfolio = () => {
                   <div className={`glass rounded-2xl overflow-hidden h-full bg-gradient-to-br ${project.gradient}`}>
                     {/* Project image with overlay */}
                     <div className="relative h-48 overflow-hidden">
-                      <img 
+                      <OptimizedImage 
                         src={project.image} 
                         alt={project.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        className="w-full h-full transition-transform duration-500 group-hover:scale-110"
+                        placeholderColor={project.placeholderColor}
+                        fallbackSrc="https://placehold.co/800x600/1a1a1a/ffffff?text=Project"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
                       <div className="absolute bottom-4 left-4 right-4">

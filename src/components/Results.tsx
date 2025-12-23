@@ -4,6 +4,8 @@ import { useInView } from "react-intersection-observer";
 import CountUp from "react-countup";
 import { TrendingUp, Phone, DollarSign, Clock, Star } from "lucide-react";
 import { MasonryGrid } from "@/components/ui/image-testimonial-grid";
+import { OptimizedImage } from "@/components/ui/optimized-image";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const Results = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -125,13 +127,12 @@ const Results = () => {
 
   const TestimonialCard = ({ testimonial }: { testimonial: typeof testimonials[0] }) => (
     <div className="relative rounded-2xl overflow-hidden group cursor-pointer">
-      <img 
+      <OptimizedImage 
         src={testimonial.mainImage} 
         alt={testimonial.name}
-        className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110"
-        onError={(e) => {
-          e.currentTarget.src = 'https://placehold.co/800x600/1a1a1a/ffffff?text=Image';
-        }}
+        className="w-full h-auto min-h-[200px]"
+        placeholderColor="hsl(222 47% 12%)"
+        fallbackSrc="https://placehold.co/800x600/1a1a1a/ffffff?text=Image"
       />
       
       {/* Gradient overlay */}
@@ -143,6 +144,7 @@ const Results = () => {
           <img 
             src={testimonial.profileImage} 
             alt={testimonial.name}
+            loading="lazy"
             className="w-10 h-10 rounded-full border-2 border-primary/50 object-cover"
             onError={(e) => {
               e.currentTarget.src = 'https://placehold.co/40x40/EFEFEF/333333?text=A';
@@ -168,7 +170,9 @@ const Results = () => {
 
   return (
     <section id="results" className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-t from-muted/20 to-background" />
+      <ParallaxLayer speed={0.1} className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-t from-muted/20 to-background" />
+      </ParallaxLayer>
       
       <div className="container px-4 md:px-6 relative z-10">
         <motion.div

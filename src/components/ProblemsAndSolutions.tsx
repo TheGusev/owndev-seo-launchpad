@@ -3,6 +3,7 @@ import { useInView } from "react-intersection-observer";
 import { X, Check, ArrowRight } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { FloatingParticles } from "@/components/ui/floating-particles";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const ProblemsAndSolutions = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -60,7 +61,9 @@ const ProblemsAndSolutions = () => {
 
   return (
     <section id="problems" className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(222_47%_10%),transparent_70%)]" />
+      <ParallaxLayer speed={0.15} className="absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(222_47%_10%),transparent_70%)]" />
+      </ParallaxLayer>
       <FloatingParticles count={12} className="absolute inset-0 z-[1] pointer-events-none" />
       
       <div className="container px-4 md:px-6 relative z-10">

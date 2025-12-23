@@ -3,6 +3,7 @@ import { useInView } from "react-intersection-observer";
 import { Check } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const Pricing = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -74,7 +75,9 @@ const Pricing = () => {
 
   return (
     <section id="pricing" className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(217_91%_60%/0.08),transparent_50%)]" />
+      <ParallaxLayer speed={0.15} className="absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(217_91%_60%/0.08),transparent_50%)]" />
+      </ParallaxLayer>
       
       <div className="container px-4 md:px-6 relative z-10">
         <motion.div
