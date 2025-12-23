@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/ui/gradient-button";
 import { ArrowRight, CheckCircle, TrendingUp, Shield, Clock } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
@@ -94,13 +94,13 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4"
           >
-            <Button variant="hero" size="xl" className="group">
+            <GradientButton size="xl" className="group">
               Первая консультация — БЕСПЛАТНО
               <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button variant="glass" size="xl">
+            </GradientButton>
+            <GradientButton variant="variant" size="xl">
               Смотреть портфолио ↓
-            </Button>
+            </GradientButton>
           </motion.div>
           
           {/* Trust badges */}

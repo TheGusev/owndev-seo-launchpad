@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { ExternalLink, TrendingUp, Phone, DollarSign, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/ui/gradient-button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 const Portfolio = () => {
@@ -191,10 +191,10 @@ const Portfolio = () => {
                         </div>
                       </div>
                       
-                      <Button variant="glass" size="sm" className="w-full mt-4">
+                      <GradientButton variant="variant" size="sm" className="w-full mt-4">
                         Смотреть живой сайт
                         <ExternalLink className="w-4 h-4 ml-2" />
-                      </Button>
+                      </GradientButton>
                     </div>
                   </div>
                 </CarouselItem>

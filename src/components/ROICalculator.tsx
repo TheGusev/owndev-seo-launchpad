@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Calculator, TrendingUp, Clock, Wallet, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/ui/gradient-button";
 import { Slider } from "@/components/ui/slider";
 import {
   Select,
@@ -189,15 +189,14 @@ const ROICalculator = () => {
             </div>
 
             <div className="text-center">
-              <Button 
-                variant="hero" 
+              <GradientButton 
                 size="xl" 
                 onClick={scrollToContact}
                 className="group"
               >
                 Получить точный расчёт
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              </GradientButton>
               <p className="text-xs text-muted-foreground mt-4">
                 * Расчёт примерный. Реальные результаты зависят от ниши и стратегии
               </p>

@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/ui/gradient-button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
@@ -55,9 +55,9 @@ const Header = () => {
 
           {/* CTA */}
           <div className="hidden md:block">
-            <Button variant="hero" size="default" onClick={scrollToContact}>
+            <GradientButton size="sm" onClick={scrollToContact}>
               Бесплатная консультация
-            </Button>
+            </GradientButton>
           </div>
 
           {/* Mobile menu button */}
@@ -83,9 +83,9 @@ const Header = () => {
                   {link.label}
                 </a>
               ))}
-              <Button variant="hero" size="default" className="mt-2" onClick={scrollToContact}>
+              <GradientButton size="sm" className="mt-2" onClick={scrollToContact}>
                 Бесплатная консультация
-              </Button>
+              </GradientButton>
             </div>
           </nav>
         )}

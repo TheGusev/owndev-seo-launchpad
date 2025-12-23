@@ -4,7 +4,7 @@ import { useInView } from "react-intersection-observer";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/ui/gradient-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -244,9 +244,8 @@ const ContactForm = () => {
                     )}
                   />
 
-                  <Button 
+                  <GradientButton 
                     type="submit" 
-                    variant="hero" 
                     size="xl" 
                     className="w-full"
                     disabled={isSubmitting}
@@ -262,7 +261,7 @@ const ContactForm = () => {
                         <Send className="w-5 h-5 ml-2" />
                       </>
                     )}
-                  </Button>
+                  </GradientButton>
 
                   <p className="text-sm text-muted-foreground text-center">
                     * Как скоро я услышу ответ? В течение 2 часов в рабочее время.

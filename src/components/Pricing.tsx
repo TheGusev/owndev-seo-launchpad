@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 const Pricing = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -126,12 +126,13 @@ const Pricing = () => {
                 ))}
               </ul>
               
-              <Button 
-                variant={plan.recommended ? "hero" : "glass"} 
+              <GradientButton 
+                variant={plan.recommended ? "default" : "variant"} 
                 className="w-full"
+                size="sm"
               >
                 Выбрать
-              </Button>
+              </GradientButton>
             </motion.div>
           ))}
         </div>
