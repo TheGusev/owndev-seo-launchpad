@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Send, Loader2, CheckCircle, Phone, Mail, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { AnimatedText } from "@/components/ui/animated-text";
 
 const formSchema = z.object({
   name: z.string().min(2, "Имя должно содержать минимум 2 символа").max(50),
@@ -103,11 +104,13 @@ const ContactForm = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            Давайте начнём! <span className="text-gradient">🚀</span>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
+            <AnimatedText text="Давайте начнём!" theme="primary" wordDelay={150} />
+            {" "}
+            <span className="text-gradient">🚀</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Запишитесь на бесплатную консультацию прямо сейчас
+            <AnimatedText text="Запишитесь на бесплатную консультацию прямо сейчас" theme="accent" wordDelay={60} />
           </p>
         </motion.div>
 
@@ -279,7 +282,7 @@ const ContactForm = () => {
             className="flex flex-col justify-center space-y-8"
           >
             <div>
-              <h3 className="text-2xl font-bold mb-4">Или свяжитесь с нами напрямую</h3>
+              <h3 className="text-2xl font-bold mb-4 font-serif">Или свяжитесь с нами напрямую</h3>
               <p className="text-muted-foreground">
                 Мы всегда на связи и готовы ответить на ваши вопросы
               </p>

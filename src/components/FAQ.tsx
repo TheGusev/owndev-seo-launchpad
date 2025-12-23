@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { AnimatedText } from "@/components/ui/animated-text";
 
 const FAQ = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -58,11 +59,15 @@ const FAQ = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            Вопросы и <span className="text-gradient">ответы</span>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
+            <AnimatedText text="Вопросы и" theme="secondary" wordDelay={150} />
+            {" "}
+            <span className="text-gradient">
+              <AnimatedText text="ответы" theme="primary" wordDelay={150} />
+            </span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Ответы на часто задаваемые вопросы наших клиентов
+            <AnimatedText text="Ответы на часто задаваемые вопросы наших клиентов" theme="accent" wordDelay={60} />
           </p>
         </motion.div>
 

@@ -4,6 +4,9 @@ import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
 import { SparklesCore } from "@/components/ui/sparkles";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { AnimatedText } from "@/components/ui/animated-text";
+import { CornerDecorations } from "@/components/ui/corner-decorations";
+import { FloatingParticles } from "@/components/ui/floating-particles";
 
 const Hero = () => {
   const trustItems = [
@@ -14,6 +17,12 @@ const Hero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
+      {/* Corner Decorations */}
+      <CornerDecorations size="lg" />
+      
+      {/* Floating Particles */}
+      <FloatingParticles count={20} className="absolute inset-0 z-[3] pointer-events-none" />
+      
       {/* Sparkles Background */}
       <div className="absolute inset-0 z-0">
         <SparklesCore
@@ -55,7 +64,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="space-y-4"
           >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif">
               <TypeAnimation
                 sequence={[
                   'Сайты, которые продают.',
@@ -71,22 +80,32 @@ const Hero = () => {
                 repeat={Infinity}
               />
             </h1>
-            <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground">
-              Разработка, оптимизация, рост 📈
+            <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground font-serif">
+              <AnimatedText text="Разработка, оптимизация, рост 📈" wordDelay={150} theme="primary" />
             </p>
           </motion.div>
           
           {/* Subheading */}
-          <motion.p 
+          <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground max-w-3xl leading-relaxed"
           >
-            Мы создаём веб-сайты и SaaS-платформы для малого и среднего бизнеса.
+            <AnimatedText 
+              text="Мы создаём веб-сайты и SaaS-платформы для малого и среднего бизнеса." 
+              wordDelay={80}
+              theme="accent"
+            />
             <br />
-            <span className="text-foreground font-medium">30+ проектов. 5+ млн руб выручки клиентов в год благодаря нам.</span>
-          </motion.p>
+            <span className="text-foreground font-medium inline-block mt-2">
+              <AnimatedText 
+                text="30+ проектов. 5+ млн руб выручки клиентов в год благодаря нам." 
+                wordDelay={80}
+                theme="success"
+              />
+            </span>
+          </motion.div>
           
           {/* CTA buttons */}
           <motion.div 
@@ -165,7 +184,7 @@ const Hero = () => {
                 inactiveZone={0.3}
               />
               <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient">30+</div>
+                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">30+</div>
                 <div className="text-sm text-muted-foreground mt-1">Проектов</div>
               </div>
             </div>
@@ -181,7 +200,7 @@ const Hero = () => {
                 inactiveZone={0.3}
               />
               <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient">150%</div>
+                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">150%</div>
                 <div className="text-sm text-muted-foreground mt-1">Рост органики</div>
               </div>
             </div>
@@ -197,7 +216,7 @@ const Hero = () => {
                 inactiveZone={0.3}
               />
               <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient">5+ лет</div>
+                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">5+ лет</div>
                 <div className="text-sm text-muted-foreground mt-1">Опыта</div>
               </div>
             </div>
