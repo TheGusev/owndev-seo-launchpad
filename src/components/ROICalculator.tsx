@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import CountUp from "react-countup";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const ROICalculator = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -85,121 +86,131 @@ const ROICalculator = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="max-w-4xl mx-auto"
         >
-          <div className="glass rounded-3xl p-8 md:p-10">
-            <div className="grid md:grid-cols-2 gap-8 mb-10">
-              {/* Service Selection */}
-              <div className="space-y-4">
-                <label className="text-sm font-medium text-foreground">
-                  Выберите услугу
-                </label>
-                <Select value={service} onValueChange={setService}>
-                  <SelectTrigger className="w-full h-14 text-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(services).map(([key, value]) => (
-                      <SelectItem key={key} value={key} className="text-lg py-3">
-                        {value.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="relative group">
+            <GlowingEffect
+              theme="warning"
+              disabled={false}
+              borderWidth={3}
+              spread={50}
+              glow={true}
+              blur={15}
+            />
+            <div className="glass rounded-3xl p-8 md:p-10 relative z-10">
+              <div className="grid md:grid-cols-2 gap-8 mb-10">
+                {/* Service Selection */}
+                <div className="space-y-4">
+                  <label className="text-sm font-medium text-foreground">
+                    Выберите услугу
+                  </label>
+                  <Select value={service} onValueChange={setService}>
+                    <SelectTrigger className="w-full h-14 text-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(services).map(([key, value]) => (
+                        <SelectItem key={key} value={key} className="text-lg py-3">
+                          {value.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Revenue Slider */}
-              <div className="space-y-4">
-                <label className="text-sm font-medium text-foreground">
-                  Ваша текущая выручка в месяц
-                </label>
-                <div className="pt-2">
-                  <Slider
-                    value={revenue}
-                    onValueChange={setRevenue}
-                    min={100000}
-                    max={10000000}
-                    step={50000}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between mt-3">
-                    <span className="text-sm text-muted-foreground">100K ₽</span>
-                    <span className="text-2xl font-bold text-primary">
-                      {formatNumber(revenue[0])} ₽
-                    </span>
-                    <span className="text-sm text-muted-foreground">10M ₽</span>
+                {/* Revenue Slider */}
+                <div className="space-y-4">
+                  <label className="text-sm font-medium text-foreground">
+                    Ваша текущая выручка в месяц
+                  </label>
+                  <div className="pt-2">
+                    <Slider
+                      value={revenue}
+                      onValueChange={setRevenue}
+                      min={100000}
+                      max={10000000}
+                      step={50000}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between mt-3">
+                      <span className="text-sm text-muted-foreground">100K ₽</span>
+                      <span className="text-2xl font-bold text-primary">
+                        {formatNumber(revenue[0])} ₽
+                      </span>
+                      <span className="text-sm text-muted-foreground">10M ₽</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Results */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="glass rounded-2xl p-5 text-center bg-card/50">
-                <Wallet className="w-6 h-6 text-primary mx-auto mb-2" />
-                <div className="text-2xl md:text-3xl font-bold text-foreground">
-                  <CountUp
-                    end={calculations.cost}
-                    duration={0.5}
-                    separator=" "
-                    suffix=" ₽"
-                    preserveValue
-                  />
+              {/* Results */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="glass rounded-2xl p-5 text-center bg-card/50">
+                  <Wallet className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <div className="text-2xl md:text-3xl font-bold text-foreground">
+                    <CountUp
+                      end={calculations.cost}
+                      duration={0.5}
+                      separator=" "
+                      suffix=" ₽"
+                      preserveValue
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Стоимость</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Стоимость</p>
+
+                <div className="glass rounded-2xl p-5 text-center bg-success/10">
+                  <TrendingUp className="w-6 h-6 text-success mx-auto mb-2" />
+                  <div className="text-2xl md:text-3xl font-bold text-success">
+                    +<CountUp
+                      end={calculations.growthPercent}
+                      duration={0.5}
+                      suffix="%"
+                      preserveValue
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Рост выручки</p>
+                </div>
+
+                <div className="glass rounded-2xl p-5 text-center bg-warning/10">
+                  <Clock className="w-6 h-6 text-warning mx-auto mb-2" />
+                  <div className="text-2xl md:text-3xl font-bold text-warning">
+                    <CountUp
+                      end={calculations.paybackMonths}
+                      duration={0.5}
+                      suffix=" мес"
+                      preserveValue
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Окупаемость</p>
+                </div>
+
+                <div className="glass rounded-2xl p-5 text-center bg-primary/10">
+                  <Wallet className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <div className="text-2xl md:text-3xl font-bold text-primary">
+                    +<CountUp
+                      end={calculations.yearlyProfit}
+                      duration={0.5}
+                      separator=" "
+                      suffix=" ₽"
+                      preserveValue
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Прибыль за год</p>
+                </div>
               </div>
 
-              <div className="glass rounded-2xl p-5 text-center bg-success/10">
-                <TrendingUp className="w-6 h-6 text-success mx-auto mb-2" />
-                <div className="text-2xl md:text-3xl font-bold text-success">
-                  +<CountUp
-                    end={calculations.growthPercent}
-                    duration={0.5}
-                    suffix="%"
-                    preserveValue
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Рост выручки</p>
+              <div className="text-center">
+                <GradientButton 
+                  size="xl" 
+                  onClick={scrollToContact}
+                  className="group"
+                >
+                  Получить точный расчёт
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </GradientButton>
+                <p className="text-xs text-muted-foreground mt-4">
+                  * Расчёт примерный. Реальные результаты зависят от ниши и стратегии
+                </p>
               </div>
-
-              <div className="glass rounded-2xl p-5 text-center bg-warning/10">
-                <Clock className="w-6 h-6 text-warning mx-auto mb-2" />
-                <div className="text-2xl md:text-3xl font-bold text-warning">
-                  <CountUp
-                    end={calculations.paybackMonths}
-                    duration={0.5}
-                    suffix=" мес"
-                    preserveValue
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Окупаемость</p>
-              </div>
-
-              <div className="glass rounded-2xl p-5 text-center bg-primary/10">
-                <Wallet className="w-6 h-6 text-primary mx-auto mb-2" />
-                <div className="text-2xl md:text-3xl font-bold text-primary">
-                  +<CountUp
-                    end={calculations.yearlyProfit}
-                    duration={0.5}
-                    separator=" "
-                    suffix=" ₽"
-                    preserveValue
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Прибыль за год</p>
-              </div>
-            </div>
-
-            <div className="text-center">
-              <GradientButton 
-                size="xl" 
-                onClick={scrollToContact}
-                className="group"
-              >
-                Получить точный расчёт
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </GradientButton>
-              <p className="text-xs text-muted-foreground mt-4">
-                * Расчёт примерный. Реальные результаты зависят от ниши и стратегии
-              </p>
             </div>
           </div>
         </motion.div>

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Globe, Building2, ShoppingCart, Search, Rocket, MessageSquare, Clock, Banknote, Users } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const Capabilities = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -102,56 +103,66 @@ const Capabilities = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={inView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`glass rounded-2xl p-6 border-t-4 ${colorClasses.border} card-hover ${service.highlight ? 'ring-2 ring-primary/50' : ''}`}
+                className="relative group"
               >
-                {service.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold">
-                      Рекомендуем
-                    </span>
+                <GlowingEffect
+                  theme={service.color as "primary" | "secondary" | "success" | "accent"}
+                  disabled={false}
+                  borderWidth={2}
+                  spread={30}
+                  glow={true}
+                  blur={8}
+                />
+                <div className={`glass rounded-2xl p-6 border-t-4 ${colorClasses.border} card-hover relative z-10 h-full ${service.highlight ? 'ring-2 ring-primary/50' : ''}`}>
+                  {service.highlight && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold">
+                        Рекомендуем
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className={`p-3 rounded-xl bg-card ${colorClasses.icon}`}>
+                      <service.icon className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg">{service.title}</h3>
+                    </div>
                   </div>
-                )}
-                
-                <div className="flex items-start gap-4 mb-4">
-                  <div className={`p-3 rounded-xl bg-card ${colorClasses.icon}`}>
-                    <service.icon className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg">{service.title}</h3>
-                  </div>
-                </div>
 
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">🎯 Цель:</span>
-                    <span className="text-foreground">{service.goal}</span>
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">🎯 Цель:</span>
+                      <span className="text-foreground">{service.goal}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Срок:</span>
+                      <span className="text-foreground">{service.duration}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Banknote className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Цена:</span>
+                      <span className={`font-semibold ${service.highlight ? 'text-success' : 'text-foreground'}`}>
+                        {service.price}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Для:</span>
+                      <span className="text-foreground">{service.audience}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Срок:</span>
-                    <span className="text-foreground">{service.duration}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Banknote className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Цена:</span>
-                    <span className={`font-semibold ${service.highlight ? 'text-success' : 'text-foreground'}`}>
-                      {service.price}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Для:</span>
-                    <span className="text-foreground">{service.audience}</span>
-                  </div>
-                </div>
 
-                <GradientButton 
-                  variant={service.highlight ? "default" : "variant"} 
-                  className="w-full"
-                  size="sm"
-                >
-                  {service.highlight ? "Записаться" : "Смотреть примеры"}
-                </GradientButton>
+                  <GradientButton 
+                    variant={service.highlight ? "default" : "variant"} 
+                    className="w-full"
+                    size="sm"
+                  >
+                    {service.highlight ? "Записаться" : "Смотреть примеры"}
+                  </GradientButton>
+                </div>
               </motion.div>
             );
           })}
