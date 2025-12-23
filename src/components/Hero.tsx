@@ -8,6 +8,7 @@ import { AnimatedText } from "@/components/ui/animated-text";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const Hero = () => {
   const trustItems = [
@@ -21,11 +22,13 @@ const Hero = () => {
       {/* Corner Decorations */}
       <CornerDecorations size="lg" />
       
-      {/* Floating Particles */}
-      <FloatingParticles count={20} className="absolute inset-0 z-[3] pointer-events-none" />
+      {/* Floating Particles with parallax */}
+      <ParallaxLayer speed={0.3} className="absolute inset-0 z-[3] pointer-events-none">
+        <FloatingParticles count={20} className="absolute inset-0" />
+      </ParallaxLayer>
       
-      {/* Sparkles Background */}
-      <div className="absolute inset-0 z-0">
+      {/* Sparkles Background with parallax */}
+      <ParallaxLayer speed={0.2} className="absolute inset-0 z-0">
         <SparklesCore
           id="hero-sparkles"
           background="transparent"
@@ -36,14 +39,16 @@ const Hero = () => {
           speed={2}
           className="w-full h-full"
         />
-      </div>
+      </ParallaxLayer>
       
       {/* Gradient overlays for depth */}
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
       
-      {/* Animated SVG Grid */}
-      <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="z-[2] opacity-70" theme="primary" />
+      {/* Animated SVG Grid with parallax */}
+      <ParallaxLayer speed={0.1} className="absolute inset-0 z-[2]">
+        <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="opacity-70" theme="primary" />
+      </ParallaxLayer>
       
       <div className="container relative z-10 px-4 md:px-6">
         <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
