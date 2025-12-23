@@ -1,11 +1,27 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import CountUp from "react-countup";
 import { TrendingUp, Phone, DollarSign, Clock, Star } from "lucide-react";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { MasonryGrid } from "@/components/ui/image-testimonial-grid";
 
 const Results = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
+  const [columns, setColumns] = useState(4);
+
+  const getColumns = (width: number) => {
+    if (width < 640) return 1;
+    if (width < 1024) return 2;
+    if (width < 1280) return 3;
+    return 4;
+  };
+
+  useEffect(() => {
+    const handleResize = () => setColumns(getColumns(window.innerWidth));
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const metrics = [
     {
@@ -42,41 +58,113 @@ const Results = () => {
 
   const testimonials = [
     {
-      rating: 5,
-      text: "Просто супер! Сайт заработал уже в первый месяц! Спасибо, ребята! 🙌",
-      author: "Константин",
+      profileImage: "https://randomuser.me/api/portraits/men/32.jpg",
+      name: "Константин",
       company: "Сантехника",
-      avatar: "К"
+      feedback: "Просто супер! Сайт заработал уже в первый месяц! Спасибо, ребята! 🙌",
+      mainImage: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
+      rating: 5
     },
     {
-      rating: 5,
-      text: "Лучшие в городе! Квалифицированные специалисты, честные цены, результаты!",
-      author: "Максим Иванов",
+      profileImage: "https://randomuser.me/api/portraits/men/45.jpg",
+      name: "Максим Иванов",
       company: "Клиника «Плюс»",
-      avatar: "М"
+      feedback: "Лучшие в городе! Квалифицированные специалисты, честные цены, результаты!",
+      mainImage: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=800&h=1000&q=80",
+      rating: 5
     },
     {
-      rating: 5,
-      text: "Очень быстро! Приносит клиентов каждый день! Рекомендую всем.",
-      author: "Юлия Петрова",
+      profileImage: "https://randomuser.me/api/portraits/women/44.jpg",
+      name: "Юлия Петрова",
       company: "Салон «Вива»",
-      avatar: "Ю"
+      feedback: "Очень быстро! Приносит клиентов каждый день! Рекомендую всем.",
+      mainImage: "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&h=1200&q=80",
+      rating: 5
     },
     {
-      rating: 5,
-      text: "Профессионалы своего дела. Сделали сайт точно по ТЗ и в срок.",
-      author: "Андрей Смирнов",
+      profileImage: "https://randomuser.me/api/portraits/men/56.jpg",
+      name: "Андрей Смирнов",
       company: "СтройМастер",
-      avatar: "А"
+      feedback: "Профессионалы своего дела. Сделали сайт точно по ТЗ и в срок.",
+      mainImage: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80",
+      rating: 5
     },
     {
-      rating: 5,
-      text: "Отличная работа! Продажи выросли в 2 раза за 3 месяца.",
-      author: "Елена Козлова",
+      profileImage: "https://randomuser.me/api/portraits/women/68.jpg",
+      name: "Елена Козлова",
       company: "ТехноМир",
-      avatar: "Е"
+      feedback: "Отличная работа! Продажи выросли в 2 раза за 3 месяца.",
+      mainImage: "https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=800&h=900&q=80",
+      rating: 5
+    },
+    {
+      profileImage: "https://randomuser.me/api/portraits/men/78.jpg",
+      name: "Дмитрий Орлов",
+      company: "АвтоСервис",
+      feedback: "Заказов стало больше, клиенты находят нас сами. Очень доволен результатом!",
+      mainImage: "https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=800&h=1100&q=80",
+      rating: 5
+    },
+    {
+      profileImage: "https://randomuser.me/api/portraits/women/88.jpg",
+      name: "Ольга Новикова",
+      company: "Ресторан «Вкус»",
+      feedback: "Бронирования через сайт увеличились втрое. Спасибо за качественную работу!",
+      mainImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+      rating: 5
+    },
+    {
+      profileImage: "https://randomuser.me/api/portraits/men/21.jpg",
+      name: "Сергей Волков",
+      company: "Юридическая фирма",
+      feedback: "Наконец-то нашли надёжных подрядчиков. Сайт работает безупречно.",
+      mainImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&h=1000&q=80",
+      rating: 5
     }
   ];
+
+  const TestimonialCard = ({ testimonial }: { testimonial: typeof testimonials[0] }) => (
+    <div className="relative rounded-2xl overflow-hidden group cursor-pointer">
+      <img 
+        src={testimonial.mainImage} 
+        alt={testimonial.name}
+        className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110"
+        onError={(e) => {
+          e.currentTarget.src = 'https://placehold.co/800x600/1a1a1a/ffffff?text=Image';
+        }}
+      />
+      
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-300" />
+      
+      {/* Content */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <img 
+            src={testimonial.profileImage} 
+            alt={testimonial.name}
+            className="w-10 h-10 rounded-full border-2 border-primary/50 object-cover"
+            onError={(e) => {
+              e.currentTarget.src = 'https://placehold.co/40x40/EFEFEF/333333?text=A';
+            }}
+          />
+          <div>
+            <p className="text-foreground font-semibold text-sm">{testimonial.name}</p>
+            <p className="text-muted-foreground text-xs">{testimonial.company}</p>
+          </div>
+        </div>
+        
+        <p className="text-foreground/90 text-sm leading-relaxed mb-3">"{testimonial.feedback}"</p>
+        
+        {/* Stars */}
+        <div className="flex gap-1">
+          {[...Array(testimonial.rating)].map((_, i) => (
+            <Star key={i} className="w-4 h-4 text-warning fill-warning" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <section id="results" className="py-24 relative overflow-hidden">
@@ -126,7 +214,7 @@ const Results = () => {
           ))}
         </div>
 
-        {/* Testimonials */}
+        {/* Testimonials with Masonry Grid */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
@@ -134,44 +222,11 @@ const Results = () => {
         >
           <h3 className="text-2xl font-bold text-center mb-8">Отзывы клиентов</h3>
           
-          <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent className="-ml-4">
-              {testimonials.map((testimonial, index) => (
-                <CarouselItem key={index} className="pl-4 md:basis-1/2 lg:basis-1/3">
-                  <div className="glass rounded-2xl p-6 h-full">
-                    {/* Stars */}
-                    <div className="flex gap-1 mb-4">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="w-5 h-5 text-warning fill-warning" />
-                      ))}
-                    </div>
-                    
-                    {/* Quote */}
-                    <p className="text-foreground mb-6 italic">"{testimonial.text}"</p>
-                    
-                    {/* Author */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                        {testimonial.avatar}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground">{testimonial.author}</p>
-                        <p className="text-sm text-muted-foreground">{testimonial.company}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="hidden md:flex -left-4" />
-            <CarouselNext className="hidden md:flex -right-4" />
-          </Carousel>
+          <MasonryGrid columns={columns} gap={4}>
+            {testimonials.map((testimonial, index) => (
+              <TestimonialCard key={index} testimonial={testimonial} />
+            ))}
+          </MasonryGrid>
         </motion.div>
       </div>
     </section>
