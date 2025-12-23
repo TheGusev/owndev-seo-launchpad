@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle, TrendingUp, Shield, Clock } from "lucide-react
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
 import { SparklesCore } from "@/components/ui/sparkles";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const Hero = () => {
   const trustItems = [
@@ -92,15 +93,39 @@ const Hero = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-4"
+            className="flex flex-col sm:flex-row gap-6"
           >
-            <GradientButton size="xl" className="group">
-              Первая консультация — БЕСПЛАТНО
-              <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-            </GradientButton>
-            <GradientButton variant="variant" size="xl">
-              Смотреть портфолио ↓
-            </GradientButton>
+            <div className="relative group">
+              <GlowingEffect
+                theme="primary"
+                disabled={false}
+                borderWidth={2}
+                spread={30}
+                glow={true}
+                blur={12}
+                proximity={80}
+                inactiveZone={0.4}
+              />
+              <GradientButton size="xl" className="group relative z-10">
+                Первая консультация — БЕСПЛАТНО
+                <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+              </GradientButton>
+            </div>
+            <div className="relative group">
+              <GlowingEffect
+                theme="secondary"
+                disabled={false}
+                borderWidth={2}
+                spread={25}
+                glow={true}
+                blur={10}
+                proximity={80}
+                inactiveZone={0.4}
+              />
+              <GradientButton variant="variant" size="xl" className="relative z-10">
+                Смотреть портфолио ↓
+              </GradientButton>
+            </div>
           </motion.div>
           
           {/* Trust badges */}
@@ -128,17 +153,53 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.5 }}
             className="grid grid-cols-3 gap-8 md:gap-16 pt-8 border-t border-border/50 mt-8"
           >
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-gradient">30+</div>
-              <div className="text-sm text-muted-foreground mt-1">Проектов</div>
+            <div className="relative group text-center p-4 rounded-xl">
+              <GlowingEffect
+                theme="primary"
+                disabled={false}
+                borderWidth={1}
+                spread={20}
+                glow={true}
+                blur={8}
+                proximity={60}
+                inactiveZone={0.3}
+              />
+              <div className="relative z-10">
+                <div className="text-3xl md:text-4xl font-bold text-gradient">30+</div>
+                <div className="text-sm text-muted-foreground mt-1">Проектов</div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-gradient">150%</div>
-              <div className="text-sm text-muted-foreground mt-1">Рост органики</div>
+            <div className="relative group text-center p-4 rounded-xl">
+              <GlowingEffect
+                theme="success"
+                disabled={false}
+                borderWidth={1}
+                spread={20}
+                glow={true}
+                blur={8}
+                proximity={60}
+                inactiveZone={0.3}
+              />
+              <div className="relative z-10">
+                <div className="text-3xl md:text-4xl font-bold text-gradient">150%</div>
+                <div className="text-sm text-muted-foreground mt-1">Рост органики</div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-gradient">5+ лет</div>
-              <div className="text-sm text-muted-foreground mt-1">Опыта</div>
+            <div className="relative group text-center p-4 rounded-xl">
+              <GlowingEffect
+                theme="accent"
+                disabled={false}
+                borderWidth={1}
+                spread={20}
+                glow={true}
+                blur={8}
+                proximity={60}
+                inactiveZone={0.3}
+              />
+              <div className="relative z-10">
+                <div className="text-3xl md:text-4xl font-bold text-gradient">5+ лет</div>
+                <div className="text-sm text-muted-foreground mt-1">Опыта</div>
+              </div>
             </div>
           </motion.div>
         </div>
