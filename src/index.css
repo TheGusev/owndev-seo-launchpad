@@ -594,3 +594,72 @@
 .corner-decoration {
   animation: word-appear 1s ease-out forwards;
 }
+
+/* ============================================
+   ANIMATED SVG GRID
+   ============================================ */
+
+@keyframes grid-draw {
+  0% {
+    stroke-dashoffset: 1000;
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.15;
+  }
+}
+
+@keyframes dot-pulse {
+  0%, 100% {
+    opacity: 0.1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.3);
+  }
+}
+
+.grid-line {
+  stroke: hsl(var(--primary) / 0.4);
+  stroke-width: 0.15;
+  fill: none;
+  opacity: 0;
+  stroke-dasharray: 5 3;
+  stroke-dashoffset: 1000;
+  animation: grid-draw 2s ease-out forwards;
+  vector-effect: non-scaling-stroke;
+}
+
+.detail-dot {
+  fill: hsl(var(--primary) / 0.6);
+  opacity: 0;
+  animation: dot-pulse 3s ease-in-out infinite;
+  animation-fill-mode: forwards;
+}
+
+/* Grid color themes */
+.grid-theme-primary .grid-line {
+  stroke: hsl(var(--primary) / 0.3);
+}
+.grid-theme-primary .detail-dot {
+  fill: hsl(var(--primary) / 0.5);
+}
+
+.grid-theme-accent .grid-line {
+  stroke: hsl(var(--accent) / 0.3);
+}
+.grid-theme-accent .detail-dot {
+  fill: hsl(var(--accent) / 0.5);
+}
+
+.grid-theme-secondary .grid-line {
+  stroke: hsl(var(--secondary) / 0.3);
+}
+.grid-theme-secondary .detail-dot {
+  fill: hsl(var(--secondary) / 0.5);
+}
