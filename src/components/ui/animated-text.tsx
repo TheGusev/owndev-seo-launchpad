@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface AnimatedTextProps {
@@ -14,11 +14,12 @@ const AnimatedText = ({
   text, 
   className, 
   wordClassName,
-  wordDelay = 100, 
+  wordDelay = 80, 
   as: Component = 'span',
   theme = 'primary'
 }: AnimatedTextProps) => {
   const containerRef = useRef<HTMLElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const words = text.split(' ');
 
   useEffect(() => {
@@ -29,22 +30,17 @@ const AnimatedText = ({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const wordElements = container.querySelectorAll('.word-animate');
-            wordElements.forEach((word, index) => {
-              setTimeout(() => {
-                (word as HTMLElement).style.animationPlayState = 'running';
-              }, index * wordDelay);
-            });
+            setIsVisible(true);
             observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1, rootMargin: '50px' }
     );
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, [wordDelay]);
+  }, []);
 
   return (
     <Component ref={containerRef as any} className={cn('inline', className)}>
@@ -52,13 +48,12 @@ const AnimatedText = ({
         <span
           key={index}
           className={cn(
-            'word-animate',
+            isVisible ? 'word-animate' : 'opacity-0',
             `word-animate-${theme}`,
             wordClassName
           )}
           style={{ 
-            animationDelay: `${index * wordDelay}ms`,
-            animationPlayState: 'paused'
+            animationDelay: isVisible ? `${index * wordDelay}ms` : '0ms'
           }}
         >
           {word}

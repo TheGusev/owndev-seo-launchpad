@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Search, Code, Rocket, TrendingUp, ArrowDown } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { AnimatedText } from "@/components/ui/animated-text";
 
 const Process = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -74,14 +73,11 @@ const Process = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            <AnimatedText text="Процесс за" theme="secondary" wordDelay={150} />
-            {" "}
-            <span className="text-gradient">
-              <AnimatedText text="4 шага" theme="primary" wordDelay={150} />
-            </span>
+            Процесс за{" "}
+            <span className="text-gradient">4 шага</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            <AnimatedText text="Прозрачный и понятный процесс от первой встречи до результата" theme="accent" wordDelay={60} />
+            Прозрачный и понятный процесс от первой встречи до результата
           </p>
         </motion.div>
 
