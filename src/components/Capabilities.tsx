@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Globe, Building2, ShoppingCart, Search, Rocket, MessageSquare, Clock, Banknote, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 const Capabilities = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -145,13 +145,13 @@ const Capabilities = () => {
                   </div>
                 </div>
 
-                <Button 
-                  variant={service.highlight ? "hero" : "glass"} 
+                <GradientButton 
+                  variant={service.highlight ? "default" : "variant"} 
                   className="w-full"
                   size="sm"
                 >
                   {service.highlight ? "Записаться" : "Смотреть примеры"}
-                </Button>
+                </GradientButton>
               </motion.div>
             );
           })}
