@@ -6,10 +6,29 @@ const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { href: "#services", label: "Услуги" },
-    { href: "#about", label: "О нас" },
+    { href: "#capabilities", label: "Услуги" },
+    { href: "#portfolio", label: "Портфолио" },
+    { href: "#pricing", label: "Тарифы" },
+    { href: "#faq", label: "FAQ" },
     { href: "#contact", label: "Контакты" },
   ];
+
+  const scrollToContact = () => {
+    const element = document.getElementById("contact");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+    setIsOpen(false);
+  };
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const element = document.getElementById(href.replace("#", ""));
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+    setIsOpen(false);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass">
@@ -26,6 +45,7 @@ const Header = () => {
               <a
                 key={link.href}
                 href={link.href}
+                onClick={(e) => handleNavClick(e, link.href)}
                 className="text-muted-foreground hover:text-foreground transition-colors font-medium"
               >
                 {link.label}
@@ -35,8 +55,8 @@ const Header = () => {
 
           {/* CTA */}
           <div className="hidden md:block">
-            <Button variant="hero" size="default">
-              Связаться
+            <Button variant="hero" size="default" onClick={scrollToContact}>
+              Бесплатная консультация
             </Button>
           </div>
 
@@ -57,14 +77,14 @@ const Header = () => {
                 <a
                   key={link.href}
                   href={link.href}
-                  onClick={() => setIsOpen(false)}
+                  onClick={(e) => handleNavClick(e, link.href)}
                   className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
                 >
                   {link.label}
                 </a>
               ))}
-              <Button variant="hero" size="default" className="mt-2">
-                Связаться
+              <Button variant="hero" size="default" className="mt-2" onClick={scrollToContact}>
+                Бесплатная консультация
               </Button>
             </div>
           </nav>
