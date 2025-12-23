@@ -11,6 +11,7 @@ const Portfolio = () => {
     {
       title: "Салон красоты «Иридиум»",
       category: "Красота",
+      image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&h=600&fit=crop",
       problem: "Нет сайта, потеря клиентов, сложная запись через WhatsApp",
       solution: "Разработали сайт с онлайн-записью, интегрировали SaaS систему управления, оптимизировали под SEO",
       results: {
@@ -24,6 +25,7 @@ const Portfolio = () => {
     {
       title: "Ремонтная компания «СтройМастер»",
       category: "Услуги",
+      image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&h=600&fit=crop",
       problem: "Старый сайт, низкая конверсия, нет мобильной версии",
       solution: "Полный редизайн, калькулятор стоимости, портфолио с фильтрами, мобильная оптимизация",
       results: {
@@ -37,6 +39,7 @@ const Portfolio = () => {
     {
       title: "Логистика «ФастДеливери»",
       category: "B2B",
+      image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&h=600&fit=crop",
       problem: "Нет онлайн-заявок, ручной расчет стоимости, отсутствие аналитики",
       solution: "Личный кабинет клиента, автоматический расчет, интеграция с CRM",
       results: {
@@ -50,6 +53,7 @@ const Portfolio = () => {
     {
       title: "Интернет-магазин «ТехноМир»",
       category: "E-commerce",
+      image: "https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=800&h=600&fit=crop",
       problem: "Низкие продажи, отсутствие SEO, медленная загрузка",
       solution: "Новый магазин на современном стеке, SEO-оптимизация, интеграция платежей",
       results: {
@@ -63,6 +67,7 @@ const Portfolio = () => {
     {
       title: "Клиника «Здоровье Плюс»",
       category: "Медицина",
+      image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&h=600&fit=crop",
       problem: "Неудобная запись, нет информации о врачах, низкое доверие",
       solution: "Онлайн-запись, профили врачей, отзывы пациентов, блог со статьями",
       results: {
@@ -76,6 +81,7 @@ const Portfolio = () => {
     {
       title: "Фитнес-клуб «PowerGym»",
       category: "Услуги",
+      image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop",
       problem: "Нет онлайн-продаж абонементов, отсутствие расписания",
       solution: "Покупка абонементов онлайн, расписание тренировок, личный кабинет",
       results: {
@@ -124,13 +130,20 @@ const Portfolio = () => {
               {projects.map((project, index) => (
                 <CarouselItem key={index} className="pl-4 md:basis-1/2 lg:basis-1/2">
                   <div className={`glass rounded-2xl overflow-hidden h-full bg-gradient-to-br ${project.gradient}`}>
-                    {/* Project preview area */}
-                    <div className="h-48 bg-card/50 flex items-center justify-center border-b border-border/50">
-                      <div className="text-center">
-                        <div className="glass px-4 py-2 rounded-lg inline-block mb-2">
-                          <span className="text-sm text-muted-foreground">{project.category}</span>
+                    {/* Project image with overlay */}
+                    <div className="relative h-48 overflow-hidden">
+                      <img 
+                        src={project.image} 
+                        alt={project.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <div className="glass px-3 py-1 rounded-full inline-block mb-2">
+                          <span className="text-xs font-medium text-foreground">{project.category}</span>
                         </div>
-                        <h3 className="text-xl font-bold">{project.title}</h3>
+                        <h3 className="text-lg font-bold text-foreground">{project.title}</h3>
                       </div>
                     </div>
                     
