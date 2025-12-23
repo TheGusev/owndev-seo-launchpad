@@ -421,3 +421,56 @@
 .glow {
   background: hsl(var(--card));
 }
+
+/* Hover enhancement for glow themes */
+@keyframes glow-pulse {
+  0%, 100% { 
+    filter: blur(8px);
+    transform: scale(1);
+  }
+  50% { 
+    filter: blur(14px);
+    transform: scale(1.03);
+  }
+}
+
+.group:hover [class*="glow-theme-"] {
+  opacity: 1 !important;
+  transition: all 0.3s ease-out;
+}
+
+.group:hover .glow-theme-primary {
+  --glow-color-1: hsl(174 72% 56% / 1);
+  --glow-color-2: hsl(174 72% 40% / 0.8);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.group:hover .glow-theme-secondary {
+  --glow-color-1: hsl(262 83% 58% / 1);
+  --glow-color-2: hsl(280 75% 50% / 0.8);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.group:hover .glow-theme-accent {
+  --glow-color-1: hsl(217 91% 60% / 1);
+  --glow-color-2: hsl(230 85% 55% / 0.8);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.group:hover .glow-theme-success {
+  --glow-color-1: hsl(142 76% 36% / 1);
+  --glow-color-2: hsl(160 84% 39% / 0.8);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.group:hover .glow-theme-warning {
+  --glow-color-1: hsl(38 92% 50% / 1);
+  --glow-color-2: hsl(45 93% 47% / 0.8);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.group:hover .glow-theme-destructive {
+  --glow-color-1: hsl(0 84% 60% / 1);
+  --glow-color-2: hsl(0 70% 45% / 0.8);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
