@@ -2,7 +2,6 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { ArrowRight, CheckCircle, TrendingUp, Shield, Clock } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
-import { SparklesCore } from "@/components/ui/sparkles";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const Hero = () => {
@@ -14,26 +13,8 @@ const Hero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Sparkles Background */}
-      <div className="absolute inset-0 z-0">
-        <SparklesCore
-          id="hero-sparkles"
-          background="transparent"
-          particleColor="#3dd9c3"
-          particleDensity={80}
-          minSize={1}
-          maxSize={2}
-          speed={2}
-          className="w-full h-full"
-        />
-      </div>
-      
-      {/* Gradient overlays for depth */}
-      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
-      
-      {/* Grid pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(hsl(222_30%_18%/0.3)_1px,transparent_1px),linear-gradient(90deg,hsl(222_30%_18%/0.3)_1px,transparent_1px)] bg-[size:60px_60px] z-[2]" />
+      {/* Grid pattern overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(hsl(222_30%_18%/0.2)_1px,transparent_1px),linear-gradient(90deg,hsl(222_30%_18%/0.2)_1px,transparent_1px)] bg-[size:60px_60px] z-[2]" />
       
       <div className="container relative z-10 px-4 md:px-6">
         <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
