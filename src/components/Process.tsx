@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Search, Code, Rocket, TrendingUp, ArrowDown } from "lucide-react";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const Process = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -16,7 +17,8 @@ const Process = () => {
         "Выявляем «узкие места» и возможности роста",
         "Первая консультация + техническое задание"
       ],
-      color: "from-primary/20 to-primary/5"
+      color: "from-primary/20 to-primary/5",
+      theme: "primary" as const
     },
     {
       number: "02",
@@ -28,7 +30,8 @@ const Process = () => {
         "Разработка на современном стеке",
         "Оптимизация скорости загрузки (< 2 сек)"
       ],
-      color: "from-accent/20 to-accent/5"
+      color: "from-accent/20 to-accent/5",
+      theme: "accent" as const
     },
     {
       number: "03",
@@ -40,7 +43,8 @@ const Process = () => {
         "Настройка поисковой оптимизации",
         "Подключение аналитики"
       ],
-      color: "from-secondary/20 to-secondary/5"
+      color: "from-secondary/20 to-secondary/5",
+      theme: "secondary" as const
     },
     {
       number: "04",
@@ -52,7 +56,8 @@ const Process = () => {
         "Месячные отчеты с метриками",
         "Непрерывное улучшение на основе данных"
       ],
-      color: "from-success/20 to-success/5"
+      color: "from-success/20 to-success/5",
+      theme: "success" as const
     }
   ];
 
@@ -84,32 +89,42 @@ const Process = () => {
               transition={{ duration: 0.6, delay: index * 0.15 }}
               className="relative"
             >
-              <div className={`glass rounded-2xl p-6 md:p-8 mb-8 bg-gradient-to-br ${step.color} card-hover`}>
-                <div className="flex flex-col md:flex-row md:items-start gap-6">
-                  {/* Number and Icon */}
-                  <div className="flex items-center gap-4">
-                    <span className="text-5xl font-bold text-muted-foreground/30">{step.number}</span>
-                    <div className="glass p-4 rounded-xl">
-                      <step.icon className="w-8 h-8 text-primary" />
+              <div className="relative group mb-8">
+                <GlowingEffect
+                  theme={step.theme}
+                  disabled={false}
+                  borderWidth={2}
+                  spread={40}
+                  glow={true}
+                  blur={10}
+                />
+                <div className={`glass rounded-2xl p-6 md:p-8 bg-gradient-to-br ${step.color} card-hover relative z-10`}>
+                  <div className="flex flex-col md:flex-row md:items-start gap-6">
+                    {/* Number and Icon */}
+                    <div className="flex items-center gap-4">
+                      <span className="text-5xl font-bold text-muted-foreground/30">{step.number}</span>
+                      <div className="glass p-4 rounded-xl">
+                        <step.icon className="w-8 h-8 text-primary" />
+                      </div>
                     </div>
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-3 mb-4">
-                      <h3 className="text-xl md:text-2xl font-bold">{step.title}</h3>
-                      <span className="glass px-3 py-1 rounded-full text-sm text-primary font-mono">
-                        {step.duration}
-                      </span>
+                    
+                    {/* Content */}
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <h3 className="text-xl md:text-2xl font-bold">{step.title}</h3>
+                        <span className="glass px-3 py-1 rounded-full text-sm text-primary font-mono">
+                          {step.duration}
+                        </span>
+                      </div>
+                      <ul className="space-y-2">
+                        {step.items.map((item, i) => (
+                          <li key={i} className="text-muted-foreground flex items-start gap-2">
+                            <span className="text-primary mt-1.5">•</span>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul className="space-y-2">
-                      {step.items.map((item, i) => (
-                        <li key={i} className="text-muted-foreground flex items-start gap-2">
-                          <span className="text-primary mt-1.5">•</span>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 </div>
               </div>

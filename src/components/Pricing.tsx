@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Check } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const Pricing = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -19,7 +20,8 @@ const Pricing = () => {
         "Хостинг 1 год",
         "Поддержка 1 мес"
       ],
-      recommended: false
+      recommended: false,
+      theme: "accent" as const
     },
     {
       name: "СТАНДАРТ",
@@ -34,7 +36,8 @@ const Pricing = () => {
         "Поддержка 3 мес",
         "Аналитика"
       ],
-      recommended: true
+      recommended: true,
+      theme: "primary" as const
     },
     {
       name: "ПРОФИ",
@@ -49,7 +52,8 @@ const Pricing = () => {
         "Поддержка 6 мес",
         "Аналитика"
       ],
-      recommended: false
+      recommended: false,
+      theme: "secondary" as const
     },
     {
       name: "ПРЕМИУМ",
@@ -63,7 +67,8 @@ const Pricing = () => {
         "Поддержка 1 год",
         "Обучение команды"
       ],
-      recommended: false
+      recommended: false,
+      theme: "success" as const
     }
   ];
 
@@ -94,45 +99,55 @@ const Pricing = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`relative glass rounded-2xl p-6 ${
-                plan.recommended 
-                  ? 'ring-2 ring-primary shadow-lg shadow-primary/20 scale-105 z-10' 
-                  : ''
-              }`}
+              className={`relative group ${plan.recommended ? 'scale-105 z-10' : ''}`}
             >
-              {plan.recommended && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-semibold">
-                    Рекомендуем
-                  </span>
+              <GlowingEffect
+                theme={plan.theme}
+                disabled={false}
+                borderWidth={plan.recommended ? 3 : 2}
+                spread={plan.recommended ? 40 : 25}
+                glow={true}
+                blur={plan.recommended ? 12 : 8}
+              />
+              <div className={`glass rounded-2xl p-6 relative z-10 h-full ${
+                plan.recommended 
+                  ? 'ring-2 ring-primary shadow-lg shadow-primary/20' 
+                  : ''
+              }`}>
+                {plan.recommended && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-semibold">
+                      Рекомендуем
+                    </span>
+                  </div>
+                )}
+                
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-bold text-muted-foreground mb-2">{plan.name}</h3>
+                  <div className="mb-2">
+                    <span className="text-2xl md:text-3xl font-bold text-foreground">{plan.price}</span>
+                    <span className="text-muted-foreground text-sm"> ₽</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{plan.description}</p>
                 </div>
-              )}
-              
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-muted-foreground mb-2">{plan.name}</h3>
-                <div className="mb-2">
-                  <span className="text-2xl md:text-3xl font-bold text-foreground">{plan.price}</span>
-                  <span className="text-muted-foreground text-sm"> ₽</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{plan.description}</p>
+                
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <Check className="w-4 h-4 text-success flex-shrink-0" />
+                      <span className="text-muted-foreground">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                
+                <GradientButton 
+                  variant={plan.recommended ? "default" : "variant"} 
+                  className="w-full"
+                  size="sm"
+                >
+                  Выбрать
+                </GradientButton>
               </div>
-              
-              <ul className="space-y-3 mb-6">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span className="text-muted-foreground">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <GradientButton 
-                variant={plan.recommended ? "default" : "variant"} 
-                className="w-full"
-                size="sm"
-              >
-                Выбрать
-              </GradientButton>
             </motion.div>
           ))}
         </div>

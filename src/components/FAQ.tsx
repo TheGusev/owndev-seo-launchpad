@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const FAQ = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -73,18 +74,27 @@ const FAQ = () => {
         >
           <Accordion type="single" collapsible className="space-y-4">
             {faqs.map((faq, index) => (
-              <AccordionItem 
-                key={index} 
-                value={`item-${index}`}
-                className="glass rounded-xl px-6 border-none"
-              >
-                <AccordionTrigger className="text-left hover:no-underline py-6">
-                  <span className="font-semibold text-foreground">{faq.question}</span>
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground pb-6">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
+              <div key={index} className="relative group">
+                <GlowingEffect
+                  theme="accent"
+                  disabled={false}
+                  borderWidth={1}
+                  spread={20}
+                  glow={true}
+                  blur={6}
+                />
+                <AccordionItem 
+                  value={`item-${index}`}
+                  className="glass rounded-xl px-6 border-none relative z-10"
+                >
+                  <AccordionTrigger className="text-left hover:no-underline py-6">
+                    <span className="font-semibold text-foreground">{faq.question}</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground pb-6">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              </div>
             ))}
           </Accordion>
         </motion.div>

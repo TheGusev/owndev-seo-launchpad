@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { X, Check, ArrowRight } from "lucide-react";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const ProblemsAndSolutions = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -91,13 +92,23 @@ const ProblemsAndSolutions = () => {
               <motion.div
                 key={index}
                 variants={itemVariants}
-                className="glass rounded-xl p-6 border-l-4 border-destructive/50 hover:border-destructive transition-colors"
+                className="relative group"
               >
-                <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                  <X className="w-5 h-5 text-destructive" />
-                  {problem.title}
-                </h4>
-                <p className="text-muted-foreground text-sm">{problem.description}</p>
+                <GlowingEffect
+                  theme="destructive"
+                  disabled={false}
+                  borderWidth={2}
+                  spread={25}
+                  glow={true}
+                  blur={8}
+                />
+                <div className="glass rounded-xl p-6 border-l-4 border-destructive/50 hover:border-destructive transition-colors relative z-10">
+                  <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <X className="w-5 h-5 text-destructive" />
+                    {problem.title}
+                  </h4>
+                  <p className="text-muted-foreground text-sm">{problem.description}</p>
+                </div>
               </motion.div>
             ))}
           </motion.div>
@@ -129,13 +140,23 @@ const ProblemsAndSolutions = () => {
               <motion.div
                 key={index}
                 variants={itemVariants}
-                className="glass rounded-xl p-6 border-l-4 border-success/50 hover:border-success transition-colors"
+                className="relative group"
               >
-                <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                  <Check className="w-5 h-5 text-success" />
-                  {solution.title}
-                </h4>
-                <p className="text-muted-foreground text-sm">{solution.description}</p>
+                <GlowingEffect
+                  theme="success"
+                  disabled={false}
+                  borderWidth={2}
+                  spread={25}
+                  glow={true}
+                  blur={8}
+                />
+                <div className="glass rounded-xl p-6 border-l-4 border-success/50 hover:border-success transition-colors relative z-10">
+                  <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <Check className="w-5 h-5 text-success" />
+                    {solution.title}
+                  </h4>
+                  <p className="text-muted-foreground text-sm">{solution.description}</p>
+                </div>
               </motion.div>
             ))}
           </motion.div>

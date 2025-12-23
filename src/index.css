@@ -363,3 +363,61 @@
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
+
+/* ============================================
+   GLOWING EFFECT THEMES
+   ============================================ */
+
+/* Base glow effect styles */
+[class*="glow-theme-"] {
+  --glow-gradient: radial-gradient(
+    circle at calc(50% + cos(var(--start) * 1deg) * 50%) calc(50% + sin(var(--start) * 1deg) * 50%),
+    var(--glow-color-1) 0%,
+    var(--glow-color-2) 30%,
+    transparent 70%
+  );
+  --glow-bg: hsl(var(--card));
+  opacity: calc(var(--active) * 0.8);
+  transition: opacity 0.3s ease;
+}
+
+/* Primary Theme - Turquoise */
+.glow-theme-primary {
+  --glow-color-1: hsl(174 72% 56% / 0.8);
+  --glow-color-2: hsl(174 72% 40% / 0.4);
+}
+
+/* Secondary Theme - Purple */
+.glow-theme-secondary {
+  --glow-color-1: hsl(262 83% 58% / 0.8);
+  --glow-color-2: hsl(280 75% 50% / 0.4);
+}
+
+/* Accent Theme - Blue */
+.glow-theme-accent {
+  --glow-color-1: hsl(217 91% 60% / 0.8);
+  --glow-color-2: hsl(230 85% 55% / 0.4);
+}
+
+/* Success Theme - Green */
+.glow-theme-success {
+  --glow-color-1: hsl(142 76% 36% / 0.8);
+  --glow-color-2: hsl(160 84% 39% / 0.4);
+}
+
+/* Warning Theme - Orange */
+.glow-theme-warning {
+  --glow-color-1: hsl(38 92% 50% / 0.8);
+  --glow-color-2: hsl(45 93% 47% / 0.4);
+}
+
+/* Destructive Theme - Red */
+.glow-theme-destructive {
+  --glow-color-1: hsl(0 84% 60% / 0.8);
+  --glow-color-2: hsl(0 70% 45% / 0.4);
+}
+
+/* Glow inner background */
+.glow {
+  background: hsl(var(--card));
+}
