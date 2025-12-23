@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Search, Code, Rocket, TrendingUp, ArrowDown } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { AnimatedText } from "@/components/ui/animated-text";
 
 const Process = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -72,11 +73,15 @@ const Process = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            Процесс за <span className="text-gradient">4 шага</span>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
+            <AnimatedText text="Процесс за" theme="secondary" wordDelay={150} />
+            {" "}
+            <span className="text-gradient">
+              <AnimatedText text="4 шага" theme="primary" wordDelay={150} />
+            </span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Прозрачный и понятный процесс от первой встречи до результата
+            <AnimatedText text="Прозрачный и понятный процесс от первой встречи до результата" theme="accent" wordDelay={60} />
           </p>
         </motion.div>
 
@@ -111,7 +116,7 @@ const Process = () => {
                     {/* Content */}
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-3 mb-4">
-                        <h3 className="text-xl md:text-2xl font-bold">{step.title}</h3>
+                        <h3 className="text-xl md:text-2xl font-bold font-serif">{step.title}</h3>
                         <span className="glass px-3 py-1 rounded-full text-sm text-primary font-mono">
                           {step.duration}
                         </span>

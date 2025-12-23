@@ -10,10 +10,16 @@ import Results from "@/components/Results";
 import FAQ from "@/components/FAQ";
 import ContactForm from "@/components/ContactForm";
 import Footer from "@/components/Footer";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background scroll-smooth">
+      {/* Global Effects */}
+      <MouseGradient />
+      <ClickRipple />
+      
       <Header />
       <main>
         <Hero />
