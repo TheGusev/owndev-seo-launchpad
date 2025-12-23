@@ -4,7 +4,6 @@ import { useInView } from "react-intersection-observer";
 import CountUp from "react-countup";
 import { TrendingUp, Phone, DollarSign, Clock, Star } from "lucide-react";
 import { MasonryGrid } from "@/components/ui/image-testimonial-grid";
-import { AnimatedText } from "@/components/ui/animated-text";
 
 const Results = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -180,14 +179,11 @@ const Results = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            <AnimatedText text="Что достигли" theme="secondary" wordDelay={150} />
-            {" "}
-            <span className="text-gradient">
-              <AnimatedText text="наши клиенты" theme="primary" wordDelay={150} />
-            </span>
+            Что достигли{" "}
+            <span className="text-gradient">наши клиенты</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            <AnimatedText text="Реальные цифры и отзывы от реальных клиентов" theme="accent" wordDelay={60} />
+            Реальные цифры и отзывы от реальных клиентов
           </p>
         </motion.div>
 

@@ -3,7 +3,6 @@ import { useInView } from "react-intersection-observer";
 import { Check } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { AnimatedText } from "@/components/ui/animated-text";
 
 const Pricing = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -86,14 +85,11 @@ const Pricing = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            <AnimatedText text="Прозрачная" theme="secondary" wordDelay={150} />
-            {" "}
-            <span className="text-gradient">
-              <AnimatedText text="ценовая модель" theme="primary" wordDelay={150} />
-            </span>
+            Прозрачная{" "}
+            <span className="text-gradient">ценовая модель</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            <AnimatedText text="Выберите подходящий тариф для вашего бизнеса" theme="accent" wordDelay={60} />
+            Выберите подходящий тариф для вашего бизнеса
           </p>
         </motion.div>
 

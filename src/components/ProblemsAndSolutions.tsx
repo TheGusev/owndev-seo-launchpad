@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { X, Check, ArrowRight } from "lucide-react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { AnimatedText } from "@/components/ui/animated-text";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 
 const ProblemsAndSolutions = () => {
@@ -72,14 +71,11 @@ const ProblemsAndSolutions = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            <AnimatedText text="Проблемы →" theme="secondary" wordDelay={150} />
-            {" "}
-            <span className="text-gradient">
-              <AnimatedText text="Решения" theme="primary" wordDelay={150} />
-            </span>
+            Проблемы →{" "}
+            <span className="text-gradient">Решения</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            <AnimatedText text="Мы понимаем боли вашего бизнеса и знаем, как их решить" theme="accent" wordDelay={60} />
+            Мы понимаем боли вашего бизнеса и знаем, как их решить
           </p>
         </motion.div>
 
