@@ -8,8 +8,16 @@ interface Ripple {
 
 const ClickRipple = () => {
   const [ripples, setRipples] = useState<Ripple[]>([]);
+  const [isTouchDevice, setIsTouchDevice] = useState(true); // Default true to prevent flash
 
   useEffect(() => {
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsTouchDevice(isTouch);
+  }, []);
+
+  useEffect(() => {
+    if (isTouchDevice) return;
+
     const handleClick = (e: MouseEvent) => {
       const newRipple = { id: Date.now(), x: e.clientX, y: e.clientY };
       setRipples(prev => [...prev, newRipple]);
@@ -17,7 +25,10 @@ const ClickRipple = () => {
     };
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, []);
+  }, [isTouchDevice]);
+
+  // Don't render on touch devices
+  if (isTouchDevice) return null;
 
   return (
     <>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { cn } from "@/lib/utils";
 
 interface AnimatedGridProps {
@@ -11,17 +12,29 @@ const AnimatedGrid = ({
   className,
   theme = 'primary'
 }: AnimatedGridProps) => {
-  const horizontalLines = Array.from({ length: lineCount.h }, (_, i) => ({
-    y: ((i + 1) / (lineCount.h + 1)) * 100,
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
+
+  // Reduce complexity on mobile
+  const actualLineCount = isMobile 
+    ? { h: Math.min(lineCount.h, 3), v: Math.min(lineCount.v, 4) }
+    : lineCount;
+
+  const horizontalLines = Array.from({ length: actualLineCount.h }, (_, i) => ({
+    y: ((i + 1) / (actualLineCount.h + 1)) * 100,
     delay: i * 0.15
   }));
   
-  const verticalLines = Array.from({ length: lineCount.v }, (_, i) => ({
-    x: ((i + 1) / (lineCount.v + 1)) * 100,
+  const verticalLines = Array.from({ length: actualLineCount.v }, (_, i) => ({
+    x: ((i + 1) / (actualLineCount.v + 1)) * 100,
     delay: i * 0.12
   }));
   
-  const dots = horizontalLines.flatMap((h, hi) => 
+  // Only show dots on desktop
+  const dots = isMobile ? [] : horizontalLines.flatMap((h, hi) => 
     verticalLines.map((v, vi) => ({
       x: v.x,
       y: h.y,
@@ -65,7 +78,7 @@ const AnimatedGrid = ({
         />
       ))}
       
-      {/* Dots at intersections */}
+      {/* Dots at intersections - desktop only */}
       {dots.map((dot, i) => (
         <circle
           key={`dot-${i}`}
