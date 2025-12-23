@@ -2,9 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, TrendingUp, Shield, Clock } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
-import { Suspense, lazy } from "react";
-
-const GenerativeMountainScene = lazy(() => import("@/components/ui/mountain-scene"));
+import { SparklesCore } from "@/components/ui/sparkles";
 
 const Hero = () => {
   const trustItems = [
@@ -15,15 +13,23 @@ const Hero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* 3D Mountain Background */}
+      {/* Sparkles Background */}
       <div className="absolute inset-0 z-0">
-        <Suspense fallback={<div className="w-full h-full bg-background" />}>
-          <GenerativeMountainScene />
-        </Suspense>
+        <SparklesCore
+          id="hero-sparkles"
+          background="transparent"
+          particleColor="#3dd9c3"
+          particleDensity={80}
+          minSize={1}
+          maxSize={2}
+          speed={2}
+          className="w-full h-full"
+        />
       </div>
       
-      {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-background/70 z-[1]" />
+      {/* Gradient overlays for depth */}
+      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
       
       {/* Grid pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(hsl(222_30%_18%/0.3)_1px,transparent_1px),linear-gradient(90deg,hsl(222_30%_18%/0.3)_1px,transparent_1px)] bg-[size:60px_60px] z-[2]" />
