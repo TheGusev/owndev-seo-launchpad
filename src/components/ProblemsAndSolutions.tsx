@@ -1,63 +1,112 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { X, Check, ArrowRight } from "lucide-react";
-import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { 
+  X, 
+  Check, 
+  ArrowRight, 
+  Globe, 
+  TrendingDown, 
+  DollarSign, 
+  BarChart3,
+  Zap,
+  Shield,
+  Coins,
+  Bot
+} from "lucide-react";
+import { BentoGrid, type BentoItem } from "@/components/ui/bento-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const ProblemsAndSolutions = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
 
-  const problems = [
+  const problems: BentoItem[] = [
     {
       title: "Сайт не приносит клиентов",
-      description: "Старый дизайн, медленная загрузка, нет SEO"
+      description: "Старый дизайн, медленная загрузка, нет SEO. Посетители уходят через 3 секунды, конверсия близка к нулю.",
+      icon: <Globe className="w-5 h-5 text-destructive" />,
+      status: "Критично",
+      tags: ["Дизайн", "SEO", "UX"],
+      meta: "–80% трафика",
+      variant: "problem",
+      colSpan: 2,
+      hasPersistentHover: true,
     },
     {
       title: "Нет унификации в системе",
-      description: "Каждый проект с нуля, нет масштабирования"
+      description: "Каждый проект с нуля, нет масштабирования. Время разработки увеличивается в 3 раза.",
+      icon: <TrendingDown className="w-5 h-5 text-destructive" />,
+      status: "Проблема",
+      tags: ["Процессы", "Масштаб"],
+      meta: "×3 время",
+      variant: "problem",
     },
     {
       title: "Стоимость разработки 500K+ руб",
-      description: "Не окупается на малом/среднем бизнесе"
+      description: "Не окупается на малом/среднем бизнесе. ROI уходит в минус на 12+ месяцев.",
+      icon: <DollarSign className="w-5 h-5 text-destructive" />,
+      status: "Дорого",
+      tags: ["Бюджет", "ROI"],
+      meta: "500K+ ₽",
+      variant: "problem",
     },
     {
       title: "Нет аналитики и отчетов",
-      description: "Не понять, работает ли сайт вообще"
-    }
+      description: "Не понять, работает ли сайт вообще. Решения принимаются вслепую, без данных.",
+      icon: <BarChart3 className="w-5 h-5 text-destructive" />,
+      status: "Слепота",
+      tags: ["Аналитика", "Данные"],
+      meta: "0 метрик",
+      variant: "problem",
+      colSpan: 2,
+    },
   ];
 
-  const solutions = [
+  const solutions: BentoItem[] = [
     {
       title: "Низкие цены, высокий результат",
-      description: "На 30% дешевле конкурентов. Гарантия роста 150% за 6 месяцев"
+      description: "На 30% дешевле конкурентов. Гарантия роста 150% за 6 месяцев. Платите только за результат.",
+      icon: <Coins className="w-5 h-5 text-success" />,
+      status: "Выгодно",
+      tags: ["Экономия", "Гарантия"],
+      meta: "–30% цена",
+      cta: "Узнать цены →",
+      variant: "solution",
+      colSpan: 2,
+      hasPersistentHover: true,
     },
     {
       title: "Комплексный подход",
-      description: "Разработка + SEO + поддержка. Вы не думаете о техподдержке"
+      description: "Разработка + SEO + поддержка. Вы не думаете о техподдержке, мы берём всё на себя.",
+      icon: <Shield className="w-5 h-5 text-success" />,
+      status: "Всё включено",
+      tags: ["Разработка", "SEO", "Поддержка"],
+      meta: "3 в 1",
+      cta: "Подробнее →",
+      variant: "solution",
     },
     {
       title: "Прозрачное ценообразование",
-      description: "Платите за клиентов в бизнес, а не за красивый сайт"
+      description: "Платите за клиентов в бизнес, а не за красивый сайт. Фиксированные цены без скрытых платежей.",
+      icon: <Zap className="w-5 h-5 text-success" />,
+      status: "Честно",
+      tags: ["Прозрачность", "Фикс"],
+      meta: "0 сюрпризов",
+      cta: "Смотреть тарифы →",
+      variant: "solution",
     },
     {
       title: "Собственные SaaS-платформы",
-      description: "Встраиваем AI, аналитику, автоматизацию. Результаты за неделю"
-    }
+      description: "Встраиваем AI, аналитику, автоматизацию. Результаты за неделю, а не за месяцы.",
+      icon: <Bot className="w-5 h-5 text-success" />,
+      status: "AI-powered",
+      tags: ["AI", "Аналитика", "Автоматизация"],
+      meta: "7 дней",
+      cta: "Демо →",
+      variant: "solution",
+      colSpan: 2,
+    },
   ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.15 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-  };
 
   return (
     <section id="problems" className="py-24 relative overflow-hidden">
@@ -82,89 +131,63 @@ const ProblemsAndSolutions = () => {
           </p>
         </motion.div>
 
-        <div ref={ref} className="grid md:grid-cols-2 gap-8 lg:gap-16">
+        <div ref={ref} className="grid lg:grid-cols-[1fr_auto_1fr] gap-8 lg:gap-6 items-start">
           {/* Problems */}
           <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate={inView ? "visible" : "hidden"}
+            initial={{ opacity: 0, x: -30 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6 }}
             className="space-y-6"
           >
-            <h3 className="text-xl font-semibold text-destructive flex items-center gap-2 mb-8">
+            <h3 className="text-xl font-semibold text-destructive flex items-center gap-2 mb-6">
               <X className="w-6 h-6" />
               Проблемы наших клиентов
             </h3>
-            {problems.map((problem, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                className="relative group"
-              >
-                <GlowingEffect
-                  theme="destructive"
-                  disabled={false}
-                  borderWidth={2}
-                  spread={25}
-                  glow={true}
-                  blur={8}
-                />
-                <div className="glass rounded-xl p-6 border-l-4 border-destructive/50 hover:border-destructive transition-colors relative z-10">
-                  <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                    <X className="w-5 h-5 text-destructive" />
-                    {problem.title}
-                  </h4>
-                  <p className="text-muted-foreground text-sm">{problem.description}</p>
-                </div>
-              </motion.div>
-            ))}
+            <BentoGrid 
+              items={problems} 
+              className="grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+            />
           </motion.div>
 
-          {/* Arrow connector for desktop */}
-          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-            <motion.div
-              initial={{ opacity: 0, scale: 0 }}
-              animate={inView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ delay: 0.5, duration: 0.3 }}
-              className="glass p-4 rounded-full"
-            >
+          {/* Arrow connector */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0 }}
+            animate={inView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ delay: 0.4, duration: 0.3 }}
+            className="hidden lg:flex items-center justify-center self-center"
+          >
+            <div className="glass p-4 rounded-full border border-primary/20">
               <ArrowRight className="w-8 h-8 text-primary" />
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
+
+          {/* Mobile arrow */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: 0.3, duration: 0.3 }}
+            className="lg:hidden flex justify-center"
+          >
+            <div className="glass p-3 rounded-full border border-primary/20 rotate-90">
+              <ArrowRight className="w-6 h-6 text-primary" />
+            </div>
+          </motion.div>
 
           {/* Solutions */}
           <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate={inView ? "visible" : "hidden"}
+            initial={{ opacity: 0, x: 30 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.2 }}
             className="space-y-6"
           >
-            <h3 className="text-xl font-semibold text-success flex items-center gap-2 mb-8">
+            <h3 className="text-xl font-semibold text-success flex items-center gap-2 mb-6">
               <Check className="w-6 h-6" />
               Наше решение
             </h3>
-            {solutions.map((solution, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                className="relative group"
-              >
-                <GlowingEffect
-                  theme="success"
-                  disabled={false}
-                  borderWidth={2}
-                  spread={25}
-                  glow={true}
-                  blur={8}
-                />
-                <div className="glass rounded-xl p-6 border-l-4 border-success/50 hover:border-success transition-colors relative z-10">
-                  <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                    <Check className="w-5 h-5 text-success" />
-                    {solution.title}
-                  </h4>
-                  <p className="text-muted-foreground text-sm">{solution.description}</p>
-                </div>
-              </motion.div>
-            ))}
+            <BentoGrid 
+              items={solutions} 
+              className="grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+            />
           </motion.div>
         </div>
       </div>
