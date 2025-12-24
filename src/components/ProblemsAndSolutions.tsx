@@ -1,8 +1,6 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { 
-  X, 
-  Check, 
   ArrowRight, 
   Globe, 
   TrendingDown, 
@@ -131,9 +129,9 @@ const solutions: BentoItem[] = [
             transition={{ duration: 0.6 }}
             className="space-y-6"
           >
-            <h3 className="text-xl font-semibold text-destructive flex items-center gap-2 mb-6">
-              <X className="w-6 h-6" />
-              Проблемы наших клиентов
+            <h3 className="text-2xl md:text-3xl font-bold font-serif mb-6">
+              С этим сталкиваются{" "}
+              <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">все</span>
             </h3>
             <BentoGrid 
               items={problems} 
@@ -172,9 +170,9 @@ const solutions: BentoItem[] = [
             transition={{ duration: 0.6, delay: 0.2 }}
             className="space-y-6"
           >
-            <h3 className="text-xl font-semibold text-success flex items-center gap-2 mb-6">
-              <Check className="w-6 h-6" />
-              Наше решение
+            <h3 className="text-2xl md:text-3xl font-bold font-serif mb-6">
+              Как мы это{" "}
+              <span className="text-gradient">решаем</span>
             </h3>
             <BentoGrid 
               items={solutions} 
