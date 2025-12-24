@@ -2,8 +2,8 @@ import { Phone, Mail, MapPin, Send, MessageCircle } from "lucide-react";
 
 const Footer = () => {
   const contactInfo = [
-    { icon: Phone, text: "+7 (XXX) XXX-XX-XX", href: "tel:+7XXXXXXXXXX" },
-    { icon: Mail, text: "hello@owndev.ru", href: "mailto:hello@owndev.ru" },
+    { icon: Phone, text: "8 (906) 998-98-88", href: "tel:89069989888" },
+    { icon: Mail, text: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
     { icon: MapPin, text: "Москва, Россия", href: "#" },
   ];
 
@@ -29,8 +29,8 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: Send, label: "Telegram", href: "https://t.me/" },
-    { icon: MessageCircle, label: "WhatsApp", href: "https://wa.me/" },
+    { icon: Send, label: "Telegram", href: "https://t.me/The_Suppor_t?text=owndev" },
+    { icon: MessageCircle, label: "WhatsApp", href: "https://wa.me/89069989888" },
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
