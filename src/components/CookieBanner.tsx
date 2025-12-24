@@ -53,14 +53,14 @@ const CookieBanner = () => {
                   onClick={handleDecline}
                   variant="ghost"
                   size="sm"
-                  className="shrink-0 h-7 px-3 text-xs"
+                  className="shrink-0 h-7 px-3 text-xs transition-all duration-200 hover:scale-105 active:scale-95"
                 >
                   Отклонить
                 </Button>
                 <Button 
                   onClick={handleAccept}
                   size="sm"
-                  className="shrink-0 h-7 px-3 text-xs"
+                  className="shrink-0 h-7 px-3 text-xs transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
                 >
                   Принять
                 </Button>
