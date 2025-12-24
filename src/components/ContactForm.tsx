@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/form";
 import { Send, Loader2, CheckCircle, Phone, Mail, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
   name: z.string().min(2, "Имя должно содержать минимум 2 символа").max(50),
@@ -55,21 +54,61 @@ const ContactForm = () => {
     }
   });
 
+  const serviceLabels: Record<string, string> = {
+    landing: "Лендинг",
+    corporate: "Корпоративный сайт",
+    ecommerce: "Интернет-магазин",
+    seo: "SEO-оптимизация",
+    saas: "SaaS-платформа",
+    consultation: "Консультация"
+  };
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     
-    try {
-      const { error } = await supabase.functions.invoke('send-to-telegram', {
-        body: {
-          name: data.name,
-          phone: data.phone,
-          email: data.email,
-          service: data.service,
-          message: data.message || ''
-        }
-      });
+    const TELEGRAM_BOT_TOKEN = '8065981666:AAG_dtQbGKag6DYz_hrTZ3fsjSKIwBz47Yk';
+    const TELEGRAM_CHAT_ID = '-4770978516';
 
-      if (error) throw error;
+    const now = new Date();
+    const moscowTime = new Intl.DateTimeFormat('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(now);
+
+    const serviceLabel = serviceLabels[data.service] || data.service;
+
+    const message = `📬 *НОВАЯ ЗАЯВКА С САЙТА*
+
+👤 *Имя:* ${data.name}
+📞 *Телефон:* ${data.phone}
+📧 *Email:* ${data.email}
+🛠 *Услуга:* ${serviceLabel}
+
+💬 *Сообщение:*
+${data.message || 'Не указано'}
+
+⏰ *Время:* ${moscowTime}`;
+
+    try {
+      const response = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'Markdown',
+          }),
+        }
+      );
+
+      const result = await response.json();
+      if (!result.ok) throw new Error(result.description);
 
       setIsSuccess(true);
       toast({
@@ -77,7 +116,6 @@ const ContactForm = () => {
         description: "Мы свяжемся с вами в течение 15 минут.",
       });
 
-      // Reset after 3 seconds
       setTimeout(() => {
         setIsSuccess(false);
         form.reset();
