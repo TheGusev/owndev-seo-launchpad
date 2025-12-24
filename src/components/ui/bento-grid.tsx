@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { useInView } from "react-intersection-observer";
 
 export interface BentoItem {
   title: string;
@@ -21,12 +23,52 @@ interface BentoGridProps {
   className?: string;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { 
+    opacity: 0, 
+    y: 20,
+    scale: 0.95,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
+    },
+  },
+};
+
 function BentoGrid({ items, className }: BentoGridProps) {
+  const { ref, inView } = useInView({
+    threshold: 0.1,
+    triggerOnce: true,
+  });
+
   return (
-    <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3", className)}>
+    <motion.div
+      ref={ref}
+      variants={containerVariants}
+      initial="hidden"
+      animate={inView ? "visible" : "hidden"}
+      className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3", className)}
+    >
       {items.map((item, index) => (
-        <div
+        <motion.div
           key={index}
+          variants={itemVariants}
           className={cn(
             "group relative p-px rounded-xl bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-800 transition-all duration-300",
             item.colSpan === 2 && "md:col-span-2",
@@ -83,9 +125,9 @@ function BentoGrid({ items, className }: BentoGridProps) {
             {/* Subtle hover glow overlay */}
             <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           </div>
-        </div>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
