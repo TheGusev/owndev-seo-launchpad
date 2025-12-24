@@ -70,22 +70,25 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="space-y-4"
           >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif">
-              <TypeAnimation
-                sequence={[
-                  'Сайты, которые продают.',
-                  2000,
-                  'Сайты, которые конвертируют.',
-                  2000,
-                  'Сайты, которые работают.',
-                  2000,
-                ]}
-                wrapper="span"
-                speed={50}
-                className="text-gradient"
-                repeat={Infinity}
-              />
-            </h1>
+            {/* Контейнер с фиксированной минимальной высотой для предотвращения тряски */}
+            <div className="min-h-[5.5rem] sm:min-h-[4.5rem] md:min-h-[4.5rem] lg:min-h-[5.5rem] flex items-center justify-center">
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif text-center leading-tight">
+                <TypeAnimation
+                  sequence={[
+                    'Сайты, которые продают.',
+                    2000,
+                    'Сайты, которые конвертируют.',
+                    2000,
+                    'Сайты, которые работают.',
+                    2000,
+                  ]}
+                  wrapper="span"
+                  speed={50}
+                  className="text-gradient"
+                  repeat={Infinity}
+                />
+              </h1>
+            </div>
             <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground font-serif">
               <AnimatedText text="Разработка, оптимизация, рост 📈" wordDelay={150} theme="primary" />
             </p>
