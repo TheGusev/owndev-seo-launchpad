@@ -1,6 +1,9 @@
 import { Phone, Mail, MapPin, Send, MessageCircle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 
 const Footer = () => {
+  const navigate = useNavigate();
+
   const contactInfo = [
     { icon: Phone, text: "8 (906) 998-98-88", href: "tel:89069989888" },
     { icon: Mail, text: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
@@ -25,7 +28,8 @@ const Footer = () => {
   const company = [
     { label: "О нас", href: "#process" },
     { label: "Результаты", href: "#results" },
-    { label: "Политика конфиденциальности", href: "#" },
+    { label: "Политика конфиденциальности", href: "/privacy", isRoute: true },
+    { label: "Пользовательское соглашение", href: "/terms", isRoute: true },
   ];
 
   const socialLinks = [
@@ -33,8 +37,12 @@ const Footer = () => {
     { icon: MessageCircle, label: "WhatsApp", href: "https://wa.me/89069989888" },
   ];
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith("#")) {
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string, isRoute?: boolean) => {
+    if (isRoute) {
+      e.preventDefault();
+      navigate(href);
+      window.scrollTo(0, 0);
+    } else if (href.startsWith("#")) {
       e.preventDefault();
       const element = document.getElementById(href.replace("#", ""));
       if (element) {
@@ -114,7 +122,7 @@ const Footer = () => {
                 <li key={index}>
                   <a
                     href={link.href}
-                    onClick={(e) => handleNavClick(e, link.href)}
+                    onClick={(e) => handleNavClick(e, link.href, link.isRoute)}
                     className="text-muted-foreground hover:text-foreground transition-colors text-sm"
                   >
                     {link.label}

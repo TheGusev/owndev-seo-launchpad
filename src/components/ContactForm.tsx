@@ -294,7 +294,14 @@ ${data.message || 'Не указано'}
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm text-muted-foreground font-normal cursor-pointer">
-                            Я согласен с условиями обработки персональных данных
+                            Я согласен с{" "}
+                            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                              политикой конфиденциальности
+                            </a>{" "}
+                            и{" "}
+                            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                              пользовательским соглашением
+                            </a>
                           </FormLabel>
                           <FormMessage />
                         </div>
