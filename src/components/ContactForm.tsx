@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Send, Loader2, CheckCircle, Phone, Mail, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
   name: z.string().min(2, "Имя должно содержать минимум 2 символа").max(50),
@@ -57,22 +58,40 @@ const ContactForm = () => {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsSubmitting(false);
-    setIsSuccess(true);
-    
-    toast({
-      title: "Заявка отправлена!",
-      description: "Мы свяжемся с вами в течение 2 часов в рабочее время.",
-    });
+    try {
+      const { error } = await supabase.functions.invoke('send-to-telegram', {
+        body: {
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          service: data.service,
+          message: data.message || ''
+        }
+      });
 
-    // Reset after 3 seconds
-    setTimeout(() => {
-      setIsSuccess(false);
-      form.reset();
-    }, 3000);
+      if (error) throw error;
+
+      setIsSuccess(true);
+      toast({
+        title: "Заявка отправлена!",
+        description: "Мы свяжемся с вами в течение 15 минут.",
+      });
+
+      // Reset after 3 seconds
+      setTimeout(() => {
+        setIsSuccess(false);
+        form.reset();
+      }, 3000);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось отправить заявку. Попробуйте позвонить нам.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const services = [
@@ -85,9 +104,9 @@ const ContactForm = () => {
   ];
 
   const contactInfo = [
-    { icon: Phone, label: "Телефон", value: "+7 (XXX) XXX-XX-XX", href: "tel:+7XXXXXXXXXX" },
-    { icon: Mail, label: "Email", value: "hello@owndev.ru", href: "mailto:hello@owndev.ru" },
-    { icon: MessageCircle, label: "Telegram", value: "@owndev", href: "https://t.me/owndev" }
+    { icon: Phone, label: "Телефон", value: "8 (906) 998-98-88", href: "tel:89069989888" },
+    { icon: Mail, label: "Email", value: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
+    { icon: MessageCircle, label: "Telegram", value: "@The_Suppor_t", href: "https://t.me/The_Suppor_t?text=owndev" }
   ];
 
   return (
@@ -131,7 +150,7 @@ const ContactForm = () => {
                 </motion.div>
                 <h3 className="text-2xl font-bold mb-2">Заявка отправлена!</h3>
                 <p className="text-muted-foreground text-center">
-                  Мы свяжемся с вами в течение 2 часов в рабочее время.
+                  Мы свяжемся с вами в течение 15 минут.
                 </p>
               </div>
             ) : (
@@ -265,7 +284,7 @@ const ContactForm = () => {
                   </GradientButton>
 
                   <p className="text-sm text-muted-foreground text-center">
-                    * Как скоро я услышу ответ? В течение 2 часов в рабочее время.
+                    * Как скоро я услышу ответ? В течение 15 минут.
                   </p>
                 </form>
               </Form>
@@ -291,6 +310,8 @@ const ContactForm = () => {
                 <a
                   key={index}
                   href={item.href}
+                  target={item.href.startsWith('https') ? '_blank' : undefined}
+                  rel={item.href.startsWith('https') ? 'noopener noreferrer' : undefined}
                   className="glass rounded-xl p-4 flex items-center gap-4 card-hover block"
                 >
                   <div className="p-3 rounded-lg bg-primary/10">
