@@ -5,6 +5,10 @@ import { ReactNode, useRef, useState, useEffect, Children, isValidElement, clone
 import { motion, useMotionValue, useSpring, useTransform, PanInfo } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// Touch/Swipe constants
+const SWIPE_VELOCITY_THRESHOLD = 500; // px/s
+const SWIPE_DISTANCE_THRESHOLD = 50;  // px
+
 interface DragScrollContainerProps {
   children: ReactNode;
   className?: string;
@@ -29,7 +33,10 @@ export function DragScrollContainer({
   const [scrollWidth, setScrollWidth] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isTouching, setIsTouching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   
   const childCount = Children.count(children);
   
@@ -38,6 +45,11 @@ export function DragScrollContainer({
     stiffness: 300,
     damping: 30,
   });
+
+  // Detect touch device
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
   
   // Calculate progress for indicators
   const progress = useTransform(springX, [0, -(scrollWidth - containerWidth)], [0, 1]);
@@ -98,7 +110,7 @@ export function DragScrollContainer({
 
   // Auto-scroll logic
   useEffect(() => {
-    if (!autoScroll || (pauseOnHover && isHovered) || isDragging || childCount <= 1) return;
+    if (!autoScroll || (pauseOnHover && isHovered) || isDragging || isTouching || childCount <= 1) return;
     
     const interval = setInterval(() => {
       const nextIndex = (activeIndex + 1) % childCount;
@@ -106,16 +118,33 @@ export function DragScrollContainer({
     }, autoScrollInterval);
     
     return () => clearInterval(interval);
-  }, [autoScroll, isHovered, isDragging, activeIndex, childCount, autoScrollInterval, pauseOnHover]);
+  }, [autoScroll, isHovered, isDragging, isTouching, activeIndex, childCount, autoScrollInterval, pauseOnHover]);
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
+    setIsTouching(false);
+    setHasInteracted(true);
     
+    const { velocity, offset } = info;
+    
+    // Fast swipe detection - switch by 1 card
+    if (Math.abs(velocity.x) > SWIPE_VELOCITY_THRESHOLD) {
+      const direction = velocity.x > 0 ? -1 : 1;
+      scrollToIndex(activeIndex + direction);
+      return;
+    }
+    
+    // Sufficient offset - also switch
+    if (Math.abs(offset.x) > SWIPE_DISTANCE_THRESHOLD) {
+      const direction = offset.x > 0 ? -1 : 1;
+      scrollToIndex(activeIndex + direction);
+      return;
+    }
+    
+    // Otherwise - snap to current position with momentum
     const currentX = x.get();
-    const velocity = info.velocity.x;
-    
-    // Calculate target position based on velocity
-    const projectedX = currentX + velocity * 0.2;
+    const momentum = velocity.x * 0.15;
+    const projectedX = currentX + momentum;
     
     // Snap to nearest card
     const targetIndex = Math.round(-projectedX / cardStep);
@@ -131,10 +160,34 @@ export function DragScrollContainer({
 
   const handleDragStart = () => {
     setIsDragging(true);
+    setHasInteracted(true);
+  };
+
+  const handleTouchStart = () => {
+    setIsTouching(true);
+  };
+
+  const handleTouchEnd = () => {
+    setIsTouching(false);
   };
 
   // Show scroll hint only if there's content to scroll
   const canScroll = maxScroll > 0;
+
+  // Touch-specific drag transition config
+  const dragTransitionConfig = isTouchDevice
+    ? {
+        bounceStiffness: 400,
+        bounceDamping: 25,
+        power: 0.4,
+        timeConstant: 300,
+      }
+    : {
+        bounceStiffness: 600,
+        bounceDamping: 30,
+        power: 0.3,
+        timeConstant: 200,
+      };
 
   // Clone children with active state
   const childrenWithProps = Children.map(children, (child, index) => {
@@ -153,7 +206,7 @@ export function DragScrollContainer({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Navigation buttons */}
+      {/* Navigation buttons - hidden on mobile */}
       {canScroll && (
         <>
           <motion.button
@@ -196,25 +249,48 @@ export function DragScrollContainer({
           ref={containerRef}
           drag={canScroll ? "x" : false}
           dragConstraints={{ left: -maxScroll, right: 0 }}
-          dragElastic={0.1}
-          dragTransition={{
-            bounceStiffness: 600,
-            bounceDamping: 30,
-            power: 0.3,
-            timeConstant: 200,
-          }}
+          dragElastic={isTouchDevice ? 0.15 : 0.1}
+          dragTransition={dragTransitionConfig}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          style={{ x: springX }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          style={{ 
+            x: springX,
+            touchAction: "pan-y",
+            WebkitOverflowScrolling: "touch" as any,
+          }}
           className={cn(
-            "flex gap-3 pb-4",
+            "flex gap-3 pb-4 select-none",
             canScroll && "cursor-grab",
-            isDragging && "cursor-grabbing"
+            isDragging && "cursor-grabbing",
+            isTouching && "scale-[0.995]",
+            "transition-transform duration-150"
           )}
         >
           {childrenWithProps}
         </motion.div>
       </div>
+
+      {/* Swipe hint for mobile */}
+      {isTouchDevice && canScroll && !hasInteracted && (
+        <motion.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ 
+            opacity: [0, 1, 1, 0],
+            x: [10, 0, -10, -20],
+          }}
+          transition={{ 
+            duration: 2,
+            repeat: 2,
+            repeatDelay: 0.5,
+          }}
+          className="absolute bottom-16 right-4 flex items-center gap-2 text-muted-foreground text-sm pointer-events-none z-20"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Свайп</span>
+        </motion.div>
+      )}
 
       {/* Fade edges */}
       {canScroll && (
