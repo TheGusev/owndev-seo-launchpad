@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import CountUp from "react-countup";
 import { useInView } from "react-intersection-observer";
 import { MapPin, Globe, Clock } from "lucide-react";
+import AnimatedText from "@/components/ui/animated-text";
 
 const metrics = [
   { icon: MapPin, value: 40, suffix: "+", label: "городов России" },
@@ -40,9 +41,9 @@ const GlobalSection = () => {
         >
           {/* Main heading */}
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-            Работаем по всей{" "}
+            <AnimatedText text="Работаем по всей" />{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-accent">
-              России
+              <AnimatedText text="России" delay={0.3} />
             </span>
           </h2>
           

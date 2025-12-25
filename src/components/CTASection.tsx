@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { ArrowRight, MessageCircle, Clock } from "lucide-react";
 import { Button } from "./ui/button";
 import MagneticButton from "./ui/magnetic-button";
+import AnimatedText from "@/components/ui/animated-text";
+import ClickRipple from "@/components/ui/click-ripple";
 
 const CTASection = () => {
   return (
@@ -24,11 +26,11 @@ const CTASection = () => {
         >
           {/* Main heading */}
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Готовы{" "}
+            <AnimatedText text="Готовы" />{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-              начать проект
+              <AnimatedText text="начать проект" delay={0.15} />
             </span>
-            ?
+            <AnimatedText text="?" delay={0.4} />
           </h2>
 
           {/* Subtitle */}
@@ -51,10 +53,12 @@ const CTASection = () => {
             className="mb-8"
           >
             <MagneticButton strength={0.2}>
-              <Button variant="hero" size="xl" className="group">
-                Получить консультацию
-                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
-              </Button>
+              <ClickRipple>
+                <Button variant="hero" size="xl" className="group">
+                  Получить консультацию
+                  <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </ClickRipple>
             </MagneticButton>
           </motion.div>
 
