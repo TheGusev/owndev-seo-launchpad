@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import Preloader from "@/components/Preloader";
 import CustomCursor from "@/components/ui/custom-cursor";
 import MouseGradient from "@/components/ui/mouse-gradient";
+import ScrollProgress from "@/components/ui/scroll-progress";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(() => {
@@ -38,6 +39,7 @@ const Index = () => {
     <>
       <CustomCursor />
       <MouseGradient />
+      <ScrollProgress />
       
       <AnimatePresence mode="wait">
         {isLoading && <Preloader onComplete={handlePreloaderComplete} />}

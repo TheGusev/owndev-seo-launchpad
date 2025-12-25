@@ -6,6 +6,30 @@ import ExpandedSolutionCard from "@/components/solutions/ExpandedSolutionCard";
 import { solutions } from "@/components/solutions/solutionsData";
 import AnimatedText from "@/components/ui/animated-text";
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
+    },
+  },
+};
+
 const Solutions = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedSolution = solutions.find(s => s.id === selectedId);
@@ -56,38 +80,59 @@ const Solutions = () => {
           </p>
         </motion.div>
 
-        {/* BentoGrid - Desktop */}
-        <div className="hidden md:block">
+        {/* BentoGrid - Desktop with staggered animation */}
+        <motion.div 
+          className="hidden md:block"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+        >
           <BentoGrid>
             {solutions.map((solution, index) => (
-              <BentoGridItem 
-                key={solution.id} 
-                colSpan={solution.colSpan}
-                rowSpan={solution.rowSpan}
-                index={index}
+              <motion.div 
+                key={solution.id}
+                variants={itemVariants}
+                className={`${solution.colSpan === 2 ? 'md:col-span-2' : ''} ${solution.rowSpan === 2 ? 'md:row-span-2' : ''}`}
               >
-                <SolutionCard 
-                  solution={solution} 
+                <BentoGridItem 
+                  colSpan={solution.colSpan}
+                  rowSpan={solution.rowSpan}
                   index={index}
-                  onClick={() => setSelectedId(solution.id)}
-                />
-              </BentoGridItem>
+                >
+                  <SolutionCard 
+                    solution={solution} 
+                    index={index}
+                    onClick={() => setSelectedId(solution.id)}
+                  />
+                </BentoGridItem>
+              </motion.div>
             ))}
           </BentoGrid>
-        </div>
+        </motion.div>
 
-        {/* Cards Scroll - Mobile */}
-        <div className="md:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-4 px-4">
+        {/* Cards Scroll - Mobile with staggered animation */}
+        <motion.div 
+          className="md:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-4 px-4"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+        >
           {solutions.map((solution, index) => (
-            <div key={solution.id} className="snap-start shrink-0 w-[85vw]">
+            <motion.div 
+              key={solution.id} 
+              className="snap-start shrink-0 w-[85vw]"
+              variants={itemVariants}
+            >
               <SolutionCard 
                 solution={solution} 
                 index={index}
                 onClick={() => setSelectedId(solution.id)}
               />
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
 
       {/* Expanded Card Modal */}

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { BarChart3, Shield, LineChart, Lock, Database, Zap } from "lucide-react";
 import GlassCard from "./ui/glass-card";
+import AnimatedText from "@/components/ui/animated-text";
 
 const techCards = [
   {
@@ -25,6 +26,30 @@ const techCards = [
   },
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 40, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.6,
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
+    },
+  },
+};
+
 const TechCards = () => {
   return (
     <section className="py-24 relative">
@@ -41,9 +66,9 @@ const TechCards = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Технологии и{" "}
+            <AnimatedText text="Технологии и" />{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary">
-              надёжность
+              <AnimatedText text="надёжность" delay={0.25} />
             </span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
@@ -51,48 +76,56 @@ const TechCards = () => {
           </p>
         </motion.div>
 
-        {/* Cards grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
-          {techCards.map((card, index) => {
+        {/* Cards grid with staggered animation */}
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+        >
+          {techCards.map((card) => {
             const Icon = card.icon;
             return (
-              <GlassCard key={card.title} index={index} className="p-8">
-                {/* Icon */}
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-6 border border-white/10">
-                  <Icon className="w-7 h-7 text-primary" />
-                </div>
+              <motion.div key={card.title} variants={itemVariants}>
+                <GlassCard className="p-8 h-full">
+                  {/* Icon */}
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-6 border border-white/10">
+                    <Icon className="w-7 h-7 text-primary" />
+                  </div>
 
-                {/* Title */}
-                <h3 className="text-xl md:text-2xl font-semibold text-foreground mb-3">
-                  {card.title}
-                </h3>
+                  {/* Title */}
+                  <h3 className="text-xl md:text-2xl font-semibold text-foreground mb-3">
+                    {card.title}
+                  </h3>
 
-                {/* Description */}
-                <p className="text-muted-foreground mb-6 leading-relaxed">
-                  {card.description}
-                </p>
+                  {/* Description */}
+                  <p className="text-muted-foreground mb-6 leading-relaxed">
+                    {card.description}
+                  </p>
 
-                {/* Features list */}
-                <div className="space-y-3">
-                  {card.features.map((feature) => {
-                    const FeatureIcon = feature.icon;
-                    return (
-                      <div
-                        key={feature.text}
-                        className="flex items-center gap-3 text-sm text-muted-foreground"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                          <FeatureIcon className="w-4 h-4 text-primary/80" />
+                  {/* Features list */}
+                  <div className="space-y-3">
+                    {card.features.map((feature) => {
+                      const FeatureIcon = feature.icon;
+                      return (
+                        <div
+                          key={feature.text}
+                          className="flex items-center gap-3 text-sm text-muted-foreground"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+                            <FeatureIcon className="w-4 h-4 text-primary/80" />
+                          </div>
+                          <span>{feature.text}</span>
                         </div>
-                        <span>{feature.text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </GlassCard>
+                      );
+                    })}
+                  </div>
+                </GlassCard>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
