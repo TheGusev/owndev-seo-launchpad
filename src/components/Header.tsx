@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 
 const NavLink = ({ href, label, onClick }: { href: string; label: string; onClick: () => void }) => (
   <button
@@ -15,15 +16,23 @@ const NavLink = ({ href, label, onClick }: { href: string; label: string; onClic
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  const { scrollY } = useScroll();
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = lastScrollY.current;
     
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    // Show header when scrolling up, hide when scrolling down
+    if (latest > previous && latest > 100) {
+      setHidden(true);
+    } else {
+      setHidden(false);
+    }
+    
+    setScrolled(latest > 50);
+    lastScrollY.current = latest;
+  });
 
   const navLinks = [
     { href: "#services", label: "Услуги" },
@@ -40,9 +49,14 @@ const Header = () => {
   };
 
   return (
-    <header 
+    <motion.header 
+      initial={{ y: 0 }}
+      animate={{ y: hidden ? -100 : 0 }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-background/80 backdrop-blur-xl border-b border-border/50" : "bg-transparent"
+        scrolled 
+          ? "bg-background/80 backdrop-blur-xl border-b border-border/50 shadow-lg shadow-background/20" 
+          : "bg-transparent"
       }`}
     >
       <div className="container mx-auto px-6">
@@ -106,7 +120,7 @@ const Header = () => {
           </nav>
         )}
       </div>
-    </header>
+    </motion.header>
   );
 };
 

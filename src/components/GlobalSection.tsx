@@ -10,6 +10,30 @@ const metrics = [
   { icon: Clock, value: 24, suffix: "/7", label: "на связи" },
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.3,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 40, scale: 0.9 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.6,
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
+    },
+  },
+};
+
 const GlobalSection = () => {
   const [ref, inView] = useInView({
     triggerOnce: true,
@@ -59,17 +83,20 @@ const GlobalSection = () => {
             Современные инструменты позволяют работать так же эффективно, как в офисе.
           </motion.p>
 
-          {/* Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-            {metrics.map((metric, index) => {
+          {/* Metrics with staggered animation */}
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
+            {metrics.map((metric) => {
               const Icon = metric.icon;
               return (
                 <motion.div
                   key={metric.label}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
+                  variants={itemVariants}
                   className="flex flex-col items-center"
                 >
                   <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
@@ -92,7 +119,7 @@ const GlobalSection = () => {
                 </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </motion.div>
       </div>
     </section>
