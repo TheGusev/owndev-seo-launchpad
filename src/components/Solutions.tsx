@@ -10,7 +10,8 @@ import {
   Headphones,
   ArrowRight
 } from "lucide-react";
-import GlassCard from "@/components/ui/glass-card";
+import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
+import TiltCard from "@/components/ui/tilt-card";
 
 const solutions = [
   {
@@ -20,7 +21,10 @@ const solutions = [
     metric: 30,
     metricSuffix: "+",
     metricLabel: "проектов",
-    color: "text-primary"
+    color: "text-primary",
+    colSpan: 2 as const,
+    rowSpan: 1 as const,
+    featured: true,
   },
   {
     icon: Building2,
@@ -29,7 +33,9 @@ const solutions = [
     metric: 25,
     metricSuffix: "+",
     metricLabel: "проектов",
-    color: "text-accent"
+    color: "text-accent",
+    colSpan: 1 as const,
+    rowSpan: 2 as const,
   },
   {
     icon: ShoppingCart,
@@ -38,7 +44,9 @@ const solutions = [
     metric: 15,
     metricSuffix: "+",
     metricLabel: "проектов",
-    color: "text-primary"
+    color: "text-primary",
+    colSpan: 1 as const,
+    rowSpan: 1 as const,
   },
   {
     icon: Layers,
@@ -47,7 +55,9 @@ const solutions = [
     metric: 10,
     metricSuffix: "+",
     metricLabel: "проектов",
-    color: "text-accent"
+    color: "text-accent",
+    colSpan: 2 as const,
+    rowSpan: 1 as const,
   },
   {
     icon: Search,
@@ -56,7 +66,9 @@ const solutions = [
     metric: 50,
     metricSuffix: "+",
     metricLabel: "клиентов",
-    color: "text-primary"
+    color: "text-primary",
+    colSpan: 1 as const,
+    rowSpan: 1 as const,
   },
   {
     icon: Headphones,
@@ -65,64 +77,97 @@ const solutions = [
     metric: 24,
     metricSuffix: "/7",
     metricLabel: "доступность",
-    color: "text-accent"
+    color: "text-accent",
+    colSpan: 1 as const,
+    rowSpan: 1 as const,
   }
 ];
 
-const SolutionCard = ({ solution, index }: { solution: typeof solutions[0]; index: number }) => {
+interface SolutionCardProps {
+  solution: typeof solutions[0];
+  index: number;
+}
+
+const SolutionCard = ({ solution, index }: SolutionCardProps) => {
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.2
   });
 
   const Icon = solution.icon;
+  const isTall = solution.rowSpan === 2;
 
   return (
-    <div ref={ref} className="snap-start shrink-0 w-[85vw] md:w-auto">
-      <GlassCard index={index} className="h-full flex flex-col">
-        {/* Icon */}
-        <div className={`w-12 h-12 rounded-xl bg-white/[0.05] flex items-center justify-center mb-4 ${solution.color}`}>
-          <Icon className="w-6 h-6" />
+    <TiltCard className="h-full">
+      <div 
+        ref={ref} 
+        className={`
+          group relative h-full p-6 rounded-2xl 
+          bg-card/50 backdrop-blur-sm 
+          border border-border/50 
+          hover:border-primary/30 
+          transition-all duration-500
+          overflow-hidden
+          ${isTall ? 'flex flex-col justify-between min-h-[320px] md:min-h-[400px]' : ''}
+        `}
+      >
+        {/* Gradient glow on hover */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+        <div className="relative z-10">
+          {/* Icon */}
+          <div className={`w-12 h-12 rounded-xl bg-white/[0.05] flex items-center justify-center mb-4 ${solution.color} group-hover:scale-110 transition-transform duration-300`}>
+            <Icon className="w-6 h-6" />
+          </div>
+
+          {/* Title */}
+          <h3 className="text-xl font-semibold text-foreground mb-2">
+            {solution.title}
+          </h3>
+
+          {/* Description */}
+          <p className={`text-muted-foreground text-sm ${isTall ? 'mb-6' : 'mb-4'}`}>
+            {solution.description}
+          </p>
         </div>
 
-        {/* Title */}
-        <h3 className="text-xl font-semibold text-foreground mb-2">
-          {solution.title}
-        </h3>
+        <div className="relative z-10">
+          {/* Metric */}
+          <div className="flex items-baseline gap-1 mb-4">
+            <span className={`text-3xl font-bold ${solution.color}`}>
+              {inView ? (
+                <CountUp
+                  end={solution.metric}
+                  duration={2}
+                  delay={0.2 + index * 0.1}
+                />
+              ) : (
+                "0"
+              )}
+            </span>
+            <span className={`text-xl font-bold ${solution.color}`}>
+              {solution.metricSuffix}
+            </span>
+            <span className="text-muted-foreground text-sm ml-1">
+              {solution.metricLabel}
+            </span>
+          </div>
 
-        {/* Description */}
-        <p className="text-muted-foreground text-sm mb-4 flex-grow">
-          {solution.description}
-        </p>
-
-        {/* Metric */}
-        <div className="flex items-baseline gap-1 mb-4">
-          <span className={`text-3xl font-bold ${solution.color}`}>
-            {inView ? (
-              <CountUp
-                end={solution.metric}
-                duration={2}
-                delay={0.2 + index * 0.1}
-              />
-            ) : (
-              "0"
-            )}
-          </span>
-          <span className={`text-xl font-bold ${solution.color}`}>
-            {solution.metricSuffix}
-          </span>
-          <span className="text-muted-foreground text-sm ml-1">
-            {solution.metricLabel}
-          </span>
+          {/* CTA Link */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-primary transition-colors duration-300">
+            <span>Подробнее</span>
+            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" />
+          </div>
         </div>
 
-        {/* CTA Link */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-primary transition-colors duration-300">
-          <span>Подробнее</span>
-          <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" />
-        </div>
-      </GlassCard>
-    </div>
+        {/* Featured badge for first card */}
+        {solution.featured && (
+          <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+            <span className="text-xs font-medium text-primary">Популярное</span>
+          </div>
+        )}
+      </div>
+    </TiltCard>
   );
 };
 
@@ -149,17 +194,28 @@ const Solutions = () => {
           </p>
         </motion.div>
 
-        {/* Cards Grid - Desktop */}
-        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {solutions.map((solution, index) => (
-            <SolutionCard key={solution.title} solution={solution} index={index} />
-          ))}
+        {/* BentoGrid - Desktop */}
+        <div className="hidden md:block">
+          <BentoGrid>
+            {solutions.map((solution, index) => (
+              <BentoGridItem 
+                key={solution.title} 
+                colSpan={solution.colSpan}
+                rowSpan={solution.rowSpan}
+                index={index}
+              >
+                <SolutionCard solution={solution} index={index} />
+              </BentoGridItem>
+            ))}
+          </BentoGrid>
         </div>
 
         {/* Cards Scroll - Mobile */}
         <div className="md:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-4 px-4">
           {solutions.map((solution, index) => (
-            <SolutionCard key={solution.title} solution={solution} index={index} />
+            <div key={solution.title} className="snap-start shrink-0 w-[85vw]">
+              <SolutionCard solution={solution} index={index} />
+            </div>
           ))}
         </div>
       </div>
