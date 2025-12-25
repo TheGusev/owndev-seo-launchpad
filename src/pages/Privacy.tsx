@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import PageTransition from "@/components/ui/page-transition";
 
 const Privacy = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <PageTransition>
+      <div className="min-h-screen bg-background">
       <div className="container px-4 md:px-6 py-12 max-w-4xl mx-auto">
         <Link to="/">
           <Button variant="ghost" className="mb-8">
@@ -182,6 +184,7 @@ const Privacy = () => {
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 };
 

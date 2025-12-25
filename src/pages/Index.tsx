@@ -11,6 +11,7 @@ import Preloader from "@/components/Preloader";
 import CustomCursor from "@/components/ui/custom-cursor";
 import MouseGradient from "@/components/ui/mouse-gradient";
 import ScrollProgress from "@/components/ui/scroll-progress";
+import PageTransition from "@/components/ui/page-transition";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(() => {
@@ -45,17 +46,19 @@ const Index = () => {
         {isLoading && <Preloader onComplete={handlePreloaderComplete} />}
       </AnimatePresence>
 
-      <div className="min-h-screen bg-background relative">
-        <Header />
-        <main>
-          <Hero />
-          <Solutions />
-          <GlobalSection />
-          <TechCards />
-          <CTASection />
-        </main>
-        <Footer />
-      </div>
+      <PageTransition>
+        <div className="min-h-screen bg-background relative">
+          <Header />
+          <main>
+            <Hero />
+            <Solutions />
+            <GlobalSection />
+            <TechCards />
+            <CTASection />
+          </main>
+          <Footer />
+        </div>
+      </PageTransition>
     </>
   );
 };

@@ -2,12 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 import { ReactLenis } from "lenis/react";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
+import AnimatedRoutes from "./components/AnimatedRoutes";
 
 const queryClient = new QueryClient();
 
@@ -15,10 +12,12 @@ const App = () => (
   <ReactLenis 
     root 
     options={{ 
-      duration: 1.2, 
+      duration: 1.4,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      touchMultiplier: 2
+      wheelMultiplier: 0.8,
+      touchMultiplier: 1.5,
+      syncTouch: true,
     }}
   >
     <QueryClientProvider client={queryClient}>
@@ -26,12 +25,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AnimatedRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
