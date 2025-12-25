@@ -2,6 +2,16 @@ import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const NavLink = ({ href, label, onClick }: { href: string; label: string; onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className="relative text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 group"
+  >
+    {label}
+    <span className="absolute left-0 -bottom-1 w-full h-[1px] bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+  </button>
+);
+
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -45,13 +55,12 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-12">
             {navLinks.map((link) => (
-              <button
+              <NavLink
                 key={link.href}
+                href={link.href}
+                label={link.label}
                 onClick={() => scrollToSection(link.href)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                {link.label}
-              </button>
+              />
             ))}
           </nav>
 

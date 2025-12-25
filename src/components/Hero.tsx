@@ -1,5 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { TypeAnimation } from "react-type-animation";
+import { motion } from "framer-motion";
+import MagneticButton from "@/components/ui/magnetic-button";
 
 const Hero = () => {
   const scrollToSection = (id: string) => {
@@ -20,48 +23,92 @@ const Hero = () => {
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-6">
-        <div className="max-w-4xl mx-auto text-center">
+        <motion.div 
+          className="max-w-4xl mx-auto text-center"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           {/* Headline */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-tight tracking-tight mb-8">
             Создаём сайты,{" "}
-            <span className="text-primary">которые продают</span>
+            <span className="text-primary">
+              <TypeAnimation
+                sequence={[
+                  "которые продают",
+                  3000,
+                  "которые конвертируют",
+                  3000,
+                  "которые работают",
+                  3000,
+                  "которые впечатляют",
+                  3000,
+                ]}
+                wrapper="span"
+                speed={40}
+                repeat={Infinity}
+              />
+            </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12">
+          <motion.p 
+            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
             Разрабатываем современные веб-решения для бизнеса. 
             От лендингов до сложных SaaS-платформ.
-          </p>
+          </motion.p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button 
-              size="lg"
-              onClick={() => scrollToSection("contact")}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base"
-            >
-              Обсудить проект
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
+          <motion.div 
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <MagneticButton strength={0.2}>
+              <Button 
+                size="lg"
+                onClick={() => scrollToSection("contact")}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base"
+              >
+                Обсудить проект
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </MagneticButton>
             
-            <Button 
-              variant="outline"
-              size="lg"
-              onClick={() => scrollToSection("projects")}
-              className="border-border text-foreground hover:bg-muted px-8 py-6 text-base"
-            >
-              Смотреть работы
-            </Button>
-          </div>
-        </div>
+            <MagneticButton strength={0.2}>
+              <Button 
+                variant="outline"
+                size="lg"
+                onClick={() => scrollToSection("projects")}
+                className="border-border text-foreground hover:bg-muted px-8 py-6 text-base"
+              >
+                Смотреть работы
+              </Button>
+            </MagneticButton>
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* Scroll Indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+      <motion.div 
+        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.8 }}
+      >
         <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex justify-center">
-          <div className="w-1 h-2 bg-muted-foreground/50 rounded-full mt-2 animate-bounce" />
+          <motion.div 
+            className="w-1 h-2 bg-muted-foreground/50 rounded-full mt-2"
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          />
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 };
