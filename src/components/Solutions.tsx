@@ -1,177 +1,35 @@
-import { motion } from "framer-motion";
-import { useInView } from "react-intersection-observer";
-import CountUp from "react-countup";
-import { 
-  Layout, 
-  Building2, 
-  ShoppingCart, 
-  Layers, 
-  Search, 
-  Headphones,
-  ArrowRight
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
-import TiltCard from "@/components/ui/tilt-card";
-
-const solutions = [
-  {
-    icon: Layout,
-    title: "Лендинг",
-    description: "Продающие одностраничники с высокой конверсией для вашего бизнеса",
-    metric: 30,
-    metricSuffix: "+",
-    metricLabel: "проектов",
-    color: "text-primary",
-    colSpan: 2 as const,
-    rowSpan: 1 as const,
-    featured: true,
-  },
-  {
-    icon: Building2,
-    title: "Корпоративный сайт",
-    description: "Представительство вашей компании в интернете с полным функционалом",
-    metric: 25,
-    metricSuffix: "+",
-    metricLabel: "проектов",
-    color: "text-accent",
-    colSpan: 1 as const,
-    rowSpan: 2 as const,
-  },
-  {
-    icon: ShoppingCart,
-    title: "Интернет-магазин",
-    description: "E-commerce решения с интеграцией платежей и CRM-систем",
-    metric: 15,
-    metricSuffix: "+",
-    metricLabel: "проектов",
-    color: "text-primary",
-    colSpan: 1 as const,
-    rowSpan: 1 as const,
-  },
-  {
-    icon: Layers,
-    title: "SaaS-платформа",
-    description: "Сложные веб-приложения с личными кабинетами и API",
-    metric: 10,
-    metricSuffix: "+",
-    metricLabel: "проектов",
-    color: "text-accent",
-    colSpan: 2 as const,
-    rowSpan: 1 as const,
-  },
-  {
-    icon: Search,
-    title: "SEO-оптимизация",
-    description: "Продвижение сайтов в поисковых системах и увеличение трафика",
-    metric: 50,
-    metricSuffix: "+",
-    metricLabel: "клиентов",
-    color: "text-primary",
-    colSpan: 1 as const,
-    rowSpan: 1 as const,
-  },
-  {
-    icon: Headphones,
-    title: "Техподдержка",
-    description: "Круглосуточная поддержка и обслуживание ваших проектов",
-    metric: 24,
-    metricSuffix: "/7",
-    metricLabel: "доступность",
-    color: "text-accent",
-    colSpan: 1 as const,
-    rowSpan: 1 as const,
-  }
-];
-
-interface SolutionCardProps {
-  solution: typeof solutions[0];
-  index: number;
-}
-
-const SolutionCard = ({ solution, index }: SolutionCardProps) => {
-  const { ref, inView } = useInView({
-    triggerOnce: true,
-    threshold: 0.2
-  });
-
-  const Icon = solution.icon;
-  const isTall = solution.rowSpan === 2;
-
-  return (
-    <TiltCard className="h-full">
-      <div 
-        ref={ref} 
-        className={`
-          group relative h-full p-6 rounded-2xl 
-          bg-card/50 backdrop-blur-sm 
-          border border-border/50 
-          hover:border-primary/30 
-          transition-all duration-500
-          overflow-hidden
-          ${isTall ? 'flex flex-col justify-between min-h-[320px] md:min-h-[400px]' : ''}
-        `}
-      >
-        {/* Gradient glow on hover */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-        <div className="relative z-10">
-          {/* Icon */}
-          <div className={`w-12 h-12 rounded-xl bg-white/[0.05] flex items-center justify-center mb-4 ${solution.color} group-hover:scale-110 transition-transform duration-300`}>
-            <Icon className="w-6 h-6" />
-          </div>
-
-          {/* Title */}
-          <h3 className="text-xl font-semibold text-foreground mb-2">
-            {solution.title}
-          </h3>
-
-          {/* Description */}
-          <p className={`text-muted-foreground text-sm ${isTall ? 'mb-6' : 'mb-4'}`}>
-            {solution.description}
-          </p>
-        </div>
-
-        <div className="relative z-10">
-          {/* Metric */}
-          <div className="flex items-baseline gap-1 mb-4">
-            <span className={`text-3xl font-bold ${solution.color}`}>
-              {inView ? (
-                <CountUp
-                  end={solution.metric}
-                  duration={2}
-                  delay={0.2 + index * 0.1}
-                />
-              ) : (
-                "0"
-              )}
-            </span>
-            <span className={`text-xl font-bold ${solution.color}`}>
-              {solution.metricSuffix}
-            </span>
-            <span className="text-muted-foreground text-sm ml-1">
-              {solution.metricLabel}
-            </span>
-          </div>
-
-          {/* CTA Link */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-primary transition-colors duration-300">
-            <span>Подробнее</span>
-            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" />
-          </div>
-        </div>
-
-        {/* Featured badge for first card */}
-        {solution.featured && (
-          <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-            <span className="text-xs font-medium text-primary">Популярное</span>
-          </div>
-        )}
-      </div>
-    </TiltCard>
-  );
-};
+import SolutionCard from "@/components/solutions/SolutionCard";
+import ExpandedSolutionCard from "@/components/solutions/ExpandedSolutionCard";
+import { solutions } from "@/components/solutions/solutionsData";
 
 const Solutions = () => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedSolution = solutions.find(s => s.id === selectedId);
+
+  // Block scroll when modal is open
+  useEffect(() => {
+    if (selectedId) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedId]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedId(null);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
+
   return (
     <section className="py-24 px-4 md:px-8 relative overflow-hidden">
       {/* Background gradient */}
@@ -199,12 +57,16 @@ const Solutions = () => {
           <BentoGrid>
             {solutions.map((solution, index) => (
               <BentoGridItem 
-                key={solution.title} 
+                key={solution.id} 
                 colSpan={solution.colSpan}
                 rowSpan={solution.rowSpan}
                 index={index}
               >
-                <SolutionCard solution={solution} index={index} />
+                <SolutionCard 
+                  solution={solution} 
+                  index={index}
+                  onClick={() => setSelectedId(solution.id)}
+                />
               </BentoGridItem>
             ))}
           </BentoGrid>
@@ -213,12 +75,26 @@ const Solutions = () => {
         {/* Cards Scroll - Mobile */}
         <div className="md:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-4 px-4">
           {solutions.map((solution, index) => (
-            <div key={solution.title} className="snap-start shrink-0 w-[85vw]">
-              <SolutionCard solution={solution} index={index} />
+            <div key={solution.id} className="snap-start shrink-0 w-[85vw]">
+              <SolutionCard 
+                solution={solution} 
+                index={index}
+                onClick={() => setSelectedId(solution.id)}
+              />
             </div>
           ))}
         </div>
       </div>
+
+      {/* Expanded Card Modal */}
+      <AnimatePresence>
+        {selectedId && selectedSolution && (
+          <ExpandedSolutionCard 
+            solution={selectedSolution}
+            onClose={() => setSelectedId(null)}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 };
