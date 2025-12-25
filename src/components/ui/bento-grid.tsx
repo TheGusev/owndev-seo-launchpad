@@ -5,6 +5,7 @@ import { ReactNode, useState } from "react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { ExpandableCard, type ExpandableCardItem } from "./expandable-card";
+import { DragScrollContainer } from "./drag-scroll";
 
 export interface BentoItem {
   id?: string;
@@ -25,6 +26,7 @@ export interface BentoItem {
 interface BentoGridProps {
   items: BentoItem[];
   className?: string;
+  layout?: "grid" | "horizontal-scroll";
 }
 
 const containerVariants = {
@@ -56,7 +58,7 @@ const itemVariants = {
   },
 };
 
-function BentoGrid({ items, className }: BentoGridProps) {
+function BentoGrid({ items, className, layout = "grid" }: BentoGridProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { ref, inView } = useInView({
     threshold: 0.1,
@@ -68,6 +70,35 @@ function BentoGrid({ items, className }: BentoGridProps) {
     ...item,
     id: item.id || `card-${index}`,
   }));
+
+  if (layout === "horizontal-scroll") {
+    return (
+      <motion.div
+        ref={ref}
+        variants={containerVariants}
+        initial="hidden"
+        animate={inView ? "visible" : "hidden"}
+        className={cn("w-full", className)}
+      >
+        <DragScrollContainer itemWidth={320} gap={12}>
+          {itemsWithIds.map((item, index) => (
+            <motion.div
+              key={item.id}
+              variants={itemVariants}
+              className="flex-shrink-0 w-[280px] md:w-[320px]"
+            >
+              <ExpandableCard
+                item={item}
+                index={index}
+                selectedId={selectedId}
+                setSelectedId={setSelectedId}
+              />
+            </motion.div>
+          ))}
+        </DragScrollContainer>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
