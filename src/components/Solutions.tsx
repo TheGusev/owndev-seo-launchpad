@@ -4,6 +4,7 @@ import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
 import SolutionCard from "@/components/solutions/SolutionCard";
 import ExpandedSolutionCard from "@/components/solutions/ExpandedSolutionCard";
 import { solutions } from "@/components/solutions/solutionsData";
+import AnimatedText from "@/components/ui/animated-text";
 
 const Solutions = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -45,7 +46,10 @@ const Solutions = () => {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-            Наши <span className="text-gradient">решения</span>
+            <AnimatedText text="Наши" />{" "}
+            <span className="text-gradient">
+              <AnimatedText text="решения" delay={0.2} />
+            </span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Полный спектр услуг веб-разработки для вашего бизнеса
