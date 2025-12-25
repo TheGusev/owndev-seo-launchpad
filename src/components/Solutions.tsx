@@ -4,6 +4,7 @@ import { useInView } from "react-intersection-observer";
 import CountUp from "react-countup";
 import { Globe, Cloud, TrendingUp, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import TiltCard from "@/components/ui/tilt-card";
 
 interface SolutionStat {
   value: number;
@@ -72,65 +73,71 @@ const SolutionCard = ({ solution, index }: { solution: Solution; index: number }
       initial={{ opacity: 0, y: 50 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.8, delay: index * 0.15, ease: [0.4, 0, 0.2, 1] }}
-      className="group relative h-[580px] rounded-3xl p-8 flex flex-col
-        bg-gradient-to-br from-[hsl(var(--color-primary-01)/0.05)] to-[hsl(var(--color-accent-01)/0.05)]
-        border border-[hsl(var(--color-primary-01)/0.1)]
-        solution-card cursor-pointer"
+      className="h-full"
     >
-      {/* Icon */}
-      <div className="w-14 h-14 rounded-2xl bg-[hsl(var(--color-primary-01)/0.1)] flex items-center justify-center mb-6 
-        group-hover:bg-[hsl(var(--color-primary-01)/0.2)] transition-colors duration-300">
-        <Icon className="w-7 h-7 text-01-cyan" />
-      </div>
-
-      {/* Title & Description */}
-      <h2 className="text-2xl font-bold text-foreground mb-3 font-serif">{solution.title}</h2>
-      <p className="text-muted-foreground mb-6 leading-relaxed">{solution.description}</p>
-
-      {/* Benefits list */}
-      <ul className="space-y-3 mb-8 flex-grow">
-        {solution.benefits.map((benefit, i) => (
-          <li key={i} className="flex items-center gap-3 text-sm text-foreground/80">
-            <span className="w-2 h-2 rounded-full bg-[hsl(var(--color-secondary-01))] flex-shrink-0" />
-            {benefit}
-          </li>
-        ))}
-      </ul>
-
-      {/* Stats with CountUp */}
-      <div className="flex gap-10 mt-auto mb-4">
-        {solution.stats.map((stat, i) => (
-          <div key={i}>
-            <div className="text-3xl font-bold text-01-cyan font-serif">
-              {inView && (
-                <CountUp 
-                  end={stat.value} 
-                  duration={2.5} 
-                  suffix={stat.suffix} 
-                  decimals={stat.decimals || 0}
-                  delay={0.3}
-                />
-              )}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+      <TiltCard maxTilt={12} glareOpacity={0.12} className="h-full">
+        <div
+          className="group relative h-[580px] rounded-3xl p-8 flex flex-col
+            bg-gradient-to-br from-[hsl(var(--color-primary-01)/0.05)] to-[hsl(var(--color-accent-01)/0.05)]
+            border border-[hsl(var(--color-primary-01)/0.1)]
+            solution-card cursor-pointer"
+        >
+          {/* Icon */}
+          <div className="w-14 h-14 rounded-2xl bg-[hsl(var(--color-primary-01)/0.1)] flex items-center justify-center mb-6 
+            group-hover:bg-[hsl(var(--color-primary-01)/0.2)] transition-colors duration-300">
+            <Icon className="w-7 h-7 text-01-cyan" />
           </div>
-        ))}
-      </div>
 
-      {/* Hover CTA */}
-      <div className="absolute bottom-8 right-8 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-        <span className="flex items-center gap-2 text-01-cyan font-medium">
-          Подробнее
-          <ArrowRight className="w-4 h-4" />
-        </span>
-      </div>
+          {/* Title & Description */}
+          <h2 className="text-2xl font-bold text-foreground mb-3 font-serif">{solution.title}</h2>
+          <p className="text-muted-foreground mb-6 leading-relaxed">{solution.description}</p>
 
-      {/* Glow effect on hover */}
-      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle at 50% 50%, hsl(var(--color-primary-01) / 0.08), transparent 70%)'
-        }}
-      />
+          {/* Benefits list */}
+          <ul className="space-y-3 mb-8 flex-grow">
+            {solution.benefits.map((benefit, i) => (
+              <li key={i} className="flex items-center gap-3 text-sm text-foreground/80">
+                <span className="w-2 h-2 rounded-full bg-[hsl(var(--color-secondary-01))] flex-shrink-0" />
+                {benefit}
+              </li>
+            ))}
+          </ul>
+
+          {/* Stats with CountUp */}
+          <div className="flex gap-10 mt-auto mb-4">
+            {solution.stats.map((stat, i) => (
+              <div key={i}>
+                <div className="text-3xl font-bold text-01-cyan font-serif">
+                  {inView && (
+                    <CountUp 
+                      end={stat.value} 
+                      duration={2.5} 
+                      suffix={stat.suffix} 
+                      decimals={stat.decimals || 0}
+                      delay={0.3}
+                    />
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Hover CTA */}
+          <div className="absolute bottom-8 right-8 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+            <span className="flex items-center gap-2 text-01-cyan font-medium">
+              Подробнее
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          </div>
+
+          {/* Glow effect on hover */}
+          <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle at 50% 50%, hsl(var(--color-primary-01) / 0.08), transparent 70%)'
+            }}
+          />
+        </div>
+      </TiltCard>
     </motion.div>
   );
 };
@@ -235,11 +242,35 @@ const Solutions = () => {
       {/* Spacer when nav is sticky */}
       {isSticky && <div className="h-[60px]" />}
 
-      {/* Cards Grid */}
+      {/* Cards Grid - Desktop */}
       <div className="container px-4 mt-12">
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="hidden lg:grid lg:grid-cols-3 gap-6">
           {solutions.map((solution, index) => (
             <SolutionCard key={solution.id} solution={solution} index={index} />
+          ))}
+        </div>
+        
+        {/* Horizontal Scroll - Mobile/Tablet */}
+        <div className="lg:hidden overflow-x-auto pb-6 -mx-4 px-4 snap-x snap-mandatory scroll-smooth scrollbar-hide">
+          <div className="flex gap-4 w-max">
+            {solutions.map((solution, index) => (
+              <div 
+                key={solution.id} 
+                className="snap-center flex-shrink-0 w-[85vw] max-w-[340px]"
+              >
+                <SolutionCard solution={solution} index={index} />
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Scroll indicator dots - Mobile */}
+        <div className="flex justify-center gap-2 mt-4 lg:hidden">
+          {solutions.map((_, i) => (
+            <div 
+              key={i}
+              className="w-2 h-2 rounded-full bg-[hsl(var(--color-primary-01)/0.3)] transition-colors"
+            />
           ))}
         </div>
       </div>

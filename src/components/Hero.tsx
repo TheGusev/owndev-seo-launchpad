@@ -6,6 +6,7 @@ import { GlowingEffect } from "@/components/ui/glowing-effect";
 import ThreeBackground from "@/components/ui/three-background";
 import CountUp from "react-countup";
 import { useInView } from "react-intersection-observer";
+import MagneticButton from "@/components/ui/magnetic-button";
 
 const Hero = () => {
   const { ref: statsRef, inView: statsInView } = useInView({ triggerOnce: true, threshold: 0.3 });
@@ -124,58 +125,62 @@ const Hero = () => {
             30+ проектов. 5+ млн руб выручки клиентов в год благодаря нам.
           </motion.p>
           
-          {/* CTA Buttons - 01.tech Style */}
+          {/* CTA Buttons - 01.tech Style with Magnetic Effect */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4 }}
             className="flex flex-col sm:flex-row gap-5"
           >
-            <div className="relative group">
-              <GlowingEffect
-                theme="primary"
-                disabled={false}
-                borderWidth={2}
-                spread={35}
-                glow={true}
-                blur={15}
-                proximity={100}
-                inactiveZone={0.3}
-              />
-              <button
-                onClick={scrollToContact}
-                className="relative z-10 px-8 py-5 rounded-xl font-semibold text-background transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_hsl(var(--color-primary-01)/0.5)]"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(var(--color-primary-01)), hsl(var(--color-secondary-01)))'
-                }}
-              >
-                <span className="flex items-center gap-2">
-                  Первая консультация — БЕСПЛАТНО
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </button>
-            </div>
+            <MagneticButton strength={0.35} radius={120}>
+              <div className="relative group">
+                <GlowingEffect
+                  theme="primary"
+                  disabled={false}
+                  borderWidth={2}
+                  spread={35}
+                  glow={true}
+                  blur={15}
+                  proximity={100}
+                  inactiveZone={0.3}
+                />
+                <button
+                  onClick={scrollToContact}
+                  className="relative z-10 px-8 py-5 rounded-xl font-semibold text-background transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_hsl(var(--color-primary-01)/0.5)]"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(var(--color-primary-01)), hsl(var(--color-secondary-01)))'
+                  }}
+                >
+                  <span className="flex items-center gap-2">
+                    Первая консультация — БЕСПЛАТНО
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </button>
+              </div>
+            </MagneticButton>
             
-            <div className="relative group">
-              <GlowingEffect
-                theme="secondary"
-                disabled={false}
-                borderWidth={2}
-                spread={30}
-                glow={true}
-                blur={12}
-                proximity={80}
-                inactiveZone={0.4}
-              />
-              <GradientButton 
-                variant="variant" 
-                size="xl" 
-                className="relative z-10"
-                onClick={scrollToPortfolio}
-              >
-                Смотреть портфолио ↓
-              </GradientButton>
-            </div>
+            <MagneticButton strength={0.3} radius={100}>
+              <div className="relative group">
+                <GlowingEffect
+                  theme="secondary"
+                  disabled={false}
+                  borderWidth={2}
+                  spread={30}
+                  glow={true}
+                  blur={12}
+                  proximity={80}
+                  inactiveZone={0.4}
+                />
+                <GradientButton 
+                  variant="variant" 
+                  size="xl" 
+                  className="relative z-10"
+                  onClick={scrollToPortfolio}
+                >
+                  Смотреть портфолио ↓
+                </GradientButton>
+              </div>
+            </MagneticButton>
           </motion.div>
           
           {/* Trust badges */}
