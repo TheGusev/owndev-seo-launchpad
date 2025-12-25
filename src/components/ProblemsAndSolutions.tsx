@@ -264,21 +264,21 @@ const ProblemsAndSolutions = () => {
           </p>
         </motion.div>
 
-        <div ref={ref} className="grid lg:grid-cols-[1fr_auto_1fr] gap-8 lg:gap-6 items-start">
-          {/* Problems */}
+        <div ref={ref} className="space-y-16">
+          {/* Problems - Horizontal Scroll */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
+            initial={{ opacity: 0, y: 30 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6 }}
             className="space-y-6"
           >
-            <h3 className="text-2xl md:text-3xl font-bold font-serif mb-6">
+            <h3 className="text-2xl md:text-3xl font-bold font-serif">
               С этим сталкиваются{" "}
               <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">все</span>
             </h3>
             <BentoGrid 
               items={problems} 
-              className="grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+              layout="horizontal-scroll"
             />
           </motion.div>
 
@@ -287,39 +287,27 @@ const ProblemsAndSolutions = () => {
             initial={{ opacity: 0, scale: 0 }}
             animate={inView ? { opacity: 1, scale: 1 } : {}}
             transition={{ delay: 0.4, duration: 0.3 }}
-            className="hidden lg:flex items-center justify-center self-center"
+            className="flex justify-center"
           >
             <div className="glass p-4 rounded-full border border-primary/20">
-              <ArrowRight className="w-8 h-8 text-primary" />
+              <ArrowRight className="w-8 h-8 text-primary rotate-90 lg:rotate-0" />
             </div>
           </motion.div>
 
-          {/* Mobile arrow */}
+          {/* Solutions - Horizontal Scroll */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ delay: 0.3, duration: 0.3 }}
-            className="lg:hidden flex justify-center"
-          >
-            <div className="glass p-3 rounded-full border border-primary/20 rotate-90">
-              <ArrowRight className="w-6 h-6 text-primary" />
-            </div>
-          </motion.div>
-
-          {/* Solutions */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="space-y-6"
           >
-            <h3 className="text-2xl md:text-3xl font-bold font-serif mb-6">
+            <h3 className="text-2xl md:text-3xl font-bold font-serif">
               Как мы это{" "}
               <span className="text-gradient">решаем</span>
             </h3>
             <BentoGrid 
               items={solutions} 
-              className="grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+              layout="horizontal-scroll"
             />
           </motion.div>
         </div>
