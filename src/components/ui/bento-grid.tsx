@@ -7,6 +7,47 @@ import { useInView } from "react-intersection-observer";
 import { ExpandableCard, type ExpandableCardItem } from "./expandable-card";
 import { DragScrollContainer } from "./drag-scroll";
 
+interface HorizontalScrollCardProps {
+  item: ExpandableCardItem;
+  index: number;
+  selectedId: string | null;
+  setSelectedId: (id: string | null) => void;
+  isActive?: boolean;
+  distanceFromCenter?: number;
+}
+
+function HorizontalScrollCard({
+  item,
+  index,
+  selectedId,
+  setSelectedId,
+  isActive = false,
+  distanceFromCenter = 0,
+}: HorizontalScrollCardProps) {
+  return (
+    <motion.div
+      variants={itemVariants}
+      animate={{
+        scale: isActive ? 1 : 0.92,
+        opacity: isActive ? 1 : 0.6,
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 25,
+      }}
+      className="flex-shrink-0 w-[280px] md:w-[320px]"
+    >
+      <ExpandableCard
+        item={item}
+        index={index}
+        selectedId={selectedId}
+        setSelectedId={setSelectedId}
+      />
+    </motion.div>
+  );
+}
+
 export interface BentoItem {
   id?: string;
   title: string;
@@ -80,20 +121,21 @@ function BentoGrid({ items, className, layout = "grid" }: BentoGridProps) {
         animate={inView ? "visible" : "hidden"}
         className={cn("w-full", className)}
       >
-        <DragScrollContainer itemWidth={320} gap={12}>
+        <DragScrollContainer 
+          itemWidth={320} 
+          gap={12}
+          autoScroll
+          autoScrollInterval={5000}
+          pauseOnHover
+        >
           {itemsWithIds.map((item, index) => (
-            <motion.div
+            <HorizontalScrollCard
               key={item.id}
-              variants={itemVariants}
-              className="flex-shrink-0 w-[280px] md:w-[320px]"
-            >
-              <ExpandableCard
-                item={item}
-                index={index}
-                selectedId={selectedId}
-                setSelectedId={setSelectedId}
-              />
-            </motion.div>
+              item={item}
+              index={index}
+              selectedId={selectedId}
+              setSelectedId={setSelectedId}
+            />
           ))}
         </DragScrollContainer>
       </motion.div>
