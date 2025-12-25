@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
+import Solutions from "@/components/Solutions";
 import ProblemsAndSolutions from "@/components/ProblemsAndSolutions";
 import Process from "@/components/Process";
 import Capabilities from "@/components/Capabilities";
@@ -23,6 +24,7 @@ const Index = () => {
       <Header />
       <main>
         <Hero />
+        <Solutions />
         <ProblemsAndSolutions />
         <Process />
         <Capabilities />
