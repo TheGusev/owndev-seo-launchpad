@@ -2,130 +2,202 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { ArrowRight, CheckCircle, TrendingUp, Shield, Clock } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
-import { SparklesCore } from "@/components/ui/sparkles";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { AnimatedText } from "@/components/ui/animated-text";
-import { CornerDecorations } from "@/components/ui/corner-decorations";
-import { FloatingParticles } from "@/components/ui/floating-particles";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { ParallaxLayer } from "@/components/ui/parallax-layer";
+import CountUp from "react-countup";
+import { useInView } from "react-intersection-observer";
 
 const Hero = () => {
+  const { ref: statsRef, inView: statsInView } = useInView({ triggerOnce: true, threshold: 0.3 });
+  
   const trustItems = [
     { icon: Shield, text: "Гарантия результата" },
     { icon: Clock, text: "6 месяцев поддержки" },
     { icon: TrendingUp, text: "Рост органики 150%+" },
   ];
 
+  const scrollToContact = () => {
+    const element = document.getElementById("contact");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const scrollToPortfolio = () => {
+    const element = document.getElementById("portfolio");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Corner Decorations */}
-      <CornerDecorations size="lg" />
-      
-      {/* Floating Particles with parallax */}
-      <ParallaxLayer speed={0.3} className="absolute inset-0 z-[3] pointer-events-none">
-        <FloatingParticles count={20} className="absolute inset-0" />
-      </ParallaxLayer>
-      
-      {/* Sparkles Background with parallax */}
-      <ParallaxLayer speed={0.2} className="absolute inset-0 z-0">
-        <SparklesCore
-          id="hero-sparkles"
-          background="transparent"
-          particleColor="#3dd9c3"
-          particleDensity={80}
-          minSize={1}
-          maxSize={2}
-          speed={2}
-          className="w-full h-full"
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Video Background with Gradient Overlay */}
+      <div className="absolute inset-0 z-0">
+        {/* Animated gradient background as video fallback */}
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-background">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(var(--color-primary-01)/0.15),_transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_hsl(var(--color-accent-01)/0.1),_transparent_50%)]" />
+        </div>
+        
+        {/* Gradient overlay matching 01.tech */}
+        <div 
+          className="absolute inset-0" 
+          style={{
+            background: 'linear-gradient(to bottom, var(--hero-overlay-start), var(--hero-overlay-end))'
+          }}
         />
-      </ParallaxLayer>
-      
-      {/* Gradient overlays for depth */}
-      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
+      </div>
       
       {/* Animated SVG Grid with parallax */}
-      <ParallaxLayer speed={0.1} className="absolute inset-0 z-[2]">
-        <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="opacity-70" theme="primary" />
+      <ParallaxLayer speed={0.1} className="absolute inset-0 z-[1]">
+        <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="opacity-50" theme="primary" />
       </ParallaxLayer>
       
+      {/* Floating geometric shapes */}
+      <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{ 
+            rotate: 360,
+            y: [0, -20, 0]
+          }}
+          transition={{ 
+            rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+            y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+          }}
+          className="absolute top-1/4 left-[10%] w-32 h-32 border border-primary/20 rounded-full opacity-30"
+        />
+        <motion.div
+          animate={{ 
+            rotate: -360,
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ 
+            rotate: { duration: 25, repeat: Infinity, ease: "linear" },
+            scale: { duration: 5, repeat: Infinity, ease: "easeInOut" }
+          }}
+          className="absolute bottom-1/3 right-[15%] w-24 h-24 border border-secondary/20 opacity-20"
+          style={{ borderRadius: '30%' }}
+        />
+      </div>
+      
+      {/* Main Content */}
       <div className="container relative z-10 px-4 md:px-6">
-        <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
-          {/* Badge */}
+        <div className="flex flex-col items-center text-center max-w-[900px] mx-auto">
+          
+          {/* Floating Badge */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="glass px-4 py-2 rounded-full flex items-center gap-2"
+            transition={{ duration: 0.6 }}
+            className="animate-float-badge mb-8"
           >
-            <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground font-mono">Создаём цифровое будущее</span>
+            <div className="glass px-5 py-2.5 rounded-full flex items-center gap-3">
+              <span className="w-2.5 h-2.5 bg-[hsl(var(--color-secondary-01))] rounded-full animate-pulse" />
+              <span className="text-sm text-foreground/90 font-medium">🟢 Создаём цифровое будущее</span>
+            </div>
           </motion.div>
           
-          {/* Main heading with typewriter */}
+          {/* Main Heading - 01.tech Typography */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="space-y-4"
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="mb-6"
           >
-            {/* Контейнер с фиксированной минимальной высотой для предотвращения тряски */}
-            <div className="min-h-[5.5rem] sm:min-h-[4.5rem] md:min-h-[4.5rem] lg:min-h-[5.5rem] flex items-center justify-center">
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif text-center leading-tight">
+            <div className="min-h-[4rem] sm:min-h-[5rem] md:min-h-[6rem] lg:min-h-[7rem] flex items-center justify-center">
+              <h1 
+                className="text-[clamp(2.5rem,6vw,4.5rem)] font-bold font-serif leading-[1.1]"
+                style={{ 
+                  color: '#E8E9EA',
+                  letterSpacing: '-0.02em'
+                }}
+              >
+                Сайты, которые{" "}
                 <TypeAnimation
                   sequence={[
-                    'Сайты, которые продают.',
-                    2000,
-                    'Сайты, которые конвертируют.',
-                    2000,
-                    'Сайты, которые работают.',
-                    2000,
+                    'конвертируют.',
+                    3000,
+                    'продают.',
+                    3000,
+                    'работают.',
+                    3000,
                   ]}
                   wrapper="span"
                   speed={50}
-                  className="text-gradient"
+                  className="text-01-cyan"
                   repeat={Infinity}
                 />
               </h1>
             </div>
-            <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground font-serif">
-              <AnimatedText text="Разработка, оптимизация, рост 📈" wordDelay={150} theme="primary" />
-            </p>
           </motion.div>
           
           {/* Subheading */}
-          <motion.div 
+          <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg md:text-xl text-muted-foreground max-w-3xl leading-relaxed"
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="text-2xl md:text-3xl font-semibold text-foreground mb-5 font-serif"
           >
-            <AnimatedText 
-              text="Мы создаём веб-сайты и SaaS-платформы для малого и среднего бизнеса." 
-              wordDelay={80}
-              theme="accent"
-            />
-            <br />
-            <span className="text-foreground font-medium inline-block mt-2">
-              <AnimatedText 
-                text="30+ проектов. 5+ млн руб выручки клиентов в год благодаря нам." 
-                wordDelay={80}
-                theme="success"
-              />
-            </span>
-          </motion.div>
+            Разработка, оптимизация, рост 📈
+          </motion.p>
           
-          {/* CTA buttons */}
+          {/* Description */}
+          <motion.p
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+            className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-4 leading-relaxed"
+          >
+            Мы создаём веб-сайты и SaaS-платформы для малого и среднего бизнеса.
+          </motion.p>
+          
+          {/* Metrics */}
+          <motion.p
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.35 }}
+            className="text-foreground font-medium mb-10"
+          >
+            30+ проектов. 5+ млн руб выручки клиентов в год благодаря нам.
+          </motion.p>
+          
+          {/* CTA Buttons - 01.tech Style */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-6"
+            transition={{ duration: 0.7, delay: 0.4 }}
+            className="flex flex-col sm:flex-row gap-5"
           >
             <div className="relative group">
               <GlowingEffect
                 theme="primary"
+                disabled={false}
+                borderWidth={2}
+                spread={35}
+                glow={true}
+                blur={15}
+                proximity={100}
+                inactiveZone={0.3}
+              />
+              <button
+                onClick={scrollToContact}
+                className="relative z-10 px-8 py-5 rounded-xl font-semibold text-background transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_hsl(var(--color-primary-01)/0.5)]"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(var(--color-primary-01)), hsl(var(--color-secondary-01)))'
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  Первая консультация — БЕСПЛАТНО
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </button>
+            </div>
+            
+            <div className="relative group">
+              <GlowingEffect
+                theme="secondary"
                 disabled={false}
                 borderWidth={2}
                 spread={30}
@@ -134,23 +206,12 @@ const Hero = () => {
                 proximity={80}
                 inactiveZone={0.4}
               />
-              <GradientButton size="xl" className="group relative z-10">
-                Первая консультация — БЕСПЛАТНО
-                <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-              </GradientButton>
-            </div>
-            <div className="relative group">
-              <GlowingEffect
-                theme="secondary"
-                disabled={false}
-                borderWidth={2}
-                spread={25}
-                glow={true}
-                blur={10}
-                proximity={80}
-                inactiveZone={0.4}
-              />
-              <GradientButton variant="variant" size="xl" className="relative z-10">
+              <GradientButton 
+                variant="variant" 
+                size="xl" 
+                className="relative z-10"
+                onClick={scrollToPortfolio}
+              >
                 Смотреть портфолио ↓
               </GradientButton>
             </div>
@@ -160,26 +221,27 @@ const Hero = () => {
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex flex-wrap justify-center gap-6 pt-8"
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="flex flex-wrap justify-center gap-6 pt-10"
           >
             {trustItems.map((item, index) => (
               <div 
                 key={index}
                 className="flex items-center gap-2 text-muted-foreground"
               >
-                <CheckCircle className="w-5 h-5 text-success" />
+                <CheckCircle className="w-5 h-5 text-01-green" />
                 <span className="text-sm font-medium">{item.text}</span>
               </div>
             ))}
           </motion.div>
           
-          {/* Stats */}
+          {/* Stats with CountUp */}
           <motion.div 
+            ref={statsRef}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="grid grid-cols-3 gap-8 md:gap-16 pt-8 border-t border-border/50 mt-8"
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="grid grid-cols-3 gap-8 md:gap-16 pt-10 border-t border-border/50 mt-10"
           >
             <div className="relative group text-center p-4 rounded-xl">
               <GlowingEffect
@@ -193,7 +255,9 @@ const Hero = () => {
                 inactiveZone={0.3}
               />
               <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">30+</div>
+                <div className="text-3xl md:text-4xl font-bold text-01-cyan font-serif">
+                  {statsInView && <CountUp end={30} duration={2} suffix="+" />}
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">Проектов</div>
               </div>
             </div>
@@ -209,7 +273,9 @@ const Hero = () => {
                 inactiveZone={0.3}
               />
               <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">150%</div>
+                <div className="text-3xl md:text-4xl font-bold text-01-green font-serif">
+                  {statsInView && <CountUp end={150} duration={2} suffix="%" />}
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">Рост органики</div>
               </div>
             </div>
@@ -225,7 +291,9 @@ const Hero = () => {
                 inactiveZone={0.3}
               />
               <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">5+ лет</div>
+                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">
+                  {statsInView && <CountUp end={5} duration={2} suffix="+ лет" />}
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">Опыта</div>
               </div>
             </div>
@@ -237,14 +305,15 @@ const Hero = () => {
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.5 }}
+        transition={{ delay: 1.2, duration: 0.5 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2"
       >
         <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex justify-center">
           <motion.div 
             animate={{ y: [0, 12, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-1.5 h-3 bg-primary rounded-full mt-2"
+            className="w-1.5 h-3 rounded-full mt-2"
+            style={{ background: 'hsl(var(--color-primary-01))' }}
           />
         </div>
       </motion.div>
