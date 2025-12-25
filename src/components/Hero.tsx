@@ -3,8 +3,7 @@ import { ArrowRight, CheckCircle, TrendingUp, Shield, Clock } from "lucide-react
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { AnimatedGrid } from "@/components/ui/animated-grid";
-import { ParallaxLayer } from "@/components/ui/parallax-layer";
+import ThreeBackground from "@/components/ui/three-background";
 import CountUp from "react-countup";
 import { useInView } from "react-intersection-observer";
 
@@ -33,54 +32,16 @@ const Hero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Video Background with Gradient Overlay */}
-      <div className="absolute inset-0 z-0">
-        {/* Animated gradient background as video fallback */}
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-background">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(var(--color-primary-01)/0.15),_transparent_50%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_hsl(var(--color-accent-01)/0.1),_transparent_50%)]" />
-        </div>
-        
-        {/* Gradient overlay matching 01.tech */}
-        <div 
-          className="absolute inset-0" 
-          style={{
-            background: 'linear-gradient(to bottom, var(--hero-overlay-start), var(--hero-overlay-end))'
-          }}
-        />
-      </div>
+      {/* Three.js Animated Background */}
+      <ThreeBackground />
       
-      {/* Animated SVG Grid with parallax */}
-      <ParallaxLayer speed={0.1} className="absolute inset-0 z-[1]">
-        <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="opacity-50" theme="primary" />
-      </ParallaxLayer>
-      
-      {/* Floating geometric shapes */}
-      <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{ 
-            rotate: 360,
-            y: [0, -20, 0]
-          }}
-          transition={{ 
-            rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-            y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
-          }}
-          className="absolute top-1/4 left-[10%] w-32 h-32 border border-primary/20 rounded-full opacity-30"
-        />
-        <motion.div
-          animate={{ 
-            rotate: -360,
-            scale: [1, 1.1, 1]
-          }}
-          transition={{ 
-            rotate: { duration: 25, repeat: Infinity, ease: "linear" },
-            scale: { duration: 5, repeat: Infinity, ease: "easeInOut" }
-          }}
-          className="absolute bottom-1/3 right-[15%] w-24 h-24 border border-secondary/20 opacity-20"
-          style={{ borderRadius: '30%' }}
-        />
-      </div>
+      {/* Gradient overlay for text readability */}
+      <div 
+        className="absolute inset-0 z-[1]" 
+        style={{
+          background: 'linear-gradient(to bottom, rgba(10,11,13,0.3) 0%, rgba(10,11,13,0.7) 50%, rgba(10,11,13,0.9) 100%)'
+        }}
+      />
       
       {/* Main Content */}
       <div className="container relative z-10 px-4 md:px-6">
