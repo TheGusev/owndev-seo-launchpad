@@ -8,6 +8,8 @@ import TechCards from "@/components/TechCards";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
 import Preloader from "@/components/Preloader";
+import CustomCursor from "@/components/ui/custom-cursor";
+import MouseGradient from "@/components/ui/mouse-gradient";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(() => {
@@ -34,11 +36,14 @@ const Index = () => {
 
   return (
     <>
+      <CustomCursor />
+      <MouseGradient />
+      
       <AnimatePresence mode="wait">
         {isLoading && <Preloader onComplete={handlePreloaderComplete} />}
       </AnimatePresence>
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background relative">
         <Header />
         <main>
           <Hero />
