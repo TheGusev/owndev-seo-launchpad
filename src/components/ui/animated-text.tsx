@@ -7,12 +7,16 @@ interface AnimatedTextProps {
   className?: string;
   delay?: number;
   as?: "h1" | "h2" | "h3" | "h4" | "p" | "span";
+  highlightWords?: number[]; // indices of words to highlight
+  highlightClassName?: string; // class for highlighted words
 }
 
 const AnimatedText = ({ 
   text, 
   className = "", 
   delay = 0,
+  highlightWords = [],
+  highlightClassName = "text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent",
 }: AnimatedTextProps) => {
   const { ref, inView } = useInView({
     triggerOnce: true,
@@ -22,11 +26,10 @@ const AnimatedText = ({
   const isMobile = useTouchDevice();
   const words = text.split(" ");
 
-  // Simplified animation for mobile (no blur)
+  // Container is always visible (opacity: 1), only children animate
   const container: Variants = {
-    hidden: { opacity: 0 },
+    hidden: {},
     visible: {
-      opacity: 1,
       transition: { staggerChildren: isMobile ? 0.05 : 0.08, delayChildren: delay },
     },
   };
@@ -35,7 +38,6 @@ const AnimatedText = ({
     hidden: {
       opacity: 0,
       y: 15,
-      // No blur on mobile for performance
     },
     visible: {
       opacity: 1,
@@ -56,16 +58,19 @@ const AnimatedText = ({
       initial="hidden"
       animate={inView ? "visible" : "hidden"}
     >
-      {words.map((word, index) => (
-        <motion.span
-          key={index}
-          className="inline-block mr-[0.25em]"
-          style={{ willChange: "transform, opacity" }}
-          variants={child}
-        >
-          {word}
-        </motion.span>
-      ))}
+      {words.map((word, index) => {
+        const isHighlighted = highlightWords.includes(index);
+        return (
+          <motion.span
+            key={index}
+            className={`inline-block mr-[0.25em] animated-text-word ${isHighlighted ? highlightClassName : ""}`}
+            style={{ willChange: "transform, opacity" }}
+            variants={child}
+          >
+            {word}
+          </motion.span>
+        );
+      })}
     </motion.span>
   );
 };

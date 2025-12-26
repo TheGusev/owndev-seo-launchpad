@@ -74,6 +74,11 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Fallback: ensure animated text words are visible even if animation fails */
+  .animated-text-word {
+    opacity: 1;
+  }
 }
 
 /* Mobile performance optimizations */
