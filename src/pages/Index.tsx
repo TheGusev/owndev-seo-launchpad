@@ -3,7 +3,9 @@ import { AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Solutions from "@/components/Solutions";
+import Portfolio from "@/components/Portfolio";
 import GlobalSection from "@/components/GlobalSection";
+import Testimonials from "@/components/Testimonials";
 import TechCards from "@/components/TechCards";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
@@ -65,7 +67,9 @@ const Index = () => {
           <main>
             <Hero />
             <Solutions />
+            <Portfolio />
             <GlobalSection />
+            <Testimonials />
             <TechCards />
             <CTASection />
           </main>
