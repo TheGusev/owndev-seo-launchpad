@@ -1,34 +1,12 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
 import SolutionCard from "@/components/solutions/SolutionCard";
 import ExpandedSolutionCard from "@/components/solutions/ExpandedSolutionCard";
 import { solutions } from "@/components/solutions/solutionsData";
 import AnimatedText from "@/components/ui/animated-text";
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      duration: 0.5,
-      ease: [0.25, 0.46, 0.45, 0.94] as const,
-    },
-  },
-};
+import ScrollReveal from "@/components/ui/scroll-reveal";
+import { StaggerContainer, StaggerItem } from "@/components/ui/stagger-container";
 
 const Solutions = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -62,13 +40,7 @@ const Solutions = () => {
       
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
+        <ScrollReveal className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             <AnimatedText text="Наши" />{" "}
             <span className="text-gradient">
@@ -78,21 +50,19 @@ const Solutions = () => {
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Полный спектр услуг веб-разработки для вашего бизнеса
           </p>
-        </motion.div>
+        </ScrollReveal>
 
         {/* BentoGrid - Desktop with staggered animation */}
-        <motion.div 
+        <StaggerContainer 
           className="hidden md:block"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
+          staggerDelay={0.1}
+          delayChildren={0.2}
+          viewport={{ margin: "-100px" }}
         >
           <BentoGrid>
             {solutions.map((solution, index) => (
-              <motion.div 
+              <StaggerItem 
                 key={solution.id}
-                variants={itemVariants}
                 className={`${solution.colSpan === 2 ? 'md:col-span-2' : ''} ${solution.rowSpan === 2 ? 'md:row-span-2' : ''}`}
               >
                 <BentoGridItem 
@@ -106,33 +76,30 @@ const Solutions = () => {
                     onClick={() => setSelectedId(solution.id)}
                   />
                 </BentoGridItem>
-              </motion.div>
+              </StaggerItem>
             ))}
           </BentoGrid>
-        </motion.div>
+        </StaggerContainer>
 
         {/* Cards Scroll - Mobile with staggered animation */}
-        <motion.div 
+        <StaggerContainer 
           className="md:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-4 px-4"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
+          staggerDelay={0.08}
+          delayChildren={0.1}
         >
           {solutions.map((solution, index) => (
-            <motion.div 
+            <StaggerItem 
               key={solution.id} 
               className="snap-start shrink-0 w-[85vw]"
-              variants={itemVariants}
             >
               <SolutionCard 
                 solution={solution} 
                 index={index}
                 onClick={() => setSelectedId(solution.id)}
               />
-            </motion.div>
+            </StaggerItem>
           ))}
-        </motion.div>
+        </StaggerContainer>
       </div>
 
       {/* Expanded Card Modal */}
