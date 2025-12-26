@@ -12,11 +12,17 @@ import CustomCursor from "@/components/ui/custom-cursor";
 import MouseGradient from "@/components/ui/mouse-gradient";
 import ScrollProgress from "@/components/ui/scroll-progress";
 import PageTransition from "@/components/ui/page-transition";
+import { useTouchDevice } from "@/hooks/use-touch-device";
 
 const Index = () => {
+  const isMobile = useTouchDevice();
+  
   const [isLoading, setIsLoading] = useState(() => {
-    // Show preloader only on first visit per session
-    return !sessionStorage.getItem("preloader-shown");
+    // Skip preloader on mobile for faster load, or if already shown
+    if (typeof window !== "undefined" && sessionStorage.getItem("preloader-shown")) {
+      return false;
+    }
+    return true;
   });
 
   // Block scroll during loading
@@ -38,8 +44,13 @@ const Index = () => {
 
   return (
     <>
-      <CustomCursor />
-      <MouseGradient />
+      {/* Only show cursor effects on desktop */}
+      {!isMobile && (
+        <>
+          <CustomCursor />
+          <MouseGradient />
+        </>
+      )}
       <ScrollProgress />
       
       <AnimatePresence mode="wait">
