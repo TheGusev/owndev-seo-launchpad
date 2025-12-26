@@ -12,13 +12,15 @@ import CustomCursor from "@/components/ui/custom-cursor";
 import MouseGradient from "@/components/ui/mouse-gradient";
 import ScrollProgress from "@/components/ui/scroll-progress";
 import PageTransition from "@/components/ui/page-transition";
-import { useTouchDevice } from "@/hooks/use-touch-device";
+import { useTouchDevice, isTouchDevice } from "@/hooks/use-touch-device";
 
 const Index = () => {
   const isMobile = useTouchDevice();
   
   const [isLoading, setIsLoading] = useState(() => {
-    // Skip preloader on mobile for faster load, or if already shown
+    // Skip preloader on mobile for instant load
+    if (isTouchDevice()) return false;
+    // Skip if already shown this session
     if (typeof window !== "undefined" && sessionStorage.getItem("preloader-shown")) {
       return false;
     }

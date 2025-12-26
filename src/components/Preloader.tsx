@@ -9,11 +9,11 @@ const Preloader = ({ onComplete }: PreloaderProps) => {
   const [progress, setProgress] = useState(0);
   const [isExiting, setIsExiting] = useState(false);
 
-  // Fallback timeout - force complete after 5 seconds
+  // Fallback timeout - force complete after 2 seconds
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
       onComplete();
-    }, 5000);
+    }, 2000);
 
     return () => clearTimeout(fallbackTimer);
   }, [onComplete]);
