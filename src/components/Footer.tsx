@@ -1,29 +1,7 @@
-import { motion } from "framer-motion";
 import { Send, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: [0.25, 0.46, 0.45, 0.94] as const,
-    },
-  },
-};
+import ScrollReveal from "@/components/ui/scroll-reveal";
+import { StaggerContainer, StaggerItem } from "@/components/ui/stagger-container";
 
 const Footer = () => {
   const links = {
@@ -61,15 +39,13 @@ const Footer = () => {
   return (
     <footer className="bg-card border-t border-border">
       <div className="container mx-auto px-6 py-16">
-        <motion.div 
+        <StaggerContainer 
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
+          staggerDelay={0.1}
+          delayChildren={0.1}
         >
           {/* Brand */}
-          <motion.div variants={itemVariants} className="space-y-6">
+          <StaggerItem className="space-y-6">
             <a href="/" className="text-xl font-semibold text-foreground">
               OWNDEV
             </a>
@@ -90,10 +66,10 @@ const Footer = () => {
                 </a>
               ))}
             </div>
-          </motion.div>
+          </StaggerItem>
 
           {/* Services */}
-          <motion.div variants={itemVariants}>
+          <StaggerItem>
             <h3 className="font-medium text-foreground mb-6">Услуги</h3>
             <ul className="space-y-3">
               {links.services.map((link) => (
@@ -108,10 +84,10 @@ const Footer = () => {
                 </li>
               ))}
             </ul>
-          </motion.div>
+          </StaggerItem>
 
           {/* Company */}
-          <motion.div variants={itemVariants}>
+          <StaggerItem>
             <h3 className="font-medium text-foreground mb-6">Компания</h3>
             <ul className="space-y-3">
               {links.company.map((link) => (
@@ -126,10 +102,10 @@ const Footer = () => {
                 </li>
               ))}
             </ul>
-          </motion.div>
+          </StaggerItem>
 
           {/* Legal */}
-          <motion.div variants={itemVariants}>
+          <StaggerItem>
             <h3 className="font-medium text-foreground mb-6">Документы</h3>
             <ul className="space-y-3">
               {links.legal.map((link) => (
@@ -144,24 +120,18 @@ const Footer = () => {
                 </li>
               ))}
             </ul>
-          </motion.div>
-        </motion.div>
+          </StaggerItem>
+        </StaggerContainer>
 
         {/* Bottom */}
-        <motion.div 
-          className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
+        <ScrollReveal delay={0.4} className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
             © 2025 OWNDEV. Все права защищены.
           </p>
           <p className="text-xs text-muted-foreground">
             Москва, Россия
           </p>
-        </motion.div>
+        </ScrollReveal>
       </div>
     </footer>
   );

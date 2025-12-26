@@ -1,7 +1,8 @@
-import { motion } from "framer-motion";
 import { BarChart3, Shield, LineChart, Lock, Database, Zap } from "lucide-react";
 import GlassCard from "./ui/glass-card";
 import AnimatedText from "@/components/ui/animated-text";
+import ScrollReveal from "@/components/ui/scroll-reveal";
+import { StaggerContainer, StaggerItem } from "@/components/ui/stagger-container";
 
 const techCards = [
   {
@@ -26,30 +27,6 @@ const techCards = [
   },
 ];
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 40, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      duration: 0.6,
-      ease: [0.25, 0.46, 0.45, 0.94] as const,
-    },
-  },
-};
-
 const TechCards = () => {
   return (
     <section className="py-24 relative">
@@ -58,13 +35,7 @@ const TechCards = () => {
       
       <div className="container relative z-10 px-4 md:px-6">
         {/* Section header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-16"
-        >
+        <ScrollReveal className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             <AnimatedText text="Технологии и" />{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary">
@@ -74,20 +45,18 @@ const TechCards = () => {
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Используем проверенные решения для максимальной производительности и безопасности
           </p>
-        </motion.div>
+        </ScrollReveal>
 
         {/* Cards grid with staggered animation */}
-        <motion.div 
+        <StaggerContainer 
           className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
+          staggerDelay={0.15}
+          delayChildren={0.2}
         >
           {techCards.map((card) => {
             const Icon = card.icon;
             return (
-              <motion.div key={card.title} variants={itemVariants}>
+              <StaggerItem key={card.title}>
                 <GlassCard className="p-8 h-full">
                   {/* Icon */}
                   <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-6 border border-white/10">
@@ -122,10 +91,10 @@ const TechCards = () => {
                     })}
                   </div>
                 </GlassCard>
-              </motion.div>
+              </StaggerItem>
             );
           })}
-        </motion.div>
+        </StaggerContainer>
       </div>
     </section>
   );

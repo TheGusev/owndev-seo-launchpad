@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import MagneticButton from "@/components/ui/magnetic-button";
 import { useRef } from "react";
 import { useTouchDevice } from "@/hooks/use-touch-device";
+import ScrollReveal from "@/components/ui/scroll-reveal";
 
 const Hero = () => {
   const sectionRef = useRef<HTMLElement>(null);
@@ -60,7 +61,7 @@ const Hero = () => {
         style={{ willChange: "transform" }}
       />
 
-      {/* Content - no blur filter on scroll */}
+      {/* Content */}
       <motion.div 
         className="relative z-10 container mx-auto px-6"
         style={{ 
@@ -68,75 +69,66 @@ const Hero = () => {
           opacity,
         }}
       >
-        <motion.div 
-          className="max-w-4xl mx-auto text-center"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          {/* Headline */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-tight tracking-tight mb-8">
-            Создаём сайты,{" "}
-            <span className="text-primary">
-              <TypeAnimation
-                sequence={[
-                  "которые продают",
-                  3000,
-                  "которые конвертируют",
-                  3000,
-                  "которые работают",
-                  3000,
-                  "которые впечатляют",
-                  3000,
-                ]}
-                wrapper="span"
-                speed={40}
-                repeat={Infinity}
-              />
-            </span>
-          </h1>
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Headline with ScrollReveal */}
+          <ScrollReveal distance={30} duration={0.6}>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-tight tracking-tight mb-8">
+              Создаём сайты,{" "}
+              <span className="text-primary">
+                <TypeAnimation
+                  sequence={[
+                    "которые продают",
+                    3000,
+                    "которые конвертируют",
+                    3000,
+                    "которые работают",
+                    3000,
+                    "которые впечатляют",
+                    3000,
+                  ]}
+                  wrapper="span"
+                  speed={40}
+                  repeat={Infinity}
+                />
+              </span>
+            </h1>
+          </ScrollReveal>
 
           {/* Subtitle */}
-          <motion.p 
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-          >
-            Разрабатываем современные веб-решения для бизнеса. 
-            От лендингов до сложных SaaS-платформ.
-          </motion.p>
+          <ScrollReveal delay={0.15} distance={20}>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12">
+              Разрабатываем современные веб-решения для бизнеса. 
+              От лендингов до сложных SaaS-платформ.
+            </p>
+          </ScrollReveal>
 
           {/* CTA Buttons */}
-          <motion.div 
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-          >
-            <MagneticButton strength={isMobile ? 0 : 0.2}>
-              <Button 
-                size="lg"
-                onClick={() => scrollToSection("contact")}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base"
-              >
-                Обсудить проект
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </MagneticButton>
-            
-            <MagneticButton strength={isMobile ? 0 : 0.2}>
-              <Button 
-                variant="outline"
-                size="lg"
-                onClick={() => scrollToSection("projects")}
-                className="border-border text-foreground hover:bg-muted px-8 py-6 text-base"
-              >
-                Смотреть работы
-              </Button>
-            </MagneticButton>
-          </motion.div>
-        </motion.div>
+          <ScrollReveal delay={0.3} distance={20}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <MagneticButton strength={isMobile ? 0 : 0.2}>
+                <Button 
+                  size="lg"
+                  onClick={() => scrollToSection("contact")}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base"
+                >
+                  Обсудить проект
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </MagneticButton>
+              
+              <MagneticButton strength={isMobile ? 0 : 0.2}>
+                <Button 
+                  variant="outline"
+                  size="lg"
+                  onClick={() => scrollToSection("projects")}
+                  className="border-border text-foreground hover:bg-muted px-8 py-6 text-base"
+                >
+                  Смотреть работы
+                </Button>
+              </MagneticButton>
+            </div>
+          </ScrollReveal>
+        </div>
       </motion.div>
 
       {/* Scroll Indicator - only on desktop */}
