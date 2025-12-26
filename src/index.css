@@ -75,3 +75,31 @@
     scrollbar-width: none;
   }
 }
+
+/* Mobile performance optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Disable blur filters on touch devices */
+  .blur-3xl,
+  .blur-2xl,
+  .blur-xl {
+    filter: none !important;
+    opacity: 0.15;
+  }
+  
+  /* Reduce animation complexity */
+  * {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

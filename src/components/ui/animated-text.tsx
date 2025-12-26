@@ -1,5 +1,6 @@
 import { motion, Variants } from "framer-motion";
 import { useInView } from "react-intersection-observer";
+import { useTouchDevice } from "@/hooks/use-touch-device";
 
 interface AnimatedTextProps {
   text: string;
@@ -18,30 +19,31 @@ const AnimatedText = ({
     threshold: 0.1,
   });
 
+  const isMobile = useTouchDevice();
   const words = text.split(" ");
 
+  // Simplified animation for mobile (no blur)
   const container: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.08, delayChildren: delay },
+      transition: { staggerChildren: isMobile ? 0.05 : 0.08, delayChildren: delay },
     },
   };
 
   const child: Variants = {
     hidden: {
       opacity: 0,
-      y: 20,
-      filter: "blur(10px)",
+      y: 15,
+      // No blur on mobile for performance
     },
     visible: {
       opacity: 1,
       y: 0,
-      filter: "blur(0px)",
       transition: {
         type: "spring" as const,
-        damping: 20,
-        stiffness: 100,
+        damping: 25,
+        stiffness: 120,
       },
     },
   };
@@ -57,7 +59,8 @@ const AnimatedText = ({
       {words.map((word, index) => (
         <motion.span
           key={index}
-          className="inline-block mr-[0.25em] will-change-transform"
+          className="inline-block mr-[0.25em]"
+          style={{ willChange: "transform, opacity" }}
           variants={child}
         >
           {word}
