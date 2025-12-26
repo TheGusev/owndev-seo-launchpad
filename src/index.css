@@ -96,6 +96,14 @@
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
   }
+  
+  /* Ensure content is always visible on mobile */
+  [data-scroll-reveal],
+  .animated-text-word,
+  [data-motion] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 /* Respect reduced motion preference */
