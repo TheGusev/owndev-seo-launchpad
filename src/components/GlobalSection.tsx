@@ -36,10 +36,11 @@ const GlobalSection = () => {
         <ScrollReveal className="text-center max-w-4xl mx-auto">
           {/* Main heading */}
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-            <AnimatedText text="Работаем по всей" />{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-accent">
-              <AnimatedText text="России" delay={0.3} />
-            </span>
+            <AnimatedText 
+              text="Работаем по всей России" 
+              highlightWords={[3]}
+              highlightClassName="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-accent"
+            />
           </h2>
           
           {/* Subtitle */}

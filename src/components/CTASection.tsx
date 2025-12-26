@@ -21,11 +21,11 @@ const CTASection = () => {
           {/* Main heading */}
           <ScrollReveal>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              <AnimatedText text="Готовы" />{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-                <AnimatedText text="начать проект" delay={0.15} />
-              </span>
-              <AnimatedText text="?" delay={0.4} />
+              <AnimatedText 
+                text="Готовы начать проект?" 
+                highlightWords={[1, 2]}
+                highlightClassName="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent"
+              />
             </h2>
           </ScrollReveal>
 

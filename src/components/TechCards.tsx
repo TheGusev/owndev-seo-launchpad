@@ -37,10 +37,11 @@ const TechCards = () => {
         {/* Section header */}
         <ScrollReveal className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            <AnimatedText text="Технологии и" />{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary">
-              <AnimatedText text="надёжность" delay={0.25} />
-            </span>
+            <AnimatedText 
+              text="Технологии и надёжность" 
+              highlightWords={[2]}
+              highlightClassName="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary"
+            />
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Используем проверенные решения для максимальной производительности и безопасности
