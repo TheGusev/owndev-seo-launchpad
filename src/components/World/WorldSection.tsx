@@ -1,14 +1,31 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/content/copy";
 
 const WorldSection = () => {
+  const [imageError, setImageError] = useState(false);
+
   return (
     <section 
       id="world" 
       className="relative py-24 md:py-32 overflow-hidden"
       aria-labelledby="world-title"
     >
-      {/* Background container - ready for globe/map visualization */}
+      {/* Background image with graceful fallback */}
+      <div className="absolute inset-0 -z-20" aria-hidden="true">
+        {!imageError && (
+          <img 
+            src="https://01.tech/images/home/solutions/offer/bg_1024@2x.webp"
+            alt=""
+            className="w-full h-full object-cover opacity-30"
+            onError={() => setImageError(true)}
+          />
+        )}
+        {/* Gradient overlay / fallback */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/60" />
+      </div>
+
+      {/* Background container - globe/map visualization */}
       <div 
         className="absolute inset-0 -z-10"
         aria-hidden="true"

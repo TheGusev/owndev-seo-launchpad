@@ -7,7 +7,16 @@ const Hero = () => {
       className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden"
       aria-labelledby="hero-title"
     >
-      {/* Background gradient placeholder - ready for future media */}
+      {/* Video background container - ready for v4 */}
+      <div 
+        className="absolute inset-0 -z-20"
+        aria-hidden="true"
+      >
+        {/* Placeholder: will be replaced with <video> in v4 */}
+        <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-background to-background" />
+      </div>
+
+      {/* Background effects layer */}
       <div 
         className="absolute inset-0 -z-10"
         aria-hidden="true"
@@ -15,8 +24,11 @@ const Hero = () => {
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-accent/10 via-transparent to-transparent" />
         
-        {/* Radial glow */}
+        {/* Radial glow - primary */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-accent/5 rounded-full blur-3xl" />
+        
+        {/* Radial glow - secondary */}
+        <div className="absolute top-1/3 left-1/3 w-[600px] h-[600px] bg-accent/3 rounded-full blur-3xl" />
         
         {/* Grid pattern placeholder */}
         <div 
