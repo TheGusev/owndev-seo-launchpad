@@ -7,7 +7,7 @@ export interface Solution {
   id: string;
   title: string;
   description: string;
-  icon: "games" | "betting" | "payment" | "affiliate" | "aml" | "analytics";
+  icon: "messenger" | "blockchain" | "mvp" | "analytics" | "ai" | "devops";
   image: string;
   features: string[];
   metrics?: SolutionMetric[];
@@ -19,7 +19,7 @@ export const solutions: Solution[] = [
     id: "one-messenger",
     title: "ONE Messenger",
     description: "Безопасный мессенджер с end-to-end шифрованием и интеграцией блокчейна",
-    icon: "games",
+    icon: "messenger",
     image: "https://01.tech/images/home/solutions/cards/1/ru/bg_horizontal@2x.webp",
     features: [
       "E2E шифрование по умолчанию",
@@ -38,7 +38,7 @@ export const solutions: Solution[] = [
     id: "own-blockchain",
     title: "OWN Blockchain",
     description: "Высокопроизводительный блокчейн для децентрализованных приложений",
-    icon: "betting",
+    icon: "blockchain",
     image: "https://01.tech/images/home/solutions/cards/2/ru/bg_horizontal@2x.webp",
     features: [
       "Proof-of-Stake консенсус",
@@ -57,7 +57,7 @@ export const solutions: Solution[] = [
     id: "mvp-development",
     title: "Разработка MVP & SaaS",
     description: "Полный цикл разработки от идеи до продакшена за 4-12 недель",
-    icon: "payment",
+    icon: "mvp",
     image: "https://01.tech/images/home/solutions/cards/3/ru/bg_horizontal@2x.webp",
     features: [
       "Next.js + TypeScript + Tailwind",
@@ -95,7 +95,7 @@ export const solutions: Solution[] = [
     id: "ai-integration",
     title: "AI Integration & Playbooks",
     description: "Внедрение AI в продукт: чат-боты, рекомендации, аналитика, автоматизация",
-    icon: "affiliate",
+    icon: "ai",
     image: "https://01.tech/images/home/solutions/cards/5/ru/bg_horizontal@2x.webp",
     features: [
       "AI Playbooks для сценариев взаимодействия",
@@ -114,7 +114,7 @@ export const solutions: Solution[] = [
     id: "devops-infrastructure",
     title: "DevOps & Infrastructure",
     description: "Надёжная инфраструктура, CI/CD, мониторинг и масштабирование",
-    icon: "aml",
+    icon: "devops",
     image: "https://01.tech/images/home/solutions/cards/6/ru/bg_horizontal@2x.webp",
     features: [
       "Docker + Kubernetes на продакшене",

@@ -1,47 +1,24 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { 
+  MessageSquareLock, 
+  Blocks, 
+  Rocket, 
+  TrendingUp, 
+  BrainCircuit, 
+  Server,
+  LucideIcon 
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { copy } from "@/content/copy";
 import { solutions, type Solution } from "@/data/solutionsData";
 
-const iconMap: Record<Solution["icon"], JSX.Element> = {
-  games: (
-    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <circle cx="8" cy="12" r="2" />
-      <path d="M15 10v4M13 12h4" />
-    </svg>
-  ),
-  betting: (
-    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  ),
-  payment: (
-    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="2" y="5" width="20" height="14" rx="2" />
-      <path d="M2 10h20" />
-    </svg>
-  ),
-  affiliate: (
-    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  ),
-  aml: (
-    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      <path d="M9 12l2 2 4-4" />
-    </svg>
-  ),
-  analytics: (
-    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M3 3v18h18" />
-      <path d="M18 9l-5 5-4-4-3 3" />
-    </svg>
-  ),
+const iconMap: Record<Solution["icon"], LucideIcon> = {
+  messenger: MessageSquareLock,
+  blockchain: Blocks,
+  mvp: Rocket,
+  analytics: TrendingUp,
+  ai: BrainCircuit,
+  devops: Server,
 };
 
 const SolutionCard = ({ solution }: { solution: Solution }) => (
@@ -64,7 +41,10 @@ const SolutionCard = ({ solution }: { solution: Solution }) => (
     
     {/* Icon */}
     <div className="text-accent mb-4 group-hover:scale-110 transition-transform duration-300">
-      {iconMap[solution.icon]}
+      {(() => {
+        const IconComponent = iconMap[solution.icon];
+        return <IconComponent className="w-8 h-8" aria-hidden="true" />;
+      })()}
     </div>
     
     {/* Title */}
