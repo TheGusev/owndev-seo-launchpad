@@ -4,18 +4,17 @@ import { copy } from "@/content/copy";
 import { solutions, type Solution } from "@/data/solutionsData";
 
 const iconMap: Record<Solution["icon"], JSX.Element> = {
-  message: (
+  games: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="8" cy="12" r="2" />
+      <path d="M15 10v4M13 12h4" />
     </svg>
   ),
-  blockchain: (
+  betting: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-      <path d="M10 6.5h4M10 17.5h4M6.5 10v4M17.5 10v4" />
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
     </svg>
   ),
   payment: (
@@ -24,11 +23,11 @@ const iconMap: Record<Solution["icon"], JSX.Element> = {
       <path d="M2 10h20" />
     </svg>
   ),
-  code: (
+  affiliate: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <polyline points="16 18 22 12 16 6" />
-      <polyline points="8 6 2 12 8 18" />
-      <line x1="12" y1="2" x2="12" y2="22" />
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   ),
   aml: (
@@ -50,10 +49,18 @@ const SolutionCard = ({ solution }: { solution: Solution }) => (
     as="article"
     className="group flex flex-col h-full relative overflow-hidden"
   >
-    {/* Background gradient layer */}
-    <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent/10 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
-    </div>
+    {/* Background image layer */}
+    {solution.image && (
+      <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+        <img 
+          src={solution.image} 
+          alt="" 
+          className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity duration-500"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+      </div>
+    )}
     
     {/* Icon */}
     <div className="text-accent mb-4 group-hover:scale-110 transition-transform duration-300">
