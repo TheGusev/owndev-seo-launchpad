@@ -8,8 +8,15 @@ const WorldSection = () => {
       className="relative py-24 md:py-32 overflow-hidden"
       aria-labelledby="world-title"
     >
-      {/* Background gradient */}
+      {/* Background image with fallback */}
       <div className="absolute inset-0 -z-20" aria-hidden="true">
+        <img 
+          src="https://01.tech/images/home/solutions/offer/bg_1024@2x.webp"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-40"
+          loading="lazy"
+        />
+        {/* Gradient fallback + overlay for readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/60" />
       </div>
 

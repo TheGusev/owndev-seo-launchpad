@@ -55,10 +55,10 @@ const SolutionCard = ({ solution }: { solution: Solution }) => (
         <img 
           src={solution.image} 
           alt="" 
-          className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity duration-500"
+          className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-500"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/90 to-card/70" />
       </div>
     )}
     
