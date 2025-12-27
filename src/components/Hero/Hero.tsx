@@ -4,7 +4,7 @@ import { copy } from "@/content/copy";
 const Hero = () => {
   return (
     <section 
-      className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden"
       aria-labelledby="hero-title"
     >
       {/* Video background container - ready for v4 */}
@@ -47,7 +47,7 @@ const Hero = () => {
       <div className="container mx-auto px-6 text-center">
         <h1 
           id="hero-title"
-          className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 max-w-4xl mx-auto leading-tight"
+          className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 max-w-4xl mx-auto leading-tight"
         >
           {copy.hero.title}
         </h1>
