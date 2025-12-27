@@ -1,8 +1,9 @@
 export const copy = {
   meta: {
-    title: "OWNDEV — Разработка ONE Messenger, OWN Blockchain, MVP & SaaS | AI Integration",
+    title:
+      "OWNDEV — Разработка MVP, E2E шифрование, Blockchain & Web3, AI Integration | Turbo MVT",
     description:
-      "Создаём экосистему децентрализованных продуктов: мессенджер ONE и блокчейн OWN. Полный цикл разработки MVP, SaaS, SEO, AI интеграция.",
+      "Полный цикл разработки цифровых продуктов: MVP & SaaS, защищённые коммуникации с E2E шифрованием, blockchain интеграция, SEO & сквозная аналитика, AI Playbooks.",
   },
   header: {
     logo: "OWNDEV",
@@ -16,7 +17,7 @@ export const copy = {
   hero: {
     title: "OWNDEV — платформа, которая выводит продукт за пределы орбиты",
     subtitle:
-      "Разработка, дизайн и инфраструктура для цифровых продуктов. Создаём мессенджер ONE, блокчейн OWN и строим SaaS-решения на AI.",
+      "Разработка, дизайн и инфраструктура для цифровых продуктов. Специализируемся на защищённых коммуникациях, blockchain интеграции и AI-решениях.",
     cta: "Запросить демо",
   },
   solutions: {
@@ -43,16 +44,18 @@ export const copy = {
       products: {
         title: "Продукты",
         items: [
-          { label: "ONE Messenger", href: "#one-messenger" },
-          { label: "OWN Blockchain", href: "#own-blockchain" },
-          { label: "Wallet & Payments", href: "#wallet" },
-          { label: "Developer Platform", href: "#dev-platform" },
+          { label: "Разработка MVP", href: "#mvp-web-development" },
+          { label: "E2E шифрование", href: "#secure-communications" },
+          { label: "Blockchain & Web3", href: "#blockchain-web3" },
+          { label: "AI Integration", href: "#ai-integration" },
         ],
       },
       services: {
         title: "Услуги",
         items: [
-          { label: "Разработка MVP", href: "#mvp-development" },
+          { label: "Разработка MVP", href: "#mvp-web-development" },
+          { label: "E2E шифрование", href: "#secure-communications" },
+          { label: "Blockchain & Web3", href: "#blockchain-web3" },
           { label: "SEO & Аналитика", href: "#seo-analytics" },
           { label: "AI Integration", href: "#ai-integration" },
           { label: "DevOps", href: "#devops-infrastructure" },

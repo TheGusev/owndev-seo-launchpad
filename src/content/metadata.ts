@@ -1,15 +1,23 @@
 // SEO метаданные для OWNDEV
 
 export const siteMetadata = {
-  title: "OWNDEV — Разработка ONE Messenger, OWN Blockchain, MVP & SaaS | AI Integration",
+  title:
+    "OWNDEV — Разработка MVP, E2E шифрование, Blockchain & Web3, AI Integration | Turbo MVT",
   description:
-    "Создаём экосистему децентрализованных продуктов: безопасный мессенджер ONE и блокчейн OWN. Полный цикл разработки MVP, SaaS, SEO, сквозная аналитика, AI Playbooks, Predictive Routing. Turbo MVT A-F тестирование.",
+    "Полный цикл разработки цифровых продуктов: MVP & SaaS, защищённые коммуникации с E2E шифрованием, blockchain интеграция, SEO & сквозная аналитика, AI Playbooks, Predictive Routing, Turbo MVT A-F тестирование. DevOps и масштабирование.",
   keywords: [
     "разработка MVP",
     "SaaS разработка",
-    "ONE messenger",
-    "OWN blockchain",
-    "blockchain разработка",
+    "E2E шифрование",
+    "защищённые коммуникации",
+    "разработка мессенджеров",
+    "blockchain интеграция",
+    "Web3 разработка",
+    "смарт-контракты",
+    "DeFi интеграция",
+    "NFT marketplace",
+    "WebRTC",
+    "real-time коммуникации",
     "AI integration",
     "SEO оптимизация",
     "сквозная аналитика",
@@ -21,7 +29,6 @@ export const siteMetadata = {
     "TypeScript",
     "Web3",
     "DeFi",
-    "смарт-контракты",
     "децентрализованные приложения",
     "DevOps",
     "CI/CD",
@@ -35,7 +42,7 @@ export const siteMetadata = {
     siteName: "OWNDEV",
     title: "OWNDEV — Ваша платформа для выхода за пределы орбиты",
     description:
-      "Разработка, дизайн и инфраструктура для ONE Messenger, OWN Blockchain, MVP & SaaS. AI интеграция, SEO, аналитика.",
+      "Разработка MVP & SaaS, E2E шифрование, Blockchain & Web3 интеграция, AI Playbooks, SEO и сквозная аналитика.",
     images: [
       {
         url: "https://owndev.ru/og-image.jpg",
@@ -51,9 +58,9 @@ export const siteMetadata = {
     card: "summary_large_image",
     site: "@owndev",
     creator: "@owndev",
-    title: "OWNDEV — Разработка ONE, OWN Blockchain, MVP & SaaS",
+    title: "OWNDEV — Разработка MVP, E2E шифрование, Blockchain & Web3, AI Integration",
     description:
-      "AI Integration, SEO, Turbo MVT, Predictive Routing. Создаём продукты мирового уровня.",
+      "Защищённые коммуникации, blockchain интеграция, AI Playbooks, SEO, Turbo MVT, Predictive Routing.",
     images: ["https://owndev.ru/twitter-card.jpg"],
   },
 
@@ -65,7 +72,7 @@ export const siteMetadata = {
     url: "https://owndev.ru",
     logo: "https://owndev.ru/logo.svg",
     description:
-      "Разработка децентрализованных продуктов, MVP, SaaS, AI интеграция, SEO и аналитика",
+      "Разработка MVP & SaaS, E2E шифрование, blockchain интеграция, AI Playbooks, SEO и аналитика",
     sameAs: [
       "https://t.me/owndev",
       "https://github.com/owndev",

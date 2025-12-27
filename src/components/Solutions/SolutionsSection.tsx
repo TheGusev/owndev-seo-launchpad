@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { 
-  MessageSquareLock, 
-  Blocks, 
   Rocket, 
+  ShieldCheck,
+  Blocks, 
   TrendingUp, 
   BrainCircuit, 
   Server,
@@ -13,9 +13,9 @@ import { copy } from "@/content/copy";
 import { solutions, type Solution } from "@/data/solutionsData";
 
 const iconMap: Record<Solution["icon"], LucideIcon> = {
-  messenger: MessageSquareLock,
-  blockchain: Blocks,
   mvp: Rocket,
+  security: ShieldCheck,
+  blockchain: Blocks,
   analytics: TrendingUp,
   ai: BrainCircuit,
   devops: Server,
