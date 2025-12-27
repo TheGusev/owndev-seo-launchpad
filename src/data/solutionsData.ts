@@ -7,77 +7,99 @@ export interface Solution {
   id: string;
   title: string;
   description: string;
-  icon: "web" | "mobile" | "automation" | "ai" | "cloud" | "consulting";
-  image?: string;
+  icon: "game" | "betting" | "payment" | "affiliate" | "aml" | "analytics";
+  image: string;
   features: string[];
-  metrics: SolutionMetric[];
+  metrics?: SolutionMetric[];
 }
 
 export const solutions: Solution[] = [
   {
-    id: "web",
-    title: "Веб-разработка",
-    description: "Современные веб-приложения на React, Vue, Next.js с высокой производительностью и отличным UX",
-    icon: "web",
-    features: ["React / Vue / Next.js", "TypeScript", "Высокая производительность", "SEO оптимизация"],
+    id: "game-aggregator",
+    title: "Игровой агрегатор",
+    description: "Доступ к огромной библиотеке игр и инструментам персонализации",
+    icon: "game",
+    image: "https://01.tech/images/home/solutions/cards/1/ru/bg_horizontal@2x.webp",
+    features: [
+      "Автообновление контента",
+      "Гибкие настройки правил показа игр",
+      "Инструменты аналитики и отчетности",
+      "Быстрая интеграция новых провайдеров",
+    ],
     metrics: [
-      { label: "Проектов", value: "50+" },
-      { label: "Uptime", value: "99.9%" },
+      { label: "игровых провайдеров", value: "150+" },
+      { label: "коллекция игр", value: "15 000+" },
     ],
   },
   {
-    id: "mobile",
-    title: "Мобильные приложения",
-    description: "Нативные и кроссплатформенные iOS и Android приложения с современным дизайном",
-    icon: "mobile",
-    features: ["React Native", "Flutter", "Swift / Kotlin", "Офлайн-режим"],
+    id: "betting",
+    title: "Беттинг",
+    description: "Комплексное решение с широким охватом событий и системой управления рисками",
+    icon: "betting",
+    image: "https://01.tech/images/home/solutions/cards/2/ru/bg_horizontal@2x.webp",
+    features: [
+      "Система управления рисками",
+      "Инструменты аналитики и отчетности",
+      "Спортивная геймификация",
+    ],
     metrics: [
-      { label: "Загрузок", value: "1M+" },
-      { label: "Рейтинг", value: "4.8★" },
+      { label: "видов спорта", value: "79" },
+      { label: "спортивных маркетов", value: "35 000" },
     ],
   },
   {
-    id: "automation",
-    title: "Автоматизация",
-    description: "Оптимизация бизнес-процессов, интеграция систем и автоматизация рутинных задач",
-    icon: "automation",
-    features: ["API интеграции", "Workflow автоматизация", "CRM/ERP связки", "Боты и скрипты"],
+    id: "payment",
+    title: "Платежный модуль",
+    description: "Мгновенные транзакции, аналитика в реальном времени и высокая проходимость",
+    icon: "payment",
+    image: "https://01.tech/images/home/solutions/cards/3/ru/bg_horizontal@2x.webp",
+    features: [
+      "Широкий выбор поставщиков",
+      "Автомаршрутизация и каскадинг",
+      "AML и Antifraud, защита от чарджбеков",
+    ],
     metrics: [
-      { label: "Экономия времени", value: "40%" },
-      { label: "Интеграций", value: "100+" },
+      { label: "платежных методов", value: "200+" },
     ],
   },
   {
-    id: "ai",
-    title: "AI решения",
-    description: "Интеграция искусственного интеллекта, машинное обучение и обработка данных",
-    icon: "ai",
-    features: ["LLM интеграции", "Computer Vision", "NLP / Чат-боты", "Предиктивная аналитика"],
-    metrics: [
-      { label: "Точность моделей", value: "95%" },
-      { label: "Обработано данных", value: "10TB+" },
+    id: "affiliate",
+    title: "Аффилейт платформа",
+    description: "Управление партнерами, отслеживание кампаний и автоматизация выплат",
+    icon: "affiliate",
+    image: "https://01.tech/images/home/solutions/cards/4/ru/bg_horizontal@2x.webp",
+    features: [
+      "Настройка комиссионных планов",
+      "Управление креативами",
+      "Поддержка субпартнерства",
+      "Интуитивно понятный интерфейс",
+      "Аналитика в реальном времени",
     ],
   },
   {
-    id: "cloud",
-    title: "Облачные сервисы",
-    description: "Проектирование инфраструктуры, DevOps практики и миграция в облако",
-    icon: "cloud",
-    features: ["AWS / GCP / Azure", "Kubernetes", "CI/CD пайплайны", "Мониторинг"],
-    metrics: [
-      { label: "Серверов", value: "500+" },
-      { label: "Доступность", value: "99.99%" },
+    id: "aml",
+    title: "AML & Antifraud",
+    description: "Инструменты риск-менеджмента для предотвращения мошенничества",
+    icon: "aml",
+    image: "https://01.tech/images/home/solutions/cards/5/ru/bg_horizontal@2x.webp",
+    features: [
+      "Мониторинг транзакций",
+      "Обнаружение аномального поведения",
+      "Блокировка подозрительных счетов",
+      "Интеграция со сторонними KYC сервисами",
     ],
   },
   {
-    id: "consulting",
-    title: "Консалтинг",
-    description: "Технический аудит, стратегия развития и архитектурные решения",
-    icon: "consulting",
-    features: ["Технический аудит", "Архитектура систем", "Code Review", "Стратегия развития"],
-    metrics: [
-      { label: "Клиентов", value: "200+" },
-      { label: "Лет опыта", value: "10+" },
+    id: "analytics",
+    title: "Аналитика",
+    description: "Мгновенное обновление данных, анализ поведения игроков и актуальные метрики",
+    icon: "analytics",
+    image: "https://01.tech/images/home/solutions/cards/6/ru/bg_horizontal@2x.webp",
+    features: [
+      "Мониторинг метрик в онлайн-режиме",
+      "Функционал А/В-тестирования",
+      "ML-прогнозирование",
+      "Кастомизируемые дашборды",
     ],
   },
 ];

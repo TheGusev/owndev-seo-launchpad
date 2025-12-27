@@ -3,38 +3,44 @@ import { copy } from "@/content/copy";
 import { solutions, type Solution } from "@/data/solutionsData";
 
 const iconMap: Record<Solution["icon"], JSX.Element> = {
-  web: (
+  game: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M3 9h18M9 21V9" />
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="8" cy="12" r="2" />
+      <path d="M15 10v4M13 12h4" />
     </svg>
   ),
-  mobile: (
+  betting: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="5" y="2" width="14" height="20" rx="2" />
-      <line x1="12" y1="18" x2="12" y2="18" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+      <path d="M2 12h20" />
     </svg>
   ),
-  automation: (
+  payment: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
     </svg>
   ),
-  ai: (
+  affiliate: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z" />
-      <path d="M8 14v2a4 4 0 0 0 8 0v-2" />
-      <circle cx="12" cy="18" r="4" />
+      <circle cx="12" cy="5" r="3" />
+      <circle cx="5" cy="19" r="3" />
+      <circle cx="19" cy="19" r="3" />
+      <path d="M12 8v4M8.5 16.5l2-3M15.5 16.5l-2-3" />
     </svg>
   ),
-  cloud: (
+  aml: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z" />
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="M9 12l2 2 4-4" />
     </svg>
   ),
-  consulting: (
+  analytics: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <path d="M3 3v18h18" />
+      <path d="M18 9l-5 5-4-4-3 3" />
     </svg>
   ),
 };
@@ -66,7 +72,7 @@ const SolutionsSection = () => {
             <Card 
               key={solution.id}
               as="article"
-              className="group"
+              className="group flex flex-col"
             >
               {/* Icon */}
               <div className="text-accent mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -79,9 +85,38 @@ const SolutionsSection = () => {
               </h3>
               
               {/* Description */}
-              <p className="text-muted-foreground leading-relaxed">
+              <p className="text-muted-foreground leading-relaxed mb-4">
                 {solution.description}
               </p>
+
+              {/* Features */}
+              <ul className="space-y-2 mb-6 flex-grow">
+                {solution.features.map((feature, index) => (
+                  <li 
+                    key={index} 
+                    className="flex items-start gap-2 text-muted-foreground text-sm"
+                  >
+                    <span className="text-accent mt-0.5 flex-shrink-0">•</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Metrics */}
+              {solution.metrics && solution.metrics.length > 0 && (
+                <div className="flex gap-6 pt-6 border-t border-border/50">
+                  {solution.metrics.map((metric, index) => (
+                    <div key={index}>
+                      <span className="text-2xl md:text-3xl font-bold text-accent">
+                        {metric.value}
+                      </span>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {metric.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           ))}
         </div>
