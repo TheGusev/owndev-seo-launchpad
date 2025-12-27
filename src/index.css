@@ -50,12 +50,14 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground antialiased;
-  }
-
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    overflow-x: hidden;
   }
 }
 
@@ -66,12 +68,13 @@
   }
 
   .glass-hover {
-    @apply transition-all duration-300 ease-out;
+    @apply transition-all ease-out;
+    transition-duration: 250ms;
   }
 
   .glass-hover:hover {
-    @apply -translate-y-2 border-accent/50 shadow-lg bg-card/80;
-    box-shadow: 0 20px 40px -10px hsl(var(--accent) / 0.15);
+    @apply -translate-y-2.5 border-accent shadow-lg bg-card/80;
+    box-shadow: 0 20px 40px -10px hsl(var(--accent) / 0.2);
   }
 
   .text-gradient {
