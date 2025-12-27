@@ -7,7 +7,7 @@ export interface Solution {
   id: string;
   title: string;
   description: string;
-  icon: "messenger" | "blockchain" | "mvp" | "analytics" | "ai" | "devops";
+  icon: "mvp" | "security" | "blockchain" | "analytics" | "ai" | "devops";
   image: string;
   features: string[];
   metrics?: SolutionMetric[];
@@ -16,117 +16,123 @@ export interface Solution {
 
 export const solutions: Solution[] = [
   {
-    id: "one-messenger",
-    title: "ONE Messenger",
-    description: "Безопасный мессенджер с end-to-end шифрованием и интеграцией блокчейна",
-    icon: "messenger",
-    image: "https://01.tech/images/home/solutions/cards/1/ru/bg_horizontal@2x.webp",
-    features: [
-      "E2E шифрование по умолчанию",
-      "Децентрализованное хранение данных",
-      "Голосовые и видео звонки HD",
-      "Интеграция с OWN Blockchain",
-      "Мультиплатформенность (iOS, Android, Web)",
-    ],
-    metrics: [
-      { value: "MVP", label: "в разработке" },
-      { value: "Q2 2025", label: "планируемый запуск" },
-    ],
-    tags: ["Messenger", "Blockchain", "Security"],
-  },
-  {
-    id: "own-blockchain",
-    title: "OWN Blockchain",
-    description: "Высокопроизводительный блокчейн для децентрализованных приложений",
-    icon: "blockchain",
-    image: "https://01.tech/images/home/solutions/cards/2/ru/bg_horizontal@2x.webp",
-    features: [
-      "Proof-of-Stake консенсус",
-      "Smart contracts на Rust/Solidity",
-      "Cross-chain мосты (Ethereum, BSC)",
-      "Низкие комиссии (< $0.01)",
-      "Пропускная способность 10,000+ TPS",
-    ],
-    metrics: [
-      { value: "Testnet", label: "активен" },
-      { value: "Q2 2025", label: "Mainnet запуск" },
-    ],
-    tags: ["Blockchain", "Web3", "DeFi"],
-  },
-  {
-    id: "mvp-development",
-    title: "Разработка MVP & SaaS",
-    description: "Полный цикл разработки от идеи до продакшена за 4-12 недель",
+    id: "mvp-web-development",
+    title: "Разработка MVP & Web приложений",
+    description:
+      "Полный цикл разработки от идеи до продакшена за 4-12 недель. Next.js, TypeScript, современный стек.",
     icon: "mvp",
     image: "https://01.tech/images/home/solutions/cards/3/ru/bg_horizontal@2x.webp",
     features: [
-      "Next.js + TypeScript + Tailwind",
+      "Next.js + TypeScript + Tailwind CSS",
+      "Responsive design и адаптивная вёрстка",
       "Supabase / PostgreSQL / Redis",
-      "AI интеграция (GPT, Claude, Gemini)",
-      "Turbo MVT A/B тестирование",
-      "CI/CD и мониторинг из коробки",
+      "RESTful API и GraphQL",
+      "CI/CD и автоматический деплой",
     ],
     metrics: [
       { value: "4-12 недель", label: "от идеи до запуска" },
       { value: "20+", label: "запущенных проектов" },
     ],
-    tags: ["Development", "MVP", "SaaS"],
+    tags: ["Development", "MVP", "Web"],
+  },
+  {
+    id: "secure-communications",
+    title: "E2E шифрование и защищённые коммуникации",
+    description:
+      "Разработка чатов, мессенджеров и real-time коммуникаций с end-to-end шифрованием.",
+    icon: "security",
+    image: "https://01.tech/images/home/solutions/cards/1/ru/bg_horizontal@2x.webp",
+    features: [
+      "End-to-End шифрование (Signal Protocol, libsodium)",
+      "WebSocket и real-time обмен сообщениями",
+      "Голосовые и видео звонки (WebRTC)",
+      "Децентрализованное хранение (IPFS, P2P)",
+      "Мультиплатформенность (iOS, Android, Web, Desktop)",
+    ],
+    metrics: [
+      { value: "E2E", label: "шифрование по умолчанию" },
+      { value: "<100ms", label: "задержка сообщений" },
+    ],
+    tags: ["Security", "Real-time", "Encryption"],
+  },
+  {
+    id: "blockchain-web3",
+    title: "Blockchain & Web3 интеграция",
+    description:
+      "Интеграция смарт-контрактов, DeFi, NFT и Web3 в ваш продукт. Ethereum, Polygon, BSC, Solana.",
+    icon: "blockchain",
+    image: "https://01.tech/images/home/solutions/cards/2/ru/bg_horizontal@2x.webp",
+    features: [
+      "Разработка смарт-контрактов (Solidity, Rust)",
+      "Интеграция Web3 кошельков (MetaMask, WalletConnect)",
+      "DeFi протоколы (стейкинг, lending, swap)",
+      "NFT marketplace и mint функционал",
+      "Cross-chain мосты и мультичейн поддержка",
+    ],
+    metrics: [
+      { value: "5+", label: "блокчейн-сетей" },
+      { value: "Audit", label: "безопасность контрактов" },
+    ],
+    tags: ["Blockchain", "Web3", "DeFi", "NFT"],
   },
   {
     id: "seo-analytics",
     title: "SEO & Сквозная Аналитика",
-    description: "Рост органического трафика + AI Playbooks + Predictive Routing для конверсий",
+    description:
+      "Рост органического трафика + AI Playbooks + Predictive Routing + Turbo MVT для конверсий.",
     icon: "analytics",
     image: "https://01.tech/images/home/solutions/cards/4/ru/bg_horizontal@2x.webp",
     features: [
-      "Технический аудит и оптимизация",
-      "AI-powered контент-стратегия",
+      "Технический SEO аудит и оптимизация",
+      "AI-powered контент-стратегия и семантическое ядро",
       "Сквозная аналитика (GA4, Яндекс.Метрика, Amplitude)",
       "Predictive Routing для лидов",
-      "Turbo MVT для A/B/n тестирования",
+      "Turbo MVT A-F тестирование для роста конверсий",
     ],
     metrics: [
       { value: "3-6 месяцев", label: "до первых результатов" },
       { value: "150-300%", label: "рост трафика" },
     ],
-    tags: ["SEO", "Analytics", "Growth"],
+    tags: ["SEO", "Analytics", "Growth", "MVT"],
   },
   {
     id: "ai-integration",
     title: "AI Integration & Playbooks",
-    description: "Внедрение AI в продукт: чат-боты, рекомендации, аналитика, автоматизация",
+    description:
+      "Внедрение AI в продукт: чат-боты, рекомендации, AI Playbooks, аналитика и автоматизация.",
     icon: "ai",
     image: "https://01.tech/images/home/solutions/cards/5/ru/bg_horizontal@2x.webp",
     features: [
       "AI Playbooks для сценариев взаимодействия",
-      "RAG (Retrieval-Augmented Generation)",
-      "Тонкая настройка моделей (fine-tuning)",
+      "RAG (Retrieval-Augmented Generation) для знаний",
+      "Тонкая настройка моделей (fine-tuning GPT, Claude)",
       "Vector DB (Pinecone, Weaviate, Supabase pgvector)",
-      "Мониторинг качества ответов AI",
+      "Мониторинг качества и A/B тестирование AI-ответов",
     ],
     metrics: [
       { value: "70%+", label: "автоматизация запросов" },
       { value: "24/7", label: "поддержка без людей" },
     ],
-    tags: ["AI", "Automation", "ChatBots"],
+    tags: ["AI", "Automation", "ChatBots", "RAG"],
   },
   {
     id: "devops-infrastructure",
     title: "DevOps & Infrastructure",
-    description: "Надёжная инфраструктура, CI/CD, мониторинг и масштабирование",
+    description:
+      "Надёжная инфраструктура, CI/CD, мониторинг и масштабирование. 99.9% uptime SLA.",
     icon: "devops",
     image: "https://01.tech/images/home/solutions/cards/6/ru/bg_horizontal@2x.webp",
     features: [
       "Docker + Kubernetes на продакшене",
-      "GitHub Actions / GitLab CI",
+      "GitHub Actions / GitLab CI автоматизация",
       "Мониторинг (Grafana, Prometheus, Sentry)",
       "Автомасштабирование и балансировка нагрузки",
-      "Backup и disaster recovery",
+      "Backup, disaster recovery и security hardening",
     ],
     metrics: [
       { value: "99.9%", label: "uptime SLA" },
-      { value: "10-1000x", label: "готовность к масштабированию" },
+      { value: "10-1000x", label: "масштабирование" },
     ],
-    tags: ["DevOps", "Infrastructure", "Monitoring"],
+    tags: ["DevOps", "Infrastructure", "Monitoring", "CI/CD"],
   },
 ];
