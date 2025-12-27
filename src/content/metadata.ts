@@ -45,7 +45,7 @@ export const siteMetadata = {
       "Разработка MVP & SaaS, E2E шифрование, Blockchain & Web3 интеграция, AI Playbooks, SEO и сквозная аналитика.",
     images: [
       {
-        url: "https://owndev.ru/og-image.jpg",
+        url: "/opengraph-image.svg",
         width: 1200,
         height: 630,
         alt: "OWNDEV — Разработка цифровых продуктов",
@@ -61,7 +61,7 @@ export const siteMetadata = {
     title: "OWNDEV — Разработка MVP, E2E шифрование, Blockchain & Web3, AI Integration",
     description:
       "Защищённые коммуникации, blockchain интеграция, AI Playbooks, SEO, Turbo MVT, Predictive Routing.",
-    images: ["https://owndev.ru/twitter-card.jpg"],
+    images: ["/twitter-card.svg"],
   },
 
   // Structured Data (Schema.org)
@@ -70,7 +70,7 @@ export const siteMetadata = {
     "@type": "Organization",
     name: "OWNDEV",
     url: "https://owndev.ru",
-    logo: "https://owndev.ru/logo.svg",
+    logo: "/logo.svg",
     description:
       "Разработка MVP & SaaS, E2E шифрование, blockchain интеграция, AI Playbooks, SEO и аналитика",
     sameAs: [

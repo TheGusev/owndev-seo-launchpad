@@ -1,0 +1,45 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#0A0B0D"/>
+  
+  <defs>
+    <radialGradient id="glow1" cx="25%" cy="25%">
+      <stop offset="0%" style="stop-color:#00F0FF;stop-opacity:0.15" />
+      <stop offset="50%" style="stop-color:#00F0FF;stop-opacity:0" />
+    </radialGradient>
+    <radialGradient id="glow2" cx="75%" cy="75%">
+      <stop offset="0%" style="stop-color:#00F0FF;stop-opacity:0.1" />
+      <stop offset="50%" style="stop-color:#00F0FF;stop-opacity:0" />
+    </radialGradient>
+    <filter id="textGlow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background glows -->
+  <circle cx="300" cy="157" r="300" fill="url(#glow1)"/>
+  <circle cx="900" cy="472" r="300" fill="url(#glow2)"/>
+  
+  <!-- Logo hexagon with rocket -->
+  <g transform="translate(100, 200)">
+    <path d="M60 10 L90 25 L90 55 L60 70 L30 55 L30 25 Z" 
+          fill="none" stroke="#00F0FF" stroke-width="2" opacity="0.3"/>
+    <path d="M60 30 L60 56 M52 40 L60 30 L68 40 M56 50 L64 50" 
+          stroke="#00F0FF" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Main title -->
+  <text x="200" y="280" font-family="Arial, sans-serif" font-size="96" font-weight="bold" fill="#00F0FF" filter="url(#textGlow)">OWNDEV</text>
+  
+  <!-- Subtitle -->
+  <text x="200" y="350" font-family="Arial, sans-serif" font-size="36" fill="#FFFFFF">Разработка MVP, E2E шифрование, Blockchain &amp; Web3</text>
+  
+  <!-- Technologies -->
+  <text x="200" y="420" font-family="Arial, sans-serif" font-size="24" fill="#A0A0A0">AI Integration • SEO • Turbo MVT • Predictive Routing</text>
+  
+  <!-- URL -->
+  <text x="200" y="520" font-family="Arial, sans-serif" font-size="20" fill="#00F0FF">owndev.ru</text>
+</svg>
