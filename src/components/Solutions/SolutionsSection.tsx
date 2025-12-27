@@ -4,18 +4,18 @@ import { copy } from "@/content/copy";
 import { solutions, type Solution } from "@/data/solutionsData";
 
 const iconMap: Record<Solution["icon"], JSX.Element> = {
-  game: (
+  message: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <circle cx="8" cy="12" r="2" />
-      <path d="M15 10v4M13 12h4" />
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
     </svg>
   ),
-  betting: (
+  blockchain: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-      <path d="M2 12h20" />
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <path d="M10 6.5h4M10 17.5h4M6.5 10v4M17.5 10v4" />
     </svg>
   ),
   payment: (
@@ -24,12 +24,11 @@ const iconMap: Record<Solution["icon"], JSX.Element> = {
       <path d="M2 10h20" />
     </svg>
   ),
-  affiliate: (
+  code: (
     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <circle cx="12" cy="5" r="3" />
-      <circle cx="5" cy="19" r="3" />
-      <circle cx="19" cy="19" r="3" />
-      <path d="M12 8v4M8.5 16.5l2-3M15.5 16.5l-2-3" />
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+      <line x1="12" y1="2" x2="12" y2="22" />
     </svg>
   ),
   aml: (
@@ -51,17 +50,10 @@ const SolutionCard = ({ solution }: { solution: Solution }) => (
     as="article"
     className="group flex flex-col h-full relative overflow-hidden"
   >
-    {/* Background image layer for v4 */}
-    {solution.image && (
-      <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-        <img 
-          src={solution.image} 
-          alt=""
-          className="w-full h-full object-cover opacity-10 scale-110 group-hover:scale-100 transition-transform duration-500"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/90 to-card/70" />
-      </div>
-    )}
+    {/* Background gradient layer */}
+    <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+      <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent/10 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+    </div>
     
     {/* Icon */}
     <div className="text-accent mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -187,12 +179,10 @@ const SolutionsSection = () => {
 
         {/* Mobile: Swipe indicator */}
         <div className="md:hidden flex items-center justify-center gap-3 mt-4 text-muted-foreground text-sm">
-          <img 
-            src="https://01.tech/images/vector/swipe.svg" 
-            alt="" 
-            className="w-6 h-6 opacity-60"
-          />
-          <span>Вращайте влево или вправо</span>
+          <svg className="w-6 h-6 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M14 6l6 6-6 6M10 6l-6 6 6 6" />
+          </svg>
+          <span>Свайпайте влево или вправо</span>
         </div>
 
         {/* Mobile: Dot indicator */}

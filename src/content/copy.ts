@@ -1,35 +1,36 @@
 export const copy = {
   meta: {
-    title: "OWNDEV — Ваша платформа для выхода за пределы орбиты",
-    description: "Веб-разработка, мобильные приложения, автоматизация бизнеса. Создаем цифровые продукты мирового уровня.",
+    title: "OWNDEV — платформа, которая выводит продукт за пределы орбиты",
+    description:
+      "Разработка, дизайн и инфраструктура для ONE (мессенджер) и OWN (блокчейн). Экосистема продуктов для пользователей и команд.",
   },
   header: {
     logo: "OWNDEV",
     languages: ["RU", "EN"] as const,
     nav: {
-      solutions: "Решения",
-      about: "О нас",
+      solutions: "Продукты",
+      about: "Возможности",
       contact: "Контакты",
     },
   },
   hero: {
-    title: "Ваша платформа для выхода за пределы орбиты",
-    subtitle: "Веб-приложения, мобильные приложения, автоматизация бизнеса",
-    cta: "Связаться с нами",
+    title: "OWNDEV — платформа, которая выводит продукт за пределы орбиты",
+    subtitle: "Разработка, дизайн и инфраструктура для ONE (мессенджер) и OWN (блокчейн).",
+    cta: "Запросить демо",
   },
   solutions: {
-    title: "Решения",
-    subtitle: "Технологии для вашего бизнеса",
+    title: "Продукты",
+    subtitle: "Экосистема ONE и OWN",
   },
   world: {
     title: "В любой точке мира",
-    subtitle: "Создаем лучший развлекательный опыт на 5 континентах",
-    cta: "Связаться с нами",
+    subtitle: "Строим экосистему продуктов для пользователей и команд на 5 континентах.",
+    cta: "Связаться",
   },
   cta: {
     title: "Вопросы?",
-    subtitle: "Мы готовы помочь вам с любым проектом. Свяжитесь с нами, и мы обсудим вашу идею.",
-    button: "Связаться с нами",
+    subtitle: "Напиши — подскажем архитектуру, сроки и следующий шаг.",
+    button: "Связаться",
   },
   footer: {
     copyright: "© 2024 OWNDEV. Все права защищены.",
@@ -53,7 +54,11 @@ export const copy = {
     },
     socials: [
       { name: "Telegram", href: "https://t.me/owndev", ariaLabel: "Follow us on Telegram" },
-      { name: "LinkedIn", href: "https://linkedin.com/company/owndev", ariaLabel: "Follow us on LinkedIn" },
+      {
+        name: "LinkedIn",
+        href: "https://linkedin.com/company/owndev",
+        ariaLabel: "Follow us on LinkedIn",
+      },
       { name: "GitHub", href: "https://github.com/owndev", ariaLabel: "Follow us on GitHub" },
       { name: "Twitter", href: "https://twitter.com/owndev", ariaLabel: "Follow us on Twitter" },
     ],

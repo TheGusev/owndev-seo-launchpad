@@ -6,12 +6,14 @@ describe("Hero", () => {
   it("renders H1 with correct text", () => {
     render(<Hero />);
     const heading = screen.getByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent("Ваша платформа для выхода за пределы орбиты");
+    expect(heading).toHaveTextContent(
+      "OWNDEV — платформа, которая выводит продукт за пределы орбиты"
+    );
   });
 
-  it('renders CTA button "Связаться с нами"', () => {
+  it('renders CTA button "Запросить демо"', () => {
     render(<Hero />);
-    const button = screen.getByRole("button", { name: /связаться с нами/i });
+    const button = screen.getByRole("button", { name: /запросить демо/i });
     expect(button).toBeInTheDocument();
   });
 });
