@@ -14,7 +14,7 @@ const Card = forwardRef<HTMLElement, CardProps>(
     return (
       <Component
         ref={ref as any}
-        role={Component === "article" ? "article" : undefined}
+        role="article"
         aria-labelledby={title ? titleId : undefined}
         className={`
           rounded-xl p-6
