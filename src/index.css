@@ -66,7 +66,12 @@
   }
 
   .glass-hover {
-    @apply hover:bg-card/80 hover:border-accent/30 transition-all duration-300;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .glass-hover:hover {
+    @apply -translate-y-2 border-accent/50 shadow-lg bg-card/80;
+    box-shadow: 0 20px 40px -10px hsl(var(--accent) / 0.15);
   }
 
   .text-gradient {
@@ -79,5 +84,14 @@
 
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Hide scrollbar for mobile swipe */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
