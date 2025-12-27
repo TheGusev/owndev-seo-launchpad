@@ -4,35 +4,44 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
+    /* Background colors */
+    --background: 220 13% 4%;      /* #0A0B0D */
+    --foreground: 0 0% 100%;       /* #FFFFFF */
+    
+    /* Card/surface colors */
+    --card: 220 13% 8%;            /* slightly lighter than bg */
+    --card-foreground: 0 0% 100%;
+    
+    --popover: 220 13% 8%;
+    --popover-foreground: 0 0% 100%;
 
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 98%;
+    /* Accent color - cyan */
+    --accent: 186 100% 50%;        /* #00F0FF */
+    --accent-hover: 186 100% 46%;  /* #00D4E8 */
+    --accent-foreground: 220 13% 4%;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 98%;
+    /* Primary = accent for this theme */
+    --primary: 186 100% 50%;
+    --primary-foreground: 220 13% 4%;
 
-    --primary: 174 72% 56%;
-    --primary-foreground: 0 0% 4%;
+    /* Secondary */
+    --secondary: 220 13% 12%;
+    --secondary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
+    /* Muted */
+    --muted: 220 13% 12%;
+    --muted-foreground: 0 0% 63%; /* #A0A0A0 */
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
+    /* Borders */
+    --border: 220 13% 18%;
+    --input: 220 13% 18%;
+    --ring: 186 100% 50%;
 
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 98%;
-
+    /* Destructive */
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 14%;
-    --input: 0 0% 14%;
-    --ring: 174 72% 56%;
-
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 }
 
@@ -47,5 +56,28 @@
 
   html {
     scroll-behavior: smooth;
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50;
+  }
+
+  .glass-hover {
+    @apply hover:bg-card/80 hover:border-accent/30 transition-all duration-300;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent;
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 40px hsl(var(--accent) / 0.3);
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 }
