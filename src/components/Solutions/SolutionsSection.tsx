@@ -186,9 +186,12 @@ const SolutionsSection = () => {
 
         {/* Mobile: Swipe indicator */}
         <div className="md:hidden flex items-center justify-center gap-3 mt-4 text-muted-foreground text-sm">
-          <svg className="w-6 h-6 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M14 6l6 6-6 6M10 6l-6 6 6 6" />
-          </svg>
+          <img 
+            src="https://01.tech/images/vector/swipe.svg" 
+            alt="" 
+            className="w-6 h-6 opacity-60"
+            aria-hidden="true"
+          />
           <span>Свайпайте влево или вправо</span>
         </div>
 
