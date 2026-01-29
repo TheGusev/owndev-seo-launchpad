@@ -34,16 +34,23 @@ export default {
         },
         accent: {
           DEFAULT: "hsl(var(--accent))",
-          hover: "hsl(var(--accent-hover))",
           foreground: "hsl(var(--accent-foreground))",
         },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -84,14 +91,6 @@ export default {
           "0%": { opacity: "0", transform: "translateX(30px)" },
           "100%": { opacity: "1", transform: "translateX(0)" },
         },
-        "word-appear": {
-          "0%": { opacity: "0", filter: "blur(10px)", transform: "translateY(20px)" },
-          "100%": { opacity: "1", filter: "blur(0)", transform: "translateY(0)" },
-        },
-        ripple: {
-          "0%": { transform: "scale(0)", opacity: "0.5" },
-          "100%": { transform: "scale(4)", opacity: "0" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -100,8 +99,6 @@ export default {
         "scale-in": "scale-in 0.5s ease-out forwards",
         "slide-in-left": "slide-in-left 0.6s ease-out forwards",
         "slide-in-right": "slide-in-right 0.6s ease-out forwards",
-        "word-appear": "word-appear 0.6s ease-out forwards",
-        ripple: "ripple 0.6s ease-out forwards",
       },
     },
   },

@@ -1,19 +1,37 @@
-import Header from "@/components/Header/Header";
-import Hero from "@/components/Hero/Hero";
-import SolutionsSection from "@/components/Solutions/SolutionsSection";
-import WorldSection from "@/components/World/WorldSection";
-import CTASection from "@/components/CTA/CTASection";
-import Footer from "@/components/Footer/Footer";
+import Header from "@/components/Header";
+import Hero from "@/components/Hero";
+import ProblemsAndSolutions from "@/components/ProblemsAndSolutions";
+import Process from "@/components/Process";
+import Capabilities from "@/components/Capabilities";
+import Portfolio from "@/components/Portfolio";
+import Pricing from "@/components/Pricing";
+import ROICalculator from "@/components/ROICalculator";
+import Results from "@/components/Results";
+import FAQ from "@/components/FAQ";
+import ContactForm from "@/components/ContactForm";
+import Footer from "@/components/Footer";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-background scroll-smooth">
+      {/* Global Effects */}
+      <MouseGradient />
+      <ClickRipple />
+      
       <Header />
-      <main className="flex-1">
+      <main>
         <Hero />
-        <SolutionsSection />
-        <WorldSection />
-        <CTASection />
+        <ProblemsAndSolutions />
+        <Process />
+        <Capabilities />
+        <Portfolio />
+        <Pricing />
+        <ROICalculator />
+        <Results />
+        <FAQ />
+        <ContactForm />
       </main>
       <Footer />
     </div>
