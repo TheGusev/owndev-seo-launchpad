@@ -1,12 +1,16 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { ParallaxLayer } from "@/components/ui/parallax-layer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Pricing = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
+  const isMobile = useIsMobile();
+  const [isExpanded, setIsExpanded] = useState(!isMobile);
 
   const plans = [
     {
@@ -73,6 +77,39 @@ const Pricing = () => {
     }
   ];
 
+  const SectionHeader = () => (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6 }}
+      className="text-center mb-8 md:mb-16"
+    >
+      <button
+        onClick={() => isMobile && setIsExpanded(!isExpanded)}
+        className="w-full md:cursor-default"
+      >
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif flex items-center justify-center gap-3">
+          <span>
+            Прозрачная{" "}
+            <span className="text-gradient">ценовая модель</span>
+          </span>
+          {isMobile && (
+            <motion.span
+              animate={{ rotate: isExpanded ? 180 : 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <ChevronDown className="w-6 h-6 text-muted-foreground" />
+            </motion.span>
+          )}
+        </h2>
+        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          Выберите подходящий тариф для вашего бизнеса
+        </p>
+      </button>
+    </motion.div>
+  );
+
   return (
     <section id="pricing" className="py-24 relative overflow-hidden">
       <ParallaxLayer speed={0.15} className="absolute inset-0">
@@ -80,98 +117,96 @@ const Pricing = () => {
       </ParallaxLayer>
       
       <div className="container px-4 md:px-6 relative z-10">
-        <motion.div
-          ref={ref}
-          initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            Прозрачная{" "}
-            <span className="text-gradient">ценовая модель</span>
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Выберите подходящий тариф для вашего бизнеса
-          </p>
-        </motion.div>
+        <SectionHeader />
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {plans.map((plan, index) => (
+        <AnimatePresence initial={false}>
+          {(isExpanded || !isMobile) && (
             <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 30 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`relative group ${plan.recommended ? 'scale-105 z-10' : ''}`}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="overflow-hidden"
             >
-              <GlowingEffect
-                theme={plan.theme}
-                disabled={false}
-                borderWidth={plan.recommended ? 3 : 2}
-                spread={plan.recommended ? 40 : 25}
-                glow={true}
-                blur={plan.recommended ? 12 : 8}
-              />
-              <div className={`glass rounded-2xl p-6 relative z-10 h-full ${
-                plan.recommended 
-                  ? 'ring-2 ring-primary shadow-lg shadow-primary/20' 
-                  : ''
-              }`}>
-                {plan.recommended && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-semibold">
-                      Рекомендуем
-                    </span>
-                  </div>
-                )}
-                
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-bold text-muted-foreground mb-2">{plan.name}</h3>
-                  <div className="mb-2">
-                    <span className="text-2xl md:text-3xl font-bold text-foreground">{plan.price}</span>
-                    <span className="text-muted-foreground text-sm"> ₽</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{plan.description}</p>
-                </div>
-                
-                <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-success flex-shrink-0" />
-                      <span className="text-muted-foreground">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <GradientButton 
-                  variant={plan.recommended ? "default" : "variant"} 
-                  className="w-full"
-                  size="sm"
-                >
-                  Выбрать
-                </GradientButton>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {plans.map((plan, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={inView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className={`relative group ${plan.recommended ? 'scale-105 z-10' : ''}`}
+                  >
+                    <GlowingEffect
+                      theme={plan.theme}
+                      disabled={false}
+                      borderWidth={plan.recommended ? 3 : 2}
+                      spread={plan.recommended ? 40 : 25}
+                      glow={true}
+                      blur={plan.recommended ? 12 : 8}
+                    />
+                    <div className={`glass rounded-2xl p-6 relative z-10 h-full ${
+                      plan.recommended 
+                        ? 'ring-2 ring-primary shadow-lg shadow-primary/20' 
+                        : ''
+                    }`}>
+                      {plan.recommended && (
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                          <span className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-semibold">
+                            Рекомендуем
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="text-center mb-6">
+                        <h3 className="text-lg font-bold text-muted-foreground mb-2">{plan.name}</h3>
+                        <div className="mb-2">
+                          <span className="text-2xl md:text-3xl font-bold text-foreground">{plan.price}</span>
+                          <span className="text-muted-foreground text-sm"> ₽</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{plan.description}</p>
+                      </div>
+                      
+                      <ul className="space-y-3 mb-6">
+                        {plan.features.map((feature, i) => (
+                          <li key={i} className="flex items-center gap-2 text-sm">
+                            <Check className="w-4 h-4 text-success flex-shrink-0" />
+                            <span className="text-muted-foreground">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      
+                      <GradientButton 
+                        variant={plan.recommended ? "default" : "variant"} 
+                        className="w-full"
+                        size="sm"
+                      >
+                        Выбрать
+                      </GradientButton>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
+              
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={inView ? { opacity: 1 } : {}}
+                transition={{ duration: 0.6, delay: 0.5 }}
+                className="mt-12 text-center space-y-2"
+              >
+                <p className="text-sm text-muted-foreground">
+                  💡 Стоимость указана без учёта SEO-продвижения
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  💡 Дополнительно: SEO от 60,000 ₽/мес, техподдержка от 10,000 ₽/мес
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  💡 Кастомные проекты обсуждаются индивидуально
+                </p>
+              </motion.div>
             </motion.div>
-          ))}
-        </div>
-        
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={inView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="mt-12 text-center space-y-2"
-        >
-          <p className="text-sm text-muted-foreground">
-            💡 Стоимость указана без учёта SEO-продвижения
-          </p>
-          <p className="text-sm text-muted-foreground">
-            💡 Дополнительно: SEO от 60,000 ₽/мес, техподдержка от 10,000 ₽/мес
-          </p>
-          <p className="text-sm text-muted-foreground">
-            💡 Кастомные проекты обсуждаются индивидуально
-          </p>
-        </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );
