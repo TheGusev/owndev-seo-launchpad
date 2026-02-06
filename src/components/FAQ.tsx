@@ -1,7 +1,5 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { ChevronDown } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -9,12 +7,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const FAQ = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
-  const isMobile = useIsMobile();
-  const [isExpanded, setIsExpanded] = useState(!isMobile);
 
   const faqs = [
     {
@@ -51,83 +46,59 @@ const FAQ = () => {
     }
   ];
 
-  const SectionHeader = () => (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6 }}
-      className="text-center mb-8 md:mb-16"
-    >
-      <button
-        onClick={() => isMobile && setIsExpanded(!isExpanded)}
-        className="w-full md:cursor-default"
-      >
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif flex items-center justify-center gap-3">
-          <span>
-            Вопросы и{" "}
-            <span className="text-gradient">ответы</span>
-          </span>
-          {isMobile && (
-            <motion.span
-              animate={{ rotate: isExpanded ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <ChevronDown className="w-6 h-6 text-muted-foreground" />
-            </motion.span>
-          )}
-        </h2>
-        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Ответы на часто задаваемые вопросы наших клиентов
-        </p>
-      </button>
-    </motion.div>
-  );
-
   return (
     <section id="faq" className="py-24 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(222_47%_10%),transparent_70%)]" />
       
       <div className="container px-4 md:px-6 relative z-10">
-        <SectionHeader />
+        <motion.div
+          ref={ref}
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
+            Вопросы и{" "}
+            <span className="text-gradient">ответы</span>
+          </h2>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Ответы на часто задаваемые вопросы наших клиентов
+          </p>
+        </motion.div>
 
-        <AnimatePresence initial={false}>
-          {(isExpanded || !isMobile) && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="overflow-hidden max-w-3xl mx-auto"
-            >
-              <Accordion type="single" collapsible className="space-y-4">
-                {faqs.map((faq, index) => (
-                  <div key={index} className="relative group">
-                    <GlowingEffect
-                      theme="accent"
-                      disabled={false}
-                      borderWidth={1}
-                      spread={20}
-                      glow={true}
-                      blur={6}
-                    />
-                    <AccordionItem 
-                      value={`item-${index}`}
-                      className="glass rounded-xl px-6 border-none relative z-10"
-                    >
-                      <AccordionTrigger className="text-left hover:no-underline py-6">
-                        <span className="font-semibold text-foreground">{faq.question}</span>
-                      </AccordionTrigger>
-                      <AccordionContent className="text-muted-foreground pb-6">
-                        {faq.answer}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </div>
-                ))}
-              </Accordion>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="max-w-3xl mx-auto"
+        >
+          <Accordion type="single" collapsible className="space-y-4">
+            {faqs.map((faq, index) => (
+              <div key={index} className="relative group">
+                <GlowingEffect
+                  theme="accent"
+                  disabled={false}
+                  borderWidth={1}
+                  spread={20}
+                  glow={true}
+                  blur={6}
+                />
+                <AccordionItem 
+                  value={`item-${index}`}
+                  className="glass rounded-xl px-6 border-none relative z-10"
+                >
+                  <AccordionTrigger className="text-left hover:no-underline py-6">
+                    <span className="font-semibold text-foreground">{faq.question}</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground pb-6">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              </div>
+            ))}
+          </Accordion>
+        </motion.div>
       </div>
     </section>
   );
