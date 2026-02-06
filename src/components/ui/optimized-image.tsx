@@ -10,6 +10,7 @@ interface OptimizedImageProps {
   aspectRatio?: string;
   onLoad?: () => void;
   fallbackSrc?: string;
+  eager?: boolean;
 }
 
 export const OptimizedImage = ({
@@ -19,14 +20,17 @@ export const OptimizedImage = ({
   placeholderColor = 'hsl(222 47% 11%)',
   aspectRatio,
   onLoad,
-  fallbackSrc = 'https://placehold.co/800x600/1a1a1a/ffffff?text=Image'
+  fallbackSrc = 'https://placehold.co/800x600/1a1a1a/ffffff?text=Image',
+  eager = false
 }: OptimizedImageProps) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isInView, setIsInView] = useState(false);
+  const [isInView, setIsInView] = useState(eager);
   const [error, setError] = useState(false);
   const imgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (eager) return;
+    
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -34,7 +38,7 @@ export const OptimizedImage = ({
           observer.disconnect();
         }
       },
-      { rootMargin: '100px' }
+      { rootMargin: '200px 500px' }
     );
 
     if (imgRef.current) {
@@ -42,7 +46,7 @@ export const OptimizedImage = ({
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [eager]);
 
   const handleLoad = () => {
     setIsLoaded(true);

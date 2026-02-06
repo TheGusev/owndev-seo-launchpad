@@ -1,12 +1,25 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { ExternalLink, TrendingUp, Phone, DollarSign, Star } from "lucide-react";
+import { ExternalLink, TrendingUp, Phone, DollarSign, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 
 const Portfolio = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    setCount(api.scrollSnapList().length);
+    setCurrent(api.selectedScrollSnap());
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
 
   const projects = [
     {
@@ -127,6 +140,7 @@ const Portfolio = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <Carousel
+            setApi={setApi}
             opts={{
               align: "start",
               loop: true,
@@ -145,6 +159,7 @@ const Portfolio = () => {
                         className="w-full h-full transition-transform duration-500 group-hover:scale-110"
                         placeholderColor={project.placeholderColor}
                         fallbackSrc="https://placehold.co/800x600/1a1a1a/ffffff?text=Project"
+                        eager={true}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
                       <div className="absolute bottom-4 left-4 right-4">
@@ -210,6 +225,26 @@ const Portfolio = () => {
             </CarouselContent>
             <CarouselPrevious className="hidden md:flex -left-4" />
             <CarouselNext className="hidden md:flex -right-4" />
+            
+            {/* Mobile swipe indicator */}
+            <div className="flex md:hidden items-center justify-center gap-4 mt-6">
+              <ChevronLeft className="w-5 h-5 text-muted-foreground animate-pulse" />
+              <div className="flex gap-2">
+                {Array.from({ length: count }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => api?.scrollTo(i)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      i === current 
+                        ? 'bg-primary w-6' 
+                        : 'bg-muted-foreground/30 w-2'
+                    }`}
+                    aria-label={`Go to slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground animate-pulse" />
+            </div>
           </Carousel>
         </motion.div>
       </div>
