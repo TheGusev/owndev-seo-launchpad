@@ -1,28 +1,22 @@
 
 
-## 📋 План: Удаление трёх секций с главной страницы
+## 📋 План: Удаление секции "Прозрачная ценовая модель"
 
-### Удаляемые секции:
-1. **Process** — "Процесс за 4 шага"
-2. **ROICalculator** — "Рассчитайте свой ROI"
-3. **Results** — "Что достигли наши клиенты"
+### Удаляемая секция:
+- **Pricing** — "Прозрачная ценовая модель"
 
 ### Изменения в `src/pages/Index.tsx`:
 
-#### 1. Удалить импорты (строки 4, 8, 9):
+#### 1. Удалить импорт (строка 6):
 ```tsx
 // Удалить:
-import Process from "@/components/Process";
-import ROICalculator from "@/components/ROICalculator";
-import Results from "@/components/Results";
+import Pricing from "@/components/Pricing";
 ```
 
-#### 2. Удалить компоненты из JSX (строки 27, 31, 32):
+#### 2. Удалить компонент из JSX (строка 26):
 ```tsx
 // Удалить:
-<Process />
-<ROICalculator />
-<Results />
+<Pricing />
 ```
 
 ### Итоговая структура страницы:
@@ -31,15 +25,12 @@ import Results from "@/components/Results";
 |----|-------|
 | Hero | Hero |
 | ProblemsAndSolutions | ProblemsAndSolutions |
-| ~~Process~~ | — |
 | Capabilities | Capabilities |
 | Portfolio | Portfolio |
-| Pricing | Pricing |
-| ~~ROICalculator~~ | — |
-| ~~Results~~ | — |
+| ~~Pricing~~ | — |
 | FAQ | FAQ |
 | ContactForm | ContactForm |
 
 ### Примечание:
-Файлы компонентов (`Process.tsx`, `ROICalculator.tsx`, `Results.tsx`) останутся в проекте, но не будут использоваться. При желании их можно удалить позже.
+Файл `Pricing.tsx` останется в проекте, но не будет использоваться.
 
