@@ -144,7 +144,7 @@ ${data.message || 'Не указано'}
   const contactInfo = [
     { icon: Phone, label: "Телефон", value: "8 (906) 998-98-88", href: "tel:89069989888" },
     { icon: Mail, label: "Email", value: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
-    { icon: MessageCircle, label: "Telegram", value: "@The_Suppor_t", href: "https://t.me/The_Suppor_t?text=owndev" }
+    { icon: MessageCircle, label: "Telegram", value: "@one_help", href: "https://t.me/one_help?text=owndev" }
   ];
 
   return (
