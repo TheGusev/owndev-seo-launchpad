@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Globe, Building2, ShoppingCart, Search, Rocket, MessageSquare, Clock, Banknote, Users } from "lucide-react";
-import { GradientButton } from "@/components/ui/gradient-button";
+
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
@@ -135,7 +135,7 @@ const Capabilities = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-3 mb-6">
+                  <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">🎯 Цель:</span>
                       <span className="text-foreground">{service.goal}</span>
@@ -159,13 +159,6 @@ const Capabilities = () => {
                     </div>
                   </div>
 
-                  <GradientButton 
-                    variant={service.highlight ? "default" : "variant"} 
-                    className="w-full"
-                    size="sm"
-                  >
-                    {service.highlight ? "Записаться" : "Смотреть примеры"}
-                  </GradientButton>
                 </div>
               </motion.div>
             );
