@@ -1,7 +1,6 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import ProblemsAndSolutions from "@/components/ProblemsAndSolutions";
-import Capabilities from "@/components/Capabilities";
+import ScrollStacksSection from "@/components/ScrollStacksSection";
 import Portfolio from "@/components/Portfolio";
 import FAQ from "@/components/FAQ";
 import ContactForm from "@/components/ContactForm";
@@ -19,8 +18,7 @@ const Index = () => {
       <Header />
       <main>
         <Hero />
-        <ProblemsAndSolutions />
-        <Capabilities />
+        <ScrollStacksSection />
         <Portfolio />
         <FAQ />
         <ContactForm />
