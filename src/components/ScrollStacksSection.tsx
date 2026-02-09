@@ -24,10 +24,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 // ============================================
 const CONFIG = {
   stickyTopDesktop: 110,
-  stickyTopMobile: 100,
+  stickyTopMobile: 88,
   stackOffsetY: 28,
   stackScaleStep: 0.018,
-  revealThreshold: 0.25,
+  revealThreshold: 0.35,
 };
 
 // ============================================
@@ -400,7 +400,7 @@ const ScrollStacksSection = () => {
   const stickyTop = isMobile ? CONFIG.stickyTopMobile : CONFIG.stickyTopDesktop;
 
   return (
-    <section id="scroll-stacks" className="relative overflow-hidden">
+    <section id="scroll-stacks" className="relative">
       {/* Background */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(222_47%_10%),transparent_70%)]" />
       
