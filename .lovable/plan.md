@@ -1,203 +1,41 @@
 
 
-## План: Scroll Stacks - Эффект стопки карточек при скролле
+## Plan: Mobile Optimization for ScrollStacksSection
 
-### Текущее состояние
-На сайте есть 3 отдельные секции с карточками:
-1. **ProblemsAndSolutions.tsx** - содержит `problems[]` (4 карточки) и `solutions[]` (4 карточки)
-2. **Capabilities.tsx** - содержит `services[]` (6 карточек услуг)
+### Current State
+The component already has:
+- Mobile layout with sequential stacks (line 477, `md:hidden`)
+- IntersectionObserver for reveal (line 198)
+- CSS for `.stack-card` reveal animation (line 691 in index.css)
 
-Сейчас они идут последовательно как отдельные секции с полной прокруткой.
+### Issues Found
+1. `stickyTopMobile` is 100px -- too high, cards may overlap header area inconsistently
+2. `revealThreshold` is 0.25 -- user wants 0.35
+3. Section has `overflow-hidden` (line 403) which **breaks sticky positioning** on mobile -- this is the main bug
+4. The reveal animation in CSS uses `translateY(30px)` -- user wants `translateY(24px)`
+5. Mobile stack offset could be tighter for better visual stacking
 
----
+### Changes
 
-### Целевой UX
+**File 1: `src/components/ScrollStacksSection.tsx`**
 
-```text
-┌─────────────────────────────────────┐
-│            HERO SECTION             │
-│     "Сайты, которые продают"        │
-└─────────────────────────────────────┘
-                 ↓ scroll
-┌─────────────────────────────────────┐
-│         SCROLL STACKS SECTION       │
-│  (высота ~300vh для эффекта)        │
-│                                     │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐│
-│  │Проблемы │ │Решения  │ │Услуги   ││
-│  │  стопка │ │  стопка │ │  стопка ││
-│  │   ↓↓↓   │ │   ↓↓↓   │ │   ↓↓↓   ││
-│  └─────────┘ └─────────┘ └─────────┘│
-│                                     │
-│  При скролле карточки "выезжают"    │
-│  снизу и складываются в стопки      │
-└─────────────────────────────────────┘
-                 ↓ scroll
-┌─────────────────────────────────────┐
-│           Portfolio / FAQ           │
-└─────────────────────────────────────┘
-```
+| Line | Change |
+|------|--------|
+| 27 | `stickyTopMobile: 100` -> `stickyTopMobile: 88` |
+| 30 | `revealThreshold: 0.25` -> `revealThreshold: 0.35` |
+| 403 | Remove `overflow-hidden` from section className (breaks sticky on mobile) |
 
----
+**File 2: `src/index.css`**
 
-### Структура реализации
+| Line | Change |
+|------|--------|
+| 693 | `translateY(30px)` -> `translateY(24px)` |
 
-#### 1. Новый компонент `ScrollStacksSection.tsx`
+### Technical Details
 
-```text
-ScrollStacksSection/
-├── Конфиг параметров (вынесен в начало)
-├── 3 массива данных (problems, solutions, services)
-├── Хук useScrollProgress (отслеживает прогресс скролла)
-├── 3 компонента StackColumn
-└── Адаптивная сетка (3 колонки desktop / 1 колонка mobile)
-```
-
-#### 2. Техническая реализация
-
-**CSS-подход (без тяжелых библиотек):**
-- `position: sticky` + различные `top` для каждой карточки
-- `IntersectionObserver` для reveal-анимации появления
-- `transform: translateY / scale` для эффекта глубины стопки
-- Только `opacity` и `transform` в анимациях (GPU-ускорение)
-
-**Конфигурируемые параметры:**
-```typescript
-const CONFIG = {
-  desktopColumns: 3,
-  mobileBreakpoint: 768,
-  stickyTopDesktop: 110,     // px - под шапку
-  stickyTopMobile: 90,       // px
-  stackOffsetY: 22,          // px - смещение между карточками
-  stackScaleStep: 0.02,      // уменьшение scale для глубины
-  revealThreshold: 0.3,      // порог для IntersectionObserver
-  sectionHeight: 280,        // vh - общая высота секции
-};
-```
-
----
-
-### Изменения в файлах
-
-| Файл | Действие |
-|------|----------|
-| `src/components/ScrollStacksSection.tsx` | **СОЗДАТЬ** - новый компонент |
-| `src/hooks/useScrollProgress.ts` | **СОЗДАТЬ** - хук для отслеживания скролла |
-| `src/pages/Index.tsx` | **ИЗМЕНИТЬ** - заменить ProblemsAndSolutions + Capabilities на ScrollStacksSection |
-| `src/index.css` | **ИЗМЕНИТЬ** - добавить CSS-классы для stacking |
-
----
-
-### Детали компонента ScrollStacksSection
-
-**Структура данных карточек:**
-
-```typescript
-// Колонка 1: Проблемы
-const problemsData = [
-  { title: "Сайт не приносит клиентов", meta: "–80% трафика", ... },
-  { title: "Нет унификации в системе", meta: "×3 время", ... },
-  { title: "Стоимость разработки 500K+", meta: "500K+ ₽", ... },
-  { title: "Нет аналитики и отчетов", meta: "0 метрик", ... },
-];
-
-// Колонка 2: Решения
-const solutionsData = [
-  { title: "Низкие цены, высокий результат", status: "Выгодно", ... },
-  { title: "Комплексный подход", status: "Всё включено", ... },
-  { title: "Прозрачное ценообразование", status: "Честно", ... },
-  { title: "Собственные SaaS-платформы", status: "AI-powered", ... },
-];
-
-// Колонка 3: Услуги
-const servicesData = [
-  { title: "Landing Page", price: "от 40,000 ₽", duration: "5 дней", ... },
-  { title: "Корпоративный сайт", price: "от 90,000 ₽", ... },
-  // ... остальные услуги
-];
-```
-
-**Логика stacking:**
-
-```typescript
-// Каждая карточка получает:
-// 1. position: sticky
-// 2. top: stickyTop + (index * stackOffsetY)
-// 3. transform: scale(1 - index * stackScaleStep)
-// 4. z-index: totalCards - index (верхние выше)
-```
-
----
-
-### Адаптация под мобильные (критично)
-
-**Desktop (>=768px):**
-- 3 колонки рядом
-- Все стопки собираются одновременно при скролле
-- Высота секции: ~280vh
-
-**Mobile (<768px):**
-- 1 колонка
-- Стопки идут ПОСЛЕДОВАТЕЛЬНО:
-  1. Сначала полностью собирается стопка "Проблемы"
-  2. Отступ
-  3. Затем стопка "Решения"
-  4. Отступ
-  5. Затем стопка "Услуги"
-- Высота секции рассчитывается динамически
-
----
-
-### Reveal-анимация появления карточек
-
-```css
-.stack-card {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-}
-
-.stack-card.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-```
-
-IntersectionObserver добавляет класс `.is-visible` при появлении карточки в viewport.
-
----
-
-### Производительность
-
-- Никаких scroll-listener на каждый кадр - только IntersectionObserver
-- Все анимации через `transform` и `opacity` (GPU)
-- `will-change: transform` на карточках
-- Passive scroll listeners
-- Отключение эффектов при `prefers-reduced-motion`
-
----
-
-### Заголовки колонок
-
-| Колонка | Заголовок |
-|---------|-----------|
-| 1 | "С этим сталкиваются все" |
-| 2 | "Как мы это решаем" |
-| 3 | "Что мы можем разработать" |
-
----
-
-### План реализации (5 шагов)
-
-1. **Шаг 1**: Создать `useScrollProgress` хук и базовый `ScrollStacksSection`
-2. **Шаг 2**: Реализовать sticky-stacking на desktop
-3. **Шаг 3**: Добавить reveal-анимацию через IntersectionObserver
-4. **Шаг 4**: Адаптировать под mobile (последовательные стопки)
-5. **Шаг 5**: Интегрировать в Index.tsx, удалить старые секции
-
----
-
-### Ожидаемый результат
-
-После hero-блока пользователь попадает в секцию с увеличенной высотой. При скролле карточки плавно появляются и "укладываются" в три стопки (или одну на мобильном). В конечной точке все карточки видны как аккуратные стопки на одном экране. Далее скролл продолжается к Portfolio и другим секциям.
+- `overflow-hidden` on the parent section prevents `position: sticky` from working in some mobile browsers. Removing it fixes the stacking effect on mobile.
+- `stickyTopMobile: 88` gives proper clearance below the header without excessive gaps.
+- `revealThreshold: 0.35` means cards appear when 35% visible, matching the spec.
+- `translateY(24px)` gives a subtler, snappier reveal animation.
+- No new scroll listeners or heavy libraries added -- only config tweaks and a CSS fix.
 
