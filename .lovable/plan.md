@@ -1,41 +1,41 @@
 
 
-## Plan: Mobile Optimization for ScrollStacksSection
+## Plan: Fix Card Stacking Order + Add Scroll-Driven Animation
 
-### Current State
-The component already has:
-- Mobile layout with sequential stacks (line 477, `md:hidden`)
-- IntersectionObserver for reveal (line 198)
-- CSS for `.stack-card` reveal animation (line 691 in index.css)
-
-### Issues Found
-1. `stickyTopMobile` is 100px -- too high, cards may overlap header area inconsistently
-2. `revealThreshold` is 0.25 -- user wants 0.35
-3. Section has `overflow-hidden` (line 403) which **breaks sticky positioning** on mobile -- this is the main bug
-4. The reveal animation in CSS uses `translateY(30px)` -- user wants `translateY(24px)`
-5. Mobile stack offset could be tighter for better visual stacking
+### Root Cause
+Line 213: `zIndex = totalCards - index` gives card #0 the highest z-index. Card #1 slides under card #0 instead of on top. This is backwards.
 
 ### Changes
 
-**File 1: `src/components/ScrollStacksSection.tsx`**
+**File: `src/components/ScrollStacksSection.tsx`**
 
-| Line | Change |
-|------|--------|
-| 27 | `stickyTopMobile: 100` -> `stickyTopMobile: 88` |
-| 30 | `revealThreshold: 0.25` -> `revealThreshold: 0.35` |
-| 403 | Remove `overflow-hidden` from section className (breaks sticky on mobile) |
+1. **Fix z-index** (line 213): Change `zIndex = totalCards - index` to `zIndex = 10 + index` so each subsequent card layers ON TOP of the previous one.
 
-**File 2: `src/index.css`**
+2. **Fix scale direction** (line 212): Currently `scale = 1 - index * step` makes later (top) cards smaller. Flip: earlier cards should be slightly smaller since they go underneath. Remove per-card scale from inline styles -- all cards render at scale(1) initially; the "underneath" dimming effect handles visual depth.
 
-| Line | Change |
-|------|--------|
-| 693 | `translateY(30px)` -> `translateY(24px)` |
+3. **Add opaque background to cards**: The `glass` class likely uses transparent/translucent backgrounds. Add `relative isolate` and a solid `bg-background` or `bg-card` to ProblemCard, SolutionCard, and ServiceCard containers so text on lower cards doesn't bleed through.
+
+4. **Add scroll-driven entrance animation**: Add a single passive scroll listener (with requestAnimationFrame) on the section that computes a `--p` CSS variable (0 to 1) per card based on how close it is to its sticky position. This drives:
+   - `transform: translateY(calc((1 - var(--p)) * 24px)) scale(calc(0.985 + var(--p) * 0.015))`
+   - `opacity: calc(0.15 + var(--p) * 0.85)`
+   - `box-shadow` intensifying with `--p`
+   
+   The listener uses refs only (no setState per frame). Cleanup on unmount.
+
+5. **Dim "underneath" cards**: When a new card arrives on top, previous cards get a subtle class `.is-under` (opacity 0.85, scale 0.985) computed by the same scroll handler.
+
+**File: `src/index.css`**
+
+6. Update `.stack-card` styles:
+   - Add `position: relative; isolation: isolate;` (ensure stacking context)
+   - Update transition to include the CSS variable-driven transforms
+   - Add `.stack-card.is-under` rule: `opacity: 0.85; transform: scale(0.985);`
+   - Keep `.is-visible` reveal and `prefers-reduced-motion` as-is
 
 ### Technical Details
 
-- `overflow-hidden` on the parent section prevents `position: sticky` from working in some mobile browsers. Removing it fixes the stacking effect on mobile.
-- `stickyTopMobile: 88` gives proper clearance below the header without excessive gaps.
-- `revealThreshold: 0.35` means cards appear when 35% visible, matching the spec.
-- `translateY(24px)` gives a subtler, snappier reveal animation.
-- No new scroll listeners or heavy libraries added -- only config tweaks and a CSS fix.
-
+- z-index fix: `10 + index` (card 0 = z:10, card 1 = z:11, card 2 = z:12...) -- later cards always on top
+- One passive scroll listener per section, throttled via `requestAnimationFrame`, using refs to update CSS custom properties directly on DOM nodes (no React re-renders)
+- Cards get `bg-background` (opaque) so stacked cards don't show through
+- Sticky `top` offset logic stays the same: `stickyTop + index * stackOffsetY`
+- No new dependencies added
