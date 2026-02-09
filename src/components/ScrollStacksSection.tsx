@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { 
   Globe, 
   TrendingDown, 
@@ -185,14 +185,15 @@ interface StackCardProps {
   index: number;
   totalCards: number;
   stickyTop: number;
+  cardRef?: (el: HTMLDivElement | null) => void;
 }
 
-const StackCard = ({ children, index, totalCards, stickyTop }: StackCardProps) => {
-  const cardRef = useRef<HTMLDivElement>(null);
+const StackCard = ({ children, index, totalCards, stickyTop, cardRef }: StackCardProps) => {
+  const localRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const card = cardRef.current;
+    const card = localRef.current;
     if (!card) return;
 
     const observer = new IntersectionObserver(
@@ -209,18 +210,18 @@ const StackCard = ({ children, index, totalCards, stickyTop }: StackCardProps) =
   }, []);
 
   const topOffset = stickyTop + index * CONFIG.stackOffsetY;
-  const scale = 1 - index * CONFIG.stackScaleStep;
-  const zIndex = totalCards - index;
+  const zIndex = 10 + index; // Later cards ON TOP
 
   return (
     <div
-      ref={cardRef}
+      ref={(el) => {
+        (localRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+        cardRef?.(el);
+      }}
       className={`stack-card sticky will-change-transform ${isVisible ? 'is-visible' : ''}`}
       style={{
         top: `${topOffset}px`,
         zIndex,
-        transform: `scale(${scale})`,
-        transformOrigin: 'top center',
       }}
     >
       {children}
@@ -245,7 +246,7 @@ interface ProblemCardData {
 const ProblemCard = ({ data }: { data: ProblemCardData }) => {
   const Icon = data.icon;
   return (
-    <div className="glass rounded-2xl p-5 border border-destructive/20 hover:border-destructive/40 transition-colors">
+    <div className="relative isolate bg-background rounded-2xl p-5 border border-destructive/20 hover:border-destructive/40 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div className={`p-2.5 rounded-xl bg-card ${data.iconColor}`}>
           <Icon className="w-5 h-5" />
@@ -276,7 +277,7 @@ const ProblemCard = ({ data }: { data: ProblemCardData }) => {
 const SolutionCard = ({ data }: { data: ProblemCardData }) => {
   const Icon = data.icon;
   return (
-    <div className="glass rounded-2xl p-5 border border-success/20 hover:border-success/40 transition-colors">
+    <div className="relative isolate bg-background rounded-2xl p-5 border border-success/20 hover:border-success/40 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div className={`p-2.5 rounded-xl bg-card ${data.iconColor}`}>
           <Icon className="w-5 h-5" />
@@ -330,7 +331,7 @@ const ServiceCard = ({ data }: { data: ServiceCardData }) => {
   const colorClasses = getColorClasses(data.color);
   
   return (
-    <div className={`glass rounded-2xl p-5 border-t-4 ${colorClasses.border} ${data.highlight ? 'ring-2 ring-primary/50' : ''}`}>
+    <div className={`relative isolate bg-background rounded-2xl p-5 border-t-4 ${colorClasses.border} ${data.highlight ? 'ring-2 ring-primary/50' : ''}`}>
       {data.highlight && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold">
@@ -393,11 +394,116 @@ const StackColumn = ({ title, titleAccent, accentColor, children }: StackColumnP
 };
 
 // ============================================
+// SCROLL PROGRESS HOOK (refs only, no re-renders)
+// ============================================
+const useScrollProgress = (stickyTop: number) => {
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const rafId = useRef<number>(0);
+
+  const registerCard = useCallback((key: string) => {
+    return (el: HTMLDivElement | null) => {
+      if (el) {
+        cardRefs.current.set(key, el);
+      } else {
+        cardRefs.current.delete(key);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateProgress = () => {
+      const cards = cardRefs.current;
+      // Group cards by column (using data-column attribute)
+      const columns = new Map<string, HTMLDivElement[]>();
+      
+      cards.forEach((el, key) => {
+        const col = key.split('-')[0]; // e.g. "problems-0" -> "problems"
+        if (!columns.has(col)) columns.set(col, []);
+        columns.get(col)!.push(el);
+      });
+
+      columns.forEach((colCards) => {
+        // Sort by index (stored in data attribute or by DOM order)
+        colCards.sort((a, b) => {
+          const ai = parseInt(a.dataset.cardIndex || '0');
+          const bi = parseInt(b.dataset.cardIndex || '0');
+          return ai - bi;
+        });
+
+        let highestVisibleIndex = -1;
+
+        colCards.forEach((el, idx) => {
+          const rect = el.getBoundingClientRect();
+          const targetTop = stickyTop + idx * CONFIG.stackOffsetY;
+          
+          // p = how close the card is to its sticky position
+          // When card top == targetTop, p = 1
+          // When card is 200px below targetTop, p = 0
+          const distance = rect.top - targetTop;
+          const p = Math.max(0, Math.min(1, 1 - distance / 200));
+          
+          el.style.setProperty('--p', p.toFixed(3));
+
+          if (p > 0.8) {
+            highestVisibleIndex = idx;
+          }
+        });
+
+        // Apply .is-under to cards below the top card
+        colCards.forEach((el, idx) => {
+          if (highestVisibleIndex > idx) {
+            el.classList.add('is-under');
+          } else {
+            el.classList.remove('is-under');
+          }
+        });
+      });
+    };
+
+    const onScroll = () => {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(updateProgress);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // Initial calc
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(rafId.current);
+    };
+  }, [stickyTop]);
+
+  return registerCard;
+};
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 const ScrollStacksSection = () => {
   const isMobile = useIsMobile();
   const stickyTop = isMobile ? CONFIG.stickyTopMobile : CONFIG.stickyTopDesktop;
+  const registerCard = useScrollProgress(stickyTop);
+
+  const renderStackCard = (
+    columnKey: string,
+    index: number,
+    totalCards: number,
+    extraStickyOffset: number,
+    children: React.ReactNode
+  ) => (
+    <StackCard
+      index={index}
+      totalCards={totalCards}
+      stickyTop={stickyTop + extraStickyOffset}
+      cardRef={(el) => {
+        if (el) el.dataset.cardIndex = String(index);
+        registerCard(`${columnKey}-${index}`)(el);
+      }}
+    >
+      {children}
+    </StackCard>
+  );
 
   return (
     <section id="scroll-stacks" className="relative">
@@ -418,114 +524,78 @@ const ScrollStacksSection = () => {
 
         {/* Desktop: 3 columns */}
         <div className="hidden md:grid md:grid-cols-3 gap-6 pb-32">
-          {/* Problems Column */}
           <StackColumn 
             title="С этим сталкиваются" 
             titleAccent="все"
             accentColor="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent"
           >
             {problemsData.map((problem, index) => (
-              <StackCard 
-                key={problem.title} 
-                index={index} 
-                totalCards={problemsData.length}
-                stickyTop={stickyTop + 48}
-              >
-                <ProblemCard data={problem} />
-              </StackCard>
+              <div key={problem.title}>
+                {renderStackCard("problems", index, problemsData.length, 48, <ProblemCard data={problem} />)}
+              </div>
             ))}
           </StackColumn>
 
-          {/* Solutions Column */}
           <StackColumn 
             title="Как мы это" 
             titleAccent="решаем"
             accentColor="text-gradient"
           >
             {solutionsData.map((solution, index) => (
-              <StackCard 
-                key={solution.title} 
-                index={index} 
-                totalCards={solutionsData.length}
-                stickyTop={stickyTop + 48}
-              >
-                <SolutionCard data={solution} />
-              </StackCard>
+              <div key={solution.title}>
+                {renderStackCard("solutions", index, solutionsData.length, 48, <SolutionCard data={solution} />)}
+              </div>
             ))}
           </StackColumn>
 
-          {/* Services Column */}
           <StackColumn 
             title="Что мы можем" 
             titleAccent="разработать"
             accentColor="text-gradient"
           >
             {servicesData.map((service, index) => (
-              <StackCard 
-                key={service.title} 
-                index={index} 
-                totalCards={servicesData.length}
-                stickyTop={stickyTop + 48}
-              >
-                <ServiceCard data={service} />
-              </StackCard>
+              <div key={service.title}>
+                {renderStackCard("services", index, servicesData.length, 48, <ServiceCard data={service} />)}
+              </div>
             ))}
           </StackColumn>
         </div>
 
         {/* Mobile: Sequential stacks */}
         <div className="md:hidden space-y-16 pb-16">
-          {/* Problems */}
           <StackColumn 
             title="С этим сталкиваются" 
             titleAccent="все"
             accentColor="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent"
           >
             {problemsData.map((problem, index) => (
-              <StackCard 
-                key={problem.title} 
-                index={index} 
-                totalCards={problemsData.length}
-                stickyTop={stickyTop + 40}
-              >
-                <ProblemCard data={problem} />
-              </StackCard>
+              <div key={problem.title}>
+                {renderStackCard("m-problems", index, problemsData.length, 40, <ProblemCard data={problem} />)}
+              </div>
             ))}
           </StackColumn>
 
-          {/* Solutions */}
           <StackColumn 
             title="Как мы это" 
             titleAccent="решаем"
             accentColor="text-gradient"
           >
             {solutionsData.map((solution, index) => (
-              <StackCard 
-                key={solution.title} 
-                index={index} 
-                totalCards={solutionsData.length}
-                stickyTop={stickyTop + 40}
-              >
-                <SolutionCard data={solution} />
-              </StackCard>
+              <div key={solution.title}>
+                {renderStackCard("m-solutions", index, solutionsData.length, 40, <SolutionCard data={solution} />)}
+              </div>
             ))}
           </StackColumn>
 
-          {/* Services */}
           <StackColumn 
             title="Что мы можем" 
             titleAccent="разработать"
             accentColor="text-gradient"
           >
             {servicesData.map((service, index) => (
-              <StackCard 
-                key={service.title} 
-                index={index} 
-                totalCards={servicesData.length}
-                stickyTop={stickyTop + 40}
-              >
-                <ServiceCard data={service} />
-              </StackCard>
+              <div key={service.title}>
+                {renderStackCard("m-services", index, servicesData.length, 40, <ServiceCard data={service} />)}
+              </div>
             ))}
           </StackColumn>
         </div>

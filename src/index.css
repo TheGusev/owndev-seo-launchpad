@@ -689,17 +689,25 @@
    ============================================ */
 
 .stack-card {
+  position: relative;
+  isolation: isolate;
   opacity: 0;
-  transform: translateY(24px) scale(var(--scale, 1));
-  transition: opacity 0.5s ease-out, transform 0.5s ease-out, box-shadow 0.3s ease;
+  transform: translateY(calc((1 - var(--p, 0)) * 24px)) scale(calc(0.985 + var(--p, 0) * 0.015));
+  transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
 .stack-card.is-visible {
-  opacity: 1;
-  transform: translateY(0) scale(var(--scale, 1));
+  opacity: calc(0.15 + var(--p, 1) * 0.85);
+  transform: translateY(calc((1 - var(--p, 1)) * 24px)) scale(calc(0.985 + var(--p, 1) * 0.015));
+  box-shadow: 0 calc(var(--p, 0) * 16px) calc(var(--p, 0) * 32px) calc(var(--p, 0) * -8px) hsl(var(--primary) / calc(var(--p, 0) * 0.15));
+}
+
+.stack-card.is-under {
+  opacity: 0.85;
+  transform: scale(0.985);
 }
 
 /* Hover lift effect */
