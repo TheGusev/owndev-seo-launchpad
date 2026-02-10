@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { 
   Globe, 
   TrendingDown, 
@@ -28,6 +28,11 @@ const CONFIG = {
   stackOffsetY: 28,
   stackScaleStep: 0.018,
   revealThreshold: 0.35,
+  revealDistance: 200,
+  scaleRange: [0.985, 1] as const,
+  stackedOpacity: 0.85,
+  stackedScale: 0.985,
+  stackTrigger: 0.8,
 };
 
 // ============================================
@@ -190,24 +195,6 @@ interface StackCardProps {
 
 const StackCard = ({ children, index, totalCards, stickyTop, isMobile = false }: StackCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const card = cardRef.current;
-    if (!card) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
-      },
-      { threshold: CONFIG.revealThreshold }
-    );
-
-    observer.observe(card);
-    return () => observer.disconnect();
-  }, []);
 
   const topOffset = stickyTop + index * CONFIG.stackOffsetY;
   const scale = isMobile ? 1 : 1 - index * CONFIG.stackScaleStep;
@@ -216,11 +203,12 @@ const StackCard = ({ children, index, totalCards, stickyTop, isMobile = false }:
   return (
     <div
       ref={cardRef}
-      className={`stack-card sticky will-change-transform ${isVisible ? 'is-visible' : ''}`}
+      className="stack-card sticky will-change-transform"
+      data-progress="0"
+      data-sticky-top={topOffset}
       style={{
         top: `${topOffset}px`,
         zIndex,
-        transform: `scale(${scale})`,
         transformOrigin: 'top center',
       }}
     >
@@ -399,9 +387,67 @@ const StackColumn = ({ title, titleAccent, accentColor, children }: StackColumnP
 const ScrollStacksSection = () => {
   const isMobile = useIsMobile();
   const stickyTop = isMobile ? CONFIG.stickyTopMobile : CONFIG.stickyTopDesktop;
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    let rafId = 0;
+    const cachedStickyTops = new Map<HTMLElement, number>();
+
+    const updateProgress = () => {
+      const cards = section.querySelectorAll<HTMLElement>('.stack-card');
+      
+      // Cache sticky tops on first run
+      if (cachedStickyTops.size === 0) {
+        cards.forEach((card) => {
+          const st = parseFloat(card.dataset.stickyTop || '0');
+          cachedStickyTops.set(card, st);
+        });
+      }
+
+      const cardArray = Array.from(cards);
+      
+      cardArray.forEach((card, i) => {
+        const st = cachedStickyTops.get(card) || 0;
+        const rect = card.getBoundingClientRect();
+        const distFromSticky = rect.top - st;
+        const p = Math.min(1, Math.max(0, 1 - distFromSticky / CONFIG.revealDistance));
+        
+        card.style.setProperty('--p', p.toFixed(3));
+        card.dataset.progress = p.toFixed(2);
+        
+        if (p > 0) {
+          card.classList.add('is-visible');
+        }
+
+        // Mark previous card as stacked
+        if (i > 0 && p > CONFIG.stackTrigger) {
+          cardArray[i - 1].classList.add('is-stacked');
+        } else if (i > 0 && p <= CONFIG.stackTrigger) {
+          cardArray[i - 1].classList.remove('is-stacked');
+        }
+      });
+    };
+
+    const onScroll = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateProgress);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Initial calculation
+    requestAnimationFrame(updateProgress);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(rafId);
+    };
+  }, [isMobile]);
 
   return (
-    <section id="scroll-stacks" className="relative">
+    <section id="scroll-stacks" ref={sectionRef} className="relative">
       {/* Background */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(222_47%_10%),transparent_70%)]" />
       
