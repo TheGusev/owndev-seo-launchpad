@@ -185,9 +185,10 @@ interface StackCardProps {
   index: number;
   totalCards: number;
   stickyTop: number;
+  isMobile?: boolean;
 }
 
-const StackCard = ({ children, index, totalCards, stickyTop }: StackCardProps) => {
+const StackCard = ({ children, index, totalCards, stickyTop, isMobile = false }: StackCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -209,8 +210,8 @@ const StackCard = ({ children, index, totalCards, stickyTop }: StackCardProps) =
   }, []);
 
   const topOffset = stickyTop + index * CONFIG.stackOffsetY;
-  const scale = 1 - index * CONFIG.stackScaleStep;
-  const zIndex = totalCards - index;
+  const scale = isMobile ? 1 : 1 - index * CONFIG.stackScaleStep;
+  const zIndex = isMobile ? 10 + index : totalCards - index;
 
   return (
     <div
@@ -487,6 +488,7 @@ const ScrollStacksSection = () => {
                 index={index} 
                 totalCards={problemsData.length}
                 stickyTop={stickyTop + 40}
+                isMobile
               >
                 <ProblemCard data={problem} />
               </StackCard>
@@ -505,6 +507,7 @@ const ScrollStacksSection = () => {
                 index={index} 
                 totalCards={solutionsData.length}
                 stickyTop={stickyTop + 40}
+                isMobile
               >
                 <SolutionCard data={solution} />
               </StackCard>
@@ -523,6 +526,7 @@ const ScrollStacksSection = () => {
                 index={index} 
                 totalCards={servicesData.length}
                 stickyTop={stickyTop + 40}
+                isMobile
               >
                 <ServiceCard data={service} />
               </StackCard>
