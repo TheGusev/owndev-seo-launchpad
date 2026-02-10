@@ -714,6 +714,14 @@
   position: relative;
 }
 
+/* Mobile: opaque card backgrounds to prevent text bleed-through */
+@media (max-width: 767px) {
+  .stack-card .glass {
+    background: hsl(222 47% 8% / 1);
+    backdrop-filter: none;
+  }
+}
+
 /* Reduce motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
   .stack-card {
