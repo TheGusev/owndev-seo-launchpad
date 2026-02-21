@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import WhatIsPSEO from "@/components/WhatIsPSEO";
@@ -127,6 +128,16 @@ const Index = () => {
           >
             <GEOCoverageMap />
           </ToolScreen>
+        </div>
+
+        {/* CTA to full catalog */}
+        <div className="text-center py-12">
+          <Link
+            to="/tools"
+            className="inline-flex items-center gap-2 glass px-6 py-3 rounded-full text-primary font-semibold hover:border-primary/40 transition-colors"
+          >
+            Смотреть все 20 инструментов →
+          </Link>
         </div>
 
         <CasesResults />
