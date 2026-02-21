@@ -15,7 +15,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 snap-section">
       <CornerDecorations size="lg" />
       
       <ParallaxLayer speed={0.3} className="absolute inset-0 z-[3] pointer-events-none">

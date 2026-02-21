@@ -13,7 +13,7 @@ import { ClickRipple } from "@/components/ui/click-ripple";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background scroll-smooth">
+    <div className="min-h-screen bg-background scroll-smooth snap-container">
       <MouseGradient />
       <ClickRipple />
       

@@ -46,7 +46,7 @@ const WebStudioSection = () => {
   };
 
   return (
-    <section id="web-studio" className="py-24 md:py-32 relative overflow-hidden">
+    <section id="web-studio" className="py-24 md:py-32 relative overflow-hidden min-h-screen snap-section">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(174_72%_56%_/_0.05),transparent_50%)]" />
 
       <div className="container px-4 md:px-6 relative z-10">
