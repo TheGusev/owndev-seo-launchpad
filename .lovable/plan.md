@@ -1,113 +1,213 @@
 
 
-## Plan: Add Niches to GEO System -- 5000 Landing Pages
+## Plan: Redesign Main Page -- 3 Business Verticals with Parallax Room Tour
 
-### What we have now
-- 85 regions in `src/data/regions.ts`
-- Routes: `/tools/:toolSlug/:regionSlug` for GEO pages (city-only)
-- 18 tools in registry, 8 with `geoEnabled: true`
-- GeoToolPage renders localized content per region
+### Overview
 
-### What changes
+Transform the Index page from a single-purpose pSEO tool platform into a **3-in-1 business showcase**:
+1. **Web Studio** (main focus) -- "We build sites that sell"
+2. **pSEO Tools** (instruments section) -- existing 5 tools, condensed
+3. **Smart Tech Shop** (future-facing) -- AI containers, robots, platforms
 
-We add a **niches** dimension. New URL pattern:
+The design uses a **room tour** approach with full-screen scroll-snap sections, deep parallax layers, and glassmorphism. **Mobile-first** with simplified animations on phones.
+
+---
+
+### Current Structure (what changes)
 
 ```
-/:citySlug/:nicheSlug/:toolSlug
+CURRENT:                          NEW:
+Hero (pSEO focus)                 Hero (3-in-1 OWNDEV intro)
+WhatIsPSEO                       WebStudio section (projects showcase)
+ToolNavigation (sticky)           ToolsShowcase section (5 tools, condensed)
+5x ToolScreen (full-screen each)  TechShop section (AI containers)
+CTA to /tools                    CasesResults (keep, update text)
+CasesResults                     FAQ (keep)
+ContactForm                      ContactForm (keep)
+Footer                           Footer (update links)
 ```
 
-Examples:
-- `/moskva/saas/pseo-generator`
-- `/peterburg/nedvizhimost/roi-calculator`
-- `/ekaterinburg/ecommerce/anti-duplicate`
+Key decisions:
+- **Remove** from Index: `WhatIsPSEO`, `ToolNavigation` (sticky bar), 5x individual `ToolScreen` sections
+- **Keep**: `CasesResults`, `ContactForm`, `Footer`, `FAQ`
+- **Add**: `WebStudioSection`, `ToolsShowcase`, `TechShopSection`
+- **Rewrite**: `Hero` component to reflect 3 businesses
+- The removed tool screens are still accessible at `/tools` and `/tools/:toolSlug`
 
-Only the 5 main tools get niche pages (not all 18):
-- pseo-generator, anti-duplicate, ai-citation, roi-calculator, geo-map
+---
 
-5 tools x 50 cities x 20 niches = **5,000 pages**
+### Part 1: New Hero Component
 
-### Implementation Steps
+Rewrite `src/components/Hero.tsx`:
 
-#### 1. Create niches data (`src/data/niches.ts`)
+- TypeAnimation cycles through 3 business lines:
+  - "Сайты под ключ" (2s)
+  - "SEO-инструменты" (2s) 
+  - "Технологии будущего" (2s)
+- Subtitle: "Веб-студия, pSEO-платформа и магазин умных технологий"
+- 3 CTA buttons scrolling to each section:
+  - "Смотреть проекты" -> #web-studio
+  - "Инструменты pSEO" -> #tools-showcase
+  - "Магазин технологий" -> #tech-shop
+- Keep existing parallax layers (SparklesCore, FloatingParticles, AnimatedGrid)
+- Stats line updated: "30+ проектов | 6 готовых платформ | 5000+ GEO-страниц"
 
-20 niches with metadata:
+---
 
-```typescript
-export interface Niche {
-  id: string;           // URL slug: "saas", "ecommerce"
-  name: string;         // "SaaS-продукты"
-  nameCase: string;     // "SaaS" (for use in sentences)
-  description: string;  // 1-2 sentences about the niche
-  keywords: string[];   // Related search terms
+### Part 2: WebStudioSection (new component)
+
+**File**: `src/components/WebStudioSection.tsx`
+
+Full-screen section showcasing web studio services:
+
+- H2: "Делаем сайты, которые **продают**"
+- Subtitle: "Под ключ, натягиваем ваш фронт, или аренда готовых решений"
+- **3 service cards** (glass cards, horizontal on desktop):
+  1. "Под ключ" -- дизайн + разработка + SEO
+  2. "Натянем ваш фронт" -- ваш дизайн, наш backend
+  3. "Аренда готовых решений" -- 6+ готовых проектов
+- **Portfolio carousel** (reuse existing `Portfolio` component data but inline it)
+  - Shows 6 projects: protocro.ru, vozmozhnost.shop, and 4 others
+  - Each card: screenshot, name, category, key metric
+  - Horizontal scroll on mobile, carousel on desktop
+- CTA: "Заказать сайт" -> scrolls to #contact
+- Parallax: subtle background layer shift on scroll
+
+---
+
+### Part 3: ToolsShowcase (new component)
+
+**File**: `src/components/ToolsShowcase.tsx`
+
+Condensed pSEO tools section (replaces 5 full-screen ToolScreens):
+
+- H2: "Бесплатные **SEO-инструменты**"
+- 5 tool cards in a grid (3 cols desktop, 2 tablet, 1 mobile)
+- Each card: icon, name, 1-line description, "Открыть" button linking to `/tools/:slug`
+- Reuse data from existing `ToolNavigation` (Sparkles, Shield, Bot, Calculator, MapPin)
+- "Все 20 инструментов" link to `/tools`
+- Uses `useInView` for staggered fade-in animation
+- No tool widgets rendered on Index page (saves bundle size via lazy loading)
+
+---
+
+### Part 4: TechShopSection (new component)
+
+**File**: `src/components/TechShopSection.tsx`
+
+Smart tech / AI containers showcase:
+
+- H2: "Магазин **технологий будущего**"
+- Subtitle: "Умные контейнеры с AI, роботы и платформы с пожизненными обновлениями"
+- 3 product cards (glass cards):
+  1. "AI-контейнер Starter" -- базовый набор промтов и моделей
+  2. "AI-контейнер Pro" -- полная платформа + обновления
+  3. "Робот-ассистент" -- coming soon / предзаказ
+- Each card: gradient border, price/status badge, feature list
+- CTA: "Узнать подробнее" -> Telegram link or #contact
+- Visual: floating 3D-like element (CSS perspective transform on a glass card), no Three.js to keep mobile fast
+
+---
+
+### Part 5: Updated Index Page
+
+**File**: `src/pages/Index.tsx`
+
+New structure:
+```tsx
+<Header />
+<Hero />                    // rewritten
+<WebStudioSection />        // new -- projects & services
+<ToolsShowcase />           // new -- condensed 5 tools
+<TechShopSection />         // new -- AI shop
+<ScrollStacksSection />     // keep -- problems/solutions/services
+<CasesResults />            // keep
+<FAQ />                     // keep
+<ContactForm />             // keep
+<Footer />                  // keep
+```
+
+Remove:
+- `WhatIsPSEO` import and usage
+- `ToolNavigation` import and usage  
+- All 5 `ToolScreen` blocks and the `toolsContainerRef` + IntersectionObserver logic
+- The "Смотреть все 20 инструментов" CTA (moved into ToolsShowcase)
+
+---
+
+### Part 6: Header Navigation Update
+
+**File**: `src/components/Header.tsx`
+
+Update nav links to reflect 3 sections:
+```
+[Веб-студия] [Инструменты] [Технологии] [Кейсы] [Контакты]
+```
+- "Веб-студия" -> `#web-studio`
+- "Инструменты" -> `/tools` (route)
+- "Технологии" -> `#tech-shop`
+- "Кейсы" -> `#cases`
+- "Контакты" -> `#contact`
+
+---
+
+### Part 7: Scroll Snap (optional enhancement)
+
+Add CSS scroll-snap to `src/index.css` for desktop:
+```css
+@media (min-width: 768px) {
+  .snap-container {
+    scroll-snap-type: y proximity;
+  }
+  .snap-section {
+    scroll-snap-align: start;
+  }
 }
 ```
 
-List: saas, lokalnye-uslugi, ecommerce, b2b, nedvizhimost, avto, medicina, obrazovanie, finansy, stroitelstvo, it-razrabotka, marketing, hr, logistika, turizm, restorany, sport, krasota, deti, zhivotnye
+Each major section gets `snap-section` class. Using `proximity` (not `mandatory`) so it doesn't fight with natural scrolling.
 
-#### 2. Create GeoNicheToolPage (`src/pages/GeoNicheToolPage.tsx`)
+---
 
-New page component for `/:citySlug/:nicheSlug/:toolSlug`:
-- Loads city from regions, niche from niches, tool from registry
-- Generates unique Title/H1/Description combining all three: "pSEO Generator для SaaS в Москве"
-- Schema.org: SoftwareApplication + areaServed
-- Unique content block combining `region.localText` with niche-specific text
-- Tool widget (same component, no changes)
-- CTA: "Получить аудит для SaaS в Москве"
-- Interlinking:
-  - Same city, same niche, other tools (horizontal)
-  - Same city, other niches, same tool (vertical)
-  - Other cities, same niche, same tool (geographic)
+### Part 8: Footer Update
 
-#### 3. Update routing (`src/App.tsx`)
+**File**: `src/components/Footer.tsx`
 
-Add new route BEFORE the catch-all:
-```
-/:citySlug/:nicheSlug/:toolSlug  ->  GeoNicheToolPage
-```
+Update columns:
+- Column 1: Logo + description ("Веб-студия, pSEO-платформа, магазин технологий")
+- Column 2: Quick links (3 sections + contacts)
+- Column 3: Инструменты (link to /tools)
+- Column 4: Company (keep as-is)
 
-Keep existing routes:
-- `/tools` -- catalog
-- `/tools/:toolSlug` -- tool page
-- `/tools/:toolSlug/:regionSlug` -- old GEO pages (keep for backwards compatibility, or redirect)
-
-#### 4. Trim regions to 50 cities
-
-Currently 85 regions. For the niche pages, use the top 50 by population. The existing 85 remain available for the old `/tools/:tool/:region` routes.
-
-#### 5. Update sitemap (`public/sitemap.xml`)
-
-Replace current GEO URLs with new structure. With 5000 URLs, split into sitemap index:
-- `public/sitemap.xml` -- sitemap index pointing to:
-  - `public/sitemap-pages.xml` -- static pages
-  - `public/sitemap-geo-1.xml` through `sitemap-geo-5.xml` -- 1000 URLs each (one per tool)
-
-#### 6. Add niche-specific content generation
-
-Each page needs unique text. Strategy:
-- Combine `region.localText` (city-specific) with niche description
-- Template: "{tool.name} помогает компаниям в сфере {niche.name} в {region.nameCase} создавать/проверять/анализировать..."
-- Each niche has 2-3 template sentences that get combined with city data
-- This ensures sufficient uniqueness across 5000 pages
+---
 
 ### Files Summary
 
 | Action | File | Purpose |
 |--------|------|---------|
-| Create | `src/data/niches.ts` | 20 niches with metadata |
-| Create | `src/pages/GeoNicheToolPage.tsx` | Landing page for /:city/:niche/:tool |
-| Modify | `src/App.tsx` | Add new route |
-| Modify | `public/sitemap.xml` | Sitemap index with 5000 URLs |
-| Modify | `src/data/tools-registry.ts` | Add `nicheEnabled` flag to 5 tools |
+| Create | `src/components/WebStudioSection.tsx` | Web studio services + project cards |
+| Create | `src/components/ToolsShowcase.tsx` | Condensed 5-tool grid with links |
+| Create | `src/components/TechShopSection.tsx` | AI containers / tech shop cards |
+| Modify | `src/components/Hero.tsx` | 3-business hero with cycling text |
+| Modify | `src/pages/Index.tsx` | New section order, remove old tool screens |
+| Modify | `src/components/Header.tsx` | Updated nav links for 3 verticals |
+| Modify | `src/components/Footer.tsx` | Updated description and links |
+| Modify | `src/index.css` | Add scroll-snap utilities |
 
-### Technical Notes
+### Mobile-First Notes
 
-- URL structure uses Cyrillic-free slugs for all segments (moskva, saas, pseo-generator)
-- Old `/tools/:tool/:region` routes remain functional (no breaking changes)
-- No backend needed -- all data is static in TypeScript files
-- react-helmet-async handles dynamic meta tags per page
-- Interlinking creates a dense internal link graph (each page links to ~30 other pages)
+- All new sections use single-column layout on mobile
+- Parallax disabled on mobile (existing ParallaxLayer already handles this)
+- Tool cards use horizontal scroll on mobile
+- Buttons: min-height 48px for touch targets
+- No heavy animations on mobile: only fade-in + scale
 
-### Scope
+### Implementation Order
 
-This is Step 1 (GEO + niches). The 3-business restructuring (web studio, pSEO tools, tech shop) will be a separate task after this is live and indexing.
+1. Create 3 new section components (WebStudioSection, ToolsShowcase, TechShopSection)
+2. Rewrite Hero with 3-business messaging
+3. Update Index.tsx with new structure
+4. Update Header nav links
+5. Update Footer
+6. Add scroll-snap CSS
 
