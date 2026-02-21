@@ -11,6 +11,7 @@ import Terms from "./pages/Terms";
 import Tools from "./pages/Tools";
 import ToolPage from "./pages/ToolPage";
 import GeoToolPage from "./pages/GeoToolPage";
+import GeoNicheToolPage from "./pages/GeoNicheToolPage";
 import CookieBanner from "./components/CookieBanner";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/:toolSlug" element={<ToolPage />} />
             <Route path="/tools/:toolSlug/:regionSlug" element={<GeoToolPage />} />
+            <Route path="/:citySlug/:nicheSlug/:toolSlug" element={<GeoNicheToolPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
