@@ -6,40 +6,30 @@ const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { href: "#capabilities", label: "Услуги" },
-    { href: "#portfolio", label: "Портфолио" },
-    { href: "#pricing", label: "Тарифы" },
-    { href: "#faq", label: "FAQ" },
+    { href: "#tool-generator", label: "Инструменты pSEO" },
+    { href: "#what-is-pseo", label: "Что такое pSEO?" },
+    { href: "#cases", label: "Кейсы" },
     { href: "#contact", label: "Контакты" },
   ];
 
-  const scrollToContact = () => {
-    const element = document.getElementById("contact");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
     setIsOpen(false);
   };
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
-    const element = document.getElementById(href.replace("#", ""));
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-    setIsOpen(false);
+    scrollTo(href.replace("#", ""));
   };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass">
       <div className="container px-4 md:px-6">
         <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
           <a href="/" className="text-2xl font-bold text-gradient">
             OWNDEV
           </a>
 
-          {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
               <a
@@ -53,14 +43,12 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* CTA */}
           <div className="hidden md:block">
-            <GradientButton size="sm" onClick={scrollToContact}>
-              Бесплатная консультация
+            <GradientButton size="sm" onClick={() => scrollTo("tool-generator")}>
+              Открыть платформу
             </GradientButton>
           </div>
 
-          {/* Mobile menu button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="md:hidden p-2 text-foreground"
@@ -69,7 +57,6 @@ const Header = () => {
           </button>
         </div>
 
-        {/* Mobile nav */}
         {isOpen && (
           <nav className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-4">
@@ -83,8 +70,8 @@ const Header = () => {
                   {link.label}
                 </a>
               ))}
-              <GradientButton size="sm" className="mt-2" onClick={scrollToContact}>
-                Бесплатная консультация
+              <GradientButton size="sm" className="mt-2" onClick={() => scrollTo("tool-generator")}>
+                Открыть платформу
               </GradientButton>
             </div>
           </nav>

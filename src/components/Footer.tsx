@@ -11,18 +11,18 @@ const Footer = () => {
   ];
 
   const quickLinks = [
-    { label: "Портфолио", href: "#portfolio" },
-    { label: "Тарифы", href: "#pricing" },
-    { label: "FAQ", href: "#faq" },
+    { label: "Инструменты pSEO", href: "#tool-generator" },
+    { label: "Что такое pSEO?", href: "#what-is-pseo" },
+    { label: "Кейсы", href: "#cases" },
     { label: "Контакты", href: "#contact" },
   ];
 
   const services = [
-    { label: "Лендинг", href: "#capabilities" },
-    { label: "Корпоративный сайт", href: "#capabilities" },
-    { label: "Интернет-магазин", href: "#capabilities" },
-    { label: "SEO-оптимизация", href: "#capabilities" },
-    { label: "SaaS-платформа", href: "#capabilities" },
+    { label: "pSEO Generator", href: "#tool-generator" },
+    { label: "Anti-Duplicate Checker", href: "#tool-anti-duplicate" },
+    { label: "AI Citation Checker", href: "#tool-ai-check" },
+    { label: "ROI Calculator", href: "#tool-roi" },
+    { label: "GEO Coverage Map", href: "#tool-geo" },
   ];
 
   const company = [
@@ -62,7 +62,7 @@ const Footer = () => {
               OWNDEV
             </a>
             <p className="text-muted-foreground text-sm">
-              Создаём веб-сайты и SaaS-платформы для малого и среднего бизнеса
+              Бесплатная pSEO‑платформа для российского бизнеса
             </p>
             <div className="space-y-3">
               {contactInfo.map((item, index) => (
@@ -98,7 +98,7 @@ const Footer = () => {
 
           {/* Column 3: Services */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4">Услуги</h3>
+            <h3 className="font-semibold text-foreground mb-4">Инструменты</h3>
             <ul className="space-y-3">
               {services.map((link, index) => (
                 <li key={index}>
