@@ -1,11 +1,14 @@
 import { GradientButton } from "@/components/ui/gradient-button";
+import { useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const navLinks = [
+  const navLinks: { href: string; label: string; isRoute?: boolean }[] = [
+    { href: "/tools", label: "Все инструменты", isRoute: true },
     { href: "#tool-generator", label: "Инструменты pSEO" },
     { href: "#what-is-pseo", label: "Что такое pSEO?" },
     { href: "#cases", label: "Кейсы" },
@@ -17,9 +20,14 @@ const Header = () => {
     setIsOpen(false);
   };
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, link: { href: string; isRoute?: boolean }) => {
     e.preventDefault();
-    scrollTo(href.replace("#", ""));
+    if (link.isRoute) {
+      navigate(link.href);
+      setIsOpen(false);
+    } else {
+      scrollTo(link.href.replace("#", ""));
+    }
   };
 
   return (
@@ -35,7 +43,7 @@ const Header = () => {
               <a
                 key={link.href}
                 href={link.href}
-                onClick={(e) => handleNavClick(e, link.href)}
+                onClick={(e) => handleNavClick(e, link)}
                 className="text-muted-foreground hover:text-foreground transition-colors font-medium"
               >
                 {link.label}
@@ -64,7 +72,7 @@ const Header = () => {
                 <a
                   key={link.href}
                   href={link.href}
-                  onClick={(e) => handleNavClick(e, link.href)}
+                  onClick={(e) => handleNavClick(e, link)}
                   className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
                 >
                   {link.label}
