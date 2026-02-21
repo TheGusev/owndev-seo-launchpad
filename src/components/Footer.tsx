@@ -11,18 +11,19 @@ const Footer = () => {
   ];
 
   const quickLinks = [
-    { label: "Инструменты pSEO", href: "#tool-generator" },
-    { label: "Что такое pSEO?", href: "#what-is-pseo" },
+    { label: "Веб-студия", href: "#web-studio" },
+    { label: "Инструменты", href: "/tools", isRoute: true },
+    { label: "Технологии", href: "#tech-shop" },
     { label: "Кейсы", href: "#cases" },
     { label: "Контакты", href: "#contact" },
   ];
 
   const services = [
-    { label: "pSEO Generator", href: "#tool-generator" },
-    { label: "Anti-Duplicate Checker", href: "#tool-anti-duplicate" },
-    { label: "AI Citation Checker", href: "#tool-ai-check" },
-    { label: "ROI Calculator", href: "#tool-roi" },
-    { label: "GEO Coverage Map", href: "#tool-geo" },
+    { label: "pSEO Generator", href: "/tools/pseo-generator", isRoute: true },
+    { label: "Anti-Duplicate Checker", href: "/tools/anti-duplicate", isRoute: true },
+    { label: "AI Citation Checker", href: "/tools/ai-citation", isRoute: true },
+    { label: "ROI Calculator", href: "/tools/roi-calculator", isRoute: true },
+    { label: "GEO Coverage Map", href: "/tools/geo-map", isRoute: true },
   ];
 
   const company = [
@@ -62,7 +63,7 @@ const Footer = () => {
               OWNDEV
             </a>
             <p className="text-muted-foreground text-sm">
-              Бесплатная pSEO‑платформа для российского бизнеса
+              Веб‑студия, pSEO‑платформа и магазин умных технологий
             </p>
             <div className="space-y-3">
               {contactInfo.map((item, index) => (
@@ -86,7 +87,7 @@ const Footer = () => {
                 <li key={index}>
                   <a
                     href={link.href}
-                    onClick={(e) => handleNavClick(e, link.href)}
+                    onClick={(e) => handleNavClick(e, link.href, (link as any).isRoute)}
                     className="text-muted-foreground hover:text-foreground transition-colors text-sm"
                   >
                     {link.label}
@@ -104,7 +105,7 @@ const Footer = () => {
                 <li key={index}>
                   <a
                     href={link.href}
-                    onClick={(e) => handleNavClick(e, link.href)}
+                    onClick={(e) => handleNavClick(e, link.href, link.isRoute)}
                     className="text-muted-foreground hover:text-foreground transition-colors text-sm"
                   >
                     {link.label}

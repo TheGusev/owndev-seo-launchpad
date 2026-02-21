@@ -1,5 +1,5 @@
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Sparkles, ArrowDown } from "lucide-react";
+import { Sparkles, ArrowDown, Code2, Cpu } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
 import { SparklesCore } from "@/components/ui/sparkles";
@@ -52,7 +52,7 @@ const Hero = () => {
             className="glass px-4 py-2 rounded-full flex items-center gap-2"
           >
             <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground font-mono">Бесплатная pSEO‑платформа для России</span>
+            <span className="text-sm text-muted-foreground font-mono">Веб-студия · pSEO · Технологии</span>
           </motion.div>
           
           {/* Main heading */}
@@ -66,8 +66,12 @@ const Hero = () => {
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif text-center leading-tight">
                 <TypeAnimation
                   sequence={[
-                    'Programmatic SEO',
-                    3000,
+                    'Сайты под ключ',
+                    2500,
+                    'SEO‑инструменты',
+                    2500,
+                    'Технологии будущего',
+                    2500,
                   ]}
                   wrapper="span"
                   speed={50}
@@ -77,7 +81,7 @@ const Hero = () => {
               </h1>
             </div>
             <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground font-serif">
-              для сайтов, которые продают
+              для бизнеса, который растёт
             </p>
           </motion.div>
           
@@ -88,7 +92,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground max-w-3xl leading-relaxed"
           >
-            Платформа OWNDDEV помогает создавать сотни GEO‑страниц, проверять уникальность, готовить сайт к AI‑поиску и считать ROI — в одном интерфейсе.
+            Веб‑студия, pSEO‑платформа и магазин умных технологий — всё в одном месте.
           </motion.p>
 
           {/* Stats line */}
@@ -98,7 +102,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="text-sm text-muted-foreground font-medium"
           >
-            30+ проектов &bull; 5M+ ₽ дополнительной выручки &bull; 50+ городов охвата
+            30+ проектов &bull; 6 готовых платформ &bull; 5000+ GEO‑страниц
           </motion.p>
           
           {/* CTA buttons */}
@@ -106,7 +110,7 @@ const Hero = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-6"
+            className="flex flex-col sm:flex-row gap-4"
           >
             <div className="relative group">
               <GlowingEffect
@@ -119,9 +123,25 @@ const Hero = () => {
                 proximity={80}
                 inactiveZone={0.4}
               />
-              <GradientButton size="xl" className="group relative z-10" onClick={() => scrollTo("tool-generator")}>
+              <GradientButton size="lg" className="group relative z-10" onClick={() => scrollTo("web-studio")}>
+                <Code2 className="w-5 h-5 mr-2" />
+                Смотреть проекты
+              </GradientButton>
+            </div>
+            <div className="relative group">
+              <GlowingEffect
+                theme="accent"
+                disabled={false}
+                borderWidth={2}
+                spread={25}
+                glow={true}
+                blur={10}
+                proximity={80}
+                inactiveZone={0.4}
+              />
+              <GradientButton variant="variant" size="lg" className="relative z-10" onClick={() => scrollTo("tools-showcase")}>
                 <Sparkles className="w-5 h-5 mr-2" />
-                Открыть pSEO‑платформу
+                Инструменты pSEO
               </GradientButton>
             </div>
             <div className="relative group">
@@ -135,9 +155,9 @@ const Hero = () => {
                 proximity={80}
                 inactiveZone={0.4}
               />
-              <GradientButton variant="variant" size="xl" className="relative z-10" onClick={() => scrollTo("what-is-pseo")}>
-                <ArrowDown className="w-5 h-5 mr-2" />
-                Что такое programmatic SEO?
+              <GradientButton variant="variant" size="lg" className="relative z-10" onClick={() => scrollTo("tech-shop")}>
+                <Cpu className="w-5 h-5 mr-2" />
+                Магазин технологий
               </GradientButton>
             </div>
           </motion.div>
