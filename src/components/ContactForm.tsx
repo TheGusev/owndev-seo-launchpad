@@ -55,11 +55,11 @@ const ContactForm = () => {
   });
 
   const serviceLabels: Record<string, string> = {
-    landing: "Лендинг",
-    corporate: "Корпоративный сайт",
-    ecommerce: "Интернет-магазин",
-    seo: "SEO-оптимизация",
-    saas: "SaaS-платформа",
+    "pseo-setup": "Настройка pSEO‑проекта",
+    "content-gen": "Генерация контента",
+    "seo-audit": "SEO‑аудит",
+    "ai-optimization": "Оптимизация под AI‑поиск",
+    "custom": "Кастомная доработка",
     consultation: "Консультация"
   };
 
@@ -133,11 +133,11 @@ ${data.message || 'Не указано'}
   };
 
   const services = [
-    { value: "landing", label: "Лендинг" },
-    { value: "corporate", label: "Корпоративный сайт" },
-    { value: "ecommerce", label: "Интернет-магазин" },
-    { value: "seo", label: "SEO-оптимизация" },
-    { value: "saas", label: "SaaS-платформа" },
+    { value: "pseo-setup", label: "Настройка pSEO‑проекта" },
+    { value: "content-gen", label: "Генерация контента" },
+    { value: "seo-audit", label: "SEO‑аудит" },
+    { value: "ai-optimization", label: "Оптимизация под AI‑поиск" },
+    { value: "custom", label: "Кастомная доработка" },
     { value: "consultation", label: "Консультация" }
   ];
 
@@ -161,11 +161,10 @@ ${data.message || 'Не указано'}
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            Давайте начнём!{" "}
-            <span className="text-gradient">🚀</span>
+            Нужны кастомные <span className="text-gradient">доработки?</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Запишитесь на бесплатную консультацию прямо сейчас
+            Если нужны кастомные доработки или сопровождение — напишите, платформа остаётся бесплатной.
           </p>
         </motion.div>
 

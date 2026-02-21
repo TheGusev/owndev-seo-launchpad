@@ -1,33 +1,27 @@
 import { GradientButton } from "@/components/ui/gradient-button";
-import { ArrowRight, CheckCircle, TrendingUp, Shield, Clock } from "lucide-react";
+import { Sparkles, ArrowDown } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
 import { SparklesCore } from "@/components/ui/sparkles";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { AnimatedText } from "@/components/ui/animated-text";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const Hero = () => {
-  const trustItems = [
-    { icon: Shield, text: "Гарантия результата" },
-    { icon: Clock, text: "6 месяцев поддержки" },
-    { icon: TrendingUp, text: "Рост органики 150%+" },
-  ];
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Corner Decorations */}
       <CornerDecorations size="lg" />
       
-      {/* Floating Particles with parallax */}
       <ParallaxLayer speed={0.3} className="absolute inset-0 z-[3] pointer-events-none">
         <FloatingParticles count={20} className="absolute inset-0" />
       </ParallaxLayer>
       
-      {/* Sparkles Background with parallax */}
       <ParallaxLayer speed={0.2} className="absolute inset-0 z-0">
         <SparklesCore
           id="hero-sparkles"
@@ -41,11 +35,9 @@ const Hero = () => {
         />
       </ParallaxLayer>
       
-      {/* Gradient overlays for depth */}
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
       
-      {/* Animated SVG Grid with parallax */}
       <ParallaxLayer speed={0.1} className="absolute inset-0 z-[2]">
         <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="opacity-70" theme="primary" />
       </ParallaxLayer>
@@ -60,27 +52,22 @@ const Hero = () => {
             className="glass px-4 py-2 rounded-full flex items-center gap-2"
           >
             <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground font-mono">Создаём цифровое будущее</span>
+            <span className="text-sm text-muted-foreground font-mono">Бесплатная pSEO‑платформа для России</span>
           </motion.div>
           
-          {/* Main heading with typewriter */}
+          {/* Main heading */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
             className="space-y-4"
           >
-            {/* Контейнер с фиксированной минимальной высотой для предотвращения тряски */}
             <div className="min-h-[5.5rem] sm:min-h-[4.5rem] md:min-h-[4.5rem] lg:min-h-[5.5rem] flex items-center justify-center">
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif text-center leading-tight">
                 <TypeAnimation
                   sequence={[
-                    'Сайты, которые продают.',
-                    2000,
-                    'Сайты, которые конвертируют.',
-                    2000,
-                    'Сайты, которые работают.',
-                    2000,
+                    'Programmatic SEO',
+                    3000,
                   ]}
                   wrapper="span"
                   speed={50}
@@ -90,31 +77,29 @@ const Hero = () => {
               </h1>
             </div>
             <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground font-serif">
-              <AnimatedText text="Разработка, оптимизация, рост 📈" wordDelay={150} theme="primary" />
+              для сайтов, которые продают
             </p>
           </motion.div>
           
-          {/* Subheading */}
-          <motion.div 
+          {/* Subtitle */}
+          <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground max-w-3xl leading-relaxed"
           >
-            <AnimatedText 
-              text="Мы создаём веб-сайты и SaaS-платформы для малого и среднего бизнеса." 
-              wordDelay={80}
-              theme="accent"
-            />
-            <br />
-            <span className="text-foreground font-medium inline-block mt-2">
-              <AnimatedText 
-                text="30+ проектов. 5+ млн руб выручки клиентов в год благодаря нам." 
-                wordDelay={80}
-                theme="success"
-              />
-            </span>
-          </motion.div>
+            Платформа OWNDDEV помогает создавать сотни GEO‑страниц, проверять уникальность, готовить сайт к AI‑поиску и считать ROI — в одном интерфейсе.
+          </motion.p>
+
+          {/* Stats line */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="text-sm text-muted-foreground font-medium"
+          >
+            30+ проектов &bull; 5M+ ₽ дополнительной выручки &bull; 50+ городов охвата
+          </motion.p>
           
           {/* CTA buttons */}
           <motion.div 
@@ -134,9 +119,9 @@ const Hero = () => {
                 proximity={80}
                 inactiveZone={0.4}
               />
-              <GradientButton size="xl" className="group relative z-10">
-                Первая консультация — БЕСПЛАТНО
-                <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+              <GradientButton size="xl" className="group relative z-10" onClick={() => scrollTo("tool-generator")}>
+                <Sparkles className="w-5 h-5 mr-2" />
+                Открыть pSEO‑платформу
               </GradientButton>
             </div>
             <div className="relative group">
@@ -150,84 +135,10 @@ const Hero = () => {
                 proximity={80}
                 inactiveZone={0.4}
               />
-              <GradientButton variant="variant" size="xl" className="relative z-10">
-                Смотреть портфолио ↓
+              <GradientButton variant="variant" size="xl" className="relative z-10" onClick={() => scrollTo("what-is-pseo")}>
+                <ArrowDown className="w-5 h-5 mr-2" />
+                Что такое programmatic SEO?
               </GradientButton>
-            </div>
-          </motion.div>
-          
-          {/* Trust badges */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex flex-wrap justify-center gap-6 pt-8"
-          >
-            {trustItems.map((item, index) => (
-              <div 
-                key={index}
-                className="flex items-center gap-2 text-muted-foreground"
-              >
-                <CheckCircle className="w-5 h-5 text-success" />
-                <span className="text-sm font-medium">{item.text}</span>
-              </div>
-            ))}
-          </motion.div>
-          
-          {/* Stats */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="grid grid-cols-3 gap-8 md:gap-16 pt-8 border-t border-border/50 mt-8"
-          >
-            <div className="relative group text-center p-4 rounded-xl">
-              <GlowingEffect
-                theme="primary"
-                disabled={false}
-                borderWidth={1}
-                spread={20}
-                glow={true}
-                blur={8}
-                proximity={60}
-                inactiveZone={0.3}
-              />
-              <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">30+</div>
-                <div className="text-sm text-muted-foreground mt-1">Проектов</div>
-              </div>
-            </div>
-            <div className="relative group text-center p-4 rounded-xl">
-              <GlowingEffect
-                theme="success"
-                disabled={false}
-                borderWidth={1}
-                spread={20}
-                glow={true}
-                blur={8}
-                proximity={60}
-                inactiveZone={0.3}
-              />
-              <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">150%</div>
-                <div className="text-sm text-muted-foreground mt-1">Рост органики</div>
-              </div>
-            </div>
-            <div className="relative group text-center p-4 rounded-xl">
-              <GlowingEffect
-                theme="accent"
-                disabled={false}
-                borderWidth={1}
-                spread={20}
-                glow={true}
-                blur={8}
-                proximity={60}
-                inactiveZone={0.3}
-              />
-              <div className="relative z-10">
-                <div className="text-3xl md:text-4xl font-bold text-gradient font-serif">5+ лет</div>
-                <div className="text-sm text-muted-foreground mt-1">Опыта</div>
-              </div>
             </div>
           </motion.div>
         </div>
