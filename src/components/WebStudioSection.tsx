@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Code2, Palette, Package, ExternalLink } from "lucide-react";
+import { Code2, Palette, Package } from "lucide-react";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 
@@ -29,12 +30,12 @@ const services = [
 ];
 
 const projects = [
-  { name: "protocro.ru", category: "SaaS", metric: "+240% трафик" },
-  { name: "vozmozhnost.shop", category: "E-commerce", metric: "1200 товаров" },
-  { name: "clinica-smile.ru", category: "Медицина", metric: "+180% лидов" },
-  { name: "logist-pro.ru", category: "Логистика", metric: "ROI 320%" },
-  { name: "remont-elite.ru", category: "Строительство", metric: "50 городов" },
-  { name: "edu-platform.ru", category: "Образование", metric: "5K студентов" },
+  { name: "protocro.ru", category: "SaaS", metric: "+240% трафик", image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop", url: "https://protocro.ru" },
+  { name: "vozmozhnost.shop", category: "E-commerce", metric: "1200 товаров", image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=500&fit=crop", url: "https://vozmozhnost.shop" },
+  { name: "clinica-smile.ru", category: "Медицина", metric: "+180% лидов", image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&h=500&fit=crop" },
+  { name: "logist-pro.ru", category: "Логистика", metric: "ROI 320%", image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&h=500&fit=crop" },
+  { name: "remont-elite.ru", category: "Строительство", metric: "50 городов", image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&h=500&fit=crop" },
+  { name: "edu-platform.ru", category: "Образование", metric: "5K студентов", image: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&h=500&fit=crop" },
 ];
 
 const WebStudioSection = () => {
@@ -111,19 +112,32 @@ const WebStudioSection = () => {
             Наши проекты
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
-            {projects.map((project) => (
-              <div
-                key={project.name}
-                className="glass rounded-xl p-4 text-center card-hover cursor-default"
-              >
-                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center mx-auto mb-3">
-                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-medium truncate">{project.name}</p>
-                <p className="text-xs text-muted-foreground">{project.category}</p>
-                <p className="text-xs text-primary font-mono mt-1">{project.metric}</p>
-              </div>
-            ))}
+            {projects.map((project) => {
+              const Wrapper = 'url' in project && project.url ? 'a' : 'div';
+              const wrapperProps = 'url' in project && project.url 
+                ? { href: project.url, target: "_blank", rel: "noopener noreferrer" } 
+                : {};
+              return (
+                <Wrapper
+                  key={project.name}
+                  {...wrapperProps as any}
+                  className="glass rounded-xl overflow-hidden card-hover cursor-pointer"
+                >
+                  <OptimizedImage
+                    src={project.image}
+                    alt={project.name}
+                    className="w-full"
+                    aspectRatio="16/10"
+                    placeholderColor="hsl(222 47% 11%)"
+                  />
+                  <div className="p-3">
+                    <p className="text-sm font-medium truncate">{project.name}</p>
+                    <p className="text-xs text-muted-foreground">{project.category}</p>
+                    <p className="text-xs text-primary font-mono mt-1">{project.metric}</p>
+                  </div>
+                </Wrapper>
+              );
+            })}
           </div>
         </motion.div>
 
