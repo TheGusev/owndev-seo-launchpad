@@ -1,176 +1,229 @@
 
 
-## Plan: Reposition OWNDEV from Web Studio to pSEO Platform
+## Plan: Expand to 20+ SEO Tools + Hidden GEO Pages (85 regions)
 
 ### Overview
-Transform the landing page from a web development studio ("we build websites") into a programmatic SEO platform product page. Preserve the existing dark cosmic aesthetic, fonts, logo, and visual effects. Replace content and structure with full-screen tool sections using a card-stacking scroll effect.
+
+Two major additions:
+1. **Expand tool set** from current 5 to ~20 tools organized in 6 categories
+2. **Hidden GEO routing** -- 85 regional landing pages at `/tools/:toolSlug/:regionSlug` with unique localized content, no city selector UI
 
 ---
 
-### Scope of Changes
+### Important Limitation: SSR/SSG
 
-**Files to modify:**
-1. `src/pages/Index.tsx` -- new page structure with all sections
-2. `src/components/Header.tsx` -- new navigation links
-3. `src/components/Hero.tsx` -- new text, buttons, stats
-4. `src/components/ScrollStacksSection.tsx` -- **remove entirely** (replaced by new full-screen sections)
-5. `src/components/Footer.tsx` -- update links and description
-6. `src/components/ContactForm.tsx` -- minor text updates
-7. `src/components/FAQ.tsx` -- update questions for pSEO context
-8. `src/components/Portfolio.tsx` -- **remove** (replaced by Cases section)
-9. `src/index.css` -- add full-screen stacking styles
+This project runs on Vite + React (client-side SPA). Search engines have improved at crawling SPAs, but for optimal SEO indexing of 85+ geo pages, the content must be rendered in HTML. Two options:
 
-**New files to create:**
-1. `src/components/WhatIsPSEO.tsx` -- explanatory section (3 columns)
-2. `src/components/ToolNavigation.tsx` -- horizontal chip navigation
-3. `src/components/ToolScreen.tsx` -- reusable full-screen tool wrapper
-4. `src/components/tools/PSEOGenerator.tsx` -- tool 1 widget
-5. `src/components/tools/AntiDuplicateChecker.tsx` -- tool 2 widget
-6. `src/components/tools/AICitationChecker.tsx` -- tool 3 widget
-7. `src/components/tools/ROICalculatorTool.tsx` -- tool 4 (adapt existing ROICalculator)
-8. `src/components/tools/GEOCoverageMap.tsx` -- tool 5 widget
-9. `src/components/CasesResults.tsx` -- cases and results section
+- **Option A (recommended)**: Use `react-snap` or `vite-plugin-prerender` to pre-render geo pages at build time into static HTML
+- **Option B (simpler start)**: Ship as SPA with proper meta tags via `react-helmet-async`, add a sitemap.xml, and monitor indexation
+
+We will implement Option B first (faster to ship) and can add pre-rendering later.
 
 ---
 
-### Detailed Changes
+### Part 1: New Tool Categories and Components
 
-#### A. Header (`Header.tsx`)
-- Change nav links to:
-  - "Инструменты pSEO" -> `#tool-generator`
-  - "Что такое Programmatic SEO?" -> `#what-is-pseo`
-  - "Кейсы" -> `#cases`
-  - "Контакты" -> `#contact`
-- CTA button text: "Открыть платформу" -> scrolls to `#tool-generator`
+#### 6 categories, ~20 tools total:
 
-#### B. Hero (`Hero.tsx`)
-- Badge: "Бесплатная pSEO-платформа для России"
-- H1 with typing effect:
-  - Line 1: "Programmatic SEO"
-  - Line 2: "для сайтов, которые продают"
-- Subtitle: "Платформа OWNDDEV помогает создавать сотни GEO-страниц, проверять уникальность, готовить сайт к AI-поиску и считать ROI -- в одном интерфейсе."
-- Stats line: "30+ проектов . 5M+ руб дополнительной выручки . 50+ городов охвата"
-- Left button: "Открыть pSEO-платформу" with Sparkles icon -> scroll to `#tool-generator`
-- Right button: "Что такое programmatic SEO?" with ArrowDown icon -> scroll to `#what-is-pseo`
-- Keep all visual effects (sparkles, grid, parallax, glow, corner decorations)
+**Category 1: Analysis and Audit**
+1. SEO Site Auditor (new) -- technical analysis form (URL input, mock results)
+2. Competitor Analysis (new) -- compare TOP-10 snippets
+3. Indexation Checker (new) -- batch URL check
 
-#### C. Index Page Structure (`Index.tsx`)
-New order of sections:
-1. Hero (full viewport)
-2. WhatIsPSEO (`#what-is-pseo`) -- 1 screen
-3. ToolNavigation (sticky horizontal chips)
-4. Tool 1: pSEO Generator (`#tool-generator`) -- full screen
-5. Tool 2: Anti-Duplicate (`#tool-anti-duplicate`) -- full screen
-6. Tool 3: AI Citation (`#tool-ai-check`) -- full screen
-7. Tool 4: ROI Calculator (`#tool-roi`) -- full screen
-8. Tool 5: GEO Map (`#tool-geo`) -- full screen
-9. Cases & Results (`#cases`) -- 1 screen
-10. ContactForm (`#contact`)
-11. Footer
+**Category 2: Generation (pSEO)** -- existing tools stay
+4. pSEO Generator (exists) -- keep as is
+5. Schema.org Generator (new) -- JSON-LD builder for LocalBusiness/FAQ
+6. ROI Calculator (exists) -- keep as is
 
-**Remove**: ScrollStacksSection, Portfolio, FAQ (or repurpose FAQ into a subsection)
+**Category 3: Content**
+7. Semantic Core Generator (new) -- keyword input, mock clusters
+8. AI Text Generator (new) -- LLM-powered intro generator (uses Lovable AI)
+9. Anti-Duplicate Checker (exists) -- keep as is
 
-#### D. Full-Screen Stacking Effect
-Each tool section will use:
-- `position: sticky; top: 0; min-height: 100vh;`
-- Incremental `z-index` (each section z+1)
-- When the next section overlaps, the previous gets class `is-behind`:
-  - `transform: scale(0.97) translateY(-8px)`
-  - `filter: brightness(0.85)`
-  - `transition: transform 0.4s ease, filter 0.4s ease`
-- Implemented via a single `IntersectionObserver` on each section
+**Category 4: Monitoring**
+10. Position Monitor (new) -- query list + mock positions
+11. Change Alerts (new) -- competitor monitoring dashboard
 
-#### E. ToolScreen Wrapper (reusable)
-Each tool screen has:
-- Top: badge "Инструмент N/5" + icon, H2 title, subtitle
-- Center: the tool widget (Card with form/results)
-- Bottom: "Когда использовать" list + documentation link
-- Unique background gradient per tool
-- `id` attribute for scroll targeting
+**Category 5: Webmaster Tools**
+12. Sitemap Generator (new) -- URL list to sitemap XML
+13. Robots.txt Generator (new) -- directive builder
+14. Internal Links Checker (new) -- link structure visualizer
+15. AI Citation Checker (exists) -- keep as is
 
-#### F. Tool Widgets (placeholder/static UI)
-Each tool will be a presentational component with static forms and mock data -- no backend calls initially. They will show:
-- Form inputs (selects, text fields, sliders)
-- Empty/placeholder states
-- Loading state UI
-- Result cards with sample data
+**Category 6: Integrations**
+16. GEO Coverage Map (exists) -- keep as is
+17. CSV/Excel Export (new) -- data export tool
+18. Telegram Bot Setup (new) -- webhook configuration
 
-Specific tool details:
+#### New files to create:
+```
+src/data/tools-registry.ts          -- all tools metadata (id, slug, name, category, icon, component)
+src/components/tools/SEOAuditor.tsx
+src/components/tools/CompetitorAnalysis.tsx
+src/components/tools/IndexationChecker.tsx
+src/components/tools/SchemaGenerator.tsx
+src/components/tools/SemanticCoreGenerator.tsx
+src/components/tools/AITextGenerator.tsx
+src/components/tools/PositionMonitor.tsx
+src/components/tools/ChangeAlerts.tsx
+src/components/tools/SitemapGenerator.tsx
+src/components/tools/RobotsTxtGenerator.tsx
+src/components/tools/InternalLinksChecker.tsx
+src/components/tools/CSVExport.tsx
+src/components/tools/TelegramBotSetup.tsx
+```
 
-**C1. pSEO Generator**: Niche select, city select, page type config. Mini-steps (1-2-3). Blue-to-purple gradient.
+Each new tool will be a static/presentational component with form inputs and placeholder results (same pattern as existing PSEOGenerator, AntiDuplicateChecker, etc).
 
-**C2. Anti-Duplicate Checker**: Textarea for content, "content safety" scale (0-100) with shield icon. Red-purple gradient. Microcopy: "Мы не сохраняем контент на сервере."
+---
 
-**C3. AI Citation Checker**: URL input + results. Desktop: checklist on the right (Question H2s, TL;DR blocks, Schema.org, Local facts). Teal/cyan gradient.
+### Part 2: Tools Catalog Page
 
-**C4. ROI Calculator**: Adapt existing `ROICalculator.tsx` -- update labels for pSEO context (cities, pages, traffic). Green/lime gradient. Disclaimer at bottom.
+#### New page: `/tools`
 
-**C5. GEO Coverage Map**: City list with checkboxes, stats bar (selected cities, population coverage). 2 columns on desktop. Deep blue/cosmic gradient.
+A grid/catalog page showing all 20 tools organized by category.
 
-#### G. WhatIsPSEO Section
-- H2: "Что такое programmatic SEO?"
-- 3 cards/columns:
-  - "База данных" -- "Города, товары, услуги..."
-  - "Шаблоны страниц" -- "Структура URL, H1, H2, FAQ"
-  - "Автоматизация" -- "Генерация сотен страниц вместо ручной работы"
-- Bottom text: "OWNDDEV -- это рабочий стол, где все эти части собираются вместе."
+**File:** `src/pages/Tools.tsx`
 
-#### H. ToolNavigation (Chips)
-- Horizontal scrolling list of 5 chips: "1. Generator", "2. Anti-Duplicate", "3. AI Check", "4. ROI", "5. GEO Map"
-- Click scrolls to corresponding section
-- Mobile: horizontal scroll with `overflow-x: auto`
-- Sticky below header on desktop
+- 6 category sections, each with cards linking to individual tool pages
+- Each card: icon, title, short description, "Open" button
+- Uses existing `glass` card styling
+- Responsive: 3 cols desktop, 2 cols tablet, 1 col mobile
 
-#### I. CasesResults Section
-- H2: "Кейсы и результаты"
-- 3 stat cards:
-  - "+180% органического трафика за 6 месяцев"
-  - "50+ городов в одном проекте"
-  - "ROI до 450%"
-- Glass card styling consistent with existing design
+---
 
-#### J. ContactForm Updates
-- Keep the existing form mostly as-is
-- Update heading text: "Нужны кастомные доработки?"
-- Add text: "Если нужны кастомные доработки или сопровождение -- напишите, платформа остаётся бесплатной."
-- Update service dropdown options for pSEO context
+### Part 3: Individual Tool Pages
 
-#### K. Footer Updates
-- Update description: "Бесплатная pSEO-платформа для российского бизнеса"
-- Update quick links to match new nav
-- Update services list to match 5 tools
+#### New page: `/tools/:toolSlug`
 
-#### L. CSS (`index.css`)
-Add full-screen section stacking styles:
-```css
-.tool-section {
-  position: sticky;
-  top: 0;
-  min-height: 100vh;
-  transition: transform 0.4s ease, filter 0.4s ease;
-}
-.tool-section.is-behind {
-  transform: scale(0.97) translateY(-8px);
-  filter: brightness(0.85);
+**File:** `src/pages/ToolPage.tsx`
+
+- Dynamic route using `useParams()` to load the correct tool from registry
+- Full-screen layout: Header + ToolScreen wrapper + tool component
+- Same visual style as current Index tool sections but standalone
+
+---
+
+### Part 4: Hidden GEO System
+
+#### Data layer
+
+**File:** `src/data/regions.ts`
+
+```typescript
+export interface Region {
+  id: string;           // URL slug: "moskva", "novosibirsk"
+  name: string;         // "Москва"
+  nameCase: string;     // prepositional: "Москве"
+  population: number;
+  agencies: number;     // SEO agencies count
+  priceRange: string;   // "50000-200000"
+  localText: string;    // 2-3 unique paragraphs about SEO market
+  localNiches: string[];// ["дезинфекция", "климат-контроль"]
+  neighbors: string[];  // region IDs for interlinking
 }
 ```
 
+85 entries for all Russian federal subjects (cities with populations). Each entry has unique `localText` written for SEO uniqueness.
+
+#### GEO Page Route
+
+**File:** `src/pages/GeoToolPage.tsx`
+
+Route: `/tools/:toolSlug/:regionSlug`
+
+- Loads region data from `regions.ts` by slug
+- Loads tool component from registry
+- Renders a full landing page with:
+  - Localized H1: "SEO-генератор в {region.nameCase}"
+  - Localized meta title/description via `react-helmet-async` (new dependency)
+  - 2-3 paragraphs of unique regional content from `region.localText`
+  - The tool widget itself (same component, no changes)
+  - Schema.org JSON-LD: `LocalBusiness + City`
+  - Interlinking block: links to 5-7 neighboring regions
+  - CTA: "Получить аудит для {region.name}"
+  - NO city selector dropdown -- user is already on their page
+
+#### Routing Updates
+
+**File:** `src/App.tsx`
+
+Add routes:
+```
+/tools                          -> Tools catalog
+/tools/:toolSlug                -> Individual tool page
+/tools/:toolSlug/:regionSlug    -> GEO-localized tool page
+```
+
+#### Sitemap Generation
+
+**File:** `src/pages/Sitemap.tsx` (or generate at build time)
+
+Generate sitemap.xml with all GEO URLs:
+- 85 regions x relevant tools = URLs with priorities
+- `changefreq: monthly`, priority by population
+
+For now, create a static `public/sitemap.xml` generated from the regions data, or a build script.
+
 ---
 
-### Performance Considerations
-- No GSAP or heavy animation libraries -- only CSS transitions and IntersectionObserver
-- Single passive scroll listener for stacking effect
-- Existing framer-motion used sparingly (only for initial reveal, not scroll-driven)
-- Tool widgets are static/client-side only -- no API calls on load
-- will-change only on actively animated elements
-- Mobile: simpler transitions, no scaling effects on stacking
+### Part 5: Navigation Updates
+
+#### Header (`src/components/Header.tsx`)
+- Add "Все инструменты" link -> `/tools`
+
+#### ToolNavigation (`src/components/ToolNavigation.tsx`)
+- Expand to show categories or link to `/tools` catalog
+
+#### Index page (`src/pages/Index.tsx`)
+- Keep current 5 featured tools as hero showcases
+- Add a "Смотреть все 20 инструментов" CTA linking to `/tools`
+
+---
+
+### Part 6: SEO Metadata
+
+#### New dependency: `react-helmet-async`
+
+Used on GEO pages to set:
+- `<title>SEO-генератор в Москве -- цены от 5000₽</title>`
+- `<meta name="description" content="...">`
+- `<script type="application/ld+json">` for Schema.org
+- `<link rel="canonical">`
+
+---
 
 ### Implementation Order
-1. Create new component files (WhatIsPSEO, ToolNavigation, ToolScreen, 5 tool widgets, CasesResults)
-2. Update Hero text and buttons
-3. Update Header nav
-4. Update Index.tsx page structure
-5. Add CSS for full-screen stacking
-6. Update ContactForm and Footer
-7. Remove unused imports/components (ScrollStacksSection, Portfolio from Index)
 
+1. Create `src/data/tools-registry.ts` with all 20 tools metadata
+2. Create `src/data/regions.ts` with 85 region entries (start with 15 cities-millionniki with full localText, remaining 70 with shorter text)
+3. Create 13 new tool components (static UI, same pattern as existing)
+4. Create `/tools` catalog page
+5. Create `/tools/:toolSlug` individual tool page
+6. Create `/tools/:toolSlug/:regionSlug` GEO page with localized content
+7. Update `App.tsx` with new routes
+8. Install `react-helmet-async`, add meta tags to GEO pages
+9. Generate `public/sitemap.xml`
+10. Update Header/nav with new links
+
+### Files Changed/Created Summary
+
+| Action | File | Purpose |
+|--------|------|---------|
+| Create | `src/data/tools-registry.ts` | Central tool definitions |
+| Create | `src/data/regions.ts` | 85 region data entries |
+| Create | `src/pages/Tools.tsx` | Tools catalog grid |
+| Create | `src/pages/ToolPage.tsx` | Individual tool page |
+| Create | `src/pages/GeoToolPage.tsx` | GEO-localized landing |
+| Create | 13 new tool components | Static UI widgets |
+| Modify | `src/App.tsx` | Add 3 new routes |
+| Modify | `src/components/Header.tsx` | Add "Все инструменты" |
+| Modify | `src/pages/Index.tsx` | Add CTA to full catalog |
+| Create | `public/sitemap.xml` | SEO sitemap |
+
+### Scope Note
+
+This is a large implementation. To keep each step reviewable, I recommend splitting into 2-3 messages:
+1. First: data layer (registry + regions) + new tool components
+2. Second: pages (catalog, tool page, GEO page) + routing
+3. Third: SEO (helmet, sitemap, schema.org, interlinking)
