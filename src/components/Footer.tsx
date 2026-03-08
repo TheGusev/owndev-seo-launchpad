@@ -27,8 +27,8 @@ const Footer = () => {
   ];
 
   const company = [
-    { label: "О нас", href: "#process" },
-    { label: "Результаты", href: "#results" },
+    { label: "О нас", href: "#web-studio" },
+    { label: "Результаты", href: "#cases" },
     { label: "Политика конфиденциальности", href: "/privacy", isRoute: true },
     { label: "Пользовательское соглашение", href: "/terms", isRoute: true },
   ];
