@@ -98,7 +98,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/SemanticCoreGenerator")),
     gradient: "bg-gradient-to-br from-amber-950/40 to-orange-950/40",
     useCases: ["Сбор семантики для нового проекта", "Кластеризация по интентам", "Оценка частотности"],
-    geoEnabled: true, status: "coming_soon",
+    geoEnabled: true, status: "active",
   },
   {
     id: "ai-text-generator", slug: "ai-text-generator",
