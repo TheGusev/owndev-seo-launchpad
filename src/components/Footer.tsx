@@ -100,16 +100,6 @@ const Footer = () => {
                 </li>
               ))}
             </ul>
-            <div className="mt-5">
-              <h4 className="font-medium text-foreground mb-3 text-sm">Мы в соцсетях</h4>
-              <div className="flex gap-3">
-                {socialLinks.map((social, i) => (
-                  <a key={i} href={social.href} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors" aria-label={social.label}>
-                    <social.icon className="w-5 h-5" />
-                  </a>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
