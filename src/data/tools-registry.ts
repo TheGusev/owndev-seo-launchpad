@@ -56,7 +56,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/IndexationChecker")),
     gradient: "bg-gradient-to-br from-cyan-950/40 to-blue-950/40",
     useCases: ["Проверка новых страниц", "Мониторинг выпавших URL", "Аудит индексации после миграции"],
-    geoEnabled: false, status: "coming_soon",
+    geoEnabled: false, status: "active",
   },
   // Generation
   {
