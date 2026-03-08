@@ -7,10 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
-import { FloatingParticles } from "@/components/ui/floating-particles";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
-import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const renderMarkdown = (content: string) => {
   const lines = content.split("\n");
@@ -136,7 +134,6 @@ const BlogPost = () => {
           {/* Background animations */}
           <div className="absolute inset-0 pointer-events-none">
             <AnimatedGrid theme="accent" lineCount={{ h: 3, v: 5 }} />
-            <FloatingParticles count={8} className="absolute inset-0" />
             <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
           </div>
 
@@ -171,7 +168,6 @@ const BlogPost = () => {
                 </div>
               </motion.div>
 
-              <ParallaxLayer speed={0.1}>
               <motion.div
                 className="prose-custom"
                 initial={{ opacity: 0, y: 20 }}
@@ -180,7 +176,6 @@ const BlogPost = () => {
               >
                 {renderMarkdown(post.content)}
               </motion.div>
-              </ParallaxLayer>
 
               {/* Related posts */}
               {relatedPosts.length > 0 && (
