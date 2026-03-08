@@ -120,7 +120,7 @@ const SEOAuditor = () => {
         {result && (
           <>
             {/* Dual scores */}
-            <div className="flex gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <ScoreCard label="SEO Score" score={result.seoScore} icon={Search} />
               <ScoreCard label="LLM Score" score={result.llmScore} icon={Bot} />
             </div>
