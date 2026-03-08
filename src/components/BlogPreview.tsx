@@ -10,10 +10,10 @@ const BlogPreview = () => {
   const latestPosts = blogPosts.slice(0, 3);
 
   return (
-    <section className="py-16 md:py-24">
+    <section className="py-10 md:py-24">
       <div className="container px-4 md:px-6">
         <motion.div
-          className="flex items-center justify-between mb-10"
+          className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between mb-6 md:mb-10"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
@@ -30,7 +30,7 @@ const BlogPreview = () => {
           </Link>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-4 md:gap-6">
           {latestPosts.map((post, idx) => (
             <motion.div
               key={post.slug}

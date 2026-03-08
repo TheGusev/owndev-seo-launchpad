@@ -1,46 +1,66 @@
 
 
-## Plan: Fix Mobile Spacing & Blog Preview Layout
+## Plan: Add Desktop Scroll-Snap Effect
 
-### Problems (from screenshots)
-1. **Blog section header** — "Блог" title and "Все статьи" button overlap on mobile, button is too large relative to the header
-2. **Huge vertical gaps** between sections on mobile — sections use desktop-scale padding (`py-24`, `py-24`, `py-16`) that creates excessive whitespace on small screens
-3. **Blog cards take too much vertical space** on mobile with large padding
+### Verification Results
 
-### Changes
+All header navigation links work correctly:
+- "Веб-студия" -> scrolls to #web-studio section (confirmed)
+- "Технологии" -> scrolls to #tech-shop section (confirmed)
+- "Кейсы" -> scrolls to #cases section (confirmed)
+- "Контакты" -> scrolls to #contact section (confirmed)
 
-**1. `src/components/BlogPreview.tsx`** — Fix mobile layout:
-- Change header from `flex items-center justify-between` to stack vertically on mobile: `flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between`
-- Reduce `mb-10` to `mb-6 md:mb-10`
-- Reduce section padding: `py-10 md:py-24` (was `py-16 md:py-24`)
-- Reduce card gap on mobile: `gap-4 md:gap-6`
+No changes needed for navigation -- it all works as expected.
 
-**2. `src/components/ToolsShowcase.tsx`** — Reduce mobile padding:
-- `py-16 md:py-32` (was `py-24 md:py-32`)
-- Remove `min-h-screen` on mobile or make it `min-h-0 md:min-h-screen`
-- Reduce `mb-16` heading margin to `mb-8 md:mb-16`
+### Scroll-Snap Implementation
 
-**3. `src/components/FAQ.tsx`** — Reduce mobile padding:
-- `py-12 md:py-24` (was `py-24`)
+Add CSS scroll-snap for desktop so the main sections (Hero, WebStudio, ToolsShowcase, TechShop) snap into place when scrolling between them. Uses `proximity` mode so it assists scrolling without fighting it.
 
-**4. `src/components/ContactForm.tsx`** — Reduce mobile padding:
-- `py-12 md:py-24` (was `py-24`)
-- Reduce `mb-16` heading margin to `mb-8 md:mb-16`
+#### 1. Add scroll-snap CSS to `src/index.css`
 
-**5. `src/components/ServicesTeaser.tsx`** — Reduce mobile padding:
-- `py-8 md:py-16` (was `py-12 md:py-16`)
+Add desktop-only scroll-snap utilities:
+```css
+@media (min-width: 768px) {
+  .snap-container {
+    scroll-snap-type: y proximity;
+    overflow-y: scroll;
+    height: 100vh;
+  }
+  .snap-section {
+    scroll-snap-align: start;
+  }
+}
+```
 
-**6. `src/pages/Blog.tsx`** — Reduce top padding on mobile:
-- `pt-20 pb-12 md:pt-24 md:pb-16` (was `pt-24 pb-16`)
+#### 2. Update `src/pages/Index.tsx`
 
-### Files to modify (6 files)
+- Add `snap-container` class to the root `<div>`
+- Add `snap-section` class to the 4 main sections: Hero, WebStudioSection, ToolsShowcase, TechShopSection
+- Wrap each section in a div with the snap class (since section components own their own root elements)
 
-| File | Change |
-|------|--------|
-| `BlogPreview.tsx` | Stack header on mobile, reduce padding/gaps |
-| `ToolsShowcase.tsx` | Reduce mobile padding, remove min-h-screen on mobile |
-| `FAQ.tsx` | Reduce mobile padding |
-| `ContactForm.tsx` | Reduce mobile padding + heading margin |
-| `ServicesTeaser.tsx` | Reduce mobile padding |
-| `Blog.tsx` | Reduce mobile top padding |
+#### 3. Update section components
+
+Add `min-h-screen` to the 4 snap-target sections so they fill the viewport:
+- `src/components/Hero.tsx` -- already has `min-h-screen`
+- `src/components/WebStudioSection.tsx` -- add `min-h-screen`
+- `src/components/ToolsShowcase.tsx` -- add `min-h-screen`
+- `src/components/TechShopSection.tsx` -- add `min-h-screen`
+
+### Files Summary
+
+| Action | File | Change |
+|--------|------|--------|
+| Modify | `src/index.css` | Add snap-container and snap-section CSS utilities |
+| Modify | `src/pages/Index.tsx` | Add snap-container class to root div |
+| Modify | `src/components/WebStudioSection.tsx` | Add snap-section and min-h-screen classes |
+| Modify | `src/components/ToolsShowcase.tsx` | Add snap-section and min-h-screen classes |
+| Modify | `src/components/TechShopSection.tsx` | Add snap-section and min-h-screen classes |
+| Modify | `src/components/Hero.tsx` | Add snap-section class |
+
+### Technical Notes
+
+- `proximity` mode means snap only triggers when the user stops scrolling near a section boundary -- it does not force-lock the scroll
+- Only enabled on desktop (768px+) to avoid interfering with mobile scrolling
+- Sections below TechShop (ScrollStacks, Cases, FAQ, Contact, Footer) do NOT get snap-section -- they scroll freely
+- The snap container needs `overflow-y: scroll` and `height: 100vh` to work properly
 

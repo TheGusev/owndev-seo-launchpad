@@ -23,7 +23,7 @@ const ToolsShowcase = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
 
   return (
-    <section id="tools-showcase" className="py-24 md:py-32 relative overflow-hidden min-h-screen snap-section">
+    <section id="tools-showcase" className="py-16 md:py-32 relative overflow-hidden md:min-h-screen snap-section">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(217_91%_60%_/_0.05),transparent_50%)]" />
 
       <div className="container px-4 md:px-6 relative z-10">
@@ -32,7 +32,7 @@ const ToolsShowcase = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-8 md:mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
             Бесплатные{" "}

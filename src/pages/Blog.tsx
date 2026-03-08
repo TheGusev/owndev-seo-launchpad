@@ -39,7 +39,7 @@ const Blog = () => {
         <MouseGradient />
         <ClickRipple />
         <Header />
-        <main className="pt-24 pb-16 relative">
+        <main className="pt-20 pb-12 md:pt-24 md:pb-16 relative">
           {/* Background animations */}
           <div className="absolute inset-0 pointer-events-none">
             <AnimatedGrid theme="secondary" lineCount={{ h: 4, v: 6 }} />
