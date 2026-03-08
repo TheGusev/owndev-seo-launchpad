@@ -120,7 +120,7 @@ const ContactForm = () => {
   ];
 
   return (
-    <section id="contact" className="py-24 relative overflow-hidden">
+    <section id="contact" className="py-12 md:py-24 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(174_72%_56%/0.1),transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(217_91%_60%/0.08),transparent_50%)]" />
       
