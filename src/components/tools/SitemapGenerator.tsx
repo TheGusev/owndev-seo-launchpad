@@ -86,7 +86,7 @@ const SitemapGenerator = () => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8">
+    <div className="glass rounded-2xl p-5 md:p-8">
       <Tabs defaultValue="sitemap" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="sitemap">Sitemap.xml</TabsTrigger>
