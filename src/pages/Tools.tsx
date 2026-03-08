@@ -105,6 +105,7 @@ const Tools = () => {
                   ))}
                 </div>
               </motion.section>
+              </ParallaxLayer>
             );
           })}
         </div>

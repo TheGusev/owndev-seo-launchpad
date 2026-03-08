@@ -139,6 +139,7 @@ const Blog = () => {
                   <p className="text-muted-foreground text-center py-12">Ничего не найдено</p>
                 )}
               </div>
+              </ParallaxLayer>
             </div>
           </div>
         </main>

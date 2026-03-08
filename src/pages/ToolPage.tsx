@@ -123,6 +123,7 @@ const ToolPage = () => {
               ))}
             </ul>
           </motion.div>
+          </ParallaxLayer>
 
           {/* Disclaimer */}
           <p className="text-xs text-muted-foreground text-center mt-10 max-w-lg mx-auto">

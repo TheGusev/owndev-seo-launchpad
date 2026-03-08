@@ -20,6 +20,8 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
+      <MouseGradient />
+      <ClickRipple />
       <Header />
       <main className="flex-1 flex items-center justify-center px-4 relative">
         {/* Background animations */}

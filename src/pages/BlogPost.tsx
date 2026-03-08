@@ -154,6 +154,7 @@ const BlogPost = () => {
                 </div>
               </motion.div>
 
+              <ParallaxLayer speed={0.1}>
               <motion.div
                 className="prose-custom"
                 initial={{ opacity: 0, y: 20 }}
@@ -162,6 +163,7 @@ const BlogPost = () => {
               >
                 {renderMarkdown(post.content)}
               </motion.div>
+              </ParallaxLayer>
             </article>
           </div>
         </main>
