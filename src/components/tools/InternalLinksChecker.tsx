@@ -42,7 +42,7 @@ const InternalLinksChecker = () => {
   }) || [];
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8 space-y-6">
+    <div className="glass rounded-2xl p-5 md:p-8 space-y-6">
       <div className="flex gap-3">
         <Input placeholder="https://example.com" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-card border-border flex-1"
           onKeyDown={(e) => e.key === "Enter" && handleCheck()} />
@@ -79,7 +79,7 @@ const InternalLinksChecker = () => {
           <div className="flex gap-2">
             {(["all", "broken", "nofollow"] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${filter === f ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}>
+                className={`text-xs px-3 py-2 rounded-lg transition-colors min-h-[36px] ${filter === f ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}>
                 {f === "all" ? "Все" : f === "broken" ? "Битые" : "Nofollow"}
               </button>
             ))}

@@ -58,15 +58,15 @@ const PositionMonitor = () => {
     .map((e) => ({ date: e.date, position: e.position }));
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8 space-y-6">
+    <div className="glass rounded-2xl p-5 md:p-8 space-y-6">
       <div className="glass rounded-xl p-4 space-y-3">
         <p className="text-sm text-muted-foreground">Добавьте позицию вручную (из Google Search Console или проверки в выдаче)</p>
-        <div className="grid sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Input placeholder="Ключевое слово" value={keyword} onChange={(e) => setKeyword(e.target.value)} className="bg-card border-border" />
           <Input placeholder="URL (необязательно)" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-card border-border" />
           <Input placeholder="Позиция" type="number" value={position} onChange={(e) => setPosition(e.target.value)} className="bg-card border-border"
             onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
-          <GradientButton onClick={handleAdd}><Plus className="w-4 h-4 mr-1" /> Добавить</GradientButton>
+          <GradientButton onClick={handleAdd} className="min-h-[44px]"><Plus className="w-4 h-4 mr-1" /> Добавить</GradientButton>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ const PositionMonitor = () => {
           <div className="flex flex-wrap gap-2">
             {uniqueKeywords.map((kw) => (
               <button key={kw} onClick={() => setSelectedKeyword(kw)}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${chartKeyword === kw ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}>
+                className={`text-xs px-3 py-2 rounded-lg transition-colors min-h-[36px] ${chartKeyword === kw ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}>
                 {kw}
               </button>
             ))}

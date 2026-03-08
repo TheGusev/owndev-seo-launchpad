@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { FileCode, Copy, Download, CheckCircle } from "lucide-react";
@@ -86,7 +87,7 @@ const SitemapGenerator = () => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8">
+    <div className="glass rounded-2xl p-5 md:p-8">
       <Tabs defaultValue="sitemap" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="sitemap">Sitemap.xml</TabsTrigger>
@@ -123,12 +124,12 @@ const SitemapGenerator = () => {
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">User-agent</label>
-              <input className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground" value={rbConfig.userAgent}
+              <Input className="bg-card border-border" value={rbConfig.userAgent}
                 onChange={(e) => setRbConfig({ ...rbConfig, userAgent: e.target.value })} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Sitemap URL</label>
-              <input className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="https://example.com/sitemap.xml"
+              <Input className="bg-card border-border" placeholder="https://example.com/sitemap.xml"
                 value={rbConfig.sitemapUrl} onChange={(e) => setRbConfig({ ...rbConfig, sitemapUrl: e.target.value })} />
             </div>
           </div>
@@ -138,7 +139,7 @@ const SitemapGenerator = () => {
             <div className="flex flex-wrap gap-2">
               {commonDisallow.map((path) => (
                 <button key={path} onClick={() => toggleDisallow(path)}
-                  className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${rbConfig.disallow.includes(path) ? "bg-destructive/20 text-destructive" : "bg-card text-muted-foreground hover:text-foreground"}`}>
+                  className={`text-xs px-3 py-2 rounded-lg transition-colors min-h-[36px] ${rbConfig.disallow.includes(path) ? "bg-destructive/20 text-destructive" : "bg-card text-muted-foreground hover:text-foreground"}`}>
                   {path}
                 </button>
               ))}
@@ -147,7 +148,7 @@ const SitemapGenerator = () => {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Crawl-delay (сек, необязательно)</label>
-            <input className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="10"
+            <Input className="bg-card border-border" placeholder="10"
               value={rbConfig.crawlDelay} onChange={(e) => setRbConfig({ ...rbConfig, crawlDelay: e.target.value })} />
           </div>
 

@@ -104,11 +104,11 @@ const AntiDuplicateChecker = () => {
     : "from-muted to-muted";
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8">
-      <div className="flex items-center gap-3 mb-6">
-        <Shield className="w-6 h-6 text-primary" />
+    <div className="glass rounded-2xl p-5 md:p-8">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <Shield className="w-6 h-6 text-primary shrink-0" />
         <span className="text-sm font-medium text-foreground">Безопасность контента</span>
-        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+        <div className="flex-1 min-w-[100px] h-2 bg-muted rounded-full overflow-hidden">
           <div
             className={`h-full bg-gradient-to-r ${scoreColor} rounded-full transition-all duration-500`}
             style={{ width: result ? `${result.score}%` : "0%" }}

@@ -100,7 +100,7 @@ const PSEOGenerator = () => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8">
+    <div className="glass rounded-2xl p-5 md:p-8">
       {/* Steps indicator */}
       <div className="flex items-center gap-2 mb-8 justify-center">
         {[1, 2, 3].map((s) => (
@@ -117,7 +117,7 @@ const PSEOGenerator = () => {
       </div>
 
       <div className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Выберите нишу</label>
             <Select onValueChange={(v) => { setNiche(v); setStep(Math.max(step, 2)); }}>

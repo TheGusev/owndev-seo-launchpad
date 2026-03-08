@@ -83,7 +83,7 @@ const SEOAuditor = () => {
   const filteredIssues = result?.issues.filter(i => activeTab === "all" || i.category === activeTab) || [];
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8">
+    <div className="glass rounded-2xl p-5 md:p-8">
       <div className="space-y-6">
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">URL сайта для аудита</label>
@@ -120,7 +120,7 @@ const SEOAuditor = () => {
         {result && (
           <>
             {/* Dual scores */}
-            <div className="flex gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <ScoreCard label="SEO Score" score={result.seoScore} icon={Search} />
               <ScoreCard label="LLM Score" score={result.llmScore} icon={Bot} />
             </div>
@@ -149,7 +149,7 @@ const SEOAuditor = () => {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors min-h-[36px] ${
                     activeTab === tab ? "bg-primary text-primary-foreground" : "glass text-muted-foreground hover:text-foreground"
                   }`}
                 >

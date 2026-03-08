@@ -109,7 +109,7 @@ const BlogPost = () => {
         <Header />
         <main className="container px-4 md:px-6 pt-24 pb-16">
           <article className="max-w-3xl mx-auto">
-            <Link to="/blog" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 text-sm">
+            <Link to="/blog" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 text-sm min-h-[44px] py-2">
               <ArrowLeft className="w-4 h-4" /> Назад к блогу
             </Link>
 

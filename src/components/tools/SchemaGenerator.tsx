@@ -202,7 +202,7 @@ const SchemaGenerator = () => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8">
+    <div className="glass rounded-2xl p-5 md:p-8">
       <div className="space-y-6">
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Тип разметки</label>
@@ -219,7 +219,7 @@ const SchemaGenerator = () => {
         </div>
 
         {type && (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fields.map((f) => (
               <div key={f.key} className="space-y-1">
                 <label className="text-sm font-medium text-foreground">
