@@ -108,7 +108,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/AITextGenerator")),
     gradient: "bg-gradient-to-br from-pink-950/40 to-rose-950/40",
     useCases: ["Генерация локальных вступлений", "Создание FAQ под регион", "Уникализация контента"],
-    geoEnabled: true, status: "coming_soon",
+    geoEnabled: true, status: "active",
   },
   {
     id: "anti-duplicate", slug: "anti-duplicate",
