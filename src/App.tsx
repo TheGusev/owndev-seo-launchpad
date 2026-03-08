@@ -15,6 +15,7 @@ import GeoNicheToolPage from "./pages/GeoNicheToolPage";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import CookieBanner from "./components/CookieBanner";
+import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/privacy" element={<Privacy />} />
