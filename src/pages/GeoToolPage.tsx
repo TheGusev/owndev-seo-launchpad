@@ -9,6 +9,9 @@ import { getRegionById, getRegionNeighbors } from "@/data/regions";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const GeoToolPage = () => {
   const { toolSlug, regionSlug } = useParams<{ toolSlug: string; regionSlug: string }>();
