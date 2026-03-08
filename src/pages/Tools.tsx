@@ -4,25 +4,55 @@ import Footer from "@/components/Footer";
 import { categories, getToolsByCategory } from "@/data/tools-registry";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { AnimatedGrid } from "@/components/ui/animated-grid";
+import { FloatingParticles } from "@/components/ui/floating-particles";
+import { CornerDecorations } from "@/components/ui/corner-decorations";
 
 const Tools = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
       <Header />
-      <main className="pt-24 pb-16">
-        <div className="container px-4 md:px-6">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 glass px-4 py-2 rounded-full mb-5">
+      <main className="pt-24 pb-16 relative">
+        {/* Background animations */}
+        <div className="absolute inset-0 pointer-events-none">
+          <AnimatedGrid theme="accent" lineCount={{ h: 6, v: 8 }} />
+          <FloatingParticles count={12} className="absolute inset-0" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+        </div>
+
+        <div className="container px-4 md:px-6 relative z-10">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <motion.div
+              className="inline-flex items-center gap-2 glass px-4 py-2 rounded-full mb-5"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
               <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
               <span className="text-sm text-muted-foreground font-mono">Все инструменты платформы</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-serif mb-4">
+            </motion.div>
+            <motion.h1
+              className="text-3xl md:text-4xl lg:text-5xl font-bold font-serif mb-4"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
               <span className="text-gradient">12 инструментов</span> для SEO + LLM
-            </h1>
-            <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
+            </motion.h1>
+            <motion.p
+              className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
               Бесплатные инструменты для SEO, programmatic SEO и оптимизации под AI‑поиск
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
 
           {categories.map((cat, catIdx) => {
             const catTools = getToolsByCategory(cat.id);
@@ -31,10 +61,10 @@ const Tools = () => {
             return (
               <motion.section
                 key={cat.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.4, delay: catIdx * 0.05 }}
+                transition={{ duration: 0.5, delay: catIdx * 0.08 }}
                 className="mb-10"
               >
                 <div className="flex items-center gap-3 mb-5">
@@ -43,28 +73,38 @@ const Tools = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {catTools.map((tool) => (
-                    <Link key={tool.id} to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group min-h-[44px]">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                          <tool.icon className="w-5 h-5 text-primary" />
+                  {catTools.map((tool, toolIdx) => (
+                    <motion.div
+                      key={tool.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: toolIdx * 0.06 }}
+                    >
+                      <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group min-h-[44px] block">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <tool.icon className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{tool.name}</h3>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{tool.name}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
+                        <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
+                          Открыть
+                          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </div>
-                      </div>
-                      <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
-                        Открыть
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </Link>
+                      </Link>
+                    </motion.div>
                   ))}
                 </div>
               </motion.section>
             );
           })}
         </div>
+
+        <CornerDecorations size="lg" />
       </main>
       <Footer />
     </div>

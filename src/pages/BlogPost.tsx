@@ -5,6 +5,9 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock } from "lucide-react";
+import { motion } from "framer-motion";
+import { AnimatedGrid } from "@/components/ui/animated-grid";
+import { FloatingParticles } from "@/components/ui/floating-particles";
 
 const renderMarkdown = (content: string) => {
   const lines = content.split("\n");
@@ -105,31 +108,57 @@ const BlogPost = () => {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background overflow-hidden">
         <Header />
-        <main className="container px-4 md:px-6 pt-24 pb-16">
-          <article className="max-w-3xl mx-auto">
-            <Link to="/blog" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 text-sm min-h-[44px] py-2">
-              <ArrowLeft className="w-4 h-4" /> Назад к блогу
-            </Link>
+        <main className="pt-24 pb-16 relative">
+          {/* Background animations */}
+          <div className="absolute inset-0 pointer-events-none">
+            <AnimatedGrid theme="accent" lineCount={{ h: 3, v: 5 }} />
+            <FloatingParticles count={8} className="absolute inset-0" />
+            <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+          </div>
 
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
-              <span>{new Date(post.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span>
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {post.readTime} мин чтения</span>
-            </div>
+          <div className="container px-4 md:px-6 relative z-10">
+            <article className="max-w-3xl mx-auto">
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <Link to="/blog" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 text-sm min-h-[44px] py-2">
+                  <ArrowLeft className="w-4 h-4" /> Назад к блогу
+                </Link>
+              </motion.div>
 
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-4">{post.title}</h1>
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
+                  <span>{new Date(post.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {post.readTime} мин чтения</span>
+                </div>
 
-            <div className="flex gap-2 flex-wrap mb-8">
-              {post.tags.map(tag => (
-                <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-              ))}
-            </div>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-4">{post.title}</h1>
 
-            <div className="prose-custom">
-              {renderMarkdown(post.content)}
-            </div>
-          </article>
+                <div className="flex gap-2 flex-wrap mb-8">
+                  {post.tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                  ))}
+                </div>
+              </motion.div>
+
+              <motion.div
+                className="prose-custom"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.25 }}
+              >
+                {renderMarkdown(post.content)}
+              </motion.div>
+            </article>
+          </div>
         </main>
         <Footer />
       </div>
