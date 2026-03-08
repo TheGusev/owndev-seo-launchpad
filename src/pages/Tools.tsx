@@ -7,6 +7,9 @@ import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const Tools = () => {
   return (
