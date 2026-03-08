@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Sparkles, Copy, CheckCircle, Loader2 } from "lucide-react";
+import { Sparkles, Copy, CheckCircle, Loader2, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
