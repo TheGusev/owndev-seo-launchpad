@@ -1,59 +1,66 @@
 
 
-## План: Расширение блога — семантическое ядро + LLM-оптимизация
+## Plan: Add Desktop Scroll-Snap Effect
 
-### Текущее состояние
-6 статей, 14 тегов. Категории неравномерны — по 1 статье на тему.
+### Verification Results
 
-### Что сделаем
+All header navigation links work correctly:
+- "Веб-студия" -> scrolls to #web-studio section (confirmed)
+- "Технологии" -> scrolls to #tech-shop section (confirmed)
+- "Кейсы" -> scrolls to #cases section (confirmed)
+- "Контакты" -> scrolls to #contact section (confirmed)
 
-**Добавим 12+ новых статей**, распределённых по кластерам семантического ядра. Каждая статья оптимизирована под LLM-цитирование: вопросы в H2, прямые ответы, списки, FAQ-формат.
+No changes needed for navigation -- it all works as expected.
 
-### Семантические кластеры и новые статьи
+### Scroll-Snap Implementation
 
-**Кластер 1: LLM-оптимизация (informational)** — уже 1 статья, добавим 2:
-- «Как проверить, цитирует ли ChatGPT ваш сайт» — практический гайд с инструментами проверки
-- «E-E-A-T для AI-поиска: как повысить авторитетность сайта» — экспертность, доверие, авторские сигналы
+Add CSS scroll-snap for desktop so the main sections (Hero, WebStudio, ToolsShowcase, TechShop) snap into place when scrolling between them. Uses `proximity` mode so it assists scrolling without fighting it.
 
-**Кластер 2: AI Overviews / Google (commercial)** — уже 1, добавим 2:
-- «AI Overviews vs Perplexity vs ChatGPT: где важнее быть» — сравнение платформ, стратегия присутствия
-- «Как отслеживать позиции в AI-выдаче» — метрики, инструменты, GSC
+#### 1. Add scroll-snap CSS to `src/index.css`
 
-**Кластер 3: pSEO / Автоматизация (transactional)** — уже 1, добавим 2:
-- «pSEO для локального бизнеса: город + услуга» — шаблоны, примеры, подводные камни
-- «Автоматизация SEO-рутины: от аудита до мониторинга» — как использовать инструменты OWNDEV в связке
+Add desktop-only scroll-snap utilities:
+```css
+@media (min-width: 768px) {
+  .snap-container {
+    scroll-snap-type: y proximity;
+    overflow-y: scroll;
+    height: 100vh;
+  }
+  .snap-section {
+    scroll-snap-align: start;
+  }
+}
+```
 
-**Кластер 4: Schema.org / Разметка (informational)** — уже 1, добавим 2:
-- «FAQ разметка для LLM: полный гайд с примерами» — FAQPage, HowTo, best practices
-- «Микроразметка для интернет-магазина: Product, Offer, Review» — ecommerce-фокус
+#### 2. Update `src/pages/Index.tsx`
 
-**Кластер 5: Контент / Промты (informational)** — уже 1, добавим 2:
-- «Как писать тексты, которые цитируют AI-ассистенты» — формат, структура, длина
-- «Контент-план для AI-видимости: от идеи до публикации» — процесс создания LLM-оптимизированного контента
+- Add `snap-container` class to the root `<div>`
+- Add `snap-section` class to the 4 main sections: Hero, WebStudioSection, ToolsShowcase, TechShopSection
+- Wrap each section in a div with the snap class (since section components own their own root elements)
 
-**Кластер 6: SEO-аудит / Технический SEO (informational)** — уже 1, добавим 2:
-- «Внутренняя перелинковка: как построить структуру для LLM» — хабы, кластеры, anchor-тексты
-- «Скорость сайта и Core Web Vitals в 2025» — практический гайд
+#### 3. Update section components
 
-### Оптимизация под LLM-выдачу
+Add `min-h-screen` to the 4 snap-target sections so they fill the viewport:
+- `src/components/Hero.tsx` -- already has `min-h-screen`
+- `src/components/WebStudioSection.tsx` -- add `min-h-screen`
+- `src/components/ToolsShowcase.tsx` -- add `min-h-screen`
+- `src/components/TechShopSection.tsx` -- add `min-h-screen`
 
-Каждая новая статья будет следовать формату:
-- **H2 = вопрос пользователя** (как, зачем, что такое)
-- **Первый абзац после H2 = прямой ответ** (2-3 предложения)
-- **Списки и чек-листы** внутри каждого раздела
-- **FAQ-блок в конце** (3-5 вопросов)
-- **Внутренние ссылки** на инструменты OWNDEV (SEO Auditor, Schema Generator и т.д.)
-- **readTime**, теги, slug — всё по шаблону
+### Files Summary
 
-### Обновление тегов
+| Action | File | Change |
+|--------|------|--------|
+| Modify | `src/index.css` | Add snap-container and snap-section CSS utilities |
+| Modify | `src/pages/Index.tsx` | Add snap-container class to root div |
+| Modify | `src/components/WebStudioSection.tsx` | Add snap-section and min-h-screen classes |
+| Modify | `src/components/ToolsShowcase.tsx` | Add snap-section and min-h-screen classes |
+| Modify | `src/components/TechShopSection.tsx` | Add snap-section and min-h-screen classes |
+| Modify | `src/components/Hero.tsx` | Add snap-section class |
 
-Добавим новые теги для полного покрытия: `Перелинковка`, `Core Web Vitals`, `E-E-A-T`, `Perplexity`, `Локальное SEO`, `Ecommerce`, `Контент-план`, `Мониторинг`. Функция `getAllTags()` подхватит их автоматически.
+### Technical Notes
 
-### Файлы
-
-| Файл | Изменения |
-|------|-----------|
-| `src/data/blog-posts.ts` | +12 новых статей с полным контентом, обновлённые теги |
-
-Один файл, без изменений в логике. Статьи добавляются в массив `blogPosts`.
+- `proximity` mode means snap only triggers when the user stops scrolling near a section boundary -- it does not force-lock the scroll
+- Only enabled on desktop (768px+) to avoid interfering with mobile scrolling
+- Sections below TechShop (ScrollStacks, Cases, FAQ, Contact, Footer) do NOT get snap-section -- they scroll freely
+- The snap container needs `overflow-y: scroll` and `height: 100vh` to work properly
 
