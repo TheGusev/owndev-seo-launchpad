@@ -99,6 +99,7 @@ const Blog = () => {
               </motion.div>
 
               {/* Posts Grid */}
+              <ParallaxLayer speed={0.15}>
               <div className="grid gap-6">
                 {filtered.map((post, idx) => (
                   <motion.div
