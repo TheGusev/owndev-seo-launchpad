@@ -1,18 +1,57 @@
 
 
-## Site Status: No Errors Found
+## SEO-аудит сайта OWNDEV — текущая оценка
 
-After thorough inspection of console logs, network requests, session replay, and all source files — **there are no errors to fix**. The previous 16-point audit was fully implemented and the codebase is clean:
+### Общая оценка: **8/10** — сайт хорошо подготовлен, но есть точки роста
 
-- All pages have `<Helmet>` with title, description, canonical
-- Sitemap plugin generates correct URLs matching actual routes
-- `robots.txt` has `Sitemap:` directive
-- JSON-LD schemas are present (Organization, WebSite, FAQPage, BreadcrumbList, Article)
-- Header uses `<Link>` for logo, has `aria-label` on mobile menu
-- Footer uses `<Link>` for logo, anchor navigation works from subpages
-- Routing is correct, no 404-producing URLs in sitemap
-- NotFound has `noindex` meta
-- Blog has related posts, tools have cross-links
+---
 
-**No changes needed.** The site is working correctly.
+### ✅ Что сделано хорошо
+
+| Категория | Статус |
+|-----------|--------|
+| **Meta-теги** | Все страницы имеют `<Helmet>` с title, description, canonical |
+| **JSON-LD разметка** | Organization, WebSite, FAQPage (главная), BreadcrumbList (инструменты), Article (блог), LocalBusiness (гео), SoftwareApplication (ниша+гео) |
+| **Sitemap** | Sitemap index с 7 подкартами: pages, blog, geo×3, niche×2. robots.txt ссылается на sitemap.xml |
+| **Гео-страницы** | 50 городов × 3 гео-инструмента = 150 страниц `/tools/:tool/:city` с LocalBusiness разметкой, локальным контентом, перелинковкой на соседние города |
+| **Ниша+гео страницы** | 50 городов × 20 ниш × 2 инструмента = 2000 страниц `/:city/:niche/:tool` с SoftwareApplication разметкой |
+| **Перелинковка** | Гео-страницы ссылаются на соседние города, ниша-страницы ссылаются на другие ниши и города, блог имеет related posts, инструменты имеют cross-links |
+| **Семантика** | 18 статей в блоге по 6 тематическим кластерам (LLM, content, pSEO, schema, technical, AI Overviews) |
+| **Навигация** | Header и Footer используют `<Link>`, есть breadcrumbs на вложенных страницах |
+| **404** | NotFound с `noindex` |
+
+---
+
+### ⚠️ Что можно улучшить (точки роста до 10/10)
+
+1. **ParallaxLayer на гео-страницах** — на `GeoToolPage.tsx` и `GeoNicheToolPage.tsx` всё ещё используется `ParallaxLayer` (та же проблема с наложением, которую мы исправили на блоге). Stats bar и tool widget обёрнуты в ParallaxLayer.
+
+2. **Нет BreadcrumbList JSON-LD на гео и ниша-страницах** — на `GeoToolPage` есть визуальный breadcrumb, но нет `BreadcrumbList` JSON-LD. На `GeoNicheToolPage` тоже нет.
+
+3. **Нет hreflang / Open Graph на подстраницах** — OG-теги прописаны только в `index.html` статически. Страницы блога, инструментов, гео-страницы не имеют динамических OG title/description/image.
+
+4. **Blog не имеет пагинации** — все 18 статей на одной странице. При росте контента это станет проблемой.
+
+5. **Нет `<link rel="next/prev">` для гео-страниц** — поисковики не видят связности серии.
+
+---
+
+### Итого по направлениям
+
+| Направление | Оценка | Комментарий |
+|-------------|--------|-------------|
+| SEO мета-теги | 9/10 | Всё на месте, не хватает OG на подстраницах |
+| JSON-LD разметка | 8/10 | 6 типов схем, не хватает BreadcrumbList на гео |
+| Перелинковка | 9/10 | Соседние города, ниши, related posts, footer links |
+| Гео-SEO | 9/10 | 2150 страниц, уникальный контент, LocalBusiness |
+| Семантика (блог) | 8/10 | 18 статей в 6 кластерах, хорошее покрытие тем |
+| Техническое SEO | 8/10 | Sitemap index, canonical, robots — ОК. ParallaxLayer может ломать рендер |
+
+### Рекомендуемые исправления (по приоритету)
+
+1. **Убрать ParallaxLayer** с `GeoToolPage` и `GeoNicheToolPage` (баг с наложением)
+2. **Добавить BreadcrumbList JSON-LD** на гео и ниша-страницы
+3. **Добавить динамические OG-теги** (og:title, og:description) через Helmet на все страницы
+
+Хотите, чтобы я реализовал эти 3 исправления?
 
