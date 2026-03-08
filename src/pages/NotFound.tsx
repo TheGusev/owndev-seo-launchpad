@@ -8,6 +8,8 @@ import { Home } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { SparklesCore } from "@/components/ui/sparkles";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
 
 const NotFound = () => {
   const location = useLocation();
