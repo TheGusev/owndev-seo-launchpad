@@ -46,7 +46,7 @@ const AITextGenerator = () => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8 space-y-6">
+    <div className="glass rounded-2xl p-5 md:p-8 space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Тип текста</label>
