@@ -74,7 +74,7 @@ const CompetitorAnalysis = () => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8 space-y-6">
+    <div className="glass rounded-2xl p-5 md:p-8 space-y-6">
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">URL страницы 1</label>
