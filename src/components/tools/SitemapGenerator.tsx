@@ -148,7 +148,7 @@ const SitemapGenerator = () => {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Crawl-delay (сек, необязательно)</label>
-            <input className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="10"
+            <Input className="bg-card border-border" placeholder="10"
               value={rbConfig.crawlDelay} onChange={(e) => setRbConfig({ ...rbConfig, crawlDelay: e.target.value })} />
           </div>
 
