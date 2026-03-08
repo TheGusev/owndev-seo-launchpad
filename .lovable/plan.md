@@ -1,18 +1,32 @@
 
 
-## Site Status: No Errors Found
+## Удаление элементов из Footer и Hero
 
-After thorough inspection of console logs, network requests, session replay, and all source files — **there are no errors to fix**. The previous 16-point audit was fully implemented and the codebase is clean:
+### Footer (src/components/Footer.tsx)
 
-- All pages have `<Helmet>` with title, description, canonical
-- Sitemap plugin generates correct URLs matching actual routes
-- `robots.txt` has `Sitemap:` directive
-- JSON-LD schemas are present (Organization, WebSite, FAQPage, BreadcrumbList, Article)
-- Header uses `<Link>` for logo, has `aria-label` on mobile menu
-- Footer uses `<Link>` for logo, anchor navigation works from subpages
-- Routing is correct, no 404-producing URLs in sitemap
-- NotFound has `noindex` meta
-- Blog has related posts, tools have cross-links
+**Удалить:**
+1. Телефон из contactInfo (строка 9)
+2. Массив socialLinks и его импорты (строки 33-36, MessageCircle из lucide)
+3. Блок "Мы в соцсетях" с кнопками (строки 108-117)
+4. "ООО ОВН ДИДЖИТАЛ" из копирайта — заменить на "© 2025 OWNDEV. Все права защищены."
 
-**No changes needed.** The site is working correctly.
+**Оставить:**
+- Email и адрес в contactInfo
+- Все остальные колонки (Навигация, Инструменты, Компания)
+
+### Hero (src/components/Hero.tsx)
+
+**Удалить:**
+- Кнопку "О нас" с GlowingEffect wrapper (строки 136-151)
+- Импорт Users из lucide-react (не используется после удаления)
+- Функцию scrollTo (больше не нужна)
+
+**Оставить:**
+- Кнопку "Инструменты"
+
+### Файлы для изменения
+| Файл | Изменение |
+|------|-----------|
+| `src/components/Footer.tsx` | Убрать телефон, соцсети, название ООО |
+| `src/components/Hero.tsx` | Убрать кнопку "О нас" |
 
