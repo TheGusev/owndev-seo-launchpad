@@ -10,6 +10,9 @@ import { niches, getNicheById } from "@/data/niches";
 import { MapPin } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate", "ai-citation", "roi-calculator", "geo-map"];
 
