@@ -29,10 +29,6 @@ const Footer = () => {
     { label: "Пользовательское соглашение", href: "/terms", isRoute: true },
   ];
 
-  const socialLinks = [
-    { icon: Send, label: "Telegram", href: "https://t.me/The_Suppor_t?text=owndev" },
-    { icon: MessageCircle, label: "WhatsApp", href: "https://wa.me/89069989888" },
-  ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string, isRoute?: boolean) => {
     if (isRoute) {
