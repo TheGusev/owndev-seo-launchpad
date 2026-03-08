@@ -94,7 +94,7 @@ const SemanticCoreGenerator = () => {
             {loading ? "Генерация…" : "Собрать семантику"}
           </GradientButton>
           {clusters.length > 0 && (
-            <GradientButton size="lg" variant="outline" onClick={handleExportCSV}>
+            <GradientButton size="lg" onClick={handleExportCSV}>
               <Download className="w-5 h-5 mr-2" />
               Скачать CSV
             </GradientButton>

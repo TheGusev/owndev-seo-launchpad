@@ -127,7 +127,7 @@ const AITextGenerator = () => {
               <p className="text-sm font-semibold text-foreground">Результат</p>
             </div>
             {result && (
-              <GradientButton size="sm" variant="outline" onClick={handleCopy}>
+              <GradientButton size="sm" onClick={handleCopy}>
                 <Copy className="w-4 h-4 mr-1" />
                 Скопировать
               </GradientButton>
