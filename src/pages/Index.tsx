@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import ServicesTeaser from "@/components/ServicesTeaser";
 import ToolsShowcase from "@/components/ToolsShowcase";
-import AboutSection from "@/components/AboutSection";
+
 import FAQ from "@/components/FAQ";
 import ContactForm from "@/components/ContactForm";
 import BlogPreview from "@/components/BlogPreview";
