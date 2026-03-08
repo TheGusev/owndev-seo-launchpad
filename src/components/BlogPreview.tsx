@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { blogPosts } from "@/data/blog-posts";
+import { blogPosts } from "@/data/blog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Clock } from "lucide-react";
