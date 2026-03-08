@@ -147,7 +147,6 @@ const GeoNicheToolPage = () => {
           </div>
 
           {/* Stats */}
-          <ParallaxLayer speed={0.15}>
           <motion.div
             className="flex flex-wrap gap-4 justify-center mb-10"
             initial={{ opacity: 0, y: 15 }}
@@ -167,7 +166,6 @@ const GeoNicheToolPage = () => {
               <span className="font-bold text-foreground">{niche.name}</span>
             </div>
           </motion.div>
-          </ParallaxLayer>
 
           {/* Unique content */}
           <motion.div
