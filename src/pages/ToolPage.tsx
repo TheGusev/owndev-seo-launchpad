@@ -111,7 +111,6 @@ const ToolPage = () => {
           </div>
 
           {/* Tool widget */}
-          <ParallaxLayer speed={0.2}>
           <motion.div
             className="max-w-[900px] mx-auto mb-10"
             initial={{ opacity: 0, y: 20 }}
