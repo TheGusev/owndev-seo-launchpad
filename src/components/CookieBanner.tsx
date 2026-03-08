@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
-
 const COOKIE_CONSENT_KEY = "cookie_consent_accepted";
 
 const CookieBanner = () => {
@@ -31,14 +30,14 @@ const CookieBanner = () => {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -100, opacity: 0 }}
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="fixed bottom-4 left-4 z-50"
+          className="fixed bottom-4 left-4 right-4 sm:right-auto z-50"
         >
-          <div className="rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-lg px-4 py-2.5">
-            <div className="flex items-center gap-3">
+          <div className="rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-lg px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
               <p className="text-xs text-muted-foreground">
                 Мы используем cookie.{" "}
                 <Link 
@@ -53,14 +52,14 @@ const CookieBanner = () => {
                   onClick={handleDecline}
                   variant="ghost"
                   size="sm"
-                  className="shrink-0 h-7 px-3 text-xs transition-all duration-200 hover:scale-105 active:scale-95"
+                  className="shrink-0 h-8 px-3 text-xs min-h-[36px]"
                 >
                   Отклонить
                 </Button>
                 <Button 
                   onClick={handleAccept}
                   size="sm"
-                  className="shrink-0 h-7 px-3 text-xs transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                  className="shrink-0 h-8 px-3 text-xs min-h-[36px]"
                 >
                   Принять
                 </Button>

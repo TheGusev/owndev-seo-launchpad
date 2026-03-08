@@ -58,7 +58,7 @@ const Header = () => {
 
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 text-foreground"
+            className="md:hidden p-2 text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -66,18 +66,18 @@ const Header = () => {
 
         {isOpen && (
           <nav className="md:hidden py-4 border-t border-border">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
                   onClick={(e) => handleNavClick(e, link)}
-                  className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
+                  className="text-muted-foreground hover:text-foreground transition-colors font-medium py-3 px-2 min-h-[44px] flex items-center rounded-lg hover:bg-muted/50"
                 >
                   {link.label}
                 </a>
               ))}
-              <GradientButton size="sm" className="mt-2" onClick={() => navigate("/tools")}>
+              <GradientButton size="sm" className="mt-3" onClick={() => { navigate("/tools"); setIsOpen(false); }}>
                 Открыть инструменты
               </GradientButton>
             </div>
