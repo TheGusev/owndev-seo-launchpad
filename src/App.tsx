@@ -12,6 +12,8 @@ import Tools from "./pages/Tools";
 import ToolPage from "./pages/ToolPage";
 import GeoToolPage from "./pages/GeoToolPage";
 import GeoNicheToolPage from "./pages/GeoNicheToolPage";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import CookieBanner from "./components/CookieBanner";
 
 const queryClient = new QueryClient();
