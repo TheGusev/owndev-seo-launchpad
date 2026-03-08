@@ -1,4 +1,4 @@
-import { Phone, Mail, MapPin, Send, MessageCircle } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 
 const Footer = () => {
@@ -6,7 +6,6 @@ const Footer = () => {
   const location = useLocation();
 
   const contactInfo = [
-    { icon: Phone, text: "8 (906) 998-98-88", href: "tel:89069989888" },
     { icon: Mail, text: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
     { icon: MapPin, text: "Москва, Россия", href: "#" },
   ];
@@ -30,10 +29,6 @@ const Footer = () => {
     { label: "Пользовательское соглашение", href: "/terms", isRoute: true },
   ];
 
-  const socialLinks = [
-    { icon: Send, label: "Telegram", href: "https://t.me/The_Suppor_t?text=owndev" },
-    { icon: MessageCircle, label: "WhatsApp", href: "https://wa.me/89069989888" },
-  ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string, isRoute?: boolean) => {
     if (isRoute) {
@@ -105,22 +100,12 @@ const Footer = () => {
                 </li>
               ))}
             </ul>
-            <div className="mt-5">
-              <h4 className="font-medium text-foreground mb-3 text-sm">Мы в соцсетях</h4>
-              <div className="flex gap-3">
-                {socialLinks.map((social, i) => (
-                  <a key={i} href={social.href} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors" aria-label={social.label}>
-                    <social.icon className="w-5 h-5" />
-                  </a>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
         <div className="mt-10 pt-6 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-muted-foreground text-sm text-center md:text-left">© 2025 ООО "ОВН ДИДЖИТАЛ". Все права защищены.</p>
+            <p className="text-muted-foreground text-sm text-center md:text-left">© 2025 OWNDEV. Все права защищены.</p>
             <p className="text-muted-foreground text-xs">Сделано с ❤️ в России</p>
           </div>
         </div>
