@@ -1,5 +1,5 @@
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Sparkles, ArrowDown, Search, Users } from "lucide-react";
+import { Search } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
 import { SparklesCore } from "@/components/ui/sparkles";
@@ -11,9 +11,6 @@ import { ParallaxLayer } from "@/components/ui/parallax-layer";
 import { Link } from "react-router-dom";
 
 const Hero = () => {
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 snap-section">

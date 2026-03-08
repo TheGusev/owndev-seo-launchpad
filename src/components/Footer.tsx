@@ -1,4 +1,4 @@
-import { Phone, Mail, MapPin, Send, MessageCircle } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 
 const Footer = () => {
@@ -6,7 +6,6 @@ const Footer = () => {
   const location = useLocation();
 
   const contactInfo = [
-    { icon: Phone, text: "8 (906) 998-98-88", href: "tel:89069989888" },
     { icon: Mail, text: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
     { icon: MapPin, text: "Москва, Россия", href: "#" },
   ];
