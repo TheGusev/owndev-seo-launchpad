@@ -4,6 +4,7 @@ import ToolsShowcase from "@/components/ToolsShowcase";
 import AboutSection from "@/components/AboutSection";
 import FAQ from "@/components/FAQ";
 import ContactForm from "@/components/ContactForm";
+import BlogPreview from "@/components/BlogPreview";
 import Footer from "@/components/Footer";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
