@@ -157,7 +157,6 @@ const GeoToolPage = () => {
           </motion.div>
 
           {/* Tool widget */}
-          <ParallaxLayer speed={0.2}>
           <motion.div
             className="max-w-[900px] mx-auto mb-12"
             initial={{ opacity: 0, y: 20 }}
@@ -168,7 +167,6 @@ const GeoToolPage = () => {
               <ToolComponent />
             </Suspense>
           </motion.div>
-          </ParallaxLayer>
 
           {/* CTA */}
           <motion.div
