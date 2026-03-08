@@ -9,6 +9,7 @@ const Header = () => {
 
   const navLinks: { href: string; label: string; isRoute?: boolean }[] = [
     { href: "/tools", label: "Инструменты", isRoute: true },
+    { href: "/blog", label: "Блог", isRoute: true },
     { href: "#about", label: "О нас" },
     { href: "#contact", label: "Контакты" },
   ];
