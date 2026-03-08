@@ -83,16 +83,17 @@ const Tools = () => {
                   <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground">{cat.name}</h2>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex flex-wrap justify-center gap-4">
                   {catTools.map((tool, toolIdx) => (
                     <motion.div
                       key={tool.id}
+                      className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.75rem)]"
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.4, delay: toolIdx * 0.06 }}
                     >
-                      <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group min-h-[44px] block">
+                      <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group min-h-[44px] block h-full">
                         <div className="flex items-start gap-4">
                           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                             <tool.icon className="w-5 h-5 text-primary" />
