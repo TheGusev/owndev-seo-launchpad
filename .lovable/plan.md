@@ -1,66 +1,41 @@
 
 
-## Plan: Add Desktop Scroll-Snap Effect
+## Plan: Add Subtle OWNDEV Services Promotion
 
-### Verification Results
+### 1. Create reusable `ToolCTA` component
 
-All header navigation links work correctly:
-- "Веб-студия" -> scrolls to #web-studio section (confirmed)
-- "Технологии" -> scrolls to #tech-shop section (confirmed)
-- "Кейсы" -> scrolls to #cases section (confirmed)
-- "Контакты" -> scrolls to #contact section (confirmed)
+**NEW** `src/components/tools/ToolCTA.tsx` — small banner shown at the bottom of tool results. Compact glass card with one line of text + a text-link to `#contact`. Reused across 3 tools.
 
-No changes needed for navigation -- it all works as expected.
+### 2. Create `ServicesTeaser` section
 
-### Scroll-Snap Implementation
+**NEW** `src/components/ServicesTeaser.tsx` — compact section placed between Hero and ToolsShowcase in Index.tsx. Contains:
+- Heading: "Когда бесплатных инструментов мало"
+- One paragraph explaining turnkey services
+- 3 short bullet points (sites, pSEO, LLM optimization) — reuse icons from AboutSection
+- One `GradientButton variant="variant"` (secondary style) "Обсудить проект" scrolling to `#contact`
 
-Add CSS scroll-snap for desktop so the main sections (Hero, WebStudio, ToolsShowcase, TechShop) snap into place when scrolling between them. Uses `proximity` mode so it assists scrolling without fighting it.
+### 3. Integrate `ToolCTA` into 3 tools
 
-#### 1. Add scroll-snap CSS to `src/index.css`
+**MODIFY** `SEOAuditor.tsx` — add `<ToolCTA />` after the results block (after issues list, before the closing `</div>`)
 
-Add desktop-only scroll-snap utilities:
-```css
-@media (min-width: 768px) {
-  .snap-container {
-    scroll-snap-type: y proximity;
-    overflow-y: scroll;
-    height: 100vh;
-  }
-  .snap-section {
-    scroll-snap-align: start;
-  }
-}
-```
+**MODIFY** `PSEOGenerator.tsx` — add `<ToolCTA />` after the generated table
 
-#### 2. Update `src/pages/Index.tsx`
+**MODIFY** `LLMPromptHelper.tsx` — add `<ToolCTA />` after the prompts list
 
-- Add `snap-container` class to the root `<div>`
-- Add `snap-section` class to the 4 main sections: Hero, WebStudioSection, ToolsShowcase, TechShopSection
-- Wrap each section in a div with the snap class (since section components own their own root elements)
+The CTA only renders when results are present (conditionally shown alongside results).
 
-#### 3. Update section components
+### 4. Update Index.tsx
 
-Add `min-h-screen` to the 4 snap-target sections so they fill the viewport:
-- `src/components/Hero.tsx` -- already has `min-h-screen`
-- `src/components/WebStudioSection.tsx` -- add `min-h-screen`
-- `src/components/ToolsShowcase.tsx` -- add `min-h-screen`
-- `src/components/TechShopSection.tsx` -- add `min-h-screen`
+**MODIFY** `src/pages/Index.tsx` — import and place `<ServicesTeaser />` between `<Hero />` and `<ToolsShowcase />`.
 
 ### Files Summary
 
-| Action | File | Change |
-|--------|------|--------|
-| Modify | `src/index.css` | Add snap-container and snap-section CSS utilities |
-| Modify | `src/pages/Index.tsx` | Add snap-container class to root div |
-| Modify | `src/components/WebStudioSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/ToolsShowcase.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/TechShopSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/Hero.tsx` | Add snap-section class |
-
-### Technical Notes
-
-- `proximity` mode means snap only triggers when the user stops scrolling near a section boundary -- it does not force-lock the scroll
-- Only enabled on desktop (768px+) to avoid interfering with mobile scrolling
-- Sections below TechShop (ScrollStacks, Cases, FAQ, Contact, Footer) do NOT get snap-section -- they scroll freely
-- The snap container needs `overflow-y: scroll` and `height: 100vh` to work properly
+| Action | File |
+|--------|------|
+| CREATE | `src/components/tools/ToolCTA.tsx` |
+| CREATE | `src/components/ServicesTeaser.tsx` |
+| MODIFY | `src/components/tools/SEOAuditor.tsx` |
+| MODIFY | `src/components/tools/PSEOGenerator.tsx` |
+| MODIFY | `src/components/tools/LLMPromptHelper.tsx` |
+| MODIFY | `src/pages/Index.tsx` |
 
