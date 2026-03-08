@@ -118,7 +118,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/AntiDuplicateChecker")),
     gradient: "bg-gradient-to-br from-red-950/40 to-purple-950/40",
     useCases: ["Перед массовой загрузкой контента", "После генерации текстов нейросетью", "Аудит GEO-страниц"],
-    geoEnabled: false, status: "coming_soon",
+    geoEnabled: false, status: "active",
   },
   // Monitoring
   {
