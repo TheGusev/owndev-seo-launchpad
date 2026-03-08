@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
 
 const Terms = () => {
   return (
