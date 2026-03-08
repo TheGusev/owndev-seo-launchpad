@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bot, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import ToolCTA from "./ToolCTA";
 
 type Goal = "write" | "improve" | "ai-overview";
 
@@ -233,6 +234,8 @@ const LLMPromptHelper = () => {
                 </button>
               </div>
             ))}
+
+            <ToolCTA />
           </div>
         )}
 
