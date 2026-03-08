@@ -17,7 +17,7 @@ const BlogPreview = () => {
             <p className="text-muted-foreground mt-2">Гайды по LLM-оптимизации и pSEO</p>
           </div>
           <Link to="/blog">
-            <GradientButton variant="outline" size="sm">
+            <GradientButton variant="variant" size="sm">
               Все статьи <ArrowRight className="w-4 h-4 ml-1" />
             </GradientButton>
           </Link>
