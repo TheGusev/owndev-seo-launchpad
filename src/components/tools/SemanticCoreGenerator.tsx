@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Sparkles, Copy, CheckCircle, Loader2 } from "lucide-react";
+import { Sparkles, Copy, CheckCircle, Loader2, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -48,6 +48,21 @@ const SemanticCoreGenerator = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDownloadCSV = () => {
+    const header = "Кластер,Интент,Ключевое слово";
+    const lines = clusters.flatMap(c =>
+      c.keywords.map(kw => [c.name, c.intent, kw].map(v => `"${v.replace(/"/g, '""')}"`).join(","))
+    );
+    const csv = [header, ...lines].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "semantic-core.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const totalKeywords = clusters.reduce((sum, c) => sum + c.keywords.length, 0);
 
   return (
@@ -66,10 +81,15 @@ const SemanticCoreGenerator = () => {
             <p className="text-sm font-semibold text-foreground">
               {clusters.length} кластеров, {totalKeywords} ключей
             </p>
-            <button onClick={handleCopy} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-              {copied ? <CheckCircle className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
-              {copied ? "Скопировано" : "Копировать всё"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={handleDownloadCSV} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <Download className="w-3 h-3" /> CSV
+              </button>
+              <button onClick={handleCopy} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                {copied ? <CheckCircle className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+                {copied ? "Скопировано" : "Копировать"}
+              </button>
+            </div>
           </div>
 
           {clusters.map((cluster, i) => {
