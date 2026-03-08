@@ -46,7 +46,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/CompetitorAnalysis")),
     gradient: "bg-gradient-to-br from-slate-950/40 to-blue-950/40",
     useCases: ["Анализ выдачи по запросу", "Сравнение сниппетов", "Поиск слабых мест конкурентов"],
-    geoEnabled: true, status: "coming_soon",
+    geoEnabled: true, status: "active",
   },
   {
     id: "indexation-checker", slug: "indexation-checker",
