@@ -14,6 +14,11 @@ const Terms = () => {
       <MouseGradient />
       <ClickRipple />
       <Header />
+      <Helmet>
+        <title>Пользовательское соглашение | OWNDEV</title>
+        <meta name="description" content="Пользовательское соглашение ООО «ОВН ДИДЖИТАЛ». Условия использования сайта owndev.ru и заказа услуг." />
+        <link rel="canonical" href="https://owndev.ru/terms" />
+      </Helmet>
       <main className="pt-24 pb-16 relative">
         {/* Background animations */}
         <div className="absolute inset-0 pointer-events-none">

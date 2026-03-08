@@ -14,6 +14,11 @@ const Privacy = () => {
       <MouseGradient />
       <ClickRipple />
       <Header />
+      <Helmet>
+        <title>Политика конфиденциальности | OWNDEV</title>
+        <meta name="description" content="Политика конфиденциальности ООО «ОВН ДИДЖИТАЛ». Порядок обработки персональных данных на сайте owndev.ru." />
+        <link rel="canonical" href="https://owndev.ru/privacy" />
+      </Helmet>
       <main className="pt-24 pb-16 relative">
         {/* Background animations */}
         <div className="absolute inset-0 pointer-events-none">

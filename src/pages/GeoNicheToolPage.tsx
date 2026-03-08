@@ -14,7 +14,7 @@ import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
 import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
-const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate", "ai-citation", "roi-calculator", "geo-map"];
+const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate"];
 
 const GeoNicheToolPage = () => {
   const { citySlug, nicheSlug, toolSlug } = useParams<{
