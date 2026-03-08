@@ -4,6 +4,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { Search, Globe, Zap, Smartphone, Image, FileText, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import ToolCTA from "./ToolCTA";
 
 interface AuditIssue {
   type: string;
