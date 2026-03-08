@@ -63,7 +63,7 @@ const Blog = () => {
                   <button
                     key={tag}
                     onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                    className={`text-xs px-3 py-2 rounded-full border transition-colors min-h-[36px] ${
                       activeTag === tag ? "bg-primary text-primary-foreground border-primary" : "bg-transparent text-muted-foreground border-border hover:border-primary/50"
                     }`}
                   >
