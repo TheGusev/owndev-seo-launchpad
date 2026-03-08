@@ -98,7 +98,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/SemanticCoreGenerator")),
     gradient: "bg-gradient-to-br from-amber-950/40 to-orange-950/40",
     useCases: ["Сбор семантики для нового проекта", "Кластеризация по интентам", "Оценка частотности"],
-    geoEnabled: true, status: "coming_soon",
+    geoEnabled: true, status: "active",
   },
   {
     id: "ai-text-generator", slug: "ai-text-generator",
@@ -108,7 +108,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/AITextGenerator")),
     gradient: "bg-gradient-to-br from-pink-950/40 to-rose-950/40",
     useCases: ["Генерация локальных вступлений", "Создание FAQ под регион", "Уникализация контента"],
-    geoEnabled: true, status: "coming_soon",
+    geoEnabled: true, status: "active",
   },
   {
     id: "anti-duplicate", slug: "anti-duplicate",
@@ -118,7 +118,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/AntiDuplicateChecker")),
     gradient: "bg-gradient-to-br from-red-950/40 to-purple-950/40",
     useCases: ["Перед массовой загрузкой контента", "После генерации текстов нейросетью", "Аудит GEO-страниц"],
-    geoEnabled: false, status: "coming_soon",
+    geoEnabled: false, status: "active",
   },
   // Monitoring
   {
