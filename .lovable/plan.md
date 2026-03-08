@@ -1,66 +1,51 @@
 
 
-## Plan: Add Desktop Scroll-Snap Effect
+## Plan: Blog Section with LLM/pSEO Guides
 
-### Verification Results
+### Approach
 
-All header navigation links work correctly:
-- "Веб-студия" -> scrolls to #web-studio section (confirmed)
-- "Технологии" -> scrolls to #tech-shop section (confirmed)
-- "Кейсы" -> scrolls to #cases section (confirmed)
-- "Контакты" -> scrolls to #contact section (confirmed)
+Store blog articles as static data (no database needed -- these are SEO landing pages, not user-generated content). This keeps things fast, indexable, and simple.
 
-No changes needed for navigation -- it all works as expected.
+### Structure
 
-### Scroll-Snap Implementation
+**Data layer:** `src/data/blog-posts.ts`
+- Array of blog post objects: `slug`, `title`, `description`, `date`, `tags`, `content` (markdown string), `readTime`
+- 6 starter articles covering LLM optimization and pSEO topics
 
-Add CSS scroll-snap for desktop so the main sections (Hero, WebStudio, ToolsShowcase, TechShop) snap into place when scrolling between them. Uses `proximity` mode so it assists scrolling without fighting it.
+**Pages:**
+- `src/pages/Blog.tsx` -- grid of article cards with tags, search/filter
+- `src/pages/BlogPost.tsx` -- single article page with markdown rendering, SEO meta via Helmet
 
-#### 1. Add scroll-snap CSS to `src/index.css`
+**Components:**
+- `src/components/BlogPreview.tsx` -- compact "Latest from blog" section for the landing page (3 cards)
 
-Add desktop-only scroll-snap utilities:
-```css
-@media (min-width: 768px) {
-  .snap-container {
-    scroll-snap-type: y proximity;
-    overflow-y: scroll;
-    height: 100vh;
-  }
-  .snap-section {
-    scroll-snap-align: start;
-  }
-}
-```
+**Routing:** Add `/blog` and `/blog/:slug` routes in `App.tsx`
 
-#### 2. Update `src/pages/Index.tsx`
+**Navigation:** Add "Блог" link to Header and Footer
 
-- Add `snap-container` class to the root `<div>`
-- Add `snap-section` class to the 4 main sections: Hero, WebStudioSection, ToolsShowcase, TechShopSection
-- Wrap each section in a div with the snap class (since section components own their own root elements)
+### Starter Articles (6 posts)
 
-#### 3. Update section components
+1. "Что такое LLM-оптимизация и зачем она нужна" -- intro to optimizing for AI search
+2. "Как попасть в AI Overviews Google" -- practical checklist
+3. "pSEO: как масштабировать SEO на 1000+ страниц" -- programmatic SEO guide
+4. "Schema.org разметка для AI-цитирования" -- JSON-LD best practices
+5. "Промты для SEO: как использовать ChatGPT для контента" -- LLM prompt engineering for SEO
+6. "Чек-лист SEO-аудита 2025: классика + LLM" -- comprehensive audit guide
 
-Add `min-h-screen` to the 4 snap-target sections so they fill the viewport:
-- `src/components/Hero.tsx` -- already has `min-h-screen`
-- `src/components/WebStudioSection.tsx` -- add `min-h-screen`
-- `src/components/ToolsShowcase.tsx` -- add `min-h-screen`
-- `src/components/TechShopSection.tsx` -- add `min-h-screen`
+### Files
 
-### Files Summary
+| Action | File |
+|--------|------|
+| CREATE | `src/data/blog-posts.ts` |
+| CREATE | `src/pages/Blog.tsx` |
+| CREATE | `src/pages/BlogPost.tsx` |
+| CREATE | `src/components/BlogPreview.tsx` |
+| MODIFY | `src/App.tsx` (add routes) |
+| MODIFY | `src/pages/Index.tsx` (add BlogPreview section) |
+| MODIFY | `src/components/Header.tsx` (add Блог nav link) |
+| MODIFY | `src/components/Footer.tsx` (add Блог link) |
 
-| Action | File | Change |
-|--------|------|--------|
-| Modify | `src/index.css` | Add snap-container and snap-section CSS utilities |
-| Modify | `src/pages/Index.tsx` | Add snap-container class to root div |
-| Modify | `src/components/WebStudioSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/ToolsShowcase.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/TechShopSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/Hero.tsx` | Add snap-section class |
+### Markdown Rendering
 
-### Technical Notes
-
-- `proximity` mode means snap only triggers when the user stops scrolling near a section boundary -- it does not force-lock the scroll
-- Only enabled on desktop (768px+) to avoid interfering with mobile scrolling
-- Sections below TechShop (ScrollStacks, Cases, FAQ, Contact, Footer) do NOT get snap-section -- they scroll freely
-- The snap container needs `overflow-y: scroll` and `height: 100vh` to work properly
+Use a simple custom renderer (split by `##`, `###`, `**`, `` ` ``, `-` lists) to avoid adding a dependency. Keeps bundle small.
 
