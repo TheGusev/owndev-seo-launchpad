@@ -121,10 +121,8 @@ const ToolPage = () => {
               <ToolComponent />
             </Suspense>
           </motion.div>
-          </ParallaxLayer>
 
           {/* Use cases */}
-          <ParallaxLayer speed={0.1}>
           <motion.div
             className="max-w-2xl mx-auto text-center"
             initial={{ opacity: 0, y: 15 }}
