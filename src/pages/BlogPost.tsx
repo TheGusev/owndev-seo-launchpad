@@ -8,6 +8,9 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const renderMarkdown = (content: string) => {
   const lines = content.split("\n");
@@ -109,6 +112,8 @@ const BlogPost = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
+        <MouseGradient />
+        <ClickRipple />
         <Header />
         <main className="pt-24 pb-16 relative">
           {/* Background animations */}
@@ -149,6 +154,7 @@ const BlogPost = () => {
                 </div>
               </motion.div>
 
+              <ParallaxLayer speed={0.1}>
               <motion.div
                 className="prose-custom"
                 initial={{ opacity: 0, y: 20 }}
@@ -157,6 +163,7 @@ const BlogPost = () => {
               >
                 {renderMarkdown(post.content)}
               </motion.div>
+              </ParallaxLayer>
             </article>
           </div>
         </main>

@@ -9,6 +9,9 @@ import { getRegionById, getRegionNeighbors } from "@/data/regions";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const GeoToolPage = () => {
   const { toolSlug, regionSlug } = useParams<{ toolSlug: string; regionSlug: string }>();
@@ -42,6 +45,8 @@ const GeoToolPage = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      <MouseGradient />
+      <ClickRipple />
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
@@ -103,6 +108,7 @@ const GeoToolPage = () => {
           </div>
 
           {/* Stats bar */}
+          <ParallaxLayer speed={0.15}>
           <motion.div
             className="flex flex-wrap gap-6 justify-center mb-10"
             initial={{ opacity: 0, y: 15 }}
@@ -122,6 +128,7 @@ const GeoToolPage = () => {
               <span className="font-bold text-foreground">{region.localNiches.slice(0, 3).join(", ")}</span>
             </div>
           </motion.div>
+          </ParallaxLayer>
 
           {/* Local content */}
           <motion.div
@@ -137,6 +144,7 @@ const GeoToolPage = () => {
           </motion.div>
 
           {/* Tool widget */}
+          <ParallaxLayer speed={0.2}>
           <motion.div
             className="max-w-[900px] mx-auto mb-12"
             initial={{ opacity: 0, y: 20 }}
@@ -147,6 +155,7 @@ const GeoToolPage = () => {
               <ToolComponent />
             </Suspense>
           </motion.div>
+          </ParallaxLayer>
 
           {/* CTA */}
           <motion.div

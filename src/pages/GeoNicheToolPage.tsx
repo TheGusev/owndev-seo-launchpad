@@ -10,6 +10,9 @@ import { niches, getNicheById } from "@/data/niches";
 import { MapPin } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate", "ai-citation", "roi-calculator", "geo-map"];
 
@@ -61,6 +64,8 @@ const GeoNicheToolPage = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      <MouseGradient />
+      <ClickRipple />
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
@@ -126,6 +131,7 @@ const GeoNicheToolPage = () => {
           </div>
 
           {/* Stats */}
+          <ParallaxLayer speed={0.15}>
           <motion.div
             className="flex flex-wrap gap-4 justify-center mb-10"
             initial={{ opacity: 0, y: 15 }}
@@ -145,6 +151,7 @@ const GeoNicheToolPage = () => {
               <span className="font-bold text-foreground">{niche.name}</span>
             </div>
           </motion.div>
+          </ParallaxLayer>
 
           {/* Unique content */}
           <motion.div
@@ -160,6 +167,7 @@ const GeoNicheToolPage = () => {
           </motion.div>
 
           {/* Tool widget */}
+          <ParallaxLayer speed={0.2}>
           <motion.div
             className="max-w-[900px] mx-auto mb-12"
             initial={{ opacity: 0, y: 20 }}
@@ -170,6 +178,7 @@ const GeoNicheToolPage = () => {
               <ToolComponent />
             </Suspense>
           </motion.div>
+          </ParallaxLayer>
 
           {/* CTA */}
           <motion.div

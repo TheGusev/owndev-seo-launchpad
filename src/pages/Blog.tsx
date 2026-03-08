@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Clock, Search, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const Blog = () => {
   const [search, setSearch] = useState("");
@@ -33,6 +36,8 @@ const Blog = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
+        <MouseGradient />
+        <ClickRipple />
         <Header />
         <main className="pt-24 pb-16 relative">
           {/* Background animations */}
@@ -94,6 +99,7 @@ const Blog = () => {
               </motion.div>
 
               {/* Posts Grid */}
+              <ParallaxLayer speed={0.15}>
               <div className="grid gap-6">
                 {filtered.map((post, idx) => (
                   <motion.div
@@ -133,6 +139,7 @@ const Blog = () => {
                   <p className="text-muted-foreground text-center py-12">Ничего не найдено</p>
                 )}
               </div>
+              </ParallaxLayer>
             </div>
           </div>
         </main>

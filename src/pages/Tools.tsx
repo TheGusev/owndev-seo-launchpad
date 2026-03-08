@@ -7,10 +7,15 @@ import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const Tools = () => {
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      <MouseGradient />
+      <ClickRipple />
       <Header />
       <main className="pt-24 pb-16 relative">
         {/* Background animations */}
@@ -59,8 +64,8 @@ const Tools = () => {
             if (catTools.length === 0) return null;
 
             return (
+              <ParallaxLayer key={cat.id} speed={0.15}>
               <motion.section
-                key={cat.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
@@ -100,6 +105,7 @@ const Tools = () => {
                   ))}
                 </div>
               </motion.section>
+              </ParallaxLayer>
             );
           })}
         </div>

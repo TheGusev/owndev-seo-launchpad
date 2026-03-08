@@ -7,6 +7,9 @@ import { getToolBySlug } from "@/data/tools-registry";
 import { ArrowLeft } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const ToolPage = () => {
   const { toolSlug } = useParams<{ toolSlug: string }>();
@@ -27,6 +30,8 @@ const ToolPage = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      <MouseGradient />
+      <ClickRipple />
       <Header />
       <main className="pt-24 pb-16 relative">
         {/* Background animations */}
@@ -80,6 +85,7 @@ const ToolPage = () => {
           </div>
 
           {/* Tool widget */}
+          <ParallaxLayer speed={0.2}>
           <motion.div
             className="max-w-[900px] mx-auto mb-10"
             initial={{ opacity: 0, y: 20 }}
@@ -90,8 +96,10 @@ const ToolPage = () => {
               <ToolComponent />
             </Suspense>
           </motion.div>
+          </ParallaxLayer>
 
           {/* Use cases */}
+          <ParallaxLayer speed={0.1}>
           <motion.div
             className="max-w-2xl mx-auto text-center"
             initial={{ opacity: 0, y: 15 }}
@@ -115,6 +123,7 @@ const ToolPage = () => {
               ))}
             </ul>
           </motion.div>
+          </ParallaxLayer>
 
           {/* Disclaimer */}
           <p className="text-xs text-muted-foreground text-center mt-10 max-w-lg mx-auto">

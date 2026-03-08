@@ -8,6 +8,8 @@ import { Home } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { SparklesCore } from "@/components/ui/sparkles";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
 
 const NotFound = () => {
   const location = useLocation();
@@ -18,6 +20,8 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
+      <MouseGradient />
+      <ClickRipple />
       <Header />
       <main className="flex-1 flex items-center justify-center px-4 relative">
         {/* Background animations */}
