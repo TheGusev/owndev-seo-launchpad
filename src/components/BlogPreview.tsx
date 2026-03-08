@@ -30,7 +30,7 @@ const BlogPreview = () => {
           </Link>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-4 md:gap-6">
           {latestPosts.map((post, idx) => (
             <motion.div
               key={post.slug}

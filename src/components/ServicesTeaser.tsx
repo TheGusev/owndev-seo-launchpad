@@ -13,7 +13,7 @@ const ServicesTeaser = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
 
   return (
-    <section className="py-12 md:py-16 relative">
+    <section className="py-8 md:py-16 relative">
       <div className="container px-4 md:px-6 max-w-2xl mx-auto">
         <motion.div
           ref={ref}
