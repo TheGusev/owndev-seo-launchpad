@@ -1,66 +1,37 @@
 
 
-## Plan: Add Desktop Scroll-Snap Effect
+## Plan: Add MouseGradient + ClickRipple + ParallaxLayer to All Secondary Pages
 
-### Verification Results
+### 1. MouseGradient & ClickRipple on all pages
 
-All header navigation links work correctly:
-- "Веб-студия" -> scrolls to #web-studio section (confirmed)
-- "Технологии" -> scrolls to #tech-shop section (confirmed)
-- "Кейсы" -> scrolls to #cases section (confirmed)
-- "Контакты" -> scrolls to #contact section (confirmed)
+Add `<MouseGradient />` and `<ClickRipple />` imports and render them inside the root `<div>` of every secondary page, same as Index.tsx does.
 
-No changes needed for navigation -- it all works as expected.
+**Files:** `Tools.tsx`, `ToolPage.tsx`, `Blog.tsx`, `BlogPost.tsx`, `Privacy.tsx`, `Terms.tsx`, `NotFound.tsx`, `GeoToolPage.tsx`, `GeoNicheToolPage.tsx`
 
-### Scroll-Snap Implementation
+### 2. ParallaxLayer wrapping content sections
 
-Add CSS scroll-snap for desktop so the main sections (Hero, WebStudio, ToolsShowcase, TechShop) snap into place when scrolling between them. Uses `proximity` mode so it assists scrolling without fighting it.
+Wrap key content blocks in `<ParallaxLayer>` with varying `speed` values for depth:
 
-#### 1. Add scroll-snap CSS to `src/index.css`
+- **Tools.tsx**: Wrap each category `<motion.section>` in `<ParallaxLayer speed={0.15}>` for subtle depth as user scrolls through categories
+- **ToolPage.tsx**: Wrap the tool widget area in `<ParallaxLayer speed={0.2}>`, use-cases section in `<ParallaxLayer speed={0.1}>`
+- **Blog.tsx**: Wrap the posts grid in `<ParallaxLayer speed={0.15}>`
+- **BlogPost.tsx**: Wrap the article content in `<ParallaxLayer speed={0.1}>` for gentle scroll depth
+- **GeoToolPage.tsx**: Wrap stats bar in `<ParallaxLayer speed={0.15}>`, tool widget in `<ParallaxLayer speed={0.2}>`
+- **GeoNicheToolPage.tsx**: Same pattern as GeoToolPage
 
-Add desktop-only scroll-snap utilities:
-```css
-@media (min-width: 768px) {
-  .snap-container {
-    scroll-snap-type: y proximity;
-    overflow-y: scroll;
-    height: 100vh;
-  }
-  .snap-section {
-    scroll-snap-align: start;
-  }
-}
-```
+ParallaxLayer already handles mobile detection internally (disables on mobile/touch devices), so no extra logic needed.
 
-#### 2. Update `src/pages/Index.tsx`
+### Files to modify (9 files)
 
-- Add `snap-container` class to the root `<div>`
-- Add `snap-section` class to the 4 main sections: Hero, WebStudioSection, ToolsShowcase, TechShopSection
-- Wrap each section in a div with the snap class (since section components own their own root elements)
-
-#### 3. Update section components
-
-Add `min-h-screen` to the 4 snap-target sections so they fill the viewport:
-- `src/components/Hero.tsx` -- already has `min-h-screen`
-- `src/components/WebStudioSection.tsx` -- add `min-h-screen`
-- `src/components/ToolsShowcase.tsx` -- add `min-h-screen`
-- `src/components/TechShopSection.tsx` -- add `min-h-screen`
-
-### Files Summary
-
-| Action | File | Change |
-|--------|------|--------|
-| Modify | `src/index.css` | Add snap-container and snap-section CSS utilities |
-| Modify | `src/pages/Index.tsx` | Add snap-container class to root div |
-| Modify | `src/components/WebStudioSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/ToolsShowcase.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/TechShopSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/Hero.tsx` | Add snap-section class |
-
-### Technical Notes
-
-- `proximity` mode means snap only triggers when the user stops scrolling near a section boundary -- it does not force-lock the scroll
-- Only enabled on desktop (768px+) to avoid interfering with mobile scrolling
-- Sections below TechShop (ScrollStacks, Cases, FAQ, Contact, Footer) do NOT get snap-section -- they scroll freely
-- The snap container needs `overflow-y: scroll` and `height: 100vh` to work properly
+| File | MouseGradient + ClickRipple | ParallaxLayer |
+|------|-----------------------------|---------------|
+| `src/pages/Tools.tsx` | ✓ | Category sections |
+| `src/pages/ToolPage.tsx` | ✓ | Widget + use-cases |
+| `src/pages/Blog.tsx` | ✓ | Posts grid |
+| `src/pages/BlogPost.tsx` | ✓ | Article content |
+| `src/pages/Privacy.tsx` | ✓ | — |
+| `src/pages/Terms.tsx` | ✓ | — |
+| `src/pages/NotFound.tsx` | ✓ | — |
+| `src/pages/GeoToolPage.tsx` | ✓ | Stats + widget |
+| `src/pages/GeoNicheToolPage.tsx` | ✓ | Stats + widget |
 
