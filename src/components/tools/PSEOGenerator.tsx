@@ -7,6 +7,7 @@ import {
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Sparkles, Download, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import ToolCTA from "./ToolCTA";
 
 const niches = ["Юридические услуги", "Медицина / клиники", "Ремонт квартир", "Автосервис", "Доставка еды", "Образование"];
 const pageTypes = [
