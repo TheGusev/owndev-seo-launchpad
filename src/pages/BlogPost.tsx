@@ -123,6 +123,10 @@ const BlogPost = () => {
         <title>{post.title} | OWNDEV</title>
         <meta name="description" content={post.description} />
         <link rel="canonical" href={`https://owndev.ru/blog/${post.slug}`} />
+        <meta property="og:title" content={`${post.title} | OWNDEV`} />
+        <meta property="og:description" content={post.description} />
+        <meta property="og:url" content={`https://owndev.ru/blog/${post.slug}`} />
+        <meta property="og:type" content="article" />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 

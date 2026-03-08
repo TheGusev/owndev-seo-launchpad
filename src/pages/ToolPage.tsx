@@ -49,6 +49,10 @@ const ToolPage = () => {
         <title>{title}</title>
         <meta name="description" content={description} />
         <link rel="canonical" href={`https://owndev.ru/tools/${tool.slug}`} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={`https://owndev.ru/tools/${tool.slug}`} />
+        <meta property="og:type" content="website" />
         <script type="application/ld+json">{JSON.stringify(breadcrumbLd)}</script>
       </Helmet>
       <MouseGradient />

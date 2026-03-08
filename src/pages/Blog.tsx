@@ -33,6 +33,10 @@ const Blog = () => {
         <title>Блог — LLM-оптимизация и pSEO гайды | OWNDEV</title>
         <meta name="description" content="Практические гайды по LLM-оптимизации, pSEO, Schema.org разметке и AI Overviews. Бесплатные знания от команды OWNDEV." />
         <link rel="canonical" href="https://owndev.ru/blog" />
+        <meta property="og:title" content="Блог — LLM-оптимизация и pSEO гайды | OWNDEV" />
+        <meta property="og:description" content="Практические гайды по LLM-оптимизации, pSEO, Schema.org разметке и AI Overviews." />
+        <meta property="og:url" content="https://owndev.ru/blog" />
+        <meta property="og:type" content="website" />
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
