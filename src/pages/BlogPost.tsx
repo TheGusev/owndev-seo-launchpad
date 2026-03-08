@@ -134,7 +134,6 @@ const BlogPost = () => {
           {/* Background animations */}
           <div className="absolute inset-0 pointer-events-none">
             <AnimatedGrid theme="accent" lineCount={{ h: 3, v: 5 }} />
-            <FloatingParticles count={8} className="absolute inset-0" />
             <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
           </div>
 
