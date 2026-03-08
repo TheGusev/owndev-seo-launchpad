@@ -85,6 +85,7 @@ const ToolPage = () => {
           </div>
 
           {/* Tool widget */}
+          <ParallaxLayer speed={0.2}>
           <motion.div
             className="max-w-[900px] mx-auto mb-10"
             initial={{ opacity: 0, y: 20 }}
@@ -95,8 +96,10 @@ const ToolPage = () => {
               <ToolComponent />
             </Suspense>
           </motion.div>
+          </ParallaxLayer>
 
           {/* Use cases */}
+          <ParallaxLayer speed={0.1}>
           <motion.div
             className="max-w-2xl mx-auto text-center"
             initial={{ opacity: 0, y: 15 }}
