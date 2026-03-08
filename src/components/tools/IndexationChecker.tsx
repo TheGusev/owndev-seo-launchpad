@@ -21,7 +21,7 @@ const SeverityIcon = ({ s }: { s: string }) => {
 const IndexationChecker = () => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ indexable: boolean; issues: Issue[]; meta: any } | null>(null);
+  const [result, setResult] = useState<{ indexable: boolean; issues: Issue[]; meta: any; statusCode: number } | null>(null);
 
   const handleCheck = async () => {
     if (!url.trim()) { toast({ title: "Введите URL", variant: "destructive" }); return; }
