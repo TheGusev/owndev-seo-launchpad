@@ -146,7 +146,6 @@ const ToolPage = () => {
               ))}
             </ul>
           </motion.div>
-          </ParallaxLayer>
 
           {/* Other tools */}
           <motion.section
