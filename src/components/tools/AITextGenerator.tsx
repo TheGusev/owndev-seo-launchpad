@@ -53,7 +53,7 @@ const AITextGenerator = () => {
           <div className="flex flex-wrap gap-2">
             {textTypes.map((t) => (
               <button key={t.value} onClick={() => setType(t.value)}
-                className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${type === t.value ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}>
+                className={`text-sm px-3 py-2 rounded-lg transition-colors min-h-[36px] ${type === t.value ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}>
                 {t.label}
               </button>
             ))}

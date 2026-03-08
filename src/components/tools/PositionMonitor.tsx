@@ -75,7 +75,7 @@ const PositionMonitor = () => {
           <div className="flex flex-wrap gap-2">
             {uniqueKeywords.map((kw) => (
               <button key={kw} onClick={() => setSelectedKeyword(kw)}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${chartKeyword === kw ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}>
+                className={`text-xs px-3 py-2 rounded-lg transition-colors min-h-[36px] ${chartKeyword === kw ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}>
                 {kw}
               </button>
             ))}

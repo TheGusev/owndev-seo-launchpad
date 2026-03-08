@@ -40,7 +40,7 @@ const IndexationChecker = () => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8 space-y-6">
+    <div className="glass rounded-2xl p-5 md:p-8 space-y-6">
       <div className="flex gap-3">
         <Input placeholder="https://example.com/page" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-card border-border flex-1"
           onKeyDown={(e) => e.key === "Enter" && handleCheck()} />

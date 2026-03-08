@@ -139,7 +139,7 @@ const SitemapGenerator = () => {
             <div className="flex flex-wrap gap-2">
               {commonDisallow.map((path) => (
                 <button key={path} onClick={() => toggleDisallow(path)}
-                  className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${rbConfig.disallow.includes(path) ? "bg-destructive/20 text-destructive" : "bg-card text-muted-foreground hover:text-foreground"}`}>
+                  className={`text-xs px-3 py-2 rounded-lg transition-colors min-h-[36px] ${rbConfig.disallow.includes(path) ? "bg-destructive/20 text-destructive" : "bg-card text-muted-foreground hover:text-foreground"}`}>
                   {path}
                 </button>
               ))}

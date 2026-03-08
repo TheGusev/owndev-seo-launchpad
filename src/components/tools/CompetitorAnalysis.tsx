@@ -93,8 +93,8 @@ const CompetitorAnalysis = () => {
       </div>
 
       {result && (
-        <div className="glass rounded-xl p-5 overflow-x-auto">
-          <table className="w-full text-left">
+        <div className="glass rounded-xl p-4 md:p-5 overflow-x-auto">
+          <table className="w-full text-left min-w-[600px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="py-2 text-sm font-semibold text-muted-foreground w-1/3">Метрика</th>
