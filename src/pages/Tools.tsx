@@ -17,7 +17,7 @@ const Tools = () => {
               <span className="text-sm text-muted-foreground font-mono">Все инструменты платформы</span>
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-serif mb-4">
-              <span className="text-gradient">7 инструментов</span> для SEO + LLM
+              <span className="text-gradient">12 инструментов</span> для SEO + LLM
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Бесплатные инструменты для SEO, programmatic SEO и оптимизации под AI‑поиск
