@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Users, Trophy } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const CompetitorAnalysis = () => {
   return (
@@ -15,16 +16,17 @@ const CompetitorAnalysis = () => {
           <Input placeholder="Москва" className="bg-card border-border" />
         </div>
 
-        <div className="text-center">
-          <GradientButton size="lg">
+        <div className="text-center space-y-2">
+          <GradientButton size="lg" disabled>
             <Users className="w-5 h-5 mr-2" />
             Анализировать ТОП-10
           </GradientButton>
+          <Badge variant="secondary" className="ml-2">Скоро</Badge>
         </div>
 
         <div className="glass rounded-xl p-5 text-center text-muted-foreground text-sm">
           <Trophy className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
-          Введите запрос для анализа конкурентов в выдаче
+          Инструмент в разработке — скоро здесь появится анализ конкурентов
         </div>
       </div>
     </div>

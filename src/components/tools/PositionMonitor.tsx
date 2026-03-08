@@ -2,6 +2,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { BarChart3, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const mockData = [
   { query: "seo продвижение москва", pos: 12, change: -3 },
@@ -29,11 +30,12 @@ const PositionMonitor = () => {
           <Textarea placeholder={"seo продвижение\nprogrammatic seo\nгенератор страниц"} className="bg-card border-border min-h-[100px]" />
         </div>
 
-        <div className="text-center">
-          <GradientButton size="lg">
+        <div className="text-center space-y-2">
+          <GradientButton size="lg" disabled>
             <BarChart3 className="w-5 h-5 mr-2" />
             Проверить позиции
           </GradientButton>
+          <Badge variant="secondary" className="ml-2">Скоро</Badge>
         </div>
 
         <div className="space-y-2">

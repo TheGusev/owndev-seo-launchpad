@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { FileText, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const SemanticCoreGenerator = () => {
   return (
@@ -17,11 +18,12 @@ const SemanticCoreGenerator = () => {
           </div>
         </div>
 
-        <div className="text-center">
-          <GradientButton size="lg">
+        <div className="text-center space-y-2">
+          <GradientButton size="lg" disabled>
             <FileText className="w-5 h-5 mr-2" />
             Собрать семантику
           </GradientButton>
+          <Badge variant="secondary" className="ml-2">Скоро</Badge>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-3">
@@ -35,7 +37,7 @@ const SemanticCoreGenerator = () => {
         </div>
 
         <div className="glass rounded-xl p-5 text-center text-muted-foreground text-sm">
-          Введите базовый запрос для сбора семантического ядра
+          Инструмент в разработке — скоро здесь появится сбор семантики
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Link2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const mockPages = [
   { url: "/services", links: 12, orphan: false },
@@ -18,14 +19,16 @@ const InternalLinksChecker = () => {
           <Input placeholder="https://example.com" className="bg-card border-border" />
         </div>
 
-        <div className="text-center">
-          <GradientButton size="lg">
+        <div className="text-center space-y-2">
+          <GradientButton size="lg" disabled>
             <Link2 className="w-5 h-5 mr-2" />
             Проверить перелинковку
           </GradientButton>
+          <Badge variant="secondary" className="ml-2">Скоро</Badge>
         </div>
 
         <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground mb-2">Пример результата (демо)</p>
           {mockPages.map((p) => (
             <div key={p.url} className="glass rounded-xl px-4 py-3 flex items-center gap-3">
               {p.orphan ? (

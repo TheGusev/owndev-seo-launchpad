@@ -61,6 +61,11 @@ const ToolPage = () => {
               ))}
             </ul>
           </div>
+
+          {/* Disclaimer */}
+          <p className="text-xs text-muted-foreground text-center mt-10 max-w-lg mx-auto">
+            Быстрый чек — не заменяет полноценный аудит. Результаты носят ориентировочный характер.
+          </p>
         </div>
       </main>
       <Footer />
