@@ -151,6 +151,7 @@ const GeoNicheToolPage = () => {
               <span className="font-bold text-foreground">{niche.name}</span>
             </div>
           </motion.div>
+          </ParallaxLayer>
 
           {/* Unique content */}
           <motion.div
