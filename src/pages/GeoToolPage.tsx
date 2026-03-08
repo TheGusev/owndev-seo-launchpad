@@ -128,6 +128,7 @@ const GeoToolPage = () => {
               <span className="font-bold text-foreground">{region.localNiches.slice(0, 3).join(", ")}</span>
             </div>
           </motion.div>
+          </ParallaxLayer>
 
           {/* Local content */}
           <motion.div
