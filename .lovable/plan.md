@@ -1,66 +1,52 @@
 
 
-## Plan: Add Desktop Scroll-Snap Effect
+## Plan: Distribute Animations Across All Pages
 
-### Verification Results
+The homepage animations (AnimatedGrid, FloatingParticles, CornerDecorations, ParallaxLayer, motion entrance animations, sparkles) are intact. The issue is that secondary pages lack these decorative and motion elements entirely. The fix: add appropriate animation layers to every page, varying themes/density per page context.
 
-All header navigation links work correctly:
-- "Веб-студия" -> scrolls to #web-studio section (confirmed)
-- "Технологии" -> scrolls to #tech-shop section (confirmed)
-- "Кейсы" -> scrolls to #cases section (confirmed)
-- "Контакты" -> scrolls to #contact section (confirmed)
+### Changes by Page/Component
 
-No changes needed for navigation -- it all works as expected.
+**1. `src/pages/Tools.tsx`** — Add AnimatedGrid (accent theme, lighter density), FloatingParticles, CornerDecorations. Wrap heading in motion with staggered children. Add radial gradient overlays matching homepage style.
 
-### Scroll-Snap Implementation
+**2. `src/pages/ToolPage.tsx`** — Add AnimatedGrid (primary theme), FloatingParticles behind the tool widget. Motion entrance for header elements (badge, title, description staggered). CornerDecorations on the tool widget container.
 
-Add CSS scroll-snap for desktop so the main sections (Hero, WebStudio, ToolsShowcase, TechShop) snap into place when scrolling between them. Uses `proximity` mode so it assists scrolling without fighting it.
+**3. `src/pages/Blog.tsx`** — Add AnimatedGrid (secondary theme), motion entrance for heading and search area. Staggered card animations using `whileInView`.
 
-#### 1. Add scroll-snap CSS to `src/index.css`
+**4. `src/pages/BlogPost.tsx`** — Add subtle AnimatedGrid (accent theme, low density), motion fade-in for article content. FloatingParticles.
 
-Add desktop-only scroll-snap utilities:
-```css
-@media (min-width: 768px) {
-  .snap-container {
-    scroll-snap-type: y proximity;
-    overflow-y: scroll;
-    height: 100vh;
-  }
-  .snap-section {
-    scroll-snap-align: start;
-  }
-}
-```
+**5. `src/pages/Privacy.tsx` & `src/pages/Terms.tsx`** — Add AnimatedGrid (primary theme, minimal lines), motion fade-in for content sections.
 
-#### 2. Update `src/pages/Index.tsx`
+**6. `src/pages/NotFound.tsx`** — Add AnimatedGrid, FloatingParticles, SparklesCore background (like Hero but lighter). Motion spring animation on the 404 number.
 
-- Add `snap-container` class to the root `<div>`
-- Add `snap-section` class to the 4 main sections: Hero, WebStudioSection, ToolsShowcase, TechShopSection
-- Wrap each section in a div with the snap class (since section components own their own root elements)
+**7. `src/pages/GeoToolPage.tsx` & `src/pages/GeoNicheToolPage.tsx`** — Same treatment as ToolPage: AnimatedGrid, FloatingParticles, motion entrance for headers.
 
-#### 3. Update section components
+**8. `src/components/BlogPreview.tsx`** — Add motion `whileInView` entrance for heading and staggered card animations (currently static).
 
-Add `min-h-screen` to the 4 snap-target sections so they fill the viewport:
-- `src/components/Hero.tsx` -- already has `min-h-screen`
-- `src/components/WebStudioSection.tsx` -- add `min-h-screen`
-- `src/components/ToolsShowcase.tsx` -- add `min-h-screen`
-- `src/components/TechShopSection.tsx` -- add `min-h-screen`
+### Animation Variation Strategy
 
-### Files Summary
+Each page uses a different AnimatedGrid theme and density to avoid monotony:
+- Tools catalog: `theme="accent"`, `lineCount={{ h: 6, v: 8 }}`
+- Tool pages: `theme="primary"`, `lineCount={{ h: 5, v: 7 }}`
+- Blog: `theme="secondary"`, `lineCount={{ h: 4, v: 6 }}`
+- Legal pages: `theme="primary"`, `lineCount={{ h: 3, v: 4 }}`
+- 404: `theme="accent"`, `lineCount={{ h: 6, v: 8 }}` + SparklesCore
 
-| Action | File | Change |
-|--------|------|--------|
-| Modify | `src/index.css` | Add snap-container and snap-section CSS utilities |
-| Modify | `src/pages/Index.tsx` | Add snap-container class to root div |
-| Modify | `src/components/WebStudioSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/ToolsShowcase.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/TechShopSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/Hero.tsx` | Add snap-section class |
+All pages get `overflow-hidden` on the main wrapper and gradient overlays (top/bottom fade) to blend the grid edges.
 
-### Technical Notes
+### Files to Modify
 
-- `proximity` mode means snap only triggers when the user stops scrolling near a section boundary -- it does not force-lock the scroll
-- Only enabled on desktop (768px+) to avoid interfering with mobile scrolling
-- Sections below TechShop (ScrollStacks, Cases, FAQ, Contact, Footer) do NOT get snap-section -- they scroll freely
-- The snap container needs `overflow-y: scroll` and `height: 100vh` to work properly
+| File | Additions |
+|------|-----------|
+| `src/pages/Tools.tsx` | AnimatedGrid, FloatingParticles, CornerDecorations, motion stagger |
+| `src/pages/ToolPage.tsx` | AnimatedGrid, FloatingParticles, motion entrance |
+| `src/pages/Blog.tsx` | AnimatedGrid, motion whileInView for cards |
+| `src/pages/BlogPost.tsx` | AnimatedGrid, motion fade-in |
+| `src/pages/Privacy.tsx` | AnimatedGrid, motion fade-in |
+| `src/pages/Terms.tsx` | AnimatedGrid, motion fade-in |
+| `src/pages/NotFound.tsx` | AnimatedGrid, FloatingParticles, SparklesCore, motion spring |
+| `src/pages/GeoToolPage.tsx` | AnimatedGrid, FloatingParticles, motion entrance |
+| `src/pages/GeoNicheToolPage.tsx` | AnimatedGrid, FloatingParticles, motion entrance |
+| `src/components/BlogPreview.tsx` | motion whileInView for heading + staggered cards |
+
+No new files or dependencies. Uses existing components: `AnimatedGrid`, `FloatingParticles`, `CornerDecorations`, `ParallaxLayer`, `SparklesCore`, and `framer-motion`.
 
