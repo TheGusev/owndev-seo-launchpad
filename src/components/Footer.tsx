@@ -1,8 +1,9 @@
 import { Phone, Mail, MapPin, Send, MessageCircle } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 const Footer = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const contactInfo = [
     { icon: Phone, text: "8 (906) 998-98-88", href: "tel:89069989888" },
@@ -41,7 +42,12 @@ const Footer = () => {
       window.scrollTo(0, 0);
     } else if (href.startsWith("#")) {
       e.preventDefault();
-      document.getElementById(href.replace("#", ""))?.scrollIntoView({ behavior: "smooth" });
+      const id = href.replace("#", "");
+      if (location.pathname !== "/") {
+        navigate("/" + href);
+      } else {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -51,7 +57,7 @@ const Footer = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           {/* Column 1: Logo & Contacts */}
           <div className="col-span-2 lg:col-span-1 space-y-5">
-            <a href="/" className="text-2xl font-bold text-gradient inline-block">OWNDEV</a>
+            <Link to="/" className="text-2xl font-bold text-gradient inline-block">OWNDEV</Link>
             <p className="text-muted-foreground text-sm">
               Бесплатные LLM + SEO инструменты для сайтов и pSEO
             </p>

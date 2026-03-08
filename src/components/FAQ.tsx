@@ -14,6 +14,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { Helmet } from "react-helmet-async";
 
 const FAQ = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,6 +47,19 @@ const FAQ = () => {
     },
   ];
 
+  const faqLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map(faq => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+
   const FAQContent = () => (
     <Accordion type="single" collapsible className="space-y-4">
       {faqs.map((faq, index) => (
@@ -63,7 +77,10 @@ const FAQ = () => {
   );
 
   return (
-    <section id="faq" className="py-12 md:py-24 relative overflow-hidden">
+    <section id="faq" className="py-12 md:py-24 relative overflow-hidden" aria-label="Часто задаваемые вопросы">
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(faqLd)}</script>
+      </Helmet>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(222_47%_10%),transparent_70%)]" />
       <div className="container px-4 md:px-6 relative z-10">
         {/* Desktop */}

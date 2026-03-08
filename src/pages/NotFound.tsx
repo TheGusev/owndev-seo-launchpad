@@ -1,5 +1,6 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -20,6 +21,10 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
+      <Helmet>
+        <title>404 — Страница не найдена | OWNDEV</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <MouseGradient />
       <ClickRipple />
       <Header />
