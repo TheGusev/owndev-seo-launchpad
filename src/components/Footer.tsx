@@ -105,7 +105,7 @@ const Footer = () => {
 
         <div className="mt-10 pt-6 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-muted-foreground text-sm text-center md:text-left">© 2025 ООО "ОВН ДИДЖИТАЛ". Все права защищены.</p>
+            <p className="text-muted-foreground text-sm text-center md:text-left">© 2025 OWNDEV. Все права защищены.</p>
             <p className="text-muted-foreground text-xs">Сделано с ❤️ в России</p>
           </div>
         </div>

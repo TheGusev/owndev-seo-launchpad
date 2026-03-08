@@ -130,22 +130,6 @@ const Hero = () => {
                 </GradientButton>
               </Link>
             </div>
-            <div className="relative group">
-              <GlowingEffect
-                theme="accent"
-                disabled={false}
-                borderWidth={2}
-                spread={25}
-                glow={true}
-                blur={10}
-                proximity={80}
-                inactiveZone={0.4}
-              />
-              <GradientButton variant="variant" size="lg" className="relative z-10" onClick={() => scrollTo("about")}>
-                <Users className="w-5 h-5 mr-2" />
-                О нас
-              </GradientButton>
-            </div>
           </motion.div>
         </div>
       </div>
