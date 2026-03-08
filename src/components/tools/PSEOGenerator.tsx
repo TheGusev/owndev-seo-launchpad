@@ -100,7 +100,7 @@ const PSEOGenerator = () => {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8">
+    <div className="glass rounded-2xl p-5 md:p-8">
       {/* Steps indicator */}
       <div className="flex items-center gap-2 mb-8 justify-center">
         {[1, 2, 3].map((s) => (
