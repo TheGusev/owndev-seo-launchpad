@@ -58,7 +58,7 @@ const PositionMonitor = () => {
     .map((e) => ({ date: e.date, position: e.position }));
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8 space-y-6">
+    <div className="glass rounded-2xl p-5 md:p-8 space-y-6">
       <div className="glass rounded-xl p-4 space-y-3">
         <p className="text-sm text-muted-foreground">Добавьте позицию вручную (из Google Search Console или проверки в выдаче)</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
