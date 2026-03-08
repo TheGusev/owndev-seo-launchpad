@@ -1,12 +1,15 @@
 import { Suspense } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { tools } from "@/data/tools-registry";
 import { regions } from "@/data/regions";
 import { niches, getNicheById } from "@/data/niches";
 import { MapPin } from "lucide-react";
+import { AnimatedGrid } from "@/components/ui/animated-grid";
+import { FloatingParticles } from "@/components/ui/floating-particles";
 
 const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate", "ai-citation", "roi-calculator", "geo-map"];
 
@@ -42,26 +45,22 @@ const GeoNicheToolPage = () => {
     areaServed: { "@type": "City", name: region.name },
   };
 
-  // Content templates per tool
   const contentBlock = generateContent(tool.slug, niche, region);
 
-  // Interlinking: same city+niche → other tools
   const sameNicheTools = NICHE_ENABLED_SLUGS
     .filter((s) => s !== tool.slug)
     .map((s) => tools.find((t) => t.slug === s)!)
     .filter(Boolean);
 
-  // Same city+tool → other niches
   const otherNiches = niches.filter((n) => n.id !== niche.id).slice(0, 6);
 
-  // Same niche+tool → other cities
   const otherCities = regions
     .filter((r) => r.id !== region.id && r.population >= 500000)
     .sort((a, b) => b.population - a.population)
     .slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
@@ -70,10 +69,22 @@ const GeoNicheToolPage = () => {
       </Helmet>
 
       <Header />
-      <main className="pt-24 pb-16">
-        <div className="container px-4 md:px-6">
+      <main className="pt-24 pb-16 relative">
+        {/* Background animations */}
+        <div className="absolute inset-0 pointer-events-none">
+          <AnimatedGrid theme="accent" lineCount={{ h: 5, v: 7 }} />
+          <FloatingParticles count={10} className="absolute inset-0" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+        </div>
+
+        <div className="container px-4 md:px-6 relative z-10">
           {/* Breadcrumb */}
-          <nav className="mb-8 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <motion.nav
+            className="mb-8 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4 }}
+          >
             <Link to="/tools" className="hover:text-foreground transition-colors">Инструменты</Link>
             <span>/</span>
             <Link to={`/tools/${tool.slug}`} className="hover:text-foreground transition-colors">{tool.name}</Link>
@@ -81,24 +92,46 @@ const GeoNicheToolPage = () => {
             <span className="text-foreground">{region.name}</span>
             <span>/</span>
             <span className="text-foreground">{niche.name}</span>
-          </nav>
+          </motion.nav>
 
           {/* Hero */}
           <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 glass px-4 py-2 rounded-full mb-5">
+            <motion.div
+              className="inline-flex items-center gap-2 glass px-4 py-2 rounded-full mb-5"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
               <MapPin className="w-4 h-4 text-primary" />
               <span className="text-xs font-mono text-muted-foreground">
                 {region.name} · {niche.name} · {(region.population / 1_000_000).toFixed(1)}M жителей
               </span>
-            </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-serif mb-3">
+            </motion.div>
+            <motion.h1
+              className="text-3xl md:text-4xl lg:text-5xl font-bold font-serif mb-3"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
               {tool.name} для <span className="text-gradient">{niche.nameCase}</span> в {region.nameCase}
-            </h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">{description}</p>
+            </motion.h1>
+            <motion.p
+              className="text-muted-foreground text-lg max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              {description}
+            </motion.p>
           </div>
 
           {/* Stats */}
-          <div className="flex flex-wrap gap-4 justify-center mb-10">
+          <motion.div
+            className="flex flex-wrap gap-4 justify-center mb-10"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+          >
             <div className="glass px-4 py-2 rounded-full text-sm">
               <span className="text-muted-foreground">Агентств: </span>
               <span className="font-bold text-foreground">{region.agencies}</span>
@@ -111,87 +144,77 @@ const GeoNicheToolPage = () => {
               <span className="text-muted-foreground">Ниша: </span>
               <span className="font-bold text-foreground">{niche.name}</span>
             </div>
-          </div>
+          </motion.div>
 
           {/* Unique content */}
-          <div className="max-w-3xl mx-auto mb-12 space-y-4">
+          <motion.div
+            className="max-w-3xl mx-auto mb-12 space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
             {contentBlock.map((p, i) => (
               <p key={i} className="text-muted-foreground leading-relaxed">{p}</p>
             ))}
-          </div>
+          </motion.div>
 
           {/* Tool widget */}
-          <div className="max-w-[900px] mx-auto mb-12">
+          <motion.div
+            className="max-w-[900px] mx-auto mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
             <Suspense fallback={<div className="glass rounded-2xl p-8 text-center text-muted-foreground">Загрузка…</div>}>
               <ToolComponent />
             </Suspense>
-          </div>
+          </motion.div>
 
           {/* CTA */}
-          <div className="text-center mb-16">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
             <Link
               to="/#contact"
               className="inline-flex items-center gap-2 glass px-6 py-3 rounded-full text-primary font-semibold hover:border-primary/40 transition-colors"
             >
               Получить аудит для {niche.nameCase} в {region.nameCase} →
             </Link>
-          </div>
+          </motion.div>
 
           {/* Interlinking */}
           <div className="max-w-4xl mx-auto space-y-10">
-            {/* Same city+niche, other tools */}
-            <section>
-              <h2 className="text-lg font-bold font-serif mb-4 text-center">
-                Другие инструменты для {niche.nameCase} в {region.nameCase}
-              </h2>
-              <div className="flex flex-wrap justify-center gap-3">
-                {sameNicheTools.map((t) => (
-                  <Link
-                    key={t.slug}
-                    to={`/${region.id}/${niche.id}/${t.slug}`}
-                    className="glass px-4 py-2 rounded-full text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-                  >
-                    {t.name}
-                  </Link>
-                ))}
-              </div>
-            </section>
-
-            {/* Same city+tool, other niches */}
-            <section>
-              <h2 className="text-lg font-bold font-serif mb-4 text-center">
-                {tool.name} в {region.nameCase} — другие ниши
-              </h2>
-              <div className="flex flex-wrap justify-center gap-3">
-                {otherNiches.map((n) => (
-                  <Link
-                    key={n.id}
-                    to={`/${region.id}/${n.id}/${tool.slug}`}
-                    className="glass px-4 py-2 rounded-full text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-                  >
-                    {n.name}
-                  </Link>
-                ))}
-              </div>
-            </section>
-
-            {/* Same niche+tool, other cities */}
-            <section>
-              <h2 className="text-lg font-bold font-serif mb-4 text-center">
-                {tool.name} для {niche.nameCase} — другие города
-              </h2>
-              <div className="flex flex-wrap justify-center gap-3">
-                {otherCities.map((c) => (
-                  <Link
-                    key={c.id}
-                    to={`/${c.id}/${niche.id}/${tool.slug}`}
-                    className="glass px-4 py-2 rounded-full text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-                  >
-                    {c.name}
-                  </Link>
-                ))}
-              </div>
-            </section>
+            {[
+              { title: `Другие инструменты для ${niche.nameCase} в ${region.nameCase}`, items: sameNicheTools.map(t => ({ key: t.slug, to: `/${region.id}/${niche.id}/${t.slug}`, label: t.name })) },
+              { title: `${tool.name} в ${region.nameCase} — другие ниши`, items: otherNiches.map(n => ({ key: n.id, to: `/${region.id}/${n.id}/${tool.slug}`, label: n.name })) },
+              { title: `${tool.name} для ${niche.nameCase} — другие города`, items: otherCities.map(c => ({ key: c.id, to: `/${c.id}/${niche.id}/${tool.slug}`, label: c.name })) },
+            ].map((section, sIdx) => (
+              <motion.section
+                key={sIdx}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4 }}
+              >
+                <h2 className="text-lg font-bold font-serif mb-4 text-center">{section.title}</h2>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {section.items.map((item) => (
+                    <Link
+                      key={item.key}
+                      to={item.to}
+                      className="glass px-4 py-2 rounded-full text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </motion.section>
+            ))}
           </div>
         </div>
       </main>
