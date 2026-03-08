@@ -64,6 +64,8 @@ const GeoNicheToolPage = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      <MouseGradient />
+      <ClickRipple />
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
