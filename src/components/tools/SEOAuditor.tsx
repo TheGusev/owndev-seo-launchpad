@@ -189,6 +189,8 @@ const SEOAuditor = () => {
                 <p className="text-sm text-foreground font-medium">Проблем не найдено!</p>
               </div>
             )}
+
+            <ToolCTA />
           </>
         )}
 

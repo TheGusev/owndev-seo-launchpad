@@ -204,6 +204,8 @@ const PSEOGenerator = () => {
                 </tbody>
               </table>
             </div>
+
+            <ToolCTA />
           </div>
         )}
       </div>

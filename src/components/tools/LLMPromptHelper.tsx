@@ -234,6 +234,8 @@ const LLMPromptHelper = () => {
                 </button>
               </div>
             ))}
+
+            <ToolCTA />
           </div>
         )}
 
