@@ -1,55 +1,114 @@
 import { useState, useMemo } from "react";
-import { Slider } from "@/components/ui/slider";
-import { TrendingUp, Clock, Wallet, Users } from "lucide-react";
-import CountUp from "react-countup";
+import { Input } from "@/components/ui/input";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { Calculator, TrendingUp } from "lucide-react";
+
+interface CalcResult {
+  leads: number;
+  sales: number;
+  revenue: number;
+  profit: number;
+  paybackMonths: number;
+  roi: number;
+}
 
 const ROICalculatorTool = () => {
-  const [cities, setCities] = useState([10]);
-  const [pagesPerCity, setPagesPerCity] = useState([5]);
+  const [avgCheck, setAvgCheck] = useState("");
+  const [margin, setMargin] = useState("");
+  const [traffic, setTraffic] = useState("");
+  const [convLead, setConvLead] = useState("");
+  const [convSale, setConvSale] = useState("");
+  const [projectCost, setProjectCost] = useState("");
+  const [result, setResult] = useState<CalcResult | null>(null);
 
-  const calc = useMemo(() => {
-    const totalPages = cities[0] * pagesPerCity[0];
-    const monthlyTraffic = totalPages * 120;
-    const leads = Math.round(monthlyTraffic * 0.025);
-    const roi = Math.round((monthlyTraffic * 15 - 30000) / 30000 * 100);
-    return { totalPages, monthlyTraffic, leads, roi: Math.max(roi, 0) };
-  }, [cities, pagesPerCity]);
-
-  const stats = [
-    { icon: Users, label: "Страниц", value: calc.totalPages, suffix: "", color: "text-primary" },
-    { icon: TrendingUp, label: "Трафик/мес", value: calc.monthlyTraffic, suffix: "", color: "text-success" },
-    { icon: Clock, label: "Лидов/мес", value: calc.leads, suffix: "", color: "text-warning" },
-    { icon: Wallet, label: "ROI", value: calc.roi, suffix: "%", color: "text-primary" },
+  const fields = [
+    { label: "Средний чек (₽)", value: avgCheck, set: setAvgCheck, placeholder: "50000" },
+    { label: "Маржинальность (%)", value: margin, set: setMargin, placeholder: "30" },
+    { label: "Трафик / визиты в месяц", value: traffic, set: setTraffic, placeholder: "5000" },
+    { label: "Конверсия в заявку (%)", value: convLead, set: setConvLead, placeholder: "3" },
+    { label: "Конверсия заявки в продажу (%)", value: convSale, set: setConvSale, placeholder: "20" },
+    { label: "Стоимость проекта / месяц (₽)", value: projectCost, set: setProjectCost, placeholder: "100000" },
   ];
+
+  const canCalc = fields.every((f) => f.value.trim() !== "" && !isNaN(Number(f.value)));
+
+  const calculate = () => {
+    const ac = Number(avgCheck);
+    const mg = Number(margin) / 100;
+    const tr = Number(traffic);
+    const cl = Number(convLead) / 100;
+    const cs = Number(convSale) / 100;
+    const cost = Number(projectCost);
+
+    if (cost === 0) return;
+
+    const leads = Math.round(tr * cl);
+    const sales = Math.round(leads * cs);
+    const revenue = sales * ac;
+    const profit = revenue * mg;
+    const paybackMonths = profit > 0 ? Math.ceil(cost / profit) : Infinity;
+    const roi = Math.round(((profit - cost) / cost) * 100);
+
+    setResult({ leads, sales, revenue, profit, paybackMonths, roi });
+  };
+
+  const fmt = (n: number) => n.toLocaleString("ru-RU");
 
   return (
     <div className="glass rounded-2xl p-6 md:p-8">
-      <div className="grid md:grid-cols-2 gap-8 mb-8">
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Количество городов: {cities[0]}</label>
-            <Slider value={cities} onValueChange={setCities} min={1} max={80} step={1} />
+      <div className="grid md:grid-cols-2 gap-4 mb-6">
+        {fields.map((f) => (
+          <div key={f.label} className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">{f.label}</label>
+            <Input
+              type="number"
+              inputMode="decimal"
+              placeholder={f.placeholder}
+              value={f.value}
+              onChange={(e) => f.set(e.target.value)}
+              className="bg-card border-border"
+            />
           </div>
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Страниц на город: {pagesPerCity[0]}</label>
-            <Slider value={pagesPerCity} onValueChange={setPagesPerCity} min={1} max={20} step={1} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          {stats.map((s) => (
-            <div key={s.label} className="glass rounded-xl p-4 text-center">
-              <s.icon className={`w-5 h-5 mx-auto mb-2 ${s.color}`} />
-              <div className={`text-2xl font-bold ${s.color}`}>
-                <CountUp end={s.value} duration={0.4} separator=" " suffix={s.suffix} preserveValue />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
+      <div className="text-center mb-6">
+        <GradientButton size="lg" onClick={calculate} disabled={!canCalc}>
+          <Calculator className="w-5 h-5 mr-2" />
+          Рассчитать ROI
+        </GradientButton>
+      </div>
+
+      {result && (
+        <div className="space-y-4">
+          <div className="grid sm:grid-cols-3 gap-3">
+            {[
+              { label: "Заявок/мес", value: fmt(result.leads) },
+              { label: "Продаж/мес", value: fmt(result.sales) },
+              { label: "Выручка/мес", value: `${fmt(result.revenue)} ₽` },
+              { label: "Прибыль/мес", value: `${fmt(result.profit)} ₽` },
+              { label: "Окупаемость", value: result.paybackMonths === Infinity ? "—" : `${result.paybackMonths} мес.` },
+              { label: "ROI", value: `${result.roi}%` },
+            ].map((s) => (
+              <div key={s.label} className="glass rounded-xl p-4 text-center">
+                <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
+                <p className="text-xl font-bold text-primary">{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="glass rounded-xl p-4 flex items-start gap-3">
+            <TrendingUp className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground">
+              {result.roi > 0
+                ? `При текущих параметрах проект окупится за ${result.paybackMonths === Infinity ? "∞" : result.paybackMonths} мес. ROI составит ${result.roi}%.`
+                : "При текущих параметрах проект не окупается. Попробуйте увеличить трафик или конверсию."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground text-center mt-4">
         *Расчёты ориентировочные, не являются публичной офертой.
       </p>
     </div>

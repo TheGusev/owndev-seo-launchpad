@@ -3,6 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bot, Wand2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const textTypes = ["Вступление для GEO-страницы", "FAQ под регион", "Описание услуги", "Мета-описание"];
 
@@ -33,11 +34,12 @@ const AITextGenerator = () => {
           <Input placeholder="Дезинсекция, клининг, ремонт…" className="bg-card border-border" />
         </div>
 
-        <div className="text-center">
-          <GradientButton size="lg">
+        <div className="text-center space-y-2">
+          <GradientButton size="lg" disabled>
             <Wand2 className="w-5 h-5 mr-2" />
             Сгенерировать текст
           </GradientButton>
+          <Badge variant="secondary" className="ml-2">Скоро</Badge>
         </div>
 
         <div className="glass rounded-xl p-5">
@@ -47,7 +49,7 @@ const AITextGenerator = () => {
           </div>
           <Textarea
             readOnly
-            placeholder="Здесь появится сгенерированный текст…"
+            placeholder="Инструмент в разработке…"
             className="bg-card border-border min-h-[120px]"
           />
         </div>

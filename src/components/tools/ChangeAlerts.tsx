@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Bell, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const mockAlerts = [
   { type: "warning", text: "Конкурент добавил 15 новых страниц", time: "2ч назад" },
@@ -17,15 +18,16 @@ const ChangeAlerts = () => {
           <Input placeholder="example.com" className="bg-card border-border" />
         </div>
 
-        <div className="text-center">
-          <GradientButton size="lg">
+        <div className="text-center space-y-2">
+          <GradientButton size="lg" disabled>
             <Bell className="w-5 h-5 mr-2" />
             Настроить мониторинг
           </GradientButton>
+          <Badge variant="secondary" className="ml-2">Скоро</Badge>
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-foreground mb-3">Последние алерты</p>
+          <p className="text-sm font-semibold text-foreground mb-3">Последние алерты (демо)</p>
           {mockAlerts.map((a, i) => (
             <div key={i} className="glass rounded-xl px-4 py-3 flex items-center gap-3">
               {a.type === "warning" && <AlertTriangle className="w-5 h-5 text-warning shrink-0" />}
