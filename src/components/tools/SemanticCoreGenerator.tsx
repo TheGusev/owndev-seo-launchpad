@@ -81,10 +81,15 @@ const SemanticCoreGenerator = () => {
             <p className="text-sm font-semibold text-foreground">
               {clusters.length} кластеров, {totalKeywords} ключей
             </p>
-            <button onClick={handleCopy} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-              {copied ? <CheckCircle className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
-              {copied ? "Скопировано" : "Копировать всё"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={handleDownloadCSV} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <Download className="w-3 h-3" /> CSV
+              </button>
+              <button onClick={handleCopy} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                {copied ? <CheckCircle className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+                {copied ? "Скопировано" : "Копировать"}
+              </button>
+            </div>
           </div>
 
           {clusters.map((cluster, i) => {
