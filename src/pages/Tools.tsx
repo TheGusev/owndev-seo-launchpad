@@ -1,9 +1,7 @@
-import { Suspense } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { categories, getToolsByCategory } from "@/data/tools-registry";
-import { GradientButton } from "@/components/ui/gradient-button";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -13,21 +11,19 @@ const Tools = () => {
       <Header />
       <main className="pt-24 pb-16">
         <div className="container px-4 md:px-6">
-          {/* Page header */}
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 glass px-4 py-2 rounded-full mb-5">
               <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
               <span className="text-sm text-muted-foreground font-mono">Все инструменты платформы</span>
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-serif mb-4">
-              <span className="text-gradient">20 инструментов</span> для SEO
+              <span className="text-gradient">7 инструментов</span> для SEO + LLM
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Полный набор инструментов для programmatic SEO: от анализа до генерации тысяч страниц
+              Бесплатные инструменты для SEO, programmatic SEO и оптимизации под AI‑поиск
             </p>
           </div>
 
-          {/* Categories */}
           {categories.map((cat, catIdx) => {
             const catTools = getToolsByCategory(cat.id);
             if (catTools.length === 0) return null;
@@ -48,19 +44,13 @@ const Tools = () => {
 
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {catTools.map((tool) => (
-                    <Link
-                      key={tool.id}
-                      to={`/tools/${tool.slug}`}
-                      className="glass rounded-2xl p-6 hover:border-primary/40 transition-all group"
-                    >
+                    <Link key={tool.id} to={`/tools/${tool.slug}`} className="glass rounded-2xl p-6 hover:border-primary/40 transition-all group">
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                           <tool.icon className="w-5 h-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-                            {tool.name}
-                          </h3>
+                          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{tool.name}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
                         </div>
                       </div>

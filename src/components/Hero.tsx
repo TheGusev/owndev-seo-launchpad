@@ -1,5 +1,5 @@
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Sparkles, ArrowDown, Code2, Cpu } from "lucide-react";
+import { Sparkles, ArrowDown, Search, Users } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
 import { SparklesCore } from "@/components/ui/sparkles";
@@ -8,6 +8,7 @@ import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { ParallaxLayer } from "@/components/ui/parallax-layer";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   const scrollTo = (id: string) => {
@@ -52,7 +53,7 @@ const Hero = () => {
             className="glass px-4 py-2 rounded-full flex items-center gap-2"
           >
             <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground font-mono">Веб-студия · pSEO · Технологии</span>
+            <span className="text-sm text-muted-foreground font-mono">Бесплатные LLM + SEO инструменты</span>
           </motion.div>
           
           {/* Main heading */}
@@ -66,11 +67,13 @@ const Hero = () => {
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif text-center leading-tight">
                 <TypeAnimation
                   sequence={[
-                    'Сайты под ключ',
+                    'SEO‑аудит за секунды',
                     2500,
-                    'SEO‑инструменты',
+                    'Schema.org в один клик',
                     2500,
-                    'Технологии будущего',
+                    'pSEO для вашего бизнеса',
+                    2500,
+                    'LLM‑оптимизация сайтов',
                     2500,
                   ]}
                   wrapper="span"
@@ -81,7 +84,7 @@ const Hero = () => {
               </h1>
             </div>
             <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground font-serif">
-              для бизнеса, который растёт
+              бесплатно и без регистрации
             </p>
           </motion.div>
           
@@ -92,7 +95,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground max-w-3xl leading-relaxed"
           >
-            Веб‑студия, pSEO‑платформа и магазин умных технологий — всё в одном месте.
+            Набор честных инструментов для SEO, programmatic SEO и оптимизации под AI‑поиск. Без скрытых платежей.
           </motion.p>
 
           {/* Stats line */}
@@ -102,7 +105,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="text-sm text-muted-foreground font-medium"
           >
-            30+ проектов &bull; 6 готовых платформ &bull; 5000+ GEO‑страниц
+            7 инструментов &bull; SEO + LLM аудит &bull; Schema · Sitemap · pSEO
           </motion.p>
           
           {/* CTA buttons */}
@@ -123,10 +126,12 @@ const Hero = () => {
                 proximity={80}
                 inactiveZone={0.4}
               />
-              <GradientButton size="lg" className="group relative z-10" onClick={() => scrollTo("web-studio")}>
-                <Code2 className="w-5 h-5 mr-2" />
-                Смотреть проекты
-              </GradientButton>
+              <Link to="/tools">
+                <GradientButton size="lg" className="group relative z-10">
+                  <Search className="w-5 h-5 mr-2" />
+                  Инструменты
+                </GradientButton>
+              </Link>
             </div>
             <div className="relative group">
               <GlowingEffect
@@ -139,25 +144,9 @@ const Hero = () => {
                 proximity={80}
                 inactiveZone={0.4}
               />
-              <GradientButton variant="variant" size="lg" className="relative z-10" onClick={() => scrollTo("tools-showcase")}>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Инструменты pSEO
-              </GradientButton>
-            </div>
-            <div className="relative group">
-              <GlowingEffect
-                theme="secondary"
-                disabled={false}
-                borderWidth={2}
-                spread={25}
-                glow={true}
-                blur={10}
-                proximity={80}
-                inactiveZone={0.4}
-              />
-              <GradientButton variant="variant" size="lg" className="relative z-10" onClick={() => scrollTo("tech-shop")}>
-                <Cpu className="w-5 h-5 mr-2" />
-                Магазин технологий
+              <GradientButton variant="variant" size="lg" className="relative z-10" onClick={() => scrollTo("about")}>
+                <Users className="w-5 h-5 mr-2" />
+                О нас
               </GradientButton>
             </div>
           </motion.div>

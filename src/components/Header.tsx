@@ -8,10 +8,8 @@ const Header = () => {
   const navigate = useNavigate();
 
   const navLinks: { href: string; label: string; isRoute?: boolean }[] = [
-    { href: "#web-studio", label: "Веб-студия" },
     { href: "/tools", label: "Инструменты", isRoute: true },
-    { href: "#tech-shop", label: "Технологии" },
-    { href: "#cases", label: "Кейсы" },
+    { href: "#about", label: "О нас" },
     { href: "#contact", label: "Контакты" },
   ];
 
@@ -52,8 +50,8 @@ const Header = () => {
           </nav>
 
           <div className="hidden md:block">
-            <GradientButton size="sm" onClick={() => scrollTo("web-studio")}>
-              Смотреть проекты
+            <GradientButton size="sm" onClick={() => navigate("/tools")}>
+              Открыть инструменты
             </GradientButton>
           </div>
 
@@ -78,8 +76,8 @@ const Header = () => {
                   {link.label}
                 </a>
               ))}
-              <GradientButton size="sm" className="mt-2" onClick={() => scrollTo("web-studio")}>
-                Смотреть проекты
+              <GradientButton size="sm" className="mt-2" onClick={() => navigate("/tools")}>
+                Открыть инструменты
               </GradientButton>
             </div>
           </nav>

@@ -1,10 +1,7 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import WebStudioSection from "@/components/WebStudioSection";
 import ToolsShowcase from "@/components/ToolsShowcase";
-import TechShopSection from "@/components/TechShopSection";
-import ScrollStacksSection from "@/components/ScrollStacksSection";
-import CasesResults from "@/components/CasesResults";
+import AboutSection from "@/components/AboutSection";
 import FAQ from "@/components/FAQ";
 import ContactForm from "@/components/ContactForm";
 import Footer from "@/components/Footer";
@@ -20,11 +17,8 @@ const Index = () => {
       <Header />
       <main>
         <Hero />
-        <WebStudioSection />
         <ToolsShowcase />
-        <TechShopSection />
-        <ScrollStacksSection />
-        <CasesResults />
+        <AboutSection />
         <FAQ />
         <ContactForm />
       </main>

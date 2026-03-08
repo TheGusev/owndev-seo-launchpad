@@ -1,29 +1,43 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Sparkles, Shield, Bot, Calculator, MapPin } from "lucide-react";
+import { Search, Code2, FileCode, Sparkles, Calculator, Shield, Bot } from "lucide-react";
 import { Link } from "react-router-dom";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const tools = [
   {
-    icon: Sparkles,
-    name: "pSEO Generator",
-    description: "Массовая генерация GEO‑страниц для городов и ниш",
-    slug: "pseo-generator",
+    icon: Search,
+    name: "LLM‑Friendly SEO Auditor",
+    description: "SEO + LLM аудит страницы: двойной скор и чек‑лист",
+    slug: "seo-auditor",
     theme: "primary" as const,
   },
   {
-    icon: Shield,
-    name: "Anti‑Duplicate Checker",
-    description: "Проверка текста на шаблонность и риск деиндексации",
-    slug: "anti-duplicate",
-    theme: "destructive" as const,
+    icon: Code2,
+    name: "Schema.org генератор",
+    description: "JSON‑LD разметка для LocalBusiness, Article, FAQ и др.",
+    slug: "schema-generator",
+    theme: "accent" as const,
+  },
+  {
+    icon: FileCode,
+    name: "Генератор sitemap.xml",
+    description: "Создание карты сайта из списка URL",
+    slug: "sitemap-generator",
+    theme: "success" as const,
+  },
+  {
+    icon: Sparkles,
+    name: "pSEO Generator",
+    description: "Генерация структуры GEO‑страниц для городов и ниш",
+    slug: "pseo-generator",
+    theme: "secondary" as const,
   },
   {
     icon: Bot,
-    name: "AI Citation Checker",
-    description: "Готовность к Perplexity, ChatGPT и AI‑обзорам",
-    slug: "ai-citation",
+    name: "LLM Prompt Helper",
+    description: "Готовые промты для AI‑генерации SEO‑контента",
+    slug: "llm-prompt-helper",
     theme: "accent" as const,
   },
   {
@@ -34,11 +48,11 @@ const tools = [
     theme: "success" as const,
   },
   {
-    icon: MapPin,
-    name: "GEO Coverage Map",
-    description: "Планирование охвата городов России для pSEO",
-    slug: "geo-map",
-    theme: "secondary" as const,
+    icon: Shield,
+    name: "Anti‑Duplicate Checker",
+    description: "Проверка текста на шаблонность и риск деиндексации",
+    slug: "anti-duplicate",
+    theme: "destructive" as const,
   },
 ];
 
@@ -59,10 +73,10 @@ const ToolsShowcase = () => {
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
             Бесплатные{" "}
-            <span className="text-gradient">SEO‑инструменты</span>
+            <span className="text-gradient">LLM + SEO инструменты</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            5 профессиональных инструментов для programmatic SEO
+            7 профессиональных инструментов для SEO и оптимизации под AI‑поиск
           </p>
         </motion.div>
 
@@ -105,7 +119,7 @@ const ToolsShowcase = () => {
             to="/tools"
             className="inline-flex items-center gap-2 glass px-6 py-3 rounded-full text-primary font-semibold hover:border-primary/40 transition-colors"
           >
-            Все 20 инструментов →
+            Все инструменты →
           </Link>
         </div>
       </div>

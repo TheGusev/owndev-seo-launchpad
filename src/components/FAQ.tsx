@@ -21,61 +21,41 @@ const FAQ = () => {
 
   const faqs = [
     {
-      question: "Сколько времени занимает разработка сайта?",
-      answer: "Зависит от типа проекта: лендинг — 5-7 дней, корпоративный сайт — 2-3 недели, интернет-магазин — 3-4 недели, SaaS-платформа — 2-3 месяца. Точные сроки указаны в нашем прайс-листе выше."
+      question: "Что такое LLM-оптимизация?",
+      answer: "LLM-оптимизация — это подготовка контента сайта к тому, чтобы AI-ассистенты (ChatGPT, Perplexity, Google AI Overviews) корректно цитировали и ссылались на ваш сайт. Это включает структурированные данные, FAQ-блоки, чёткую иерархию заголовков и читабельный контент."
     },
     {
-      question: "Нужно ли мне покупать домен и хостинг?",
-      answer: "Нет, это уже включено в стоимость первый год. Мы регистрируем домен на ваше имя и размещаем сайт на надежном российском хостинге. После первого года стоимость продления — от 3,000 ₽/год."
+      question: "Как попасть в AI Overviews и ответы LLM?",
+      answer: "Ключевые факторы: наличие Schema.org разметки (особенно FAQ, HowTo, Article), структурированный контент с подзаголовками, списками и таблицами, а также авторитетность домена. Наш SEO Auditor проверяет все эти факторы и даёт конкретные рекомендации."
     },
     {
-      question: "Я не знаю, какой сайт мне нужен. Как выбрать?",
-      answer: "Запишитесь на БЕСПЛАТНУЮ консультацию. За 1-1.5 часа мы проанализируем ваш бизнес, конкурентов и целевую аудиторию, и предложим оптимальный вариант с расчетом ROI."
+      question: "Инструменты действительно бесплатные?",
+      answer: "Да, все инструменты полностью бесплатны и без регистрации. Мы зарабатываем на заказной разработке и SEO-сопровождении, а инструменты — это наш способ быть полезными сообществу."
     },
     {
-      question: "Можно ли доработать сайт после запуска?",
-      answer: "Конечно! В каждый тариф включена техподдержка от 1 до 6 месяцев (зависит от выбранного пакета). После этого предлагаем договор абонентской поддержки от 10,000 ₽/мес с неограниченными правками."
+      question: "Можно ли заказать SEO или разработку сайта?",
+      answer: "Конечно. Мы делаем сайты под ключ, запускаем pSEO-проекты на тысячи страниц и оптимизируем контент под AI-поиск. Напишите нам в Telegram или через форму обратной связи."
     },
     {
-      question: "Вы гарантируете результаты?",
-      answer: "Мы гарантируем рост органического трафика минимум на 150% за 6 месяцев при условии SEO-продвижения. Если результата нет по нашей вине, мы работаем бесплатно до его достижения."
+      question: "Что такое pSEO (programmatic SEO)?",
+      answer: "Programmatic SEO — это стратегия создания большого количества оптимизированных страниц по шаблону. Например, «услуга + город» для 1000 городов. Наш pSEO Generator помогает спланировать структуру таких проектов."
     },
     {
-      question: "Как часто нужно платить за SEO?",
-      answer: "SEO — это постоянная работа. Мы предлагаем месячные подписки от 60,000 ₽/мес. Можно начать с 3-месячного пробного периода. Минимальный рекомендуемый срок для видимых результатов — 6 месяцев."
+      question: "Насколько точен SEO-аудит?",
+      answer: "Наш аудитор выполняет быструю эвристическую проверку — это не замена полноценному аудиту, но отличная отправная точка. Он проверяет мета-теги, заголовки, структурированные данные, скорость и готовность к LLM-цитированию."
     },
-    {
-      question: "Можно ли перенести текущий сайт на новый?",
-      answer: "Да, мы переносим все данные, контент, изображения. Сохраняем SEO рейтинг, настраиваем 301-редиректы со старых URL. Это входит в стоимость проекта."
-    },
-    {
-      question: "Какой стек технологий вы используете?",
-      answer: "React.js, Next.js для фронтенда, Node.js/Python для бэкенда, PostgreSQL/MongoDB для базы данных. Всё современное, масштабируемое и легко поддерживаемое. Также работаем с WordPress/Tilda для простых проектов."
-    }
   ];
 
   const FAQContent = () => (
     <Accordion type="single" collapsible className="space-y-4">
       {faqs.map((faq, index) => (
         <div key={index} className="relative group">
-          <GlowingEffect
-            theme="accent"
-            disabled={false}
-            borderWidth={1}
-            spread={20}
-            glow={true}
-            blur={6}
-          />
-          <AccordionItem 
-            value={`item-${index}`}
-            className="glass rounded-xl px-6 border-none relative z-10"
-          >
+          <GlowingEffect theme="accent" disabled={false} borderWidth={1} spread={20} glow={true} blur={6} />
+          <AccordionItem value={`item-${index}`} className="glass rounded-xl px-6 border-none relative z-10">
             <AccordionTrigger className="text-left hover:no-underline py-6">
               <span className="font-semibold text-foreground">{faq.question}</span>
             </AccordionTrigger>
-            <AccordionContent className="text-muted-foreground pb-6">
-              {faq.answer}
-            </AccordionContent>
+            <AccordionContent className="text-muted-foreground pb-6">{faq.answer}</AccordionContent>
           </AccordionItem>
         </div>
       ))}
@@ -85,51 +65,29 @@ const FAQ = () => {
   return (
     <section id="faq" className="py-24 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(222_47%_10%),transparent_70%)]" />
-      
       <div className="container px-4 md:px-6 relative z-10">
-        {/* Desktop version */}
+        {/* Desktop */}
         <div className="hidden md:block">
-          <motion.div
-            ref={ref}
-            initial={{ opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
+          <motion.div ref={ref} initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6 }} className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-              Вопросы и{" "}
-              <span className="text-gradient">ответы</span>
+              Вопросы и <span className="text-gradient">ответы</span>
             </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Ответы на часто задаваемые вопросы наших клиентов
-            </p>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Часто задаваемые вопросы об инструментах и LLM‑оптимизации</p>
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="max-w-3xl mx-auto"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6, delay: 0.2 }} className="max-w-3xl mx-auto">
             <FAQContent />
           </motion.div>
         </div>
 
-        {/* Mobile version - Collapsible */}
+        {/* Mobile */}
         <div className="md:hidden">
           <Collapsible open={isOpen} onOpenChange={setIsOpen}>
             <CollapsibleTrigger className="w-full glass rounded-xl p-6 flex items-center justify-between">
               <div className="text-left">
-                <h2 className="text-2xl font-bold font-serif">
-                  Вопросы и <span className="text-gradient">ответы</span>
-                </h2>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Нажмите, чтобы раскрыть
-                </p>
+                <h2 className="text-2xl font-bold font-serif">Вопросы и <span className="text-gradient">ответы</span></h2>
+                <p className="text-muted-foreground text-sm mt-1">Нажмите, чтобы раскрыть</p>
               </div>
-              <ChevronDown 
-                className={`w-6 h-6 text-primary transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} 
-              />
+              <ChevronDown className={`w-6 h-6 text-primary transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-6">
               <FAQContent />
