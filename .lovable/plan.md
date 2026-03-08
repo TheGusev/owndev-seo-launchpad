@@ -1,18 +1,27 @@
 
 
-## Site Status: No Errors Found
+## Audit Result: ParallaxLayer Overlap Risk on Tools Pages
 
-After thorough inspection of console logs, network requests, session replay, and all source files — **there are no errors to fix**. The previous 16-point audit was fully implemented and the codebase is clean:
+### Already Fixed (no issues)
+- `Blog.tsx` — no ParallaxLayer, 2-column grid, centered layout. Clean.
+- `BlogPost.tsx` — no ParallaxLayer, no FloatingParticles. Clean.
+- `GeoToolPage.tsx` — no ParallaxLayer. Clean.
+- `GeoNicheToolPage.tsx` — no ParallaxLayer. Clean.
 
-- All pages have `<Helmet>` with title, description, canonical
-- Sitemap plugin generates correct URLs matching actual routes
-- `robots.txt` has `Sitemap:` directive
-- JSON-LD schemas are present (Organization, WebSite, FAQPage, BreadcrumbList, Article)
-- Header uses `<Link>` for logo, has `aria-label` on mobile menu
-- Footer uses `<Link>` for logo, anchor navigation works from subpages
-- Routing is correct, no 404-producing URLs in sitemap
-- NotFound has `noindex` meta
-- Blog has related posts, tools have cross-links
+### Remaining Problem
+Two pages still use `ParallaxLayer`, which causes the same content-overlapping bug on tablet and desktop:
 
-**No changes needed.** The site is working correctly.
+| File | Usage | Risk |
+|------|-------|------|
+| `src/pages/Tools.tsx` | Each tool category section wrapped in `ParallaxLayer speed={0.15}` (line 73-115) | Category cards overlap on scroll/reload |
+| `src/pages/ToolPage.tsx` | Tool widget (lines 114-125) and use-cases section (lines 128-152) wrapped in `ParallaxLayer` | Widget and text overlap with header/other sections |
+
+### Proposed Fix
+
+Remove `ParallaxLayer` wrappers from both files, keeping the inner `motion.div` animations intact. Same approach used successfully on Blog and Geo pages.
+
+| File | Change |
+|------|--------|
+| `src/pages/Tools.tsx` | Remove `ParallaxLayer` import and wrapper around category sections (lines 73, 115) |
+| `src/pages/ToolPage.tsx` | Remove `ParallaxLayer` import and wrappers around tool widget (lines 114, 125) and use-cases (lines 128, 152) |
 
