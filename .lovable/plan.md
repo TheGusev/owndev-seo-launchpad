@@ -1,66 +1,63 @@
 
 
-## Plan: Add Desktop Scroll-Snap Effect
+## Plan: Activate SemanticCoreGenerator, AITextGenerator, AntiDuplicateChecker
 
-### Verification Results
+### 1. SemanticCoreGenerator — AI-powered via edge function
 
-All header navigation links work correctly:
-- "Веб-студия" -> scrolls to #web-studio section (confirmed)
-- "Технологии" -> scrolls to #tech-shop section (confirmed)
-- "Кейсы" -> scrolls to #cases section (confirmed)
-- "Контакты" -> scrolls to #contact section (confirmed)
+**Edge function:** `supabase/functions/generate-semantic-core/index.ts`
+- Accepts `{ query: string, region: string }`
+- Calls Lovable AI (gemini-3-flash-preview) with a prompt to generate 15-25 keywords clustered into 3 groups: Информационные, Коммерческие, Транзакционные
+- Returns structured JSON via tool calling: `{ clusters: [{ name, keywords: [{ keyword, intent, estimatedVolume }] }] }`
 
-No changes needed for navigation -- it all works as expected.
+**Frontend:** Rewrite `SemanticCoreGenerator.tsx`
+- State for query, region, loading, results
+- Call edge function on button click
+- Display clusters in 3 cards with keyword lists
+- Add "Скачать CSV" button for export
+- Remove "Скоро" badge, enable button
 
-### Scroll-Snap Implementation
+### 2. AITextGenerator — AI-powered via edge function
 
-Add CSS scroll-snap for desktop so the main sections (Hero, WebStudio, ToolsShowcase, TechShop) snap into place when scrolling between them. Uses `proximity` mode so it assists scrolling without fighting it.
+**Edge function:** `supabase/functions/generate-text/index.ts`
+- Accepts `{ type: string, city: string, niche: string }`
+- Calls Lovable AI with type-specific system prompts (intro, FAQ, service description, meta description)
+- Streams response back as SSE for real-time text rendering
 
-#### 1. Add scroll-snap CSS to `src/index.css`
+**Frontend:** Rewrite `AITextGenerator.tsx`
+- State for type, city, niche, loading, generated text
+- Stream tokens into the textarea result area
+- Add "Скопировать" button
+- Remove "Скоро" badge, enable button
 
-Add desktop-only scroll-snap utilities:
-```css
-@media (min-width: 768px) {
-  .snap-container {
-    scroll-snap-type: y proximity;
-    overflow-y: scroll;
-    height: 100vh;
-  }
-  .snap-section {
-    scroll-snap-align: start;
-  }
-}
-```
+### 3. AntiDuplicateChecker — frontend-only text analysis
 
-#### 2. Update `src/pages/Index.tsx`
+No backend needed. Pure client-side analysis:
+- **N-gram repetition**: Count repeated 3-4 word phrases, flag high repetition
+- **Template detection**: Check for unresolved `{placeholders}` 
+- **Sentence diversity**: Compare unique sentence starts vs total sentences
+- **Word diversity**: Unique words / total words ratio
+- **Score 0-100**: Weighted formula from all metrics
+- **Issues list**: Specific findings with severity
 
-- Add `snap-container` class to the root `<div>`
-- Add `snap-section` class to the 4 main sections: Hero, WebStudioSection, ToolsShowcase, TechShopSection
-- Wrap each section in a div with the snap class (since section components own their own root elements)
+**Frontend:** Rewrite `AntiDuplicateChecker.tsx`
+- State for text input, loading, results (score, issues)
+- Analyze on button click (synchronous, no API)
+- Show score in progress bar with color gradient
+- Show issues list with recommendations
+- Remove "Скоро" badge, enable button
 
-#### 3. Update section components
+### 4. Update tools-registry.ts
 
-Add `min-h-screen` to the 4 snap-target sections so they fill the viewport:
-- `src/components/Hero.tsx` -- already has `min-h-screen`
-- `src/components/WebStudioSection.tsx` -- add `min-h-screen`
-- `src/components/ToolsShowcase.tsx` -- add `min-h-screen`
-- `src/components/TechShopSection.tsx` -- add `min-h-screen`
+Change status from `coming_soon` to `active` for all three tools.
 
-### Files Summary
+### Files
 
-| Action | File | Change |
-|--------|------|--------|
-| Modify | `src/index.css` | Add snap-container and snap-section CSS utilities |
-| Modify | `src/pages/Index.tsx` | Add snap-container class to root div |
-| Modify | `src/components/WebStudioSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/ToolsShowcase.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/TechShopSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/Hero.tsx` | Add snap-section class |
-
-### Technical Notes
-
-- `proximity` mode means snap only triggers when the user stops scrolling near a section boundary -- it does not force-lock the scroll
-- Only enabled on desktop (768px+) to avoid interfering with mobile scrolling
-- Sections below TechShop (ScrollStacks, Cases, FAQ, Contact, Footer) do NOT get snap-section -- they scroll freely
-- The snap container needs `overflow-y: scroll` and `height: 100vh` to work properly
+| Action | File |
+|--------|------|
+| CREATE | `supabase/functions/generate-semantic-core/index.ts` |
+| CREATE | `supabase/functions/generate-text/index.ts` |
+| REWRITE | `src/components/tools/SemanticCoreGenerator.tsx` |
+| REWRITE | `src/components/tools/AITextGenerator.tsx` |
+| REWRITE | `src/components/tools/AntiDuplicateChecker.tsx` |
+| MODIFY | `src/data/tools-registry.ts` (3 status changes) |
 
