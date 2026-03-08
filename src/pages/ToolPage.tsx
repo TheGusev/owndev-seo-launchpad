@@ -30,6 +30,8 @@ const ToolPage = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      <MouseGradient />
+      <ClickRipple />
       <Header />
       <main className="pt-24 pb-16 relative">
         {/* Background animations */}
