@@ -70,7 +70,22 @@ const GeoNicheToolPage = () => {
         <title>{title}</title>
         <meta name="description" content={description} />
         <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={canonical} />
+        <meta property="og:type" content="website" />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Главная", item: "https://owndev.ru/" },
+            { "@type": "ListItem", position: 2, name: "Инструменты", item: "https://owndev.ru/tools" },
+            { "@type": "ListItem", position: 3, name: tool.name, item: `https://owndev.ru/tools/${tool.slug}` },
+            { "@type": "ListItem", position: 4, name: region.name, item: `https://owndev.ru/tools/${tool.slug}/${region.id}` },
+            { "@type": "ListItem", position: 5, name: niche.name, item: canonical },
+          ],
+        })}</script>
       </Helmet>
 
       <Header />
