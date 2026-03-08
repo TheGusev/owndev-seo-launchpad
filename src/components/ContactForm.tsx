@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 import { useInView } from "react-intersection-observer";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -65,50 +66,21 @@ const ContactForm = () => {
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
-    
-    const TELEGRAM_BOT_TOKEN = '8065981666:AAG_dtQbGKag6DYz_hrTZ3fsjSKIwBz47Yk';
-    const TELEGRAM_CHAT_ID = '-4770978516';
-
-    const now = new Date();
-    const moscowTime = new Intl.DateTimeFormat('ru-RU', {
-      timeZone: 'Europe/Moscow',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(now);
 
     const serviceLabel = serviceLabels[data.service] || data.service;
 
-    const message = `📬 *НОВАЯ ЗАЯВКА С САЙТА*
-
-👤 *Имя:* ${data.name}
-📞 *Телефон:* ${data.phone}
-📧 *Email:* ${data.email}
-🛠 *Услуга:* ${serviceLabel}
-
-💬 *Сообщение:*
-${data.message || 'Не указано'}
-
-⏰ *Время:* ${moscowTime}`;
-
     try {
-      const response = await fetch(
-        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: TELEGRAM_CHAT_ID,
-            text: message,
-            parse_mode: 'Markdown',
-          }),
-        }
-      );
+      const { data: result, error } = await supabase.functions.invoke('send-telegram', {
+        body: {
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          service: serviceLabel,
+          message: data.message || '',
+        },
+      });
 
-      const result = await response.json();
-      if (!result.ok) throw new Error(result.description);
+      if (error) throw error;
 
       setIsSuccess(true);
       toast({
