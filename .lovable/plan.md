@@ -1,66 +1,92 @@
 
 
-## Plan: Add Desktop Scroll-Snap Effect
+## Plan: Global Cleanup, ROI Calculator Rebuild, and Tool UX Unification
 
-### Verification Results
+### Current State Summary
 
-All header navigation links work correctly:
-- "Веб-студия" -> scrolls to #web-studio section (confirmed)
-- "Технологии" -> scrolls to #tech-shop section (confirmed)
-- "Кейсы" -> scrolls to #cases section (confirmed)
-- "Контакты" -> scrolls to #contact section (confirmed)
+Previous phases already completed:
+- 11 orphan components deleted (confirmed: none remain in `src/components/`)
+- Footer links fixed (`#web-studio`, `#cases`)
+- Telegram token moved to edge function
+- ScrollStacksSection refactored (~300 lines, data extracted)
+- SEO Auditor: fully functional with edge function backend
+- Schema Generator: fully functional (7 types, copy, validation)
+- Sitemap Generator: fully functional (normalize, copy, download)
+- pSEO Generator: fully functional (transliteration, CSV export)
 
-No changes needed for navigation -- it all works as expected.
+### What Still Needs Doing
 
-### Scroll-Snap Implementation
+#### 1. Clean Up Unused Imports and Dead Code
 
-Add CSS scroll-snap for desktop so the main sections (Hero, WebStudio, ToolsShowcase, TechShop) snap into place when scrolling between them. Uses `proximity` mode so it assists scrolling without fighting it.
+Scan all tool components for unused imports (e.g., icons imported but never used). Quick pass across all files.
 
-#### 1. Add scroll-snap CSS to `src/index.css`
+#### 2. Rebuild ROI Calculator
 
-Add desktop-only scroll-snap utilities:
-```css
-@media (min-width: 768px) {
-  .snap-container {
-    scroll-snap-type: y proximity;
-    overflow-y: scroll;
-    height: 100vh;
-  }
-  .snap-section {
-    scroll-snap-align: start;
-  }
-}
-```
+Current `ROICalculatorTool.tsx` is a simplistic slider (cities x pages) that doesn't match the user's spec. Replace with a proper business ROI calculator:
 
-#### 2. Update `src/pages/Index.tsx`
+**Fields:** Average check, Margin %, Traffic/visits, Conversion to lead %, Lead-to-sale %, Monthly project cost.
 
-- Add `snap-container` class to the root `<div>`
-- Add `snap-section` class to the 4 main sections: Hero, WebStudioSection, ToolsShowcase, TechShopSection
-- Wrap each section in a div with the snap class (since section components own their own root elements)
+**Outputs:** Leads count, Sales count, Revenue, Profit, Payback period (months), ROI %.
 
-#### 3. Update section components
+**Logic:** All frontend, no external deps. Validation for numeric fields, division-by-zero protection. Results shown in a table + summary text.
 
-Add `min-h-screen` to the 4 snap-target sections so they fill the viewport:
-- `src/components/Hero.tsx` -- already has `min-h-screen`
-- `src/components/WebStudioSection.tsx` -- add `min-h-screen`
-- `src/components/ToolsShowcase.tsx` -- add `min-h-screen`
-- `src/components/TechShopSection.tsx` -- add `min-h-screen`
+#### 3. Mark Mockup Tools as "In Development"
+
+10 tools are still UI-only mockups with no logic:
+- CompetitorAnalysis
+- IndexationChecker
+- SemanticCoreGenerator
+- AITextGenerator
+- AntiDuplicateChecker
+- PositionMonitor
+- ChangeAlerts
+- InternalLinksChecker
+- CSVExport
+- TelegramBotSetup
+
+For each: disable the main action button and add a "Скоро" badge. This prevents users from clicking buttons that do nothing.
+
+#### 4. Unify Tool Page UX
+
+Update `ToolPage.tsx` to add a disclaimer footer below each tool: "Быстрый чек — не заменяет полноценный аудит".
+
+Update `tools-registry.ts` descriptions to be consistent 1-2 line format.
+
+#### 5. Clean Up GEOCoverageMap and AICitationChecker
+
+These two are semi-functional (have interactive UI with checkboxes/lists) but their buttons do nothing. Add disabled state with "Скоро" label.
 
 ### Files Summary
 
 | Action | File | Change |
 |--------|------|--------|
-| Modify | `src/index.css` | Add snap-container and snap-section CSS utilities |
-| Modify | `src/pages/Index.tsx` | Add snap-container class to root div |
-| Modify | `src/components/WebStudioSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/ToolsShowcase.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/TechShopSection.tsx` | Add snap-section and min-h-screen classes |
-| Modify | `src/components/Hero.tsx` | Add snap-section class |
+| REWRITE | `src/components/tools/ROICalculatorTool.tsx` | Full business ROI calculator |
+| MODIFY | `src/components/tools/CompetitorAnalysis.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/IndexationChecker.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/SemanticCoreGenerator.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/AITextGenerator.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/AntiDuplicateChecker.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/PositionMonitor.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/ChangeAlerts.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/InternalLinksChecker.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/CSVExport.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/TelegramBotSetup.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/AICitationChecker.tsx` | Disable button + "Скоро" badge |
+| MODIFY | `src/components/tools/GEOCoverageMap.tsx` | Minor — it's semi-interactive already, keep as-is |
+| MODIFY | `src/pages/ToolPage.tsx` | Add disclaimer text below tool widget |
+| MODIFY | `src/data/tools-registry.ts` | Tighten descriptions, add `status: 'active' | 'coming_soon'` field |
 
-### Technical Notes
+### Fully Functional Tools (after this plan)
 
-- `proximity` mode means snap only triggers when the user stops scrolling near a section boundary -- it does not force-lock the scroll
-- Only enabled on desktop (768px+) to avoid interfering with mobile scrolling
-- Sections below TechShop (ScrollStacks, Cases, FAQ, Contact, Footer) do NOT get snap-section -- they scroll freely
-- The snap container needs `overflow-y: scroll` and `height: 100vh` to work properly
+1. SEO Auditor (backend)
+2. Schema Generator (frontend)
+3. Sitemap Generator (frontend)
+4. pSEO Generator (frontend)
+5. ROI Calculator (frontend, rebuilt)
+6. Robots.txt Generator (frontend, already semi-functional)
+7. GEO Coverage Map (frontend, interactive checklist)
+
+### "Coming Soon" Tools
+
+8-18: CompetitorAnalysis, IndexationChecker, SemanticCoreGenerator, AITextGenerator, AntiDuplicateChecker, PositionMonitor, ChangeAlerts, InternalLinksChecker, AICitationChecker, CSVExport, TelegramBotSetup
 
