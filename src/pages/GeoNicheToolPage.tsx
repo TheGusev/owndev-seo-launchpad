@@ -12,7 +12,7 @@ import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
-import { ParallaxLayer } from "@/components/ui/parallax-layer";
+
 
 const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate"];
 
@@ -70,7 +70,22 @@ const GeoNicheToolPage = () => {
         <title>{title}</title>
         <meta name="description" content={description} />
         <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={canonical} />
+        <meta property="og:type" content="website" />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Главная", item: "https://owndev.ru/" },
+            { "@type": "ListItem", position: 2, name: "Инструменты", item: "https://owndev.ru/tools" },
+            { "@type": "ListItem", position: 3, name: tool.name, item: `https://owndev.ru/tools/${tool.slug}` },
+            { "@type": "ListItem", position: 4, name: region.name, item: `https://owndev.ru/tools/${tool.slug}/${region.id}` },
+            { "@type": "ListItem", position: 5, name: niche.name, item: canonical },
+          ],
+        })}</script>
       </Helmet>
 
       <Header />
@@ -132,7 +147,6 @@ const GeoNicheToolPage = () => {
           </div>
 
           {/* Stats */}
-          <ParallaxLayer speed={0.15}>
           <motion.div
             className="flex flex-wrap gap-4 justify-center mb-10"
             initial={{ opacity: 0, y: 15 }}
@@ -152,7 +166,6 @@ const GeoNicheToolPage = () => {
               <span className="font-bold text-foreground">{niche.name}</span>
             </div>
           </motion.div>
-          </ParallaxLayer>
 
           {/* Unique content */}
           <motion.div
@@ -168,7 +181,6 @@ const GeoNicheToolPage = () => {
           </motion.div>
 
           {/* Tool widget */}
-          <ParallaxLayer speed={0.2}>
           <motion.div
             className="max-w-[900px] mx-auto mb-12"
             initial={{ opacity: 0, y: 20 }}
@@ -179,7 +191,6 @@ const GeoNicheToolPage = () => {
               <ToolComponent />
             </Suspense>
           </motion.div>
-          </ParallaxLayer>
 
           {/* CTA */}
           <motion.div
