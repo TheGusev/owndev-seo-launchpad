@@ -108,6 +108,7 @@ const GeoToolPage = () => {
           </div>
 
           {/* Stats bar */}
+          <ParallaxLayer speed={0.15}>
           <motion.div
             className="flex flex-wrap gap-6 justify-center mb-10"
             initial={{ opacity: 0, y: 15 }}
