@@ -123,12 +123,12 @@ const SitemapGenerator = () => {
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">User-agent</label>
-              <input className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground" value={rbConfig.userAgent}
+              <Input className="bg-card border-border" value={rbConfig.userAgent}
                 onChange={(e) => setRbConfig({ ...rbConfig, userAgent: e.target.value })} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Sitemap URL</label>
-              <input className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground" placeholder="https://example.com/sitemap.xml"
+              <Input className="bg-card border-border" placeholder="https://example.com/sitemap.xml"
                 value={rbConfig.sitemapUrl} onChange={(e) => setRbConfig({ ...rbConfig, sitemapUrl: e.target.value })} />
             </div>
           </div>
