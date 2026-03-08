@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Clock, Search, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
+import { MouseGradient } from "@/components/ui/mouse-gradient";
+import { ClickRipple } from "@/components/ui/click-ripple";
+import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
 const Blog = () => {
   const [search, setSearch] = useState("");
