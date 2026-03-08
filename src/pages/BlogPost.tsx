@@ -100,14 +100,31 @@ const BlogPost = () => {
     headline: post.title,
     description: post.description,
     datePublished: post.date,
-    author: { "@type": "Organization", name: "OWNDEV" },
+    dateModified: post.date,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `https://owndev.ru/blog/${post.slug}`,
+    },
+    author: { "@type": "Organization", name: "OWNDEV", url: "https://owndev.ru" },
+    publisher: {
+      "@type": "Organization",
+      name: "OWNDEV",
+      url: "https://owndev.ru",
+      logo: { "@type": "ImageObject", url: "https://owndev.ru/favicon.ico" },
+    },
   };
+
+  // Related posts: same tags, excluding current
+  const relatedPosts = blogPosts
+    .filter(p => p.slug !== post.slug && p.tags.some(t => post.tags.includes(t)))
+    .slice(0, 3);
 
   return (
     <>
       <Helmet>
         <title>{post.title} | OWNDEV</title>
         <meta name="description" content={post.description} />
+        <link rel="canonical" href={`https://owndev.ru/blog/${post.slug}`} />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
@@ -164,6 +181,34 @@ const BlogPost = () => {
                 {renderMarkdown(post.content)}
               </motion.div>
               </ParallaxLayer>
+
+              {/* Related posts */}
+              {relatedPosts.length > 0 && (
+                <motion.section
+                  className="mt-16 border-t border-border pt-10"
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <h2 className="text-xl font-bold font-serif mb-6">Похожие статьи</h2>
+                  <div className="grid gap-4">
+                    {relatedPosts.map(rp => (
+                      <Link
+                        key={rp.slug}
+                        to={`/blog/${rp.slug}`}
+                        className="glass rounded-xl p-4 hover:border-primary/40 transition-all group flex items-center gap-4"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground group-hover:text-primary transition-colors text-sm">{rp.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{rp.description}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0">{rp.readTime} мин</span>
+                      </Link>
+                    ))}
+                  </div>
+                </motion.section>
+              )}
             </article>
           </div>
         </main>

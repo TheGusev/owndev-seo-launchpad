@@ -14,7 +14,7 @@ import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
 import { ParallaxLayer } from "@/components/ui/parallax-layer";
 
-const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate", "ai-citation", "roi-calculator", "geo-map"];
+const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate"];
 
 const GeoNicheToolPage = () => {
   const { citySlug, nicheSlug, toolSlug } = useParams<{
@@ -85,6 +85,7 @@ const GeoNicheToolPage = () => {
         <div className="container px-4 md:px-6 relative z-10">
           {/* Breadcrumb */}
           <motion.nav
+            aria-label="Breadcrumb"
             className="mb-8 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}

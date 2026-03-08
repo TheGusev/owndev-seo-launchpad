@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { categories, getToolsByCategory } from "@/data/tools-registry";
@@ -14,6 +15,11 @@ import { ParallaxLayer } from "@/components/ui/parallax-layer";
 const Tools = () => {
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      <Helmet>
+        <title>SEO и LLM инструменты — бесплатно | OWNDEV</title>
+        <meta name="description" content="12 бесплатных инструментов для SEO-аудита, programmatic SEO, генерации контента и оптимизации под AI-поиск. Без регистрации." />
+        <link rel="canonical" href="https://owndev.ru/tools" />
+      </Helmet>
       <MouseGradient />
       <ClickRipple />
       <Header />

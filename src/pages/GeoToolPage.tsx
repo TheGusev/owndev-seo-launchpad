@@ -66,6 +66,7 @@ const GeoToolPage = () => {
         <div className="container px-4 md:px-6 relative z-10">
           {/* Breadcrumb */}
           <motion.nav
+            aria-label="Breadcrumb"
             className="mb-8 flex items-center gap-2 text-sm text-muted-foreground"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}

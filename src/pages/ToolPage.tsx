@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import { useParams, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { getToolBySlug } from "@/data/tools-registry";
-import { ArrowLeft } from "lucide-react";
+import { getToolBySlug, tools } from "@/data/tools-registry";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
@@ -27,9 +28,29 @@ const ToolPage = () => {
   }
 
   const ToolComponent = tool.component;
+  const otherTools = tools.filter(t => t.slug !== tool.slug).slice(0, 4);
+
+  const title = `${tool.name} — бесплатный онлайн инструмент | OWNDEV`;
+  const description = `${tool.shortDesc}. Бесплатно, без регистрации. Попробуйте прямо сейчас на OWNDEV.`;
+
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: "https://owndev.ru/" },
+      { "@type": "ListItem", position: 2, name: "Инструменты", item: "https://owndev.ru/tools" },
+      { "@type": "ListItem", position: 3, name: tool.name, item: `https://owndev.ru/tools/${tool.slug}` },
+    ],
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
+      <Helmet>
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={`https://owndev.ru/tools/${tool.slug}`} />
+        <script type="application/ld+json">{JSON.stringify(breadcrumbLd)}</script>
+      </Helmet>
       <MouseGradient />
       <ClickRipple />
       <Header />
@@ -43,7 +64,8 @@ const ToolPage = () => {
 
         <div className="container px-4 md:px-6 relative z-10">
           {/* Breadcrumb */}
-          <motion.div
+          <motion.nav
+            aria-label="Breadcrumb"
             className="mb-6"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -53,7 +75,7 @@ const ToolPage = () => {
               <ArrowLeft className="w-4 h-4" />
               Все инструменты
             </Link>
-          </motion.div>
+          </motion.nav>
 
           {/* Tool header */}
           <div className="text-center mb-8">
@@ -124,6 +146,35 @@ const ToolPage = () => {
             </ul>
           </motion.div>
           </ParallaxLayer>
+
+          {/* Other tools */}
+          <motion.section
+            className="max-w-3xl mx-auto mt-16"
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="text-xl font-bold font-serif mb-6 text-center">Другие инструменты</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {otherTools.map((t) => (
+                <Link
+                  key={t.slug}
+                  to={`/tools/${t.slug}`}
+                  className="glass rounded-xl p-4 hover:border-primary/40 transition-all group flex items-center gap-3"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <t.icon className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground text-sm group-hover:text-primary transition-colors">{t.name}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{t.shortDesc}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </motion.section>
 
           {/* Disclaimer */}
           <p className="text-xs text-muted-foreground text-center mt-10 max-w-lg mx-auto">

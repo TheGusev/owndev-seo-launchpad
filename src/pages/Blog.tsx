@@ -33,6 +33,7 @@ const Blog = () => {
       <Helmet>
         <title>Блог — LLM-оптимизация и pSEO гайды | OWNDEV</title>
         <meta name="description" content="Практические гайды по LLM-оптимизации, pSEO, Schema.org разметке и AI Overviews. Бесплатные знания от команды OWNDEV." />
+        <link rel="canonical" href="https://owndev.ru/blog" />
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
