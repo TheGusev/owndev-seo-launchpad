@@ -23,6 +23,7 @@ const SemanticCoreGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [copied, setCopied] = useState(false);
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
   const handleGenerate = async () => {
     if (!topic.trim()) { toast({ title: "Введите тему", variant: "destructive" }); return; }
