@@ -24,7 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Send, Loader2, CheckCircle, Phone, Mail, MessageCircle } from "lucide-react";
+import { Send, Loader2, CheckCircle, Mail, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
@@ -114,7 +114,6 @@ const ContactForm = () => {
   ];
 
   const contactInfo = [
-    { icon: Phone, label: "Телефон", value: "8 (906) 998-98-88", href: "tel:89069989888" },
     { icon: Mail, label: "Email", value: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
     { icon: MessageCircle, label: "Telegram", value: "@one_help", href: "https://t.me/one_help?text=owndev" }
   ];
