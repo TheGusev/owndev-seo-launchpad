@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Swords, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Swords, CheckCircle, XCircle, Loader2, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -56,21 +56,29 @@ const CompetitorAnalysis = () => {
   const [url2, setUrl2] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ page1: PageMetrics; page2: PageMetrics } | null>(null);
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
   const handleAnalyze = async () => {
     if (!url1 || !url2) { toast({ title: "Введите оба URL", variant: "destructive" }); return; }
     setLoading(true);
     setResult(null);
+    setCheckedAt(null);
     try {
       const { data, error } = await supabase.functions.invoke("competitor-analysis", { body: { url1, url2 } });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
       setResult(data);
+      setCheckedAt(new Date());
     } catch (e: any) {
       toast({ title: "Ошибка анализа", description: e.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    setResult(null);
+    setCheckedAt(null);
   };
 
   return (
@@ -93,44 +101,59 @@ const CompetitorAnalysis = () => {
       </div>
 
       {result && (
-        <div className="glass rounded-xl p-4 md:p-5 overflow-x-auto">
-          <table className="w-full text-left min-w-[600px]">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="py-2 text-sm font-semibold text-muted-foreground w-1/3">Метрика</th>
-                <th className="py-2 text-sm font-semibold text-foreground truncate max-w-[200px]" title={result.page1.url}>Страница 1</th>
-                <th className="py-2 text-sm font-semibold text-foreground truncate max-w-[200px]" title={result.page2.url}>Страница 2</th>
-              </tr>
-            </thead>
-            <tbody>
-              <MetricRow label="Title" v1={result.page1.title.slice(0, 60) || "—"} v2={result.page2.title.slice(0, 60) || "—"} />
-              <MetricRow label="H1" v1={result.page1.h1.slice(0, 60) || "—"} v2={result.page2.h1.slice(0, 60) || "—"} />
-              <MetricRow label="Слов на странице" v1={result.page1.wordCount} v2={result.page2.wordCount} better="higher" />
-              <MetricRow label="H2 заголовков" v1={result.page1.h2Count} v2={result.page2.h2Count} better="higher" />
-              <MetricRow label="H3 заголовков" v1={result.page1.h3Count} v2={result.page2.h3Count} better="higher" />
-              <MetricRow label="Изображений" v1={result.page1.imageCount} v2={result.page2.imageCount} better="higher" />
-              <MetricRow label="Без alt" v1={result.page1.imagesWithoutAlt} v2={result.page2.imagesWithoutAlt} better="lower" />
-              <MetricRow label="Внутр. ссылок" v1={result.page1.internalLinks} v2={result.page2.internalLinks} better="higher" />
-              <MetricRow label="Внешн. ссылок" v1={result.page1.externalLinks} v2={result.page2.externalLinks} />
-              <MetricRow label="Размер HTML" v1={`${result.page1.htmlSizeKB} КБ`} v2={`${result.page2.htmlSizeKB} КБ`} better="lower" />
-              <MetricRow label="Загрузка" v1={`${(result.page1.loadTimeMs / 1000).toFixed(1)}с`} v2={`${(result.page2.loadTimeMs / 1000).toFixed(1)}с`} better="lower" />
-              <tr className="border-b border-border/30">
-                <td className="py-2 text-sm text-muted-foreground">Технические</td>
-                <td className="py-2 space-x-2">
-                  <BoolBadge value={result.page1.hasJsonLd} label="JSON-LD" />
-                  <BoolBadge value={result.page1.hasFaq} label="FAQ" />
-                  <BoolBadge value={result.page1.hasCanonical} label="Canonical" />
-                  <BoolBadge value={result.page1.hasOg} label="OG" />
-                </td>
-                <td className="py-2 space-x-2">
-                  <BoolBadge value={result.page2.hasJsonLd} label="JSON-LD" />
-                  <BoolBadge value={result.page2.hasFaq} label="FAQ" />
-                  <BoolBadge value={result.page2.hasCanonical} label="Canonical" />
-                  <BoolBadge value={result.page2.hasOg} label="OG" />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          {/* Timestamp + reset */}
+          <div className="flex items-center justify-end gap-3">
+            {checkedAt && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {checkedAt.toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+              </span>
+            )}
+            <button onClick={handleReset} className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[28px]">
+              <RefreshCw className="w-3 h-3" /> Сравнить заново
+            </button>
+          </div>
+
+          <div className="glass rounded-xl p-4 md:p-5 overflow-x-auto">
+            <table className="w-full text-left min-w-[600px]">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 text-sm font-semibold text-muted-foreground w-1/3">Метрика</th>
+                  <th className="py-2 text-sm font-semibold text-foreground truncate max-w-[200px]" title={result.page1.url}>Страница 1</th>
+                  <th className="py-2 text-sm font-semibold text-foreground truncate max-w-[200px]" title={result.page2.url}>Страница 2</th>
+                </tr>
+              </thead>
+              <tbody>
+                <MetricRow label="Title" v1={result.page1.title.slice(0, 60) || "—"} v2={result.page2.title.slice(0, 60) || "—"} />
+                <MetricRow label="H1" v1={result.page1.h1.slice(0, 60) || "—"} v2={result.page2.h1.slice(0, 60) || "—"} />
+                <MetricRow label="Слов на странице" v1={result.page1.wordCount} v2={result.page2.wordCount} better="higher" />
+                <MetricRow label="H2 заголовков" v1={result.page1.h2Count} v2={result.page2.h2Count} better="higher" />
+                <MetricRow label="H3 заголовков" v1={result.page1.h3Count} v2={result.page2.h3Count} better="higher" />
+                <MetricRow label="Изображений" v1={result.page1.imageCount} v2={result.page2.imageCount} better="higher" />
+                <MetricRow label="Без alt" v1={result.page1.imagesWithoutAlt} v2={result.page2.imagesWithoutAlt} better="lower" />
+                <MetricRow label="Внутр. ссылок" v1={result.page1.internalLinks} v2={result.page2.internalLinks} better="higher" />
+                <MetricRow label="Внешн. ссылок" v1={result.page1.externalLinks} v2={result.page2.externalLinks} />
+                <MetricRow label="Размер HTML" v1={`${result.page1.htmlSizeKB} КБ`} v2={`${result.page2.htmlSizeKB} КБ`} better="lower" />
+                <MetricRow label="Загрузка" v1={`${(result.page1.loadTimeMs / 1000).toFixed(1)}с`} v2={`${(result.page2.loadTimeMs / 1000).toFixed(1)}с`} better="lower" />
+                <tr className="border-b border-border/30">
+                  <td className="py-2 text-sm text-muted-foreground">Технические</td>
+                  <td className="py-2 space-x-2">
+                    <BoolBadge value={result.page1.hasJsonLd} label="JSON-LD" />
+                    <BoolBadge value={result.page1.hasFaq} label="FAQ" />
+                    <BoolBadge value={result.page1.hasCanonical} label="Canonical" />
+                    <BoolBadge value={result.page1.hasOg} label="OG" />
+                  </td>
+                  <td className="py-2 space-x-2">
+                    <BoolBadge value={result.page2.hasJsonLd} label="JSON-LD" />
+                    <BoolBadge value={result.page2.hasFaq} label="FAQ" />
+                    <BoolBadge value={result.page2.hasCanonical} label="Canonical" />
+                    <BoolBadge value={result.page2.hasOg} label="OG" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

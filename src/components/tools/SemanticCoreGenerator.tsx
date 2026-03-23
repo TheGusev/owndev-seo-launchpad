@@ -79,11 +79,20 @@ const SemanticCoreGenerator = () => {
 
       {clusters.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm font-semibold text-foreground">
               {clusters.length} кластеров, {totalKeywords} ключей
             </p>
             <div className="flex items-center gap-3">
+              {checkedAt && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {checkedAt.toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+                </span>
+              )}
+              <button onClick={() => { setClusters([]); setCheckedAt(null); }} className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[28px]">
+                <RefreshCw className="w-3 h-3" /> Заново
+              </button>
               <button onClick={handleDownloadCSV} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
                 <Download className="w-3 h-3" /> CSV
               </button>

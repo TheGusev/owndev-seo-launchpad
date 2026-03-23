@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Search, Globe, Zap, Smartphone, Image, FileText, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash } from "lucide-react";
+import { Search, Globe, Zap, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash, RefreshCw, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import ToolCTA from "./ToolCTA";
@@ -12,6 +12,8 @@ interface AuditIssue {
   message: string;
   recommendation: string;
   category: "seo" | "llm";
+  details?: string[];
+  context?: string;
 }
 
 interface AuditResult {
@@ -53,18 +55,69 @@ const ScoreCard = ({ label, score, icon: Icon }: { label: string; score: number;
   );
 };
 
+const IssueCard = ({ issue }: { issue: AuditIssue }) => {
+  const [expanded, setExpanded] = useState(false);
+  const cfg = severityConfig[issue.severity];
+  const Icon = cfg.icon;
+  const hasExtra = (issue.details && issue.details.length > 0) || issue.context;
+
+  return (
+    <div className={`rounded-xl p-4 ${cfg.bg} border border-border/30`}>
+      <div className="flex items-start gap-3">
+        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${cfg.color}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{issue.category.toUpperCase()}</span>
+          </div>
+          <p className="text-sm font-medium text-foreground">{issue.message}</p>
+          <p className="text-xs text-muted-foreground mt-1">→ {issue.recommendation}</p>
+
+          {hasExtra && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="flex items-center gap-1 text-xs text-primary hover:underline mt-2 min-h-[28px]"
+            >
+              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {expanded ? "Скрыть детали" : "Подробнее"}
+            </button>
+          )}
+
+          {expanded && (
+            <div className="mt-2 space-y-1.5">
+              {issue.details && issue.details.length > 0 && (
+                <div className="bg-background/50 rounded-lg p-2.5">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Примеры:</p>
+                  {issue.details.map((d, i) => (
+                    <p key={i} className="text-xs text-muted-foreground font-mono break-all">{d}</p>
+                  ))}
+                </div>
+              )}
+              {issue.context && (
+                <p className="text-xs text-muted-foreground italic">💡 {issue.context}</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SEOAuditor = () => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "seo" | "llm">("all");
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
   const runAudit = async () => {
     if (!url.trim()) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    setCheckedAt(null);
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke("seo-audit", {
@@ -73,11 +126,18 @@ const SEOAuditor = () => {
       if (fnError) throw new Error(fnError.message);
       if (data.error) throw new Error(data.error);
       setResult(data as AuditResult);
+      setCheckedAt(new Date());
     } catch (e: any) {
       setError(e.message || "Произошла ошибка");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    setResult(null);
+    setError(null);
+    setCheckedAt(null);
   };
 
   const filteredIssues = result?.issues.filter(i => activeTab === "all" || i.category === activeTab) || [];
@@ -119,6 +179,25 @@ const SEOAuditor = () => {
 
         {result && (
           <>
+            {/* Analyzed URL + timestamp */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Globe className="w-4 h-4 text-primary shrink-0" />
+                <p className="text-sm text-foreground font-medium truncate">{result.meta.url}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {checkedAt && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {checkedAt.toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+                  </span>
+                )}
+                <button onClick={handleReset} className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[28px]">
+                  <RefreshCw className="w-3 h-3" /> Проверить заново
+                </button>
+              </div>
+            </div>
+
             {/* Dual scores */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <ScoreCard label="SEO Score" score={result.seoScore} icon={Search} />
@@ -133,7 +212,7 @@ const SEOAuditor = () => {
                 { icon: Globe, label: "HTML", value: `${result.meta.htmlSizeKB} КБ` },
                 { icon: Zap, label: "Загрузка", value: `${(result.meta.loadTimeMs / 1000).toFixed(1)}с` },
                 { icon: Hash, label: "Слов", value: `${result.meta.wordCount}` },
-                { icon: FileText, label: "JSON‑LD", value: `${result.meta.jsonLdCount}` },
+                { icon: Search, label: "JSON‑LD", value: `${result.meta.jsonLdCount}` },
               ].map((s) => (
                 <div key={s.label} className="glass rounded-xl p-3 text-center">
                   <s.icon className="w-4 h-4 text-primary mx-auto mb-1" />
@@ -161,25 +240,9 @@ const SEOAuditor = () => {
             {/* Issues */}
             {filteredIssues.length > 0 && (
               <div className="space-y-3">
-                {filteredIssues.map((issue, i) => {
-                  const cfg = severityConfig[issue.severity];
-                  const Icon = cfg.icon;
-                  return (
-                    <div key={i} className={`rounded-xl p-4 ${cfg.bg} border border-border/30`}>
-                      <div className="flex items-start gap-3">
-                        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${cfg.color}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{issue.category.toUpperCase()}</span>
-                          </div>
-                          <p className="text-sm font-medium text-foreground">{issue.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{issue.recommendation}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {filteredIssues.map((issue, i) => (
+                  <IssueCard key={i} issue={issue} />
+                ))}
               </div>
             )}
 
