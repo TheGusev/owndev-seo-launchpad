@@ -34,6 +34,7 @@ const SemanticCoreGenerator = () => {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
       setClusters(data.clusters || []);
+      setCheckedAt(new Date());
     } catch (e: any) {
       toast({ title: "Ошибка генерации", description: e.message, variant: "destructive" });
     } finally {
