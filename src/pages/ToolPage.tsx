@@ -118,7 +118,7 @@ const ToolPage = () => {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <Suspense fallback={<div className="glass rounded-2xl p-8 text-center text-muted-foreground">Загрузка…</div>}>
-              <ToolComponent />
+              <ToolComponent key={toolSlug} />
             </Suspense>
           </motion.div>
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { ScanSearch, CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { ScanSearch, CheckCircle, XCircle, AlertTriangle, Loader2, Globe, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,21 +22,29 @@ const IndexationChecker = () => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ indexable: boolean; issues: Issue[]; meta: any; statusCode: number } | null>(null);
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
   const handleCheck = async () => {
     if (!url.trim()) { toast({ title: "Введите URL", variant: "destructive" }); return; }
     setLoading(true);
     setResult(null);
+    setCheckedAt(null);
     try {
       const { data, error } = await supabase.functions.invoke("check-indexation", { body: { url } });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
       setResult(data);
+      setCheckedAt(new Date());
     } catch (e: any) {
       toast({ title: "Ошибка проверки", description: e.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    setResult(null);
+    setCheckedAt(null);
   };
 
   return (
@@ -51,6 +59,25 @@ const IndexationChecker = () => {
 
       {result && (
         <div className="space-y-4">
+          {/* URL + timestamp */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Globe className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-sm text-foreground font-medium truncate">{url}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {checkedAt && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {checkedAt.toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+                </span>
+              )}
+              <button onClick={handleReset} className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[28px]">
+                <RefreshCw className="w-3 h-3" /> Проверить заново
+              </button>
+            </div>
+          </div>
+
           <div className={`glass rounded-xl p-4 flex items-center gap-3 ${result.indexable ? "border-success/30" : "border-destructive/30"} border`}>
             {result.indexable ? <CheckCircle className="w-6 h-6 text-success" /> : <XCircle className="w-6 h-6 text-destructive" />}
             <div>
