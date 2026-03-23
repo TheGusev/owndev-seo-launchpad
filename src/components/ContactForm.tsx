@@ -24,7 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Send, Loader2, CheckCircle, Phone, Mail, MessageCircle } from "lucide-react";
+import { Send, Loader2, CheckCircle, Mail, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
