@@ -13,6 +13,18 @@ interface AuditIssue {
   context?: string;
 }
 
+async function checkUrl(url: string, timeout = 5000): Promise<{ ok: boolean; status: number; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    const resp = await fetch(url, { method: 'HEAD', signal: controller.signal, redirect: 'follow', headers: { 'User-Agent': 'OWNDEV-SEO-Auditor/1.0' } });
+    clearTimeout(id);
+    return { ok: resp.ok, status: resp.status };
+  } catch (e: any) {
+    return { ok: false, status: 0, error: e.message };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -40,14 +52,89 @@ Deno.serve(async (req) => {
     const loadTime = Date.now() - startTime;
     const html = await response.text();
     const htmlSize = new TextEncoder().encode(html).length;
+    const responseHeaders = Object.fromEntries(response.headers.entries());
 
     const issues: AuditIssue[] = [];
     let seoScore = 100;
     let llmScore = 100;
 
-    // ===== SEO CHECKS =====
+    const origin = parsedUrl.origin;
 
-    // Title
+    // ===== PARALLEL CHECKS: robots.txt, sitemap.xml, broken links =====
+    const robotsPromise = checkUrl(`${origin}/robots.txt`);
+    const sitemapPromise = checkUrl(`${origin}/sitemap.xml`);
+
+    // Extract internal links for broken link checking
+    const allLinkMatches = [...html.matchAll(/<a[^>]*href=["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)];
+    const internalLinks: { href: string; anchor: string }[] = [];
+    for (const m of allLinkMatches) {
+      const href = m[1];
+      if (href.startsWith('/') || href.includes(parsedUrl.hostname)) {
+        const fullUrl = href.startsWith('/') ? `${origin}${href}` : href;
+        const anchor = m[2].replace(/<[^>]+>/g, '').trim().slice(0, 60);
+        internalLinks.push({ href: fullUrl, anchor });
+      }
+    }
+    // Check up to 10 unique internal links for broken ones
+    const uniqueLinks = [...new Map(internalLinks.map(l => [l.href, l])).values()].slice(0, 10);
+    const brokenLinkChecks = uniqueLinks.map(async (link) => {
+      const result = await checkUrl(link.href);
+      return { ...link, ...result };
+    });
+
+    const [robotsResult, sitemapResult, ...brokenResults] = await Promise.all([
+      robotsPromise,
+      sitemapPromise,
+      ...brokenLinkChecks,
+    ]);
+
+    // ===== HTTPS CHECK =====
+    const isHttps = parsedUrl.protocol === 'https:';
+    if (!isHttps) {
+      issues.push({ type: 'https', severity: 'critical', message: 'Сайт не использует HTTPS', recommendation: 'Переведите сайт на HTTPS — установите SSL-сертификат', category: 'seo', details: [`Протокол: ${parsedUrl.protocol}`], context: 'HTTPS — обязательный фактор ранжирования Google с 2014 года. Без него браузеры показывают предупреждение «Не защищено».' });
+      seoScore -= 15;
+    }
+
+    // ===== ROBOTS.TXT =====
+    if (!robotsResult.ok) {
+      issues.push({ type: 'robots_txt', severity: 'critical', message: `Файл robots.txt недоступен (${robotsResult.status || 'ошибка'})`, recommendation: 'Создайте robots.txt в корне сайта с правилами для краулеров', category: 'seo', details: [`URL: ${origin}/robots.txt`, `Статус: ${robotsResult.status || robotsResult.error}`], context: 'Без robots.txt поисковики не знают какие страницы индексировать, а какие пропустить.' });
+      seoScore -= 10;
+    }
+
+    // ===== SITEMAP.XML =====
+    if (!sitemapResult.ok) {
+      issues.push({ type: 'sitemap_xml', severity: 'warning', message: `Файл sitemap.xml недоступен (${sitemapResult.status || 'ошибка'})`, recommendation: 'Создайте и разместите sitemap.xml — помогает краулерам находить все страницы', category: 'seo', details: [`URL: ${origin}/sitemap.xml`, `Статус: ${sitemapResult.status || sitemapResult.error}`], context: 'Sitemap ускоряет индексацию и помогает поисковикам обнаружить глубокие страницы.' });
+      seoScore -= 7;
+    }
+
+    // ===== BROKEN LINKS =====
+    const brokenLinks = brokenResults.filter(r => !r.ok && r.status !== 0);
+    if (brokenLinks.length > 0) {
+      issues.push({
+        type: 'broken_links', severity: brokenLinks.length >= 3 ? 'critical' : 'warning',
+        message: `${brokenLinks.length} битых внутренних ссылок`,
+        recommendation: 'Исправьте или удалите нерабочие ссылки',
+        category: 'seo',
+        details: brokenLinks.slice(0, 5).map(l => `• ${l.href} → ${l.status}${l.anchor ? ` (текст: "${l.anchor}")` : ''}`),
+        context: 'Битые ссылки ухудшают краулинг, пользовательский опыт и тратят краулинговый бюджет.',
+      });
+      seoScore -= Math.min(15, brokenLinks.length * 3);
+    }
+
+    // ===== META ROBOTS / X-ROBOTS-TAG =====
+    const metaRobotsMatch = html.match(/<meta[^>]*name=["']robots["'][^>]*content=["']([^"']+)["']/i);
+    const xRobotsTag = responseHeaders['x-robots-tag'] || '';
+    const robotsContent = metaRobotsMatch ? metaRobotsMatch[1] : '';
+    if (robotsContent.includes('noindex') || xRobotsTag.includes('noindex')) {
+      issues.push({ type: 'meta_robots', severity: 'critical', message: 'Страница помечена как noindex', recommendation: 'Удалите noindex если страница должна индексироваться', category: 'seo', details: [robotsContent ? `• meta robots: "${robotsContent}"` : '', xRobotsTag ? `• X-Robots-Tag: "${xRobotsTag}"` : ''].filter(Boolean), context: 'Noindex полностью блокирует страницу от появления в поиске.' });
+      seoScore -= 20;
+    }
+    if (robotsContent.includes('nofollow') || xRobotsTag.includes('nofollow')) {
+      issues.push({ type: 'meta_nofollow', severity: 'warning', message: 'Страница помечена как nofollow', recommendation: 'Убедитесь что nofollow установлен намеренно', category: 'seo', details: [robotsContent ? `• meta robots: "${robotsContent}"` : '', xRobotsTag ? `• X-Robots-Tag: "${xRobotsTag}"` : ''].filter(Boolean), context: 'Nofollow запрещает передачу ссылочного веса с этой страницы.' });
+      seoScore -= 5;
+    }
+
+    // ===== TITLE =====
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
     const title = titleMatch ? titleMatch[1].trim() : '';
     if (!title) {
@@ -61,7 +148,7 @@ Deno.serve(async (req) => {
       seoScore -= 5;
     }
 
-    // Meta description
+    // ===== META DESCRIPTION =====
     const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["']/i)
       || html.match(/<meta[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["']/i);
     const description = descMatch ? descMatch[1].trim() : '';
@@ -76,7 +163,13 @@ Deno.serve(async (req) => {
       seoScore -= 3;
     }
 
-    // H1
+    // ===== TITLE vs DESCRIPTION DUPLICATION =====
+    if (title && description && title.toLowerCase().trim() === description.toLowerCase().trim()) {
+      issues.push({ type: 'title_desc_duplicate', severity: 'warning', message: 'Title и Description идентичны', recommendation: 'Сделайте Description расширенным описанием, отличным от Title', category: 'seo', details: [`Title: "${title.slice(0, 60)}"`, `Description: "${description.slice(0, 60)}"`], context: 'Дублирование title и description — упущенная возможность привлечь клики.' });
+      seoScore -= 5;
+    }
+
+    // ===== H1 =====
     const h1Matches = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi) || [];
     const h1Texts = h1Matches.map(m => m.replace(/<[^>]+>/g, '').trim());
     if (h1Matches.length === 0) {
@@ -87,14 +180,14 @@ Deno.serve(async (req) => {
       seoScore -= 5;
     }
 
-    // Images without alt
+    // ===== IMAGES WITHOUT ALT =====
     const imgTags = html.match(/<img[^>]*>/gi) || [];
     const imgsWithoutAlt = imgTags.filter((img) => !img.match(/alt=["'][^"']+["']/i));
     const imgsWithoutAltCount = imgsWithoutAlt.length;
     if (imgsWithoutAltCount > 0) {
       const srcExamples = imgsWithoutAlt.slice(0, 5).map(img => {
         const srcMatch = img.match(/src=["']([^"']+)["']/i);
-        return srcMatch ? `• ${srcMatch[1].slice(0, 80)}` : '• (src не найден)';
+        return srcMatch ? `• ${srcMatch[1].slice(0, 80)} — нет alt` : '• (src не найден)';
       });
       issues.push({
         type: 'images_alt', severity: imgsWithoutAltCount > 5 ? 'critical' : 'warning',
@@ -110,7 +203,7 @@ Deno.serve(async (req) => {
       seoScore -= Math.min(15, imgsWithoutAltCount * 2);
     }
 
-    // Page size
+    // ===== PAGE SIZE =====
     const sizeKB = Math.round(htmlSize / 1024);
     if (sizeKB > 500) {
       issues.push({ type: 'page_size', severity: 'critical', message: `HTML слишком тяжёлый (${sizeKB} КБ)`, recommendation: 'Оптимизируйте HTML — удалите лишний код, инлайн-стили', category: 'seo', context: 'Тяжёлый HTML замедляет загрузку и индексацию.' });
@@ -120,7 +213,7 @@ Deno.serve(async (req) => {
       seoScore -= 5;
     }
 
-    // Load time
+    // ===== LOAD TIME =====
     if (loadTime > 3000) {
       issues.push({ type: 'speed', severity: 'critical', message: `Медленная загрузка (${(loadTime / 1000).toFixed(1)}с)`, recommendation: 'Оптимизируйте серверный ответ', category: 'seo', context: 'Скорость загрузки — фактор ранжирования Google.' });
       seoScore -= 10;
@@ -129,20 +222,31 @@ Deno.serve(async (req) => {
       seoScore -= 3;
     }
 
-    // Viewport
+    // ===== VIEWPORT =====
     if (!html.match(/<meta[^>]*name=["']viewport["']/i)) {
       issues.push({ type: 'viewport', severity: 'critical', message: 'Нет meta viewport', recommendation: 'Добавьте <meta name="viewport" content="width=device-width, initial-scale=1">', category: 'seo', context: 'Без viewport страница не адаптирована для мобильных устройств.' });
       seoScore -= 10;
     }
 
-    // Canonical
+    // ===== CANONICAL =====
     const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i);
     if (!canonicalMatch) {
       issues.push({ type: 'canonical', severity: 'info', message: 'Нет canonical-ссылки', recommendation: 'Добавьте <link rel="canonical"> для предотвращения дублей', category: 'seo', context: 'Canonical указывает поисковикам предпочтительную версию страницы.' });
       seoScore -= 3;
     }
 
-    // Open Graph
+    // ===== HREFLANG =====
+    const hreflangMatches = html.match(/<link[^>]*hreflang=["']([^"']+)["']/gi) || [];
+    // Just info — not a penalty
+    if (hreflangMatches.length > 0) {
+      const langs = hreflangMatches.map(m => {
+        const lm = m.match(/hreflang=["']([^"']+)["']/i);
+        return lm ? lm[1] : '';
+      }).filter(Boolean);
+      issues.push({ type: 'hreflang', severity: 'info', message: `Найдены hreflang теги (${langs.length})`, recommendation: 'Убедитесь что hreflang настроен корректно', category: 'seo', details: langs.slice(0, 5).map(l => `• ${l}`) });
+    }
+
+    // ===== OPEN GRAPH =====
     const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
     const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
     const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
@@ -150,6 +254,29 @@ Deno.serve(async (req) => {
       const missingOg = ['og:title', !ogDescMatch && 'og:description', !ogImageMatch && 'og:image'].filter(Boolean);
       issues.push({ type: 'og_tags', severity: 'info', message: 'Open Graph теги неполные', recommendation: 'Добавьте og:title, og:description, og:image для красивого превью в соцсетях', category: 'seo', details: missingOg.map(t => `• Отсутствует: ${t}`), context: 'OG-теги управляют превью при расшаривании ссылки в соцсетях и мессенджерах.' });
       seoScore -= 3;
+    }
+
+    // ===== BLOCKING RESOURCES IN HEAD =====
+    const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+    if (headMatch) {
+      const headContent = headMatch[1];
+      const blockingScripts = (headContent.match(/<script(?![^>]*async)(?![^>]*defer)[^>]*src=["']([^"']+)["']/gi) || []);
+      const blockingStyles = (headContent.match(/<link[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["']/gi) || []);
+      const totalBlocking = blockingScripts.length + blockingStyles.length;
+      if (totalBlocking > 3) {
+        issues.push({
+          type: 'blocking_resources', severity: 'warning',
+          message: `${totalBlocking} блокирующих ресурсов в <head>`,
+          recommendation: 'Добавьте async/defer к скриптам, используйте preload для критических стилей',
+          category: 'seo',
+          details: [
+            ...blockingScripts.slice(0, 3).map(s => { const m = s.match(/src=["']([^"']+)["']/i); return m ? `• JS: ${m[1].slice(0, 60)}` : ''; }).filter(Boolean),
+            ...blockingStyles.slice(0, 3).map(s => { const m = s.match(/href=["']([^"']+)["']/i); return m ? `• CSS: ${m[1].slice(0, 60)}` : ''; }).filter(Boolean),
+          ],
+          context: 'Блокирующие ресурсы замедляют рендеринг страницы и ухудшают Core Web Vitals.',
+        });
+        seoScore -= 5;
+      }
     }
 
     // ===== LLM CHECKS =====
@@ -190,14 +317,39 @@ Deno.serve(async (req) => {
       llmScore -= 10;
     }
 
-    // Lists (ul/ol) — good for LLM extraction
+    // H2 headers as questions (LLM-friendly)
+    const h2Matches = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) || [];
+    const h2Texts = h2Matches.map(m => m.replace(/<[^>]+>/g, '').trim());
+    const questionH2 = h2Texts.filter(t => /\?$/.test(t) || /^(как|что|почему|когда|где|зачем|какой|какие|сколько|можно|нужно|стоит|what|how|why|when|where|which|can|should|do|does|is|are)/i.test(t));
+    if (h2Texts.length >= 3 && questionH2.length === 0) {
+      issues.push({
+        type: 'h2_questions', severity: 'warning',
+        message: `H2 заголовки не в формате вопросов (0 из ${h2Texts.length})`,
+        recommendation: 'Переформулируйте H2 в вопросы: "Какие услуги мы предоставляем?" вместо "Наши услуги"',
+        category: 'llm',
+        details: h2Texts.slice(0, 4).map(t => `• "${t.slice(0, 50)}" — не вопрос`),
+        context: 'LLM-системы чаще цитируют контент в формате вопрос-ответ. Переформулируйте заголовки.',
+      });
+      llmScore -= 10;
+    } else if (h2Texts.length >= 3 && questionH2.length < h2Texts.length / 2) {
+      issues.push({
+        type: 'h2_questions', severity: 'info',
+        message: `Только ${questionH2.length} из ${h2Texts.length} H2 в формате вопросов`,
+        recommendation: 'Больше H2-вопросов увеличивает шансы на AI-цитирование',
+        category: 'llm',
+        details: h2Texts.filter(t => !questionH2.includes(t)).slice(0, 3).map(t => `• "${t.slice(0, 50)}" — можно переформулировать`),
+      });
+      llmScore -= 5;
+    }
+
+    // Lists (ul/ol)
     const listCount = (html.match(/<(ul|ol)[\s>]/gi) || []).length;
     if (listCount === 0) {
       issues.push({ type: 'lists', severity: 'info', message: 'Нет маркированных или нумерованных списков', recommendation: 'Используйте списки для структурирования контента', category: 'llm', context: 'AI-системы лучше извлекают и цитируют информацию из структурированных списков.' });
       llmScore -= 5;
     }
 
-    // Subheadings (H2, H3)
+    // Subheadings
     const h2Count = (html.match(/<h2[\s>]/gi) || []).length;
     const h3Count = (html.match(/<h3[\s>]/gi) || []).length;
     if (h2Count < 2) {
@@ -209,7 +361,7 @@ Deno.serve(async (req) => {
       llmScore -= 3;
     }
 
-    // Content length (body text approximation)
+    // Content length
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     const bodyText = bodyMatch ? bodyMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
     const wordCount = bodyText.split(/\s+/).length;
@@ -273,6 +425,11 @@ Deno.serve(async (req) => {
           wordCount,
           h2Count,
           jsonLdCount: jsonLdMatches.length,
+          isHttps,
+          hasRobotsTxt: robotsResult.ok,
+          hasSitemapXml: sitemapResult.ok,
+          brokenLinksCount: brokenLinks.length,
+          lang: langMatch ? langMatch[1] : null,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
