@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Search, Globe, Zap, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash, RefreshCw, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Globe, Zap, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash, RefreshCw, Clock, ChevronDown, ChevronUp, Shield, FileText, Link2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import ToolCTA from "./ToolCTA";
@@ -32,6 +32,11 @@ interface AuditResult {
     wordCount: number;
     h2Count: number;
     jsonLdCount: number;
+    isHttps?: boolean;
+    hasRobotsTxt?: boolean;
+    hasSitemapXml?: boolean;
+    brokenLinksCount?: number;
+    lang?: string | null;
   };
 }
 
@@ -104,6 +109,14 @@ const IssueCard = ({ issue }: { issue: AuditIssue }) => {
   );
 };
 
+const StatusBadge = ({ ok, label }: { ok: boolean; label: string }) => (
+  <div className="glass rounded-xl p-3 text-center">
+    {ok ? <CheckCircle className="w-4 h-4 text-success mx-auto mb-1" /> : <AlertTriangle className="w-4 h-4 text-destructive mx-auto mb-1" />}
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <p className="text-sm font-bold text-foreground">{ok ? "✓" : "✗"}</p>
+  </div>
+);
+
 const SEOAuditor = () => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -164,7 +177,7 @@ const SEOAuditor = () => {
         {loading && (
           <div className="text-center py-8">
             <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">Анализируем страницу…</p>
+            <p className="text-muted-foreground text-sm">Анализируем страницу… проверяем robots.txt, sitemap, ссылки</p>
           </div>
         )}
 
@@ -206,7 +219,7 @@ const SEOAuditor = () => {
 
             <p className="text-sm text-muted-foreground text-center">{result.summary}</p>
 
-            {/* Quick stats */}
+            {/* Quick stats — extended */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { icon: Globe, label: "HTML", value: `${result.meta.htmlSizeKB} КБ` },
@@ -220,6 +233,14 @@ const SEOAuditor = () => {
                   <p className="text-sm font-bold text-foreground">{s.value}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Technical status badges */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatusBadge ok={result.meta.isHttps ?? true} label="HTTPS" />
+              <StatusBadge ok={result.meta.hasRobotsTxt ?? true} label="robots.txt" />
+              <StatusBadge ok={result.meta.hasSitemapXml ?? true} label="sitemap.xml" />
+              <StatusBadge ok={(result.meta.brokenLinksCount ?? 0) === 0} label="Ссылки" />
             </div>
 
             {/* Filter tabs */}
