@@ -1,89 +1,85 @@
 
 
-## Fix: Stale Data on Re-visit + Detailed Error Reporting
+## Улучшение точности SEO Auditor и Сравнения с конкурентами
 
-### Problem 1: Old Results Persist
+### Что будет улучшено
 
-When user navigates back to a tool, previous results remain visible. Root cause: React state isn't cleared on re-entry because the same component instance stays mounted (same route pattern `/tools/:toolSlug`).
+**SEO Auditor — расширение проверок (edge function `seo-audit`):**
 
-**Fix:**
-- `ToolPage.tsx`: Add `key={toolSlug}` to `<ToolComponent />` — forces full remount on navigation
-- All server-side tools (SEO Auditor, Indexation Checker, Internal Links Checker, Competitor Analysis, Semantic Core): add timestamp display showing when results were generated
-- Add "Проверить заново" button that clears old results and re-runs with same URL
+Новые проверки (сейчас отсутствуют):
+- **robots.txt**: проверка доступности и содержимого (Disallow, Sitemap)
+- **sitemap.xml**: проверка наличия и доступности
+- **hreflang**: проверка мультиязычных тегов
+- **Дубли title/description**: проверка нет ли одинаковых meta на странице
+- **Битые ссылки**: проверка до 10 внутренних ссылок (HTTP статус)
+- **HTTPS**: проверка что страница использует HTTPS
+- **Заголовки H2 как вопросы**: проверка LLM-friendly формата H2 (для llm score)
+- **Meta robots / X-Robots-Tag**: проверка noindex/nofollow
+- **Description длиннее title**: проверка на дублирование title в description
+- **CSS/JS blocking**: подсчет блокирующих ресурсов в `<head>`
 
-### Problem 2: Reports Don't Show WHERE Errors Are
+Каждая проверка будет возвращать:
+- Точное место ошибки (конкретный HTML-элемент, URL, строка)
+- Конкретные примеры в `details[]`
+- Объяснение "Почему важно" в `context`
+- Рекомендацию "Как исправить"
 
-Current reports say "5 images without alt" but don't show WHICH images. User can't act on this.
+**Competitor Analysis — расширение метрик (edge function `competitor-analysis`):**
 
-**Changes to edge functions (backend):**
+Новые метрики:
+- **Meta description** (полный текст для сравнения)
+- **robots.txt наличие**
+- **sitemap.xml наличие**
+- **HTTPS**
+- **Количество JSON-LD блоков**
+- **Списков (ul/ol)** — LLM-ready контент
+- **Таблиц** — структурированные данные
+- **Lang атрибут**
+- **Битых ссылок (выборка до 5)**
+- **Простой SEO Score** (0-100) для каждой страницы — чтобы сразу видеть кто лучше
 
-| Function | Enhancement |
-|----------|-------------|
-| `seo-audit` | Return specific elements: actual title text, img src without alt (up to 5), actual H1 text, canonical URL found, OG values found. Add `details` field to each issue with concrete examples |
-| `check-indexation` | Already decent — minor: add the actual meta robots content and header values to issue details |
-| `check-internal-links` | Already shows URLs — add anchor text context and HTTP status explanation |
+### Файлы для изменения
 
-**Changes to frontend components:**
+| Файл | Что меняется |
+|------|-------------|
+| `supabase/functions/seo-audit/index.ts` | +10 новых проверок, проверка robots.txt и sitemap.xml через доп. fetch, выборочная проверка битых ссылок |
+| `supabase/functions/competitor-analysis/index.ts` | Расширение `PageMetrics` интерфейса, добавление ~10 новых метрик, расчёт SEO Score для каждой страницы |
+| `src/components/tools/SEOAuditor.tsx` | Добавить в quick stats: HTTPS, robots, sitemap. Без крупных UI-изменений — новые проверки автоматически появятся через существующий IssueCard |
+| `src/components/tools/CompetitorAnalysis.tsx` | Новые строки в таблице сравнения, добавить SEO Score карточки сверху, показать description |
 
-| Component | Enhancement |
-|-----------|-------------|
-| `SEOAuditor.tsx` | Show analyzed URL prominently, add timestamp, show code snippets in issues (e.g. actual `<img>` tag), add "Проверить заново" button, expand recommendation with "Почему это важно" |
-| `IndexationChecker.tsx` | Add timestamp, "Проверить заново" button, show the analyzed URL in header |
-| `InternalLinksChecker.tsx` | Add timestamp, "Проверить заново" button, show source page URL, add context for broken links (HTTP status meaning) |
-| `CompetitorAnalysis.tsx` | Add timestamp, "Сравнить заново" button |
-| `SemanticCoreGenerator.tsx` | Add timestamp to results |
+### Пример нового отчёта SEO Auditor
 
-### Detailed Issue Format (SEO Auditor)
+```text
+[Critical] SEO | Файл robots.txt недоступен (404)
+  Страница: https://example.com
+  → Создайте robots.txt в корне сайта с правилами для краулеров
+  💡 Без robots.txt поисковики не знают какие страницы индексировать
 
-Current:
+[Warning] SEO | 3 битые внутренние ссылки
+  Примеры:
+  • /old-page → 404
+  • /removed-article → 410
+  • /broken-link → 500
+  → Исправьте или удалите нерабочие ссылки
+  💡 Битые ссылки ухудшают краулинг и пользовательский опыт
+
+[Warning] LLM | H2 заголовки не в формате вопросов (0 из 5)
+  Примеры:
+  • "Наши услуги" — не вопрос
+  • "О компании" — не вопрос
+  → Переформулируйте H2 в вопросы: "Какие услуги мы предоставляем?"
+  💡 LLM-системы чаще цитируют контент в формате вопрос-ответ
 ```
-[Warning] 5 из 12 изображений без alt
-→ Добавьте описательные alt-атрибуты
+
+### Пример нового сравнения конкурентов
+
+```text
+SEO Score:     78 vs 92  (конкурент лучше)
+Description:   "Короткое описание..." vs "Полноценное описание на 155 символов..."
+robots.txt:    ✅ vs ❌
+sitemap.xml:   ✅ vs ✅
+Списков:       3 vs 8   (конкурент больше структурирует контент)
+Таблиц:        0 vs 2
+Битых ссылок:  2 vs 0
 ```
-
-New:
-```
-[Warning] 5 из 12 изображений без alt
-Страница: https://example.com/about
-Примеры:
-  • <img src="/hero.jpg"> — нет alt
-  • <img src="/team.png"> — нет alt
-  • ещё 3 изображения
-→ Добавьте описательные alt-атрибуты к каждому изображению.
-   Почему: alt помогает поисковикам и AI-системам понять содержимое изображений.
-```
-
-### Enhanced `seo-audit` Edge Function
-
-Update `AuditIssue` interface to include:
-```typescript
-interface AuditIssue {
-  type: string;
-  severity: "critical" | "warning" | "info";
-  message: string;
-  recommendation: string;
-  category: "seo" | "llm";
-  details?: string[];    // Concrete examples (img srcs, element texts)
-  context?: string;      // Why this matters
-}
-```
-
-Extract and return specific elements:
-- Images without alt: return up to 5 `src` values
-- Title issues: show actual title text
-- H1 issues: show actual H1 text(s)
-- JSON-LD: show types found
-- Content length: show word count breakdown
-
-### Files to Change
-
-| File | Type |
-|------|------|
-| `src/pages/ToolPage.tsx` | Add `key={toolSlug}` to ToolComponent |
-| `supabase/functions/seo-audit/index.ts` | Add `details` and `context` to issues, extract specific elements |
-| `src/components/tools/SEOAuditor.tsx` | Show URL, timestamp, details, "Проверить заново", enhanced issue cards |
-| `src/components/tools/IndexationChecker.tsx` | Add URL header, timestamp, "Проверить заново" |
-| `src/components/tools/InternalLinksChecker.tsx` | Add URL header, timestamp, "Проверить заново", status explanations |
-| `src/components/tools/CompetitorAnalysis.tsx` | Add timestamp, "Сравнить заново" |
-| `src/components/tools/SemanticCoreGenerator.tsx` | Add timestamp |
 
