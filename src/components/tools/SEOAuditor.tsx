@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Search, Globe, Zap, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash, RefreshCw, Clock, ChevronDown, ChevronUp, Shield, FileText, Link2 } from "lucide-react";
+import { Search, Globe, Zap, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash, RefreshCw, Clock, ChevronDown, ChevronUp, Shield, FileText, Link2, Gauge, Image, MousePointer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import ToolCTA from "./ToolCTA";
@@ -37,6 +37,14 @@ interface AuditResult {
     hasSitemapXml?: boolean;
     brokenLinksCount?: number;
     lang?: string | null;
+    cwv?: {
+      lcp: number;
+      cls: number;
+      inp: number;
+      lcpDetails: string[];
+      clsDetails: string[];
+      inpDetails: string[];
+    };
   };
 }
 
@@ -242,6 +250,44 @@ const SEOAuditor = () => {
               <StatusBadge ok={result.meta.hasSitemapXml ?? true} label="sitemap.xml" />
               <StatusBadge ok={(result.meta.brokenLinksCount ?? 0) === 0} label="Ссылки" />
             </div>
+
+            {/* Core Web Vitals (Heuristic) */}
+            {result.meta.cwv && (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Gauge className="w-4 h-4 text-primary" /> Core Web Vitals (эвристика)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {([
+                    { label: "LCP", score: result.meta.cwv.lcp, details: result.meta.cwv.lcpDetails, icon: Zap },
+                    { label: "CLS", score: result.meta.cwv.cls, details: result.meta.cwv.clsDetails, icon: Image },
+                    { label: "INP", score: result.meta.cwv.inp, details: result.meta.cwv.inpDetails, icon: MousePointer },
+                  ] as const).map((v) => {
+                    const color = v.score >= 80 ? "text-success" : v.score >= 50 ? "text-warning" : "text-destructive";
+                    return (
+                      <div key={v.label} className="glass rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1.5">
+                            <v.icon className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span className="text-xs font-medium text-muted-foreground">{v.label}</span>
+                          </div>
+                          <span className={`text-lg font-bold font-mono ${color}`}>{v.score}</span>
+                        </div>
+                        <Progress value={v.score} className="h-1.5 mb-2" />
+                        {v.details.length > 0 && (
+                          <div className="space-y-0.5">
+                            {v.details.map((d, i) => (
+                              <p key={i} className="text-[10px] text-muted-foreground">• {d}</p>
+                            ))}
+                          </div>
+                        )}
+                        {v.details.length === 0 && <p className="text-[10px] text-success">✓ Проблем не обнаружено</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Filter tabs */}
             <div className="flex gap-2">

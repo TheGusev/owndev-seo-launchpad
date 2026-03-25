@@ -35,6 +35,10 @@ interface PageMetrics {
   tableCount: number;
   brokenLinks: string[];
   seoScore: number;
+  imgsWithoutDimensions: number;
+  hasLazyImages: boolean;
+  hasFontDisplaySwap: boolean;
+  hasPreloadHero: boolean;
 }
 
 const BoolBadge = ({ value, label }: { value: boolean; label: string }) => (
@@ -187,6 +191,7 @@ const CompetitorAnalysis = () => {
                 <MetricRow label="Внешн. ссылок" v1={result.page1.externalLinks} v2={result.page2.externalLinks} />
                 <MetricRow label="JSON-LD блоков" v1={result.page1.jsonLdCount ?? (result.page1.hasJsonLd ? 1 : 0)} v2={result.page2.jsonLdCount ?? (result.page2.hasJsonLd ? 1 : 0)} better="higher" />
                 <MetricRow label="Битых ссылок" v1={(result.page1.brokenLinks ?? []).length} v2={(result.page2.brokenLinks ?? []).length} better="lower" />
+                <MetricRow label="Img без размеров" v1={result.page1.imgsWithoutDimensions ?? 0} v2={result.page2.imgsWithoutDimensions ?? 0} better="lower" />
                 <MetricRow label="Размер HTML" v1={`${result.page1.htmlSizeKB} КБ`} v2={`${result.page2.htmlSizeKB} КБ`} better="lower" />
                 <MetricRow label="Загрузка" v1={`${(result.page1.loadTimeMs / 1000).toFixed(1)}с`} v2={`${(result.page2.loadTimeMs / 1000).toFixed(1)}с`} better="lower" />
                 <MetricRow label="Язык" v1={result.page1.lang || "—"} v2={result.page2.lang || "—"} />
@@ -200,6 +205,9 @@ const CompetitorAnalysis = () => {
                     <BoolBadge value={result.page1.hasFaq} label="FAQ" />
                     <BoolBadge value={result.page1.hasCanonical} label="Canonical" />
                     <BoolBadge value={result.page1.hasOg} label="OG" />
+                    <BoolBadge value={result.page1.hasLazyImages ?? false} label="Lazy" />
+                    <BoolBadge value={result.page1.hasFontDisplaySwap ?? false} label="font-swap" />
+                    <BoolBadge value={result.page1.hasPreloadHero ?? false} label="Preload" />
                   </td>
                   <td className="py-2 space-x-2 space-y-1">
                     <BoolBadge value={result.page2.isHttps} label="HTTPS" />
@@ -209,6 +217,9 @@ const CompetitorAnalysis = () => {
                     <BoolBadge value={result.page2.hasFaq} label="FAQ" />
                     <BoolBadge value={result.page2.hasCanonical} label="Canonical" />
                     <BoolBadge value={result.page2.hasOg} label="OG" />
+                    <BoolBadge value={result.page2.hasLazyImages ?? false} label="Lazy" />
+                    <BoolBadge value={result.page2.hasFontDisplaySwap ?? false} label="font-swap" />
+                    <BoolBadge value={result.page2.hasPreloadHero ?? false} label="Preload" />
                   </td>
                 </tr>
               </tbody>
