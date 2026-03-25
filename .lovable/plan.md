@@ -1,85 +1,56 @@
 
 
-## Улучшение точности SEO Auditor и Сравнения с конкурентами
+## Улучшение инструментов: Core Web Vitals + общие улучшения
 
-### Что будет улучшено
+### Обзор текущего состояния
 
-**SEO Auditor — расширение проверок (edge function `seo-audit`):**
+Все 10 инструментов работоспособны. `key={toolSlug}` уже на месте — стейл-данные исправлены. Основные области для улучшения:
 
-Новые проверки (сейчас отсутствуют):
-- **robots.txt**: проверка доступности и содержимого (Disallow, Sitemap)
-- **sitemap.xml**: проверка наличия и доступности
-- **hreflang**: проверка мультиязычных тегов
-- **Дубли title/description**: проверка нет ли одинаковых meta на странице
-- **Битые ссылки**: проверка до 10 внутренних ссылок (HTTP статус)
-- **HTTPS**: проверка что страница использует HTTPS
-- **Заголовки H2 как вопросы**: проверка LLM-friendly формата H2 (для llm score)
-- **Meta robots / X-Robots-Tag**: проверка noindex/nofollow
-- **Description длиннее title**: проверка на дублирование title в description
-- **CSS/JS blocking**: подсчет блокирующих ресурсов в `<head>`
+### 1. Core Web Vitals в SEO Auditor
 
-Каждая проверка будет возвращать:
-- Точное место ошибки (конкретный HTML-элемент, URL, строка)
-- Конкретные примеры в `details[]`
-- Объяснение "Почему важно" в `context`
-- Рекомендацию "Как исправить"
+**Проблема**: CWV нельзя измерить server-side через простой fetch (LCP, CLS, INP требуют реального браузера). Но можно добавить **эвристические проверки** на факторы, влияющие на CWV:
 
-**Competitor Analysis — расширение метрик (edge function `competitor-analysis`):**
+**В edge function `seo-audit`** добавить:
+- **LCP-факторы**: проверка наличия `<img>` с `fetchpriority="high"` или `preload` для hero-изображения, наличие `font-display: swap` в стилях
+- **CLS-факторы**: проверка `width`/`height` атрибутов у изображений, наличие `aspect-ratio` или размеров
+- **INP-факторы**: подсчёт тяжёлых inline-скриптов в `<head>`, проверка `async`/`defer`
 
-Новые метрики:
-- **Meta description** (полный текст для сравнения)
-- **robots.txt наличие**
-- **sitemap.xml наличие**
-- **HTTPS**
-- **Количество JSON-LD блоков**
-- **Списков (ul/ol)** — LLM-ready контент
-- **Таблиц** — структурированные данные
-- **Lang атрибут**
-- **Битых ссылок (выборка до 5)**
-- **Простой SEO Score** (0-100) для каждой страницы — чтобы сразу видеть кто лучше
+**В UI `SEOAuditor.tsx`**: добавить секцию "Core Web Vitals (эвристика)" с тремя карточками LCP/CLS/INP — каждая показывает оценку на основе обнаруженных факторов.
 
-### Файлы для изменения
+### 2. Улучшения по инструментам
 
-| Файл | Что меняется |
-|------|-------------|
-| `supabase/functions/seo-audit/index.ts` | +10 новых проверок, проверка robots.txt и sitemap.xml через доп. fetch, выборочная проверка битых ссылок |
-| `supabase/functions/competitor-analysis/index.ts` | Расширение `PageMetrics` интерфейса, добавление ~10 новых метрик, расчёт SEO Score для каждой страницы |
-| `src/components/tools/SEOAuditor.tsx` | Добавить в quick stats: HTTPS, robots, sitemap. Без крупных UI-изменений — новые проверки автоматически появятся через существующий IssueCard |
-| `src/components/tools/CompetitorAnalysis.tsx` | Новые строки в таблице сравнения, добавить SEO Score карточки сверху, показать description |
+| Инструмент | Проблема | Решение |
+|---|---|---|
+| **SEO Auditor** | Нет CWV проверок | Добавить эвристические CWV-проверки (см. выше) |
+| **Competitor Analysis** | Нет CWV-метрик для сравнения | Добавить `imgsWithoutDimensions`, `hasFontDisplaySwap`, `hasPreloadHero` в метрики |
+| **AI Text Generator** | Нет таймстампа и "заново" | Добавить timestamp + кнопку "Сгенерировать заново" |
+| **Schema Generator** | Нет валидации результата | Добавить базовую валидацию JSON-LD (проверка обязательных полей по типу) |
+| **Position Monitor** | Данные хранятся в localStorage | Уже корректно работает, оставить как есть |
+| **Anti-Duplicate** | Использует `toast` из `sonner` вместо проектного | Исправить импорт на `@/hooks/use-toast` |
 
-### Пример нового отчёта SEO Auditor
+### 3. Файлы для изменения
+
+| Файл | Изменения |
+|---|---|
+| `supabase/functions/seo-audit/index.ts` | +6 CWV-эвристических проверок: img без dimensions, отсутствие preload/fetchpriority, font-display, inline scripts |
+| `supabase/functions/competitor-analysis/index.ts` | Добавить CWV-метрики: `imgsWithoutDimensions`, `hasLazyImages` |
+| `src/components/tools/SEOAuditor.tsx` | Добавить секцию "Core Web Vitals" с тремя индикаторами |
+| `src/components/tools/CompetitorAnalysis.tsx` | Добавить CWV-строки в таблицу сравнения |
+| `src/components/tools/AITextGenerator.tsx` | Добавить timestamp + кнопку "Заново" |
+| `src/components/tools/AntiDuplicateChecker.tsx` | Исправить импорт toast |
+
+### Пример новых CWV проверок в отчёте
 
 ```text
-[Critical] SEO | Файл robots.txt недоступен (404)
-  Страница: https://example.com
-  → Создайте robots.txt в корне сайта с правилами для краулеров
-  💡 Без robots.txt поисковики не знают какие страницы индексировать
-
-[Warning] SEO | 3 битые внутренние ссылки
+[Warning] SEO | 8 из 12 изображений без width/height атрибутов
   Примеры:
-  • /old-page → 404
-  • /removed-article → 410
-  • /broken-link → 500
-  → Исправьте или удалите нерабочие ссылки
-  💡 Битые ссылки ухудшают краулинг и пользовательский опыт
+  • <img src="/hero.jpg"> — нет width/height
+  • <img src="/banner.png"> — нет width/height
+  → Добавьте width и height к каждому <img>
+  💡 Без размеров браузер не может зарезервировать место — это вызывает CLS (сдвиг макета)
 
-[Warning] LLM | H2 заголовки не в формате вопросов (0 из 5)
-  Примеры:
-  • "Наши услуги" — не вопрос
-  • "О компании" — не вопрос
-  → Переформулируйте H2 в вопросы: "Какие услуги мы предоставляем?"
-  💡 LLM-системы чаще цитируют контент в формате вопрос-ответ
-```
-
-### Пример нового сравнения конкурентов
-
-```text
-SEO Score:     78 vs 92  (конкурент лучше)
-Description:   "Короткое описание..." vs "Полноценное описание на 155 символов..."
-robots.txt:    ✅ vs ❌
-sitemap.xml:   ✅ vs ✅
-Списков:       3 vs 8   (конкурент больше структурирует контент)
-Таблиц:        0 vs 2
-Битых ссылок:  2 vs 0
+[Info] SEO | Нет <link rel="preload"> для hero-изображения
+  → Добавьте preload для главного изображения первого экрана
+  💡 Preload ускоряет загрузку LCP-элемента
 ```
 
