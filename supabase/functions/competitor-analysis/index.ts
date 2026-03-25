@@ -33,6 +33,10 @@ interface PageMetrics {
   tableCount: number;
   brokenLinks: string[];
   seoScore: number;
+  imgsWithoutDimensions: number;
+  hasLazyImages: boolean;
+  hasFontDisplaySwap: boolean;
+  hasPreloadHero: boolean;
 }
 
 async function checkUrlExists(url: string): Promise<boolean> {
@@ -142,6 +146,12 @@ async function analyzeUrl(url: string): Promise<PageMetrics> {
   const listCount = (html.match(/<(ul|ol)[\s>]/gi) || []).length;
   const tableCount = (html.match(/<table[\s>]/gi) || []).length;
 
+  // CWV heuristics
+  const imgsWithoutDimensions = imgTags.filter((img: string) => !(/width=["']\d+/i.test(img) && /height=["']\d+/i.test(img))).length;
+  const hasLazyImages = imgTags.some((img: string) => /loading=["']lazy["']/i.test(img));
+  const hasFontDisplaySwap = /font-display\s*:\s*swap/i.test(html);
+  const hasPreloadHero = /<link[^>]*rel=["']preload["'][^>]*as=["']image["']/i.test(html) || /<img[^>]*fetchpriority=["']high["']/i.test(html);
+
   const partial = {
     url: parsedUrl.toString(),
     title: titleMatch ? titleMatch[1].trim() : '',
@@ -170,6 +180,10 @@ async function analyzeUrl(url: string): Promise<PageMetrics> {
     listCount,
     tableCount,
     brokenLinks,
+    imgsWithoutDimensions,
+    hasLazyImages,
+    hasFontDisplaySwap,
+    hasPreloadHero,
   };
 
   return { ...partial, seoScore: calculateSeoScore(partial) };

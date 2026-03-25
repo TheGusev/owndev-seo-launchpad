@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Shield, AlertTriangle, CheckCircle, Info } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 interface Issue {
   severity: "high" | "medium" | "low";
@@ -91,10 +91,10 @@ const AntiDuplicateChecker = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
   const handleCheck = () => {
-    if (!text.trim()) { toast.error("Вставьте текст для проверки"); return; }
+    if (!text.trim()) { toast({ title: "Вставьте текст для проверки", variant: "destructive" }); return; }
     const r = analyzeText(text);
     setResult(r);
-    toast.success("Анализ завершён!");
+    toast({ title: "Анализ завершён!" });
   };
 
   const scoreColor = result
