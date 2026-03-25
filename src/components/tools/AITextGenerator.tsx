@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Bot, Copy, CheckCircle, Loader2 } from "lucide-react";
+import { Bot, Copy, CheckCircle, Loader2, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,6 +21,7 @@ const AITextGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [copied, setCopied] = useState(false);
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
 
   const handleGenerate = async () => {
     if (!topic.trim()) { toast({ title: "Введите тему", variant: "destructive" }); return; }
@@ -31,6 +32,7 @@ const AITextGenerator = () => {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
       setResult(data.text || "");
+      setGeneratedAt(new Date());
     } catch (e: any) {
       toast({ title: "Ошибка генерации", description: e.message, variant: "destructive" });
     } finally {
@@ -82,12 +84,23 @@ const AITextGenerator = () => {
 
       {result && (
         <div className="glass rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <p className="text-sm font-semibold text-foreground">Результат</p>
-            <button onClick={handleCopy} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-              {copied ? <CheckCircle className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
-              {copied ? "Скопировано" : "Копировать"}
-            </button>
+            <div className="flex items-center gap-3">
+              {generatedAt && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {generatedAt.toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+                </span>
+              )}
+              <button onClick={() => { setResult(""); setGeneratedAt(null); }} className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[28px]">
+                <RefreshCw className="w-3 h-3" /> Заново
+              </button>
+              <button onClick={handleCopy} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                {copied ? <CheckCircle className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+                {copied ? "Скопировано" : "Копировать"}
+              </button>
+            </div>
           </div>
           <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{result}</div>
         </div>

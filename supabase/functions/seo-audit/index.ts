@@ -279,6 +279,82 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== CORE WEB VITALS (HEURISTIC) =====
+    const cwv = { lcpScore: 100, clsScore: 100, inpScore: 100, lcpDetails: [] as string[], clsDetails: [] as string[], inpDetails: [] as string[] };
+
+    // LCP: check for preload/fetchpriority on hero images
+    const hasPreloadHero = /<link[^>]*rel=["']preload["'][^>]*as=["']image["']/i.test(html);
+    const hasFetchPriority = /<img[^>]*fetchpriority=["']high["']/i.test(html);
+    if (!hasPreloadHero && !hasFetchPriority) {
+      cwv.lcpScore -= 30;
+      cwv.lcpDetails.push('Нет preload или fetchpriority="high" для hero-изображения');
+      issues.push({ type: 'cwv_lcp_preload', severity: 'warning', message: 'Нет preload/fetchpriority для hero-изображения', recommendation: 'Добавьте <link rel="preload" as="image" href="..."> или fetchpriority="high" на первый <img>', category: 'seo', context: 'Preload и fetchpriority ускоряют загрузку LCP-элемента — главного видимого контента.' });
+      seoScore -= 5;
+    }
+    // LCP: font-display: swap
+    const hasFontDisplaySwap = /font-display\s*:\s*swap/i.test(html);
+    const hasExternalFonts = /<link[^>]*href=["'][^"']*fonts/i.test(html);
+    if (hasExternalFonts && !hasFontDisplaySwap) {
+      cwv.lcpScore -= 20;
+      cwv.lcpDetails.push('Внешние шрифты без font-display: swap');
+      issues.push({ type: 'cwv_lcp_fonts', severity: 'info', message: 'Внешние шрифты без font-display: swap', recommendation: 'Добавьте font-display: swap к @font-face для предотвращения FOIT', category: 'seo', context: 'Без swap текст невидим до загрузки шрифта — это ухудшает LCP.' });
+      seoScore -= 3;
+    }
+    // LCP: large HTML
+    if (sizeKB > 300) { cwv.lcpScore -= 20; cwv.lcpDetails.push(`HTML ${sizeKB} КБ — тяжёлый документ`); }
+
+    // CLS: images without width/height
+    const imgsWithoutDimensions = imgTags.filter(img => !(/width=["']\d+/i.test(img) && /height=["']\d+/i.test(img)) && !/aspect-ratio/i.test(img));
+    if (imgsWithoutDimensions.length > 0) {
+      const penalty = Math.min(40, imgsWithoutDimensions.length * 5);
+      cwv.clsScore -= penalty;
+      const examples = imgsWithoutDimensions.slice(0, 3).map(img => {
+        const src = img.match(/src=["']([^"']+)["']/i);
+        return src ? `• ${src[1].slice(0, 60)}` : '• (img без src)';
+      });
+      cwv.clsDetails.push(`${imgsWithoutDimensions.length} из ${imgTags.length} изображений без width/height`);
+      issues.push({ type: 'cwv_cls_dimensions', severity: imgsWithoutDimensions.length > 5 ? 'warning' : 'info', message: `${imgsWithoutDimensions.length} изображений без width/height атрибутов`, recommendation: 'Добавьте width и height к каждому <img> для предотвращения CLS', category: 'seo', details: examples, context: 'Без размеров браузер не может зарезервировать место — это вызывает сдвиг макета (CLS).' });
+      seoScore -= Math.min(5, imgsWithoutDimensions.length);
+    }
+    // CLS: iframes without dimensions
+    const iframes = html.match(/<iframe[^>]*>/gi) || [];
+    const iframesNoDims = iframes.filter(f => !(/width/i.test(f) && /height/i.test(f)));
+    if (iframesNoDims.length > 0) {
+      cwv.clsScore -= 15;
+      cwv.clsDetails.push(`${iframesNoDims.length} iframe без размеров`);
+    }
+
+    // INP: heavy inline scripts in head
+    if (headMatch) {
+      const inlineScripts = (headMatch[1].match(/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/gi) || []);
+      const heavyInline = inlineScripts.filter(s => s.length > 1000);
+      if (heavyInline.length > 0) {
+        cwv.inpScore -= Math.min(30, heavyInline.length * 15);
+        cwv.inpDetails.push(`${heavyInline.length} тяжёлых inline-скриптов в <head>`);
+        issues.push({ type: 'cwv_inp_inline', severity: 'info', message: `${heavyInline.length} тяжёлых inline-скриптов в <head>`, recommendation: 'Вынесите тяжёлые скрипты в отдельные файлы с async/defer', category: 'seo', context: 'Тяжёлые inline-скрипты блокируют главный поток и ухудшают INP.' });
+        seoScore -= 3;
+      }
+    }
+    // INP: scripts without async/defer
+    const allScriptsWithSrc = html.match(/<script[^>]*src=["'][^"']+["'][^>]*>/gi) || [];
+    const scriptsNoAsync = allScriptsWithSrc.filter(s => !(/async/i.test(s) || /defer/i.test(s) || /type=["']module["']/i.test(s)));
+    if (scriptsNoAsync.length > 2) {
+      cwv.inpScore -= 20;
+      cwv.inpDetails.push(`${scriptsNoAsync.length} скриптов без async/defer`);
+    }
+
+    // Lazy loading check
+    const hasLazyImages = imgTags.some(img => /loading=["']lazy["']/i.test(img));
+    if (imgTags.length > 3 && !hasLazyImages) {
+      cwv.lcpScore -= 10;
+      cwv.lcpDetails.push('Нет lazy loading для изображений');
+      issues.push({ type: 'cwv_lazy', severity: 'info', message: 'Нет loading="lazy" на изображениях', recommendation: 'Добавьте loading="lazy" ко всем изображениям ниже первого экрана', category: 'seo', context: 'Lazy loading экономит ресурсы и ускоряет начальную загрузку.' });
+    }
+
+    cwv.lcpScore = Math.max(0, Math.min(100, cwv.lcpScore));
+    cwv.clsScore = Math.max(0, Math.min(100, cwv.clsScore));
+    cwv.inpScore = Math.max(0, Math.min(100, cwv.inpScore));
+
     // ===== LLM CHECKS =====
 
     // JSON-LD structured data
@@ -430,6 +506,18 @@ Deno.serve(async (req) => {
           hasSitemapXml: sitemapResult.ok,
           brokenLinksCount: brokenLinks.length,
           lang: langMatch ? langMatch[1] : null,
+          cwv: {
+            lcp: cwv.lcpScore,
+            cls: cwv.clsScore,
+            inp: cwv.inpScore,
+            lcpDetails: cwv.lcpDetails,
+            clsDetails: cwv.clsDetails,
+            inpDetails: cwv.inpDetails,
+          },
+          imgsWithoutDimensions: imgsWithoutDimensions.length,
+          hasLazyImages,
+          hasFontDisplaySwap,
+          hasPreloadHero: hasPreloadHero || hasFetchPriority,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
