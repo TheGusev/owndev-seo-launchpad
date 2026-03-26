@@ -1254,11 +1254,14 @@ JSON: [{"phrase":"...","type":"seo"|"direct"|"informational"|"branded"|"regional
           max_tokens: 8000, temperature: 0.4 + batch * 0.1,
         }),
       });
+      if (!resp.ok) { console.error(`Keyword batch ${batch} failed: ${resp.status}`); continue; }
       const data = await resp.json();
-      const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-      const m = content.match(/\[[\s\S]*\]/);
-      if (m) allKeywords.push(...JSON.parse(m[0]));
-    } catch {}
+      const kwContent = data.choices?.[0]?.message?.content?.trim() || '[]';
+      const m = kwContent.match(/\[[\s\S]*\]/);
+      if (m) {
+        try { allKeywords.push(...JSON.parse(m[0])); } catch (e) { console.error('Keyword JSON parse error:', e); }
+      } else { console.error('No JSON array in keyword response:', kwContent.slice(0, 200)); }
+    } catch (e) { console.error('Keyword extraction error:', e); }
     if (allKeywords.length >= 200) break;
   }
   const seen = new Set<string>();
