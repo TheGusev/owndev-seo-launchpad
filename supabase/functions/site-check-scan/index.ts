@@ -1256,7 +1256,7 @@ JSON: [{"phrase":"...","type":"seo"|"direct"|"informational"|"branded"|"regional
       });
       if (!resp.ok) { console.error(`Keyword batch ${batch} failed: ${resp.status}`); continue; }
       const data = await resp.json();
-      const kwContent = data.choices?.[0]?.message?.content?.trim() || '[]';
+      const kwContent = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
       const m = kwContent.match(/\[[\s\S]*\]/);
       if (m) {
         try { allKeywords.push(...JSON.parse(m[0])); } catch (e) { console.error('Keyword JSON parse error:', e); }
