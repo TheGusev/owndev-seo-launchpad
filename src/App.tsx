@@ -16,6 +16,9 @@ import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import CookieBanner from "./components/CookieBanner";
 import ScrollToTop from "./components/ScrollToTop";
+import SiteCheck from "./pages/SiteCheck";
+import SiteCheckResult from "./pages/SiteCheckResult";
+import SiteCheckReport from "./pages/SiteCheckReport";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +35,9 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/tools" element={<Tools />} />
+            <Route path="/tools/site-check" element={<SiteCheck />} />
+            <Route path="/tools/site-check/result/:scanId" element={<SiteCheckResult />} />
+            <Route path="/tools/site-check/report/:reportId" element={<SiteCheckReport />} />
             <Route path="/tools/:toolSlug" element={<ToolPage />} />
             <Route path="/tools/:toolSlug/:regionSlug" element={<GeoToolPage />} />
             <Route path="/:citySlug/:nicheSlug/:toolSlug" element={<GeoNicheToolPage />} />
