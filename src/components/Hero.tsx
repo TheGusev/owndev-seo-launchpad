@@ -2,12 +2,10 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { Search } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
-import { SparklesCore } from "@/components/ui/sparkles";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
-import { ParallaxLayer } from "@/components/ui/parallax-layer";
 import { Link } from "react-router-dom";
 
 const Hero = () => {
@@ -16,29 +14,18 @@ const Hero = () => {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 snap-section">
       <CornerDecorations size="lg" />
       
-      <ParallaxLayer speed={0.3} className="absolute inset-0 z-[3] pointer-events-none">
-        <FloatingParticles count={20} className="absolute inset-0" />
-      </ParallaxLayer>
+      <FloatingParticles count={10} className="absolute inset-0 z-[3] pointer-events-none" />
       
-      <ParallaxLayer speed={0.2} className="absolute inset-0 z-0">
-        <SparklesCore
-          id="hero-sparkles"
-          background="transparent"
-          particleColor="#3dd9c3"
-          particleDensity={80}
-          minSize={1}
-          maxSize={2}
-          speed={2}
-          className="w-full h-full"
-        />
-      </ParallaxLayer>
+      {/* CSS sparkle replacement — zero JS */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.08),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(var(--accent)/0.06),transparent_50%)]" />
+      </div>
       
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
       
-      <ParallaxLayer speed={0.1} className="absolute inset-0 z-[2]">
-        <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="opacity-70" theme="primary" />
-      </ParallaxLayer>
+      <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="absolute inset-0 z-[2] opacity-70" theme="primary" />
       
       <div className="container relative z-10 px-4 md:px-6">
         <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
