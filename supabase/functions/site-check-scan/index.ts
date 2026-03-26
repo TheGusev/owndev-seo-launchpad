@@ -1394,25 +1394,37 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     await updateScan(scanId, { progress_pct: 60, scores, issues: allIssues, crawled_pages: crawledPages.map(p => p.url) });
     
     // STEPS 4-6: Background (non-blocking for preview)
-    const [keywords, competitors] = await Promise.all([
-      extractKeywords(html, theme, parsedUrl.toString()),
-      competitorAnalysis(parsedUrl.toString(), theme, html),
-    ]);
+    const crawledPageUrls = crawledPages.map(p => p.url);
     
-    await updateScan(scanId, { progress_pct: 85, keywords, competitors });
+    // Step 4: Competitor Analysis (runs in parallel with keyword extraction)
+    const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, crawledPageUrls);
     
+    // Add competitor gap issues to allIssues
+    allIssues = [...allIssues, ...compResult.gap_issues];
+    
+    await updateScan(scanId, { progress_pct: 75 });
+    
+    // Step 5: Keywords (enriched with competitor top_phrases)
+    const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
+    const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases);
+    
+    await updateScan(scanId, { progress_pct: 85, keywords });
+    
+    // Step 6: Minus words
     const minusWords = await generateMinusWords(theme, keywords);
+    
+    // Recalculate scores with competitor gap issues included
+    const finalScores = calcScores(allIssues);
     
     await updateScan(scanId, {
       status: 'done', progress_pct: 100,
       minus_words: minusWords,
-      issues: allIssues, scores,
-      // Store Direct module extras in competitors field alongside competitor data
-      competitors: [...(competitors || []), {
-        _direct_meta: true,
-        ad_headline: directResult.ad_headline,
-        autotargeting_categories: directResult.autotargeting_categories,
-      }],
+      issues: allIssues, scores: finalScores,
+      competitors: [
+        ...compResult.competitors.map(c => ({ ...c, _type: 'competitor' })),
+        { _type: 'comparison_table', ...compResult.comparison_table },
+        { _direct_meta: true, ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
+      ],
     });
     
   } catch (error) {
