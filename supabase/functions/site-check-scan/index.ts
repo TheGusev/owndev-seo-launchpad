@@ -1256,10 +1256,10 @@ JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"comme
       if (!resp.ok) { console.error(`Keyword batch ${batch}: ${resp.status}`); continue; }
       const data = await resp.json();
       const kwRaw = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-      const m = kwRaw.match(/\[[\s\S]*\]/);
-      if (m) {
-        try { allKeywords.push(...JSON.parse(m[0])); } catch (e) { console.error('KW parse:', e); }
-      } else { console.error('No JSON array in KW:', kwRaw.slice(0, 300)); }
+      const parsed = tryParseJsonArray(kwRaw);
+      if (parsed.length > 0) {
+        allKeywords.push(...parsed);
+      } else { console.error('KW parse fail:', kwRaw.slice(0, 300)); }
     } catch (e) { console.error('KW error:', e); }
     if (allKeywords.length >= 200) break;
   }
