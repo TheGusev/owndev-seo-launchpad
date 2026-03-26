@@ -43,6 +43,28 @@ async function checkUrl(url: string): Promise<{ ok: boolean; status: number }> {
   } catch { return { ok: false, status: 0 }; }
 }
 
+// ─── Robust JSON array parser (handles truncated LLM output) ───
+function tryParseJsonArray(raw: string): any[] {
+  // Try full match first
+  const m = raw.match(/\[[\s\S]*\]/);
+  if (m) {
+    try { return JSON.parse(m[0]); } catch { /* fall through */ }
+  }
+  // If array started but was truncated (no closing ]), try to recover
+  const start = raw.indexOf('[');
+  if (start === -1) return [];
+  let text = raw.slice(start);
+  // Find the last complete object (ends with })
+  const lastBrace = text.lastIndexOf('}');
+  if (lastBrace === -1) return [];
+  text = text.slice(0, lastBrace + 1) + ']';
+  try { return JSON.parse(text); } catch {
+    // Try fixing trailing comma
+    text = text.replace(/,\s*\]$/, ']');
+    try { return JSON.parse(text); } catch { return []; }
+  }
+}
+
 // ─── Issue builder ───
 interface Issue {
   id: string; module: string; severity: string; title: string;
@@ -1232,34 +1254,36 @@ async function extractKeywords(
     ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}`
     : '';
 
-  const systemPrompt = `Ты — SEO-специалист. Сгенерируй 40 ключевых запросов для "${theme}".
+  const systemPrompt = `Ты — SEO-специалист. Сгенерируй 100 ключевых запросов для "${theme}".
 Коммерческие: цена, заказать, купить, под ключ, в Москве, недорого, отзывы.
 Информационные: что такое, как выбрать, зачем, виды.
+Региональные: в Москве, в СПб, по России.
 JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"commercial","priority":"high","use_for_seo":true,"use_for_direct":false,"landing_needed":"..."}]
-Ровно 40 фраз. Только JSON без markdown.`;
+Ровно 100 фраз. Только JSON без markdown.`;
 
   const allKeywords: KeywordEntry[] = [];
-  for (let batch = 0; batch < 5; batch++) {
+  for (let batch = 0; batch < 3; batch++) {
     const batchPrompt = batch === 0
       ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
-      : `Ещё 40 НОВЫХ запросов для "${theme}". Не дублируй предыдущие.\nКластеры: ${[...new Set(allKeywords.map(k => k.cluster))].join(', ')}`;
+      : `Ещё 100 НОВЫХ запросов для "${theme}". Не дублируй: ${allKeywords.slice(0, 20).map(k => k.phrase).join(', ')}.\nКластеры: ${[...new Set(allKeywords.map(k => k.cluster))].join(', ')}`;
     try {
       const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'google/gemini-2.5-flash-lite',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: batchPrompt }],
-          max_tokens: 16000, temperature: 0.4 + batch * 0.1,
+          max_tokens: 16000, temperature: 0.5 + batch * 0.15,
         }),
       });
       if (!resp.ok) { console.error(`Keyword batch ${batch}: ${resp.status}`); continue; }
       const data = await resp.json();
       const kwRaw = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-      const m = kwRaw.match(/\[[\s\S]*\]/);
-      if (m) {
-        try { allKeywords.push(...JSON.parse(m[0])); } catch (e) { console.error('KW parse:', e); }
-      } else { console.error('No JSON array in KW:', kwRaw.slice(0, 300)); }
+      const parsed = tryParseJsonArray(kwRaw);
+      if (parsed.length > 0) {
+        allKeywords.push(...parsed);
+        console.log(`KW batch ${batch}: got ${parsed.length}, total: ${allKeywords.length}`);
+      } else { console.error('KW parse fail:', kwRaw.slice(0, 500)); }
     } catch (e) { console.error('KW error:', e); }
     if (allKeywords.length >= 200) break;
   }
@@ -1316,9 +1340,9 @@ async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Prom
       }),
     });
     const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-    const m = content.match(/\[[\s\S]*\]/);
-    if (m) result.push(...JSON.parse(m[0]).map((t: any) => ({ ...t, type: 'thematic' })));
+    const content = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+    const parsed = tryParseJsonArray(content);
+    result.push(...parsed.map((t: any) => ({ ...t, type: 'thematic' })));
   } catch {}
   const seen = new Set<string>();
   return result.filter(m => {
