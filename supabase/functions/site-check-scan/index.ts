@@ -43,6 +43,28 @@ async function checkUrl(url: string): Promise<{ ok: boolean; status: number }> {
   } catch { return { ok: false, status: 0 }; }
 }
 
+// ─── Robust JSON array parser (handles truncated LLM output) ───
+function tryParseJsonArray(raw: string): any[] {
+  // Try full match first
+  const m = raw.match(/\[[\s\S]*\]/);
+  if (m) {
+    try { return JSON.parse(m[0]); } catch { /* fall through */ }
+  }
+  // If array started but was truncated (no closing ]), try to recover
+  const start = raw.indexOf('[');
+  if (start === -1) return [];
+  let text = raw.slice(start);
+  // Find the last complete object (ends with })
+  const lastBrace = text.lastIndexOf('}');
+  if (lastBrace === -1) return [];
+  text = text.slice(0, lastBrace + 1) + ']';
+  try { return JSON.parse(text); } catch {
+    // Try fixing trailing comma
+    text = text.replace(/,\s*\]$/, ']');
+    try { return JSON.parse(text); } catch { return []; }
+  }
+}
+
 // ─── Issue builder ───
 interface Issue {
   id: string; module: string; severity: string; title: string;
