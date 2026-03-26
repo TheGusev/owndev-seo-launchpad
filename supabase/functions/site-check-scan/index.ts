@@ -1111,6 +1111,12 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       status: 'done', progress_pct: 100,
       minus_words: minusWords,
       issues: allIssues, scores,
+      // Store Direct module extras in competitors field alongside competitor data
+      competitors: [...(competitors || []), {
+        _direct_meta: true,
+        ad_headline: directResult.ad_headline,
+        autotargeting_categories: directResult.autotargeting_categories,
+      }],
     });
     
   } catch (error) {
