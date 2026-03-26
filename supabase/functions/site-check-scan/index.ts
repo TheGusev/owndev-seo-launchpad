@@ -1232,18 +1232,17 @@ async function extractKeywords(
     ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}`
     : '';
 
-  const systemPrompt = `Ты — SEO-специалист. Сгенерируй МИНИМУМ 80 ключевых запросов для "${theme}".
-Коммерческие: цена, стоимость, заказать, купить, под ключ, в Москве, срочно, недорого, отзывы.
-Информационные: что такое, как выбрать, зачем, виды, примеры.
-Региональные вариации. Фразы конкурентов. Дедупликация.
-JSON: [{"phrase":"...","type":"seo"|"direct"|"informational"|"branded"|"regional","cluster":"...","intent":"commercial"|"informational"|"navigational","priority":"high"|"medium"|"low","use_for_seo":true,"use_for_direct":true,"landing_needed":"описание посадочной"}]
-Минимум 80. Только JSON.`;
+  const systemPrompt = `Ты — SEO-специалист. Сгенерируй 40 ключевых запросов для "${theme}".
+Коммерческие: цена, заказать, купить, под ключ, в Москве, недорого, отзывы.
+Информационные: что такое, как выбрать, зачем, виды.
+JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"commercial","priority":"high","use_for_seo":true,"use_for_direct":false,"landing_needed":"..."}]
+Ровно 40 фраз. Только JSON без markdown.`;
 
   const allKeywords: KeywordEntry[] = [];
-  for (let batch = 0; batch < 3; batch++) {
+  for (let batch = 0; batch < 5; batch++) {
     const batchPrompt = batch === 0
-      ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 2000)}${phrasesBlock}`
-      : `Продолжи для "${theme}". Уже ${allKeywords.length}. Ещё 80+ НОВЫХ.\nКластеры: ${[...new Set(allKeywords.map(k => k.cluster))].join(', ')}`;
+      ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
+      : `Ещё 40 НОВЫХ запросов для "${theme}". Не дублируй предыдущие.\nКластеры: ${[...new Set(allKeywords.map(k => k.cluster))].join(', ')}`;
     try {
       const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -1251,17 +1250,17 @@ JSON: [{"phrase":"...","type":"seo"|"direct"|"informational"|"branded"|"regional
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: batchPrompt }],
-          max_tokens: 8000, temperature: 0.4 + batch * 0.1,
+          max_tokens: 16000, temperature: 0.4 + batch * 0.1,
         }),
       });
-      if (!resp.ok) { console.error(`Keyword batch ${batch} failed: ${resp.status}`); continue; }
+      if (!resp.ok) { console.error(`Keyword batch ${batch}: ${resp.status}`); continue; }
       const data = await resp.json();
-      const kwContent = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-      const m = kwContent.match(/\[[\s\S]*\]/);
+      const kwRaw = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+      const m = kwRaw.match(/\[[\s\S]*\]/);
       if (m) {
-        try { allKeywords.push(...JSON.parse(m[0])); } catch (e) { console.error('Keyword JSON parse error:', e); }
-      } else { console.error('No JSON array in keyword response:', kwContent.slice(0, 200)); }
-    } catch (e) { console.error('Keyword extraction error:', e); }
+        try { allKeywords.push(...JSON.parse(m[0])); } catch (e) { console.error('KW parse:', e); }
+      } else { console.error('No JSON array in KW:', kwRaw.slice(0, 300)); }
+    } catch (e) { console.error('KW error:', e); }
     if (allKeywords.length >= 200) break;
   }
   const seen = new Set<string>();
