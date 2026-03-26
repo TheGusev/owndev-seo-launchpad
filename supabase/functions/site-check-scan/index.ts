@@ -900,13 +900,309 @@ function aiAudit(html: string): Issue[] {
   return issues;
 }
 
-// ═══ STEP 4: Competitor Analysis ═══
-async function competitorAnalysis(url: string, theme: string, html: string): Promise<{ url: string; scores: any }[]> {
-  return [];
+// ═══ STEP 4: Competitor Analysis (ПРОМТ 5) ═══
+interface CompetitorProfile {
+  url: string;
+  title: string;
+  h1: string;
+  content_length_words: number;
+  has_faq: boolean;
+  has_price_block: boolean;
+  has_reviews: boolean;
+  has_schema: boolean;
+  has_cta_button: boolean;
+  load_speed_sec: number;
+  h2_count: number;
+  images_count: number;
+  top_phrases: string[];
+}
+
+interface CompetitorAnalysisResult {
+  competitors: CompetitorProfile[];
+  comparison_table: Record<string, { yours: string; avg_top10: string; leader: string }>;
+  gap_issues: Issue[];
+}
+
+// Parse a single competitor page into a profile
+function parseCompetitorHtml(url: string, html: string, loadMs: number): CompetitorProfile {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1].trim() : '';
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
+
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyText = bodyMatch
+    ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+  const words = bodyText.split(/\s+/).filter(w => w.length > 1);
+
+  const has_faq = /faq|часто\s*задаваемые|вопрос.*ответ|\bfaq\b/i.test(html) || /<details[\s>]/i.test(html);
+  const has_price_block = /цена|стоимость|руб|₽|\d+\s*р\b|прайс|тариф/i.test(bodyText);
+  const has_reviews = /отзыв|review|testimonial|рекоменд|клиент\s*говор/i.test(bodyText);
+  const jsonLd = html.match(/<script[^>]*type=["']application\/ld\+json["']/i);
+  const has_schema = !!jsonLd;
+  const has_cta_button = /заказ|купи|оставить заявку|запис|получить|корзин|связаться|консультац/i.test(html);
+
+  const h2_count = (html.match(/<h2[\s>]/gi) || []).length;
+  const images_count = (html.match(/<img[\s>]/gi) || []).length;
+
+  // Extract top phrases (2-3 word combos by frequency)
+  const wordList = bodyText.toLowerCase().replace(/[^а-яa-zё\s]/gi, '').split(/\s+/).filter(w => w.length > 3);
+  const bigramMap: Record<string, number> = {};
+  for (let i = 0; i < wordList.length - 1; i++) {
+    const bigram = `${wordList[i]} ${wordList[i + 1]}`;
+    bigramMap[bigram] = (bigramMap[bigram] || 0) + 1;
+  }
+  const top_phrases = Object.entries(bigramMap)
+    .filter(([, c]) => c >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([phrase]) => phrase);
+
+  return {
+    url, title, h1,
+    content_length_words: words.length,
+    has_faq, has_price_block, has_reviews, has_schema, has_cta_button,
+    load_speed_sec: Math.round(loadMs / 100) / 10,
+    h2_count, images_count, top_phrases,
+  };
+}
+
+// Build "yours" profile from main page HTML
+function buildOwnProfile(url: string, html: string, loadTimeMs: number): CompetitorProfile {
+  return parseCompetitorHtml(url, html, loadTimeMs);
+}
+
+// Excluded domains
+const EXCLUDED_DOMAINS = new Set([
+  'wikipedia.org', 'youtube.com', 'vk.com', 'ok.ru', 'instagram.com',
+  'facebook.com', 'twitter.com', 'x.com', 'tiktok.com',
+  'hh.ru', 'avito.ru', 'dzen.ru', 'zen.yandex.ru',
+  'yandex.ru', 'google.com', 'mail.ru',
+]);
+
+function isExcludedUrl(u: string, ownHostname: string): boolean {
+  try {
+    const host = new URL(u).hostname.replace(/^www\./, '');
+    if (host === ownHostname.replace(/^www\./, '')) return true;
+    return [...EXCLUDED_DOMAINS].some(d => host === d || host.endsWith(`.${d}`));
+  } catch { return true; }
+}
+
+async function competitorAnalysis(
+  url: string, theme: string, html: string, mode: string, loadTimeMs: number, crawledPages: string[]
+): Promise<CompetitorAnalysisResult> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) return { competitors: [], comparison_table: {}, gap_issues: [] };
+
+  const ownHostname = new URL(url).hostname;
+
+  // ── Step A: Generate commercial search queries from theme ──
+  let searchQueries: string[] = [];
+  try {
+    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-lite',
+        messages: [
+          { role: 'system', content: 'Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк. Только JSON, без markdown.' },
+          { role: 'user', content: `Тема: "${theme}"` },
+        ],
+        max_tokens: 200, temperature: 0.3,
+      }),
+    });
+    const data = await resp.json();
+    const content = data.choices?.[0]?.message?.content?.trim() || '[]';
+    const m = content.match(/\[[\s\S]*\]/);
+    searchQueries = m ? JSON.parse(m[0]) : [];
+  } catch { searchQueries = [theme]; }
+  if (searchQueries.length === 0) searchQueries = [theme];
+
+  // ── Step Б: Get top competitor URLs via web search ──
+  const competitorUrls = new Set<string>();
+  for (const query of searchQueries.slice(0, 3)) {
+    try {
+      const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: `Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://). Только JSON.` },
+            { role: 'user', content: `Запрос: "${query}"\nИсключить домен: ${ownHostname}` },
+          ],
+          max_tokens: 500, temperature: 0.4,
+        }),
+      });
+      const data = await resp.json();
+      const content = data.choices?.[0]?.message?.content?.trim() || '[]';
+      const m = content.match(/\[[\s\S]*\]/);
+      const urls: string[] = m ? JSON.parse(m[0]) : [];
+      for (const u of urls) {
+        if (!isExcludedUrl(u, ownHostname) && competitorUrls.size < 10) {
+          competitorUrls.add(u);
+        }
+      }
+    } catch {}
+    if (competitorUrls.size >= 10) break;
+  }
+
+  // ── Step В: Parse each competitor ──
+  const competitors: CompetitorProfile[] = [];
+  const fetchPromises = [...competitorUrls].map(async (compUrl) => {
+    try {
+      const start = Date.now();
+      const resp = await fetchWithTimeout(compUrl, 5000);
+      const ms = Date.now() - start;
+      if (!resp.ok) return null;
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.includes('text/html')) return null;
+      const compHtml = await resp.text();
+      return parseCompetitorHtml(compUrl, compHtml, ms);
+    } catch { return null; }
+  });
+
+  const results = await Promise.all(fetchPromises);
+  for (const r of results) {
+    if (r && r.content_length_words > 50) competitors.push(r);
+  }
+
+  // ── Build own profile ──
+  const own = buildOwnProfile(url, html, loadTimeMs);
+
+  // ── Step Г: Comparison table ──
+  const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
+  const boolPct = (arr: boolean[]) => arr.length ? `${Math.round(arr.filter(Boolean).length / arr.length * 100)}%` : '0%';
+  const leader = competitors.length ? competitors.reduce((best, c) => c.content_length_words > best.content_length_words ? c : best, competitors[0]) : own;
+
+  const comparison_table: Record<string, { yours: string; avg_top10: string; leader: string }> = {
+    'Title (длина)': { yours: `${own.title.length} симв.`, avg_top10: `${avg(competitors.map(c => c.title.length))} симв.`, leader: `${leader.title.length} симв.` },
+    'Объём контента': { yours: `${own.content_length_words} слов`, avg_top10: `${avg(competitors.map(c => c.content_length_words))} слов`, leader: `${leader.content_length_words} слов` },
+    'H2 заголовков': { yours: `${own.h2_count}`, avg_top10: `${avg(competitors.map(c => c.h2_count))}`, leader: `${leader.h2_count}` },
+    'Изображений': { yours: `${own.images_count}`, avg_top10: `${avg(competitors.map(c => c.images_count))}`, leader: `${leader.images_count}` },
+    'FAQ': { yours: own.has_faq ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_faq)), leader: leader.has_faq ? 'Да' : 'Нет' },
+    'Блок цен': { yours: own.has_price_block ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_price_block)), leader: leader.has_price_block ? 'Да' : 'Нет' },
+    'Отзывы': { yours: own.has_reviews ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_reviews)), leader: leader.has_reviews ? 'Да' : 'Нет' },
+    'Schema.org': { yours: own.has_schema ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_schema)), leader: leader.has_schema ? 'Да' : 'Нет' },
+    'CTA кнопка': { yours: own.has_cta_button ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_cta_button)), leader: leader.has_cta_button ? 'Да' : 'Нет' },
+    'Скорость (сек)': { yours: `${own.load_speed_sec}с`, avg_top10: `${(competitors.reduce((s, c) => s + c.load_speed_sec, 0) / Math.max(competitors.length, 1)).toFixed(1)}с`, leader: `${leader.load_speed_sec}с` },
+  };
+
+  // ── Step Д: Gap analysis → IssueCards ──
+  const gap_issues: Issue[] = [];
+  const total = competitors.length;
+  if (total >= 3) {
+    const gaps: { param: string; ownHas: boolean; compCount: number; fixTitle: string; fixHow: string; fixExample: string }[] = [
+      { param: 'FAQ', ownHas: own.has_faq, compCount: competitors.filter(c => c.has_faq).length,
+        fixTitle: 'Нет блока FAQ — есть у большинства конкурентов',
+        fixHow: 'Добавьте раздел «Часто задаваемые вопросы» с 5-10 вопросами по теме',
+        fixExample: '<h2>Часто задаваемые вопросы</h2>\n<h3>Сколько стоит ' + theme.toLowerCase() + '?</h3>\n<p>Стоимость зависит от объёма работ...</p>' },
+      { param: 'Блок цен', ownHas: own.has_price_block, compCount: competitors.filter(c => c.has_price_block).length,
+        fixTitle: 'Нет блока с ценами — есть у большинства конкурентов',
+        fixHow: 'Добавьте блок с ценами или тарифами на странице',
+        fixExample: '<section><h2>Стоимость</h2><p>от 5 000 ₽</p></section>' },
+      { param: 'Отзывы', ownHas: own.has_reviews, compCount: competitors.filter(c => c.has_reviews).length,
+        fixTitle: 'Нет блока с отзывами — есть у большинства конкурентов',
+        fixHow: 'Добавьте блок с реальными отзывами клиентов',
+        fixExample: '<section><h2>Отзывы клиентов</h2><blockquote>«Отличный результат!» — Иван, ООО «Компания»</blockquote></section>' },
+      { param: 'Schema.org', ownHas: own.has_schema, compCount: competitors.filter(c => c.has_schema).length,
+        fixTitle: 'Нет Schema.org разметки — есть у большинства конкурентов',
+        fixHow: 'Добавьте JSON-LD разметку (Organization, FAQPage, Product)',
+        fixExample: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"..."}</script>' },
+      { param: 'CTA кнопка', ownHas: own.has_cta_button, compCount: competitors.filter(c => c.has_cta_button).length,
+        fixTitle: 'Нет CTA — есть у большинства конкурентов',
+        fixHow: 'Добавьте заметную кнопку призыва к действию',
+        fixExample: '<button>Заказать ' + theme.toLowerCase() + '</button>' },
+    ];
+
+    for (const gap of gaps) {
+      if (gap.ownHas) continue;
+      const threshold = total >= 8 ? 6 : Math.ceil(total * 0.6);
+      if (gap.compCount >= threshold) {
+        const severity = gap.compCount >= Math.ceil(total * 0.8) ? 'high' : 'medium';
+        gap_issues.push(makeIssue({
+          module: 'competitors', severity,
+          title: gap.fixTitle,
+          found: `У вас: нет. У конкурентов: ${gap.compCount} из ${total} (${Math.round(gap.compCount / total * 100)}%)`,
+          location: 'Контент страницы',
+          why_it_matters: `${gap.compCount} из ${total} конкурентов в топе имеют ${gap.param.toLowerCase()}. Это стандарт ниши — без этого блока страница проигрывает в поведенческих факторах`,
+          how_to_fix: gap.fixHow,
+          example_fix: gap.fixExample,
+          visible_in_preview: false,
+        }));
+      }
+    }
+
+    // Content volume gap
+    const avgWords = avg(competitors.map(c => c.content_length_words));
+    if (own.content_length_words < avgWords * 0.5 && avgWords > 300) {
+      gap_issues.push(makeIssue({
+        module: 'competitors', severity: 'high',
+        title: 'Объём контента значительно меньше конкурентов',
+        found: `У вас: ${own.content_length_words} слов. Среднее по топу: ${avgWords} слов. Лидер: ${leader.content_length_words} слов`,
+        location: 'Контент страницы',
+        why_it_matters: 'Страницы в топе содержат в среднем больше контента. Малый объём снижает шансы на ранжирование по целевым запросам',
+        how_to_fix: `Расширьте контент до ${Math.round(avgWords * 0.8)}-${avgWords} слов: добавьте описания, FAQ, кейсы`,
+        example_fix: `Рекомендуемый объём: ${Math.round(avgWords * 0.8)}+ слов`,
+        visible_in_preview: false,
+      }));
+    }
+
+    // H2 count gap
+    const avgH2 = avg(competitors.map(c => c.h2_count));
+    if (own.h2_count < avgH2 * 0.4 && avgH2 >= 3) {
+      gap_issues.push(makeIssue({
+        module: 'competitors', severity: 'medium',
+        title: 'Мало H2-подзаголовков по сравнению с конкурентами',
+        found: `У вас: ${own.h2_count} H2. Среднее по топу: ${avgH2}. Лидер: ${leader.h2_count}`,
+        location: 'Структура контента',
+        why_it_matters: 'Подзаголовки структурируют контент и помогают поисковикам определить тематические разделы',
+        how_to_fix: `Добавьте H2-подзаголовки для основных разделов (рекомендуем ${Math.max(3, Math.round(avgH2 * 0.7))}+)`,
+        example_fix: `<h2>Преимущества ${theme.toLowerCase()}</h2>\n<h2>Стоимость ${theme.toLowerCase()}</h2>\n<h2>Как заказать</h2>`,
+        visible_in_preview: false,
+      }));
+    }
+  }
+
+  // ── Site-mode extra: compare site structure with leader ──
+  if (mode === 'site' && competitors.length > 0 && crawledPages.length > 0) {
+    // Get leader site pages
+    try {
+      const leaderUrl = new URL(leader.url);
+      const leaderResp = await fetchText(leaderUrl.origin, 5000);
+      if (leaderResp.ok) {
+        const leaderLinks = [...leaderResp.text.matchAll(/href=["']([^"'#]+)["']/gi)]
+          .map(m => m[1])
+          .filter(h => h.startsWith('/') && h.length > 1)
+          .map(h => h.replace(/\/$/, '').toLowerCase());
+        const leaderSections = [...new Set(leaderLinks.map(l => l.split('/').filter(Boolean)[0] || ''))].filter(Boolean);
+        const ownPaths = crawledPages.map(p => { try { return new URL(p).pathname.split('/').filter(Boolean)[0] || ''; } catch { return ''; } }).filter(Boolean);
+        const ownSections = [...new Set(ownPaths)];
+        const missingSections = leaderSections.filter(s => !ownSections.some(os => os.includes(s) || s.includes(os)));
+        if (missingSections.length > 0) {
+          gap_issues.push(makeIssue({
+            module: 'competitors', severity: 'medium',
+            title: 'У лидера топа есть разделы, которых нет на вашем сайте',
+            found: `Разделы лидера (${leaderUrl.hostname}), которых нет у вас:\n${missingSections.slice(0, 5).map(s => `• /${s}/`).join('\n')}`,
+            location: 'Структура сайта',
+            why_it_matters: 'Полноценная структура сайта с отдельными страницами по направлениям повышает релевантность и покрытие запросов',
+            how_to_fix: 'Создайте аналогичные разделы на вашем сайте с уникальным контентом',
+            example_fix: missingSections.slice(0, 3).map(s => `Создать: /${s}/ — страница с описанием, ценами, CTA`).join('\n'),
+            visible_in_preview: false,
+          }));
+        }
+      }
+    } catch {}
+  }
+
+  return { competitors, comparison_table, gap_issues };
 }
 
 // ═══ STEP 5: Keyword Extraction ═══
-async function extractKeywords(html: string, theme: string, url: string): Promise<{ keyword: string; volume: number; cluster: string }[]> {
+async function extractKeywords(html: string, theme: string, url: string, competitorPhrases: string[] = []): Promise<{ keyword: string; volume: number; cluster: string }[]> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) return [];
   
@@ -914,6 +1210,10 @@ async function extractKeywords(html: string, theme: string, url: string): Promis
   const bodyText = bodyMatch ? bodyMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000) : '';
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
+  
+  const phrasesContext = competitorPhrases.length > 0
+    ? `\nФразы конкурентов (используй для расширения семантики): ${competitorPhrases.join(', ')}`
+    : '';
   
   try {
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -923,7 +1223,7 @@ async function extractKeywords(html: string, theme: string, url: string): Promis
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: `Ты — SEO-специалист. Извлеки 30-50 ключевых запросов для сайта тематики "${theme}". Для каждого запроса укажи примерный месячный объём поиска в Яндексе и кластер. Формат JSON массив: [{"keyword":"запрос","volume":1000,"cluster":"название кластера"}]. Отвечай ТОЛЬКО валидным JSON без markdown.` },
-          { role: 'user', content: `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 2000)}` },
+          { role: 'user', content: `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 2000)}${phrasesContext}` },
         ],
         max_tokens: 4000,
         temperature: 0.3,
@@ -1098,25 +1398,37 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     await updateScan(scanId, { progress_pct: 60, scores, issues: allIssues, crawled_pages: crawledPages.map(p => p.url) });
     
     // STEPS 4-6: Background (non-blocking for preview)
-    const [keywords, competitors] = await Promise.all([
-      extractKeywords(html, theme, parsedUrl.toString()),
-      competitorAnalysis(parsedUrl.toString(), theme, html),
-    ]);
+    const crawledPageUrls = crawledPages.map(p => p.url);
     
-    await updateScan(scanId, { progress_pct: 85, keywords, competitors });
+    // Step 4: Competitor Analysis (runs in parallel with keyword extraction)
+    const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, crawledPageUrls);
     
+    // Add competitor gap issues to allIssues
+    allIssues = [...allIssues, ...compResult.gap_issues];
+    
+    await updateScan(scanId, { progress_pct: 75 });
+    
+    // Step 5: Keywords (enriched with competitor top_phrases)
+    const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
+    const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases);
+    
+    await updateScan(scanId, { progress_pct: 85, keywords });
+    
+    // Step 6: Minus words
     const minusWords = await generateMinusWords(theme, keywords);
+    
+    // Recalculate scores with competitor gap issues included
+    const finalScores = calcScores(allIssues);
     
     await updateScan(scanId, {
       status: 'done', progress_pct: 100,
       minus_words: minusWords,
-      issues: allIssues, scores,
-      // Store Direct module extras in competitors field alongside competitor data
-      competitors: [...(competitors || []), {
-        _direct_meta: true,
-        ad_headline: directResult.ad_headline,
-        autotargeting_categories: directResult.autotargeting_categories,
-      }],
+      issues: allIssues, scores: finalScores,
+      competitors: [
+        ...compResult.competitors.map(c => ({ ...c, _type: 'competitor' })),
+        { _type: 'comparison_table', ...compResult.comparison_table },
+        { _direct_meta: true, ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
+      ],
     });
     
   } catch (error) {
