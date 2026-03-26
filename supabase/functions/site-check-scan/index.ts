@@ -1077,13 +1077,13 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     const contentIssues = contentAudit(html, theme);
     
     // STEP 3: Yandex Direct
-    const directIssues = directAudit(html, theme);
+    const directResult = directAudit(html, theme);
     
     // Steps 7 & 8
     const schemaIssues = schemaAudit(html);
     const aiIssues = aiAudit(html);
     
-    let allIssues = [...techIssues, ...contentIssues, ...directIssues, ...schemaIssues, ...aiIssues];
+    let allIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
     
     // Site-mode: crawl and add extra checks
     let crawledPages: { url: string; html: string; status: number }[] = [];
