@@ -14,7 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      reports: {
+        Row: {
+          created_at: string
+          docx_path: string | null
+          download_token: string
+          email: string
+          id: string
+          keywords_csv_path: string | null
+          minus_words_csv_path: string | null
+          payment_id: string | null
+          payment_status: string
+          pdf_path: string | null
+          scan_id: string
+        }
+        Insert: {
+          created_at?: string
+          docx_path?: string | null
+          download_token?: string
+          email: string
+          id?: string
+          keywords_csv_path?: string | null
+          minus_words_csv_path?: string | null
+          payment_id?: string | null
+          payment_status?: string
+          pdf_path?: string | null
+          scan_id: string
+        }
+        Update: {
+          created_at?: string
+          docx_path?: string | null
+          download_token?: string
+          email?: string
+          id?: string
+          keywords_csv_path?: string | null
+          minus_words_csv_path?: string | null
+          payment_id?: string | null
+          payment_status?: string
+          pdf_path?: string | null
+          scan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          fix_template: string | null
+          how_to_check: string | null
+          id: string
+          module: string
+          score_weight: number
+          severity: string
+          title: string
+          visible_in_preview: boolean
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          fix_template?: string | null
+          how_to_check?: string | null
+          id?: string
+          module: string
+          score_weight?: number
+          severity: string
+          title: string
+          visible_in_preview?: boolean
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          fix_template?: string | null
+          how_to_check?: string | null
+          id?: string
+          module?: string
+          score_weight?: number
+          severity?: string
+          title?: string
+          visible_in_preview?: boolean
+        }
+        Relationships: []
+      }
+      scans: {
+        Row: {
+          competitors: Json | null
+          crawled_pages: Json | null
+          created_at: string
+          error_message: string | null
+          expires_at: string
+          id: string
+          issues: Json | null
+          keywords: Json | null
+          minus_words: Json | null
+          mode: string
+          progress_pct: number
+          raw_html: string | null
+          scores: Json | null
+          status: string
+          theme: string | null
+          url: string
+        }
+        Insert: {
+          competitors?: Json | null
+          crawled_pages?: Json | null
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          issues?: Json | null
+          keywords?: Json | null
+          minus_words?: Json | null
+          mode?: string
+          progress_pct?: number
+          raw_html?: string | null
+          scores?: Json | null
+          status?: string
+          theme?: string | null
+          url: string
+        }
+        Update: {
+          competitors?: Json | null
+          crawled_pages?: Json | null
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          issues?: Json | null
+          keywords?: Json | null
+          minus_words?: Json | null
+          mode?: string
+          progress_pct?: number
+          raw_html?: string | null
+          scores?: Json | null
+          status?: string
+          theme?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
