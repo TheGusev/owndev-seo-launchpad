@@ -1201,20 +1201,107 @@ async function competitorAnalysis(
   return { competitors, comparison_table, gap_issues };
 }
 
-// ═══ STEP 5: Keyword Extraction ═══
-async function extractKeywords(html: string, theme: string, url: string, competitorPhrases: string[] = []): Promise<{ keyword: string; volume: number; cluster: string }[]> {
+// ═══ STEP 5: Keyword Generation (ПРОМТ 6) ═══
+interface KeywordEntry {
+  phrase: string;
+  type: 'seo' | 'direct' | 'informational' | 'branded' | 'regional';
+  cluster: string;
+  intent: 'commercial' | 'informational' | 'navigational';
+  priority: 'high' | 'medium' | 'low';
+  use_for_seo: boolean;
+  use_for_direct: boolean;
+  landing_needed: string;
+}
+
+async function extractKeywords(
+  html: string, theme: string, url: string, competitorPhrases: string[] = []
+): Promise<KeywordEntry[]> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) return [];
-  
+
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyText = bodyMatch ? bodyMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000) : '';
+  const bodyText = bodyMatch
+    ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
-  
-  const phrasesContext = competitorPhrases.length > 0
-    ? `\nФразы конкурентов (используй для расширения семантики): ${competitorPhrases.join(', ')}`
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
+
+  const phrasesBlock = competitorPhrases.length > 0
+    ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}`
     : '';
-  
+
+  const systemPrompt = `Ты — SEO-специалист. Сгенерируй 40 ключевых запросов для "${theme}".
+Коммерческие: цена, заказать, купить, под ключ, в Москве, недорого, отзывы.
+Информационные: что такое, как выбрать, зачем, виды.
+JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"commercial","priority":"high","use_for_seo":true,"use_for_direct":false,"landing_needed":"..."}]
+Ровно 40 фраз. Только JSON без markdown.`;
+
+  const allKeywords: KeywordEntry[] = [];
+  for (let batch = 0; batch < 5; batch++) {
+    const batchPrompt = batch === 0
+      ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
+      : `Ещё 40 НОВЫХ запросов для "${theme}". Не дублируй предыдущие.\nКластеры: ${[...new Set(allKeywords.map(k => k.cluster))].join(', ')}`;
+    try {
+      const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: batchPrompt }],
+          max_tokens: 16000, temperature: 0.4 + batch * 0.1,
+        }),
+      });
+      if (!resp.ok) { console.error(`Keyword batch ${batch}: ${resp.status}`); continue; }
+      const data = await resp.json();
+      const kwRaw = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+      const m = kwRaw.match(/\[[\s\S]*\]/);
+      if (m) {
+        try { allKeywords.push(...JSON.parse(m[0])); } catch (e) { console.error('KW parse:', e); }
+      } else { console.error('No JSON array in KW:', kwRaw.slice(0, 300)); }
+    } catch (e) { console.error('KW error:', e); }
+    if (allKeywords.length >= 200) break;
+  }
+  const seen = new Set<string>();
+  return allKeywords.filter(k => {
+    const key = k.phrase?.toLowerCase()?.trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ═══ STEP 6: Minus Words (ПРОМТ 6) ═══
+interface MinusWordEntry {
+  word: string;
+  type: 'general' | 'thematic';
+  reason: string;
+}
+
+const GENERAL_MINUS_WORDS: MinusWordEntry[] = [
+  { word: 'бесплатно', type: 'general', reason: 'Нецелевая аудитория' },
+  { word: 'бесплатная', type: 'general', reason: 'Нецелевая аудитория' },
+  { word: 'бесплатный', type: 'general', reason: 'Нецелевая аудитория' },
+  { word: 'скачать', type: 'general', reason: 'Информационный интент' },
+  { word: 'торрент', type: 'general', reason: 'Пиратский контент' },
+  { word: 'своими руками', type: 'general', reason: 'DIY-аудитория' },
+  { word: 'самостоятельно', type: 'general', reason: 'DIY-аудитория' },
+  { word: 'самому', type: 'general', reason: 'DIY-аудитория' },
+  { word: 'видеоурок', type: 'general', reason: 'Образовательный интент' },
+  { word: 'смотреть онлайн', type: 'general', reason: 'Развлекательный интент' },
+  { word: 'wikipedia', type: 'general', reason: 'Информационный интент' },
+  { word: 'реферат', type: 'general', reason: 'Образовательный интент' },
+  { word: 'курсовая', type: 'general', reason: 'Образовательный интент' },
+  { word: 'диплом', type: 'general', reason: 'Образовательный интент' },
+  { word: 'вики', type: 'general', reason: 'Информационный интент' },
+];
+
+async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Promise<MinusWordEntry[]> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const result: MinusWordEntry[] = [...GENERAL_MINUS_WORDS];
+  if (!LOVABLE_API_KEY) return result;
+  const sampleKeys = keywords.filter(k => k.intent === 'commercial').slice(0, 15).map(k => k.phrase).join(', ');
   try {
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -1222,45 +1309,26 @@ async function extractKeywords(html: string, theme: string, url: string, competi
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: `Ты — SEO-специалист. Извлеки 30-50 ключевых запросов для сайта тематики "${theme}". Для каждого запроса укажи примерный месячный объём поиска в Яндексе и кластер. Формат JSON массив: [{"keyword":"запрос","volume":1000,"cluster":"название кластера"}]. Отвечай ТОЛЬКО валидным JSON без markdown.` },
-          { role: 'user', content: `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 2000)}${phrasesContext}` },
+          { role: 'system', content: `Сгенерируй 40-60 тематических минус-слов для Директа по теме "${theme}". Категории: DIY, информационные, нерелевантные. JSON: [{"word":"слово","type":"thematic","reason":"почему"}]. Только JSON.` },
+          { role: 'user', content: `Тема: ${theme}\nКлючи: ${sampleKeys}` },
         ],
-        max_tokens: 4000,
-        temperature: 0.3,
+        max_tokens: 3000, temperature: 0.3,
       }),
     });
     const data = await resp.json();
     const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-  } catch { return []; }
+    const m = content.match(/\[[\s\S]*\]/);
+    if (m) result.push(...JSON.parse(m[0]).map((t: any) => ({ ...t, type: 'thematic' })));
+  } catch {}
+  const seen = new Set<string>();
+  return result.filter(m => {
+    const key = m.word?.toLowerCase()?.trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
-// ═══ STEP 6: Minus Words ═══
-async function generateMinusWords(theme: string, keywords: { keyword: string }[]): Promise<string[]> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) return [];
-  
-  try {
-    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
-        messages: [
-          { role: 'system', content: `Сгенерируй список из 30-50 минус-слов для Яндекс.Директа для тематики "${theme}". Минус-слова — это слова, по которым показ объявлений нежелателен. Формат: JSON массив строк. Отвечай ТОЛЬКО валидным JSON.` },
-          { role: 'user', content: `Тематика: ${theme}\nПримеры ключей: ${keywords.slice(0, 10).map(k => k.keyword).join(', ')}` },
-        ],
-        max_tokens: 1000,
-        temperature: 0.2,
-      }),
-    });
-    const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-  } catch { return []; }
-}
 
 // ═══ Crawl site (mode=site) ═══
 async function crawlSite(startUrl: string, maxPages = 50): Promise<{ url: string; html: string; status: number }[]> {
