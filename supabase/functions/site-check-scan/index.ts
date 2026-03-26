@@ -1202,7 +1202,7 @@ async function competitorAnalysis(
 }
 
 // ═══ STEP 5: Keyword Extraction ═══
-async function extractKeywords(html: string, theme: string, url: string): Promise<{ keyword: string; volume: number; cluster: string }[]> {
+async function extractKeywords(html: string, theme: string, url: string, competitorPhrases: string[] = []): Promise<{ keyword: string; volume: number; cluster: string }[]> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) return [];
   
@@ -1210,6 +1210,10 @@ async function extractKeywords(html: string, theme: string, url: string): Promis
   const bodyText = bodyMatch ? bodyMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000) : '';
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
+  
+  const phrasesContext = competitorPhrases.length > 0
+    ? `\nФразы конкурентов (используй для расширения семантики): ${competitorPhrases.join(', ')}`
+    : '';
   
   try {
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -1219,7 +1223,7 @@ async function extractKeywords(html: string, theme: string, url: string): Promis
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: `Ты — SEO-специалист. Извлеки 30-50 ключевых запросов для сайта тематики "${theme}". Для каждого запроса укажи примерный месячный объём поиска в Яндексе и кластер. Формат JSON массив: [{"keyword":"запрос","volume":1000,"cluster":"название кластера"}]. Отвечай ТОЛЬКО валидным JSON без markdown.` },
-          { role: 'user', content: `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 2000)}` },
+          { role: 'user', content: `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 2000)}${phrasesContext}` },
         ],
         max_tokens: 4000,
         temperature: 0.3,
