@@ -2,21 +2,20 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool } from "lucide-react";
 import { Link } from "react-router-dom";
-import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const tools = [
-  { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor", theme: "primary" as const },
-  { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis", theme: "accent" as const },
-  { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker", theme: "success" as const },
-  { icon: BrainCircuit, name: "Семантическое ядро", description: "AI-генерация кластеров ключей по интентам", slug: "semantic-core", theme: "secondary" as const },
-  { icon: PenTool, name: "AI Генератор текстов", description: "SEO-тексты: meta, FAQ, описания услуг", slug: "ai-text-generator", theme: "accent" as const },
-  { icon: Sparkles, name: "pSEO Generator", description: "Структура GEO‑страниц для городов и ниш", slug: "pseo-generator", theme: "primary" as const },
-  { icon: Code2, name: "Schema.org генератор", description: "JSON‑LD разметка для LocalBusiness, FAQ и др.", slug: "schema-generator", theme: "success" as const },
-  { icon: Bot, name: "LLM Prompt Helper", description: "Готовые промты для AI‑генерации SEO‑контента", slug: "llm-prompt-helper", theme: "secondary" as const },
-  { icon: Shield, name: "Anti‑Duplicate Checker", description: "Проверка текста на шаблонность", slug: "anti-duplicate", theme: "destructive" as const },
-  { icon: FileCode, name: "Файлы вебмастера", description: "Sitemap.xml + robots.txt генератор", slug: "webmaster-files", theme: "primary" as const },
-  { icon: Link2, name: "Внутренние ссылки", description: "Поиск битых ссылок и анализ перелинковки", slug: "internal-links", theme: "accent" as const },
-  { icon: TrendingUp, name: "Мониторинг позиций", description: "Ручной трекер позиций из GSC", slug: "position-monitor", theme: "success" as const },
+  { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor" },
+  { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis" },
+  { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker" },
+  { icon: BrainCircuit, name: "Семантическое ядро", description: "AI-генерация кластеров ключей по интентам", slug: "semantic-core" },
+  { icon: PenTool, name: "AI Генератор текстов", description: "SEO-тексты: meta, FAQ, описания услуг", slug: "ai-text-generator" },
+  { icon: Sparkles, name: "pSEO Generator", description: "Структура GEO‑страниц для городов и ниш", slug: "pseo-generator" },
+  { icon: Code2, name: "Schema.org генератор", description: "JSON‑LD разметка для LocalBusiness, FAQ и др.", slug: "schema-generator" },
+  { icon: Bot, name: "LLM Prompt Helper", description: "Готовые промты для AI‑генерации SEO‑контента", slug: "llm-prompt-helper" },
+  { icon: Shield, name: "Anti‑Duplicate Checker", description: "Проверка текста на шаблонность", slug: "anti-duplicate" },
+  { icon: FileCode, name: "Файлы вебмастера", description: "Sitemap.xml + robots.txt генератор", slug: "webmaster-files" },
+  { icon: Link2, name: "Внутренние ссылки", description: "Поиск битых ссылок и анализ перелинковки", slug: "internal-links" },
+  { icon: TrendingUp, name: "Мониторинг позиций", description: "Ручной трекер позиций из GSC", slug: "position-monitor" },
 ];
 
 const ToolsShowcase = () => {
@@ -50,10 +49,11 @@ const ToolsShowcase = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.4, delay: 0.05 * i }}
-              className="relative group"
             >
-              <GlowingEffect theme={tool.theme} disabled={false} borderWidth={1} spread={15} glow={true} blur={6} />
-              <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 flex flex-col h-full relative z-10 card-hover block">
+              <Link
+                to={`/tools/${tool.slug}`}
+                className="glass rounded-2xl p-5 flex flex-col h-full card-hover block border border-transparent hover:border-primary/30 transition-colors duration-200"
+              >
                 <div className="p-2.5 rounded-xl bg-card inline-block mb-3 self-start">
                   <tool.icon className="w-4 h-4 text-primary" />
                 </div>
