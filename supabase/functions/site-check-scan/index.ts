@@ -623,52 +623,197 @@ function contentAudit(html: string, theme: string): Issue[] {
   return issues;
 }
 
-// ═══ STEP 3: Yandex Direct / Autotargeting Audit ═══
-function directAudit(html: string, theme: string): Issue[] {
+// ═══ STEP 3: Yandex Direct / Autotargeting Audit (ПРОМТ 4) ═══
+interface DirectAuditResult {
+  issues: Issue[];
+  ad_headline: string;
+  autotargeting_categories: Record<string, boolean>;
+}
+
+function directAudit(html: string, theme: string): DirectAuditResult {
   const issues: Issue[] = [];
-  
+
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
   const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
-  
-  const commercialWords = ['купить', 'заказать', 'цена', 'стоимость', 'услуг', 'аренда', 'аудит', 'продвижение', 'доставка', 'ремонт', 'строительство'];
-  const hasCommercial = commercialWords.some(w => (title + ' ' + h1).toLowerCase().includes(w));
-  if (!hasCommercial && title) {
-    issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Заголовки не содержат коммерческих слов',
-      found: `Title: "${title.slice(0, 60)}", H1: "${h1.slice(0, 60)}"`, location: '<title> и <h1>',
-      why_it_matters: 'Автотаргетинг Яндекс.Директа берёт ключи из заголовков — без коммерческих слов показы нерелевантные',
-      how_to_fix: 'Включите коммерческие запросы в Title и H1',
-      example_fix: `<title>${theme} — заказать аудит и оптимизацию | OwnDev</title>`, visible_in_preview: true }));
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyText = bodyMatch
+    ? bodyMatch[1]
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    : '';
+  const wordCount = bodyText.split(/\s+/).filter(w => w.length > 1).length;
+  const themeWords = theme.toLowerCase().split(/[\s,—–\-]+/).filter(w => w.length > 3);
+
+  // ── 1. H1 конкретность ── critical, visible_in_preview=true
+  const genericH1 = /^(главная|home|добро пожаловать|welcome|о компании|о нас|about|услуги|наши услуги|каталог|продукция)$/i;
+  if (h1 && genericH1.test(h1.trim())) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'critical',
+      title: 'H1 слишком общий для автотаргетинга Директа',
+      found: `H1: "${h1}"`,
+      location: '<h1>',
+      why_it_matters: 'Автотаргетинг Яндекс.Директа читает H1 для подбора аудитории. Общий H1 («Услуги», «Главная») приводит к показам по нерелевантным запросам и сливу бюджета',
+      how_to_fix: 'Замените общий H1 на конкретное название услуги, товара или ниши',
+      example_fix: `Было: <h1>${h1}</h1>\nСтало: <h1>${theme} — профессиональные услуги в Москве</h1>`,
+      visible_in_preview: true,
+    }));
   }
-  
-  const hasPrices = /цена|стоимость|руб|₽|\d+\s*р\b/i.test(html);
-  if (!hasPrices) {
-    issues.push(makeIssue({ module: 'direct', severity: 'medium', title: 'Нет цен на странице',
-      found: 'Не найдены упоминания цен или стоимости', location: 'Контент',
-      why_it_matters: 'Страницы с ценами конвертируют лучше в Директе',
-      how_to_fix: 'Добавьте цены или ценовые вилки',
-      example_fix: '<p>Стоимость SEO-аудита: от 5 000 ₽</p>', visible_in_preview: false }));
+
+  // ── 2. Совпадение смысла H1 ↔ Title ── high, visible_in_preview=true
+  if (title && h1) {
+    const getWords = (s: string) =>
+      new Set(s.toLowerCase().replace(/[^а-яa-zё\s]/gi, '').split(/\s+/).filter(w => w.length > 3));
+    const titleWords = getWords(title);
+    const h1Words = getWords(h1);
+    const overlap = [...titleWords].filter(w => h1Words.has(w)).length;
+    const maxSize = Math.max(titleWords.size, h1Words.size, 1);
+    const matchPct = Math.round((overlap / maxSize) * 100);
+    if (matchPct < 50 && titleWords.size > 0 && h1Words.size > 0) {
+      issues.push(makeIssue({
+        module: 'direct', severity: 'high',
+        title: `H1 и Title совпадают только на ${matchPct}%`,
+        found: `Title: "${title.slice(0, 70)}"\nH1: "${h1.slice(0, 70)}"\nСовпадение: ${matchPct}%`,
+        location: '<title> и <h1>',
+        why_it_matters: 'Автотаргетинг берёт ключевые слова из Title и H1. Если они говорят о разном, Директ подбирает смешанную нерелевантную аудиторию',
+        how_to_fix: 'Сделайте Title и H1 семантически согласованными — одна тема, общие ключевые слова',
+        example_fix: `<title>${theme} — заказать в Москве | Бренд</title>\n<h1>${theme} — надёжные решения для бизнеса</h1>`,
+        visible_in_preview: true,
+      }));
+    }
   }
-  
-  const ctaPatterns = /заказать|оставить заявку|связаться|получить консультацию|записаться|купить/i;
-  if (!ctaPatterns.test(html)) {
-    issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Нет CTA (призыва к действию)',
-      found: 'Не найдены кнопки заказа или формы обратной связи', location: 'Страница',
-      why_it_matters: 'Без CTA посетители из Директа не конвертируются в лиды',
-      how_to_fix: 'Добавьте заметную кнопку CTA выше первого экрана',
-      example_fix: '<button>Заказать бесплатный аудит</button>', visible_in_preview: true }));
+
+  // ── 3. H1 ↔ основной текст (когерентность) ── high, visible_in_preview=false
+  if (h1 && bodyText.length > 200) {
+    const h1Keywords = h1.toLowerCase().replace(/[^а-яa-zё\s]/gi, '').split(/\s+/).filter(w => w.length > 3);
+    const bodyLower = bodyText.toLowerCase();
+    const h1WordsInBody = h1Keywords.filter(w => bodyLower.includes(w));
+    const coherencePct = h1Keywords.length > 0 ? Math.round((h1WordsInBody.length / h1Keywords.length) * 100) : 100;
+    if (coherencePct < 40 && h1Keywords.length >= 2) {
+      issues.push(makeIssue({
+        module: 'direct', severity: 'high',
+        title: 'H1 не раскрыт в тексте страницы',
+        found: `H1: "${h1.slice(0, 60)}"\nСлова H1 в тексте: ${coherencePct}% (${h1WordsInBody.length} из ${h1Keywords.length})`,
+        location: '<h1> и <body>',
+        why_it_matters: 'Автотаргетинг анализирует и заголовок, и текст страницы. Если H1 обещает одно, а текст рассказывает другое — будут нерелевантные показы и высокий процент отказов',
+        how_to_fix: 'Раскройте тему H1 в основном тексте — используйте те же ключевые слова и описывайте ту же услугу/товар',
+        example_fix: `H1: "${h1.slice(0, 40)}"\n→ В тексте ниже опишите: что это, для кого, условия, цены`,
+        visible_in_preview: false,
+      }));
+    }
   }
-  
-  if (!/<meta[^>]*property=["']og:title["']/i.test(html)) {
-    issues.push(makeIssue({ module: 'direct', severity: 'low', title: 'Нет Open Graph тегов',
-      found: 'og:title не найден', location: '<head>',
-      why_it_matters: 'OG-теги улучшают отображение при шаринге и в некоторых рекламных форматах',
-      how_to_fix: 'Добавьте og:title, og:description, og:image',
-      example_fix: '<meta property="og:title" content="...">', visible_in_preview: false }));
+
+  // ── 4. Несколько тематик на странице ── high, visible_in_preview=true
+  const h2Matches = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) || [];
+  const h2Texts = h2Matches.map(m => m.replace(/<[^>]+>/g, '').trim().toLowerCase());
+  if (h2Texts.length >= 3 && themeWords.length > 0) {
+    // Group H2s by whether they match the theme
+    const onTopic = h2Texts.filter(h2 => themeWords.some(tw => h2.includes(tw)));
+    const offTopic = h2Texts.filter(h2 => !themeWords.some(tw => h2.includes(tw)));
+    // If more than half of H2s are off-topic, flag it
+    if (offTopic.length > onTopic.length && offTopic.length >= 2) {
+      issues.push(makeIssue({
+        module: 'direct', severity: 'high',
+        title: 'Несколько тематик на одной посадочной',
+        found: `Тема: "${theme}"\nH2 вне темы (${offTopic.length} из ${h2Texts.length}):\n${offTopic.slice(0, 4).map(h => `• "${h}"`).join('\n')}`,
+        location: 'Структура <h2> заголовков',
+        why_it_matters: 'Автотаргетинг Директа начнёт показывать объявление по всем темам страницы, включая нерелевантные. Это приводит к нецелевым кликам и расходу бюджета',
+        how_to_fix: 'Сфокусируйте посадочную на одной услуге/товаре. Другие темы вынесите на отдельные страницы',
+        example_fix: `Страница 1: "${theme}"\nСтраница 2: "${offTopic[0] || 'другая услуга'}"\nКаждая — отдельная посадочная для Директа`,
+        visible_in_preview: true,
+      }));
+    }
   }
-  
-  return issues;
+
+  // ── 5. Отсутствие коммерческих сигналов ── medium, visible_in_preview=false
+  const pricePattern = /цена|стоимость|руб|₽|\d+\s*р\b|\d[\s\d]*₽/i;
+  const ctaPattern = /заказ|купи|оставь|запис|получи|звони|консультац|заявк|корзин|добавить в/i;
+  const conditionsPattern = /доставк|гарант|оплат|возврат|рассрочк|кредит|бесплатн/i;
+  const hasPrice = pricePattern.test(bodyText);
+  const hasCta = ctaPattern.test(html);
+  const hasConditions = conditionsPattern.test(bodyText);
+  const missingSignals: string[] = [];
+  if (!hasPrice) missingSignals.push('цены');
+  if (!hasCta) missingSignals.push('CTA (кнопка/форма)');
+  if (!hasConditions) missingSignals.push('условия (доставка, гарантия, оплата)');
+
+  if (missingSignals.length >= 2) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'medium',
+      title: 'Нет коммерческих сигналов на странице',
+      found: `Отсутствуют: ${missingSignals.join(', ')}`,
+      location: 'Контент страницы',
+      why_it_matters: 'Без цен, CTA и условий посетители из Директа не конвертируются. Яндекс также учитывает коммерческие факторы при ранжировании рекламных посадочных',
+      how_to_fix: 'Добавьте блок с ценами, заметную кнопку CTA и условия работы (доставка, гарантия)',
+      example_fix: `<section>\n  <h2>Стоимость ${theme.toLowerCase()}</h2>\n  <p>от 5 000 ₽</p>\n  <button>Заказать бесплатную консультацию</button>\n  <p>Доставка по Москве — бесплатно</p>\n</section>`,
+      visible_in_preview: false,
+    }));
+  } else if (!hasCta) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'high',
+      title: 'Нет CTA (призыва к действию)',
+      found: 'Не найдены кнопки заказа, формы или призывы к действию',
+      location: 'Контент страницы',
+      why_it_matters: 'Без CTA посетители из Директа уходят, не совершив целевое действие — деньги на рекламу потрачены впустую',
+      how_to_fix: 'Добавьте заметную кнопку CTA выше первого экрана и повторите в конце страницы',
+      example_fix: `<button>Заказать ${theme.toLowerCase()}</button>`,
+      visible_in_preview: true,
+    }));
+  }
+
+  // ── 6. Страница слишком общая для Директа ── medium, visible_in_preview=false
+  const isGenericPage =
+    (!h1 || genericH1.test(h1.trim())) &&
+    wordCount < 400 &&
+    !hasPrice;
+  if (isGenericPage) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'medium',
+      title: 'Страница слишком общая для Директа',
+      found: `H1: "${h1 || '(нет)'}"\nСлов: ${wordCount}\nЦены: нет`,
+      location: 'Посадочная страница',
+      why_it_matters: 'Общие страницы (главная, категория) плохо конвертируют трафик из Директа. Для рекламы нужна конкретная посадочная с одной услугой/товаром',
+      how_to_fix: 'Создайте отдельную посадочную под конкретную услугу/товар с ценой, описанием и CTA. Используйте её как URL в Директе вместо главной',
+      example_fix: `Вместо: ${title || 'Главная'}\nСоздайте: /uslugi/${theme.toLowerCase().replace(/\s+/g, '-')}/ — с конкретным H1, ценой и формой заказа`,
+      visible_in_preview: false,
+    }));
+  }
+
+  // ── Generate ad_headline (max 35 chars) ──
+  const baseHeadline = h1 || title || theme;
+  let ad_headline = baseHeadline
+    .replace(/<[^>]+>/g, '')
+    .replace(/[|—–\-].*$/, '')
+    .trim();
+  if (ad_headline.length > 35) {
+    // Try to shorten intelligently
+    const words = ad_headline.split(/\s+/);
+    ad_headline = '';
+    for (const w of words) {
+      if ((ad_headline + ' ' + w).trim().length <= 35) {
+        ad_headline = (ad_headline + ' ' + w).trim();
+      } else break;
+    }
+  }
+  if (!ad_headline || ad_headline.length < 5) {
+    ad_headline = theme.slice(0, 35);
+  }
+
+  // ── Autotargeting categories recommendation ──
+  const hasNarrowFocus = h1 && !genericH1.test(h1.trim()) && themeWords.some(tw => h1.toLowerCase().includes(tw));
+  const autotargeting_categories: Record<string, boolean> = {
+    'Целевые': true,
+    'Узкие': !!hasNarrowFocus,
+    'Альтернативные': false,
+    'Сопутствующие': false,
+    'Брендовые': /бренд|brand/i.test(bodyText) || false,
+  };
+
+  return { issues, ad_headline, autotargeting_categories };
 }
 
 // ═══ STEP 7: Schema Audit ═══
@@ -932,13 +1077,13 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     const contentIssues = contentAudit(html, theme);
     
     // STEP 3: Yandex Direct
-    const directIssues = directAudit(html, theme);
+    const directResult = directAudit(html, theme);
     
     // Steps 7 & 8
     const schemaIssues = schemaAudit(html);
     const aiIssues = aiAudit(html);
     
-    let allIssues = [...techIssues, ...contentIssues, ...directIssues, ...schemaIssues, ...aiIssues];
+    let allIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
     
     // Site-mode: crawl and add extra checks
     let crawledPages: { url: string; html: string; status: number }[] = [];
@@ -966,6 +1111,12 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       status: 'done', progress_pct: 100,
       minus_words: minusWords,
       issues: allIssues, scores,
+      // Store Direct module extras in competitors field alongside competitor data
+      competitors: [...(competitors || []), {
+        _direct_meta: true,
+        ad_headline: directResult.ad_headline,
+        autotargeting_categories: directResult.autotargeting_categories,
+      }],
     });
     
   } catch (error) {
