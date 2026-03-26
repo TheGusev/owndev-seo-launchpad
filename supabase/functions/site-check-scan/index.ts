@@ -1338,9 +1338,9 @@ async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Prom
       }),
     });
     const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-    const m = content.match(/\[[\s\S]*\]/);
-    if (m) result.push(...JSON.parse(m[0]).map((t: any) => ({ ...t, type: 'thematic' })));
+    const content = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+    const parsed = tryParseJsonArray(content);
+    result.push(...parsed.map((t: any) => ({ ...t, type: 'thematic' })));
   } catch {}
   const seen = new Set<string>();
   return result.filter(m => {
