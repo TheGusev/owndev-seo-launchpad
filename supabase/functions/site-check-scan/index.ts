@@ -28,6 +28,14 @@ async function fetchWithTimeout(url: string, timeoutMs = 8000, opts: RequestInit
   }
 }
 
+async function fetchText(url: string, timeoutMs = 5000): Promise<{ ok: boolean; status: number; text: string }> {
+  try {
+    const resp = await fetchWithTimeout(url, timeoutMs);
+    const text = resp.ok ? await resp.text() : '';
+    return { ok: resp.ok, status: resp.status, text };
+  } catch { return { ok: false, status: 0, text: '' }; }
+}
+
 async function checkUrl(url: string): Promise<{ ok: boolean; status: number }> {
   try {
     const resp = await fetchWithTimeout(url, 5000, { method: 'HEAD', redirect: 'follow' });
@@ -48,7 +56,7 @@ function makeIssue(partial: Omit<Issue, 'id'>): Issue {
 }
 
 // ─── Score calculator ───
-function calcScores(issues: Issue[], html: string, parsedUrl: URL) {
+function calcScores(issues: Issue[]) {
   let seo = 100, direct = 100, schema = 100, ai = 100;
   for (const i of issues) {
     const w = i.severity === 'critical' ? 15 : i.severity === 'high' ? 8 : i.severity === 'medium' ? 4 : 2;
@@ -65,7 +73,7 @@ function calcScores(issues: Issue[], html: string, parsedUrl: URL) {
   return { total, seo, direct, schema, ai };
 }
 
-// ═══ STEP 0: Theme detection (uses LLM) ═══
+// ═══ STEP 0: Theme detection ═══
 async function detectTheme(html: string, url: string): Promise<string> {
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const bodyText = bodyMatch ? bodyMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000) : '';
@@ -94,144 +102,524 @@ async function detectTheme(html: string, url: string): Promise<string> {
   } catch { return 'Общая тематика'; }
 }
 
-// ═══ STEP 1: Technical SEO ═══
-function technicalAudit(html: string, parsedUrl: URL, robotsOk: boolean, sitemapOk: boolean, brokenLinks: string[], loadTimeMs: number): Issue[] {
+// ═══════════════════════════════════════
+// STEP 1: Technical SEO (module="technical")
+// ═══════════════════════════════════════
+interface TechAuditInput {
+  html: string;
+  parsedUrl: URL;
+  httpStatus: number;
+  robotsOk: boolean;
+  robotsTxt: string;
+  sitemapOk: boolean;
+  sitemapBody: string;
+  brokenLinks: string[];
+  loadTimeMs: number;
+}
+
+function technicalAudit(input: TechAuditInput): Issue[] {
+  const { html, parsedUrl, httpStatus, robotsOk, robotsTxt, sitemapOk, sitemapBody, brokenLinks, loadTimeMs } = input;
   const issues: Issue[] = [];
   const origin = parsedUrl.origin;
-  
-  if (parsedUrl.protocol !== 'https:') {
-    issues.push(makeIssue({ module: 'technical', severity: 'critical', title: 'Сайт не использует HTTPS',
-      found: `Протокол: ${parsedUrl.protocol}`, location: 'URL сайта',
-      why_it_matters: 'HTTPS — обязательный фактор ранжирования. Браузеры показывают "Не защищено"',
-      how_to_fix: 'Установите SSL-сертификат и настройте редирект с HTTP на HTTPS',
-      example_fix: 'Redirect 301 / https://yoursite.ru/', visible_in_preview: true }));
-  }
-  
-  if (!robotsOk) {
-    issues.push(makeIssue({ module: 'technical', severity: 'critical', title: 'robots.txt недоступен',
-      found: `${origin}/robots.txt → ошибка`, location: '/robots.txt',
-      why_it_matters: 'Без robots.txt поисковики не знают какие страницы индексировать',
-      how_to_fix: 'Создайте robots.txt в корне сайта', example_fix: 'User-agent: *\nAllow: /\nSitemap: https://yoursite.ru/sitemap.xml',
+  const pageUrl = parsedUrl.toString();
+
+  // 1. HTTP status !== 200
+  if (httpStatus !== 200) {
+    issues.push(makeIssue({ module: 'technical', severity: 'critical',
+      title: `HTTP статус ${httpStatus} (не 200)`,
+      found: `Страница вернула статус ${httpStatus}`, location: 'HTTP ответ',
+      why_it_matters: 'Поисковики не индексируют страницы с ошибочными статусами (4xx, 5xx)',
+      how_to_fix: 'Убедитесь что страница возвращает HTTP 200 для корректного содержимого',
+      example_fix: 'Настройте сервер так, чтобы рабочие страницы отдавали 200 OK',
       visible_in_preview: true }));
   }
-  
-  if (!sitemapOk) {
-    issues.push(makeIssue({ module: 'technical', severity: 'high', title: 'sitemap.xml недоступен',
-      found: `${origin}/sitemap.xml → ошибка`, location: '/sitemap.xml',
-      why_it_matters: 'Sitemap ускоряет индексацию и помогает найти все страницы',
-      how_to_fix: 'Сгенерируйте sitemap.xml и укажите в robots.txt',
-      example_fix: 'Sitemap: https://yoursite.ru/sitemap.xml', visible_in_preview: true }));
+
+  // 2. HTTPS
+  if (parsedUrl.protocol !== 'https:') {
+    issues.push(makeIssue({ module: 'technical', severity: 'critical',
+      title: 'Сайт не использует HTTPS',
+      found: `Протокол: ${parsedUrl.protocol}`, location: 'URL сайта',
+      why_it_matters: 'HTTPS — обязательный фактор ранжирования. Браузеры показывают предупреждение "Не защищено"',
+      how_to_fix: 'Установите SSL-сертификат и настройте 301-редирект с HTTP на HTTPS',
+      example_fix: `Redirect 301 / https://${parsedUrl.hostname}/`,
+      visible_in_preview: true }));
   }
-  
+
+  // 3. robots.txt
+  if (!robotsOk) {
+    issues.push(makeIssue({ module: 'technical', severity: 'critical',
+      title: 'robots.txt недоступен',
+      found: `${origin}/robots.txt → ошибка или не найден`, location: '/robots.txt',
+      why_it_matters: 'Без robots.txt поисковики не знают какие разделы сайта индексировать',
+      how_to_fix: 'Создайте файл robots.txt в корне сайта',
+      example_fix: `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml`,
+      visible_in_preview: true }));
+  } else {
+    // 3a. URL blocked by robots.txt?
+    const disallowLines = robotsTxt.split('\n').filter(l => /^Disallow:\s*.+/i.test(l));
+    const blockedPaths = disallowLines.map(l => l.replace(/^Disallow:\s*/i, '').trim());
+    const currentPath = parsedUrl.pathname;
+    const isBlocked = blockedPaths.some(p => p && currentPath.startsWith(p));
+    if (isBlocked) {
+      issues.push(makeIssue({ module: 'technical', severity: 'critical',
+        title: 'Страница закрыта от индексации в robots.txt',
+        found: `Путь "${currentPath}" попадает под Disallow`, location: '/robots.txt',
+        why_it_matters: 'Закрытая в robots.txt страница не будет проиндексирована поисковиками',
+        how_to_fix: 'Удалите или скорректируйте Disallow-директиву для этого URL',
+        example_fix: `# Удалите строку:\n# Disallow: ${currentPath}`,
+        visible_in_preview: true }));
+    }
+    // 3b. Sitemap directive in robots.txt
+    if (!/Sitemap:/i.test(robotsTxt)) {
+      issues.push(makeIssue({ module: 'technical', severity: 'medium',
+        title: 'robots.txt не содержит ссылку на Sitemap',
+        found: 'Директива Sitemap: не найдена', location: '/robots.txt',
+        why_it_matters: 'Указание Sitemap в robots.txt помогает поисковикам быстрее обнаружить карту сайта',
+        how_to_fix: 'Добавьте строку Sitemap: в конец robots.txt',
+        example_fix: `Sitemap: ${origin}/sitemap.xml`,
+        visible_in_preview: false }));
+    }
+  }
+
+  // 4. sitemap.xml
+  if (!sitemapOk) {
+    issues.push(makeIssue({ module: 'technical', severity: 'high',
+      title: 'sitemap.xml недоступен',
+      found: `${origin}/sitemap.xml → ошибка или не найден`, location: '/sitemap.xml',
+      why_it_matters: 'Sitemap ускоряет индексацию и помогает поисковикам обнаружить все страницы',
+      how_to_fix: 'Сгенерируйте sitemap.xml и разместите в корне сайта',
+      example_fix: `<?xml version="1.0"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${pageUrl}</loc></url>\n</urlset>`,
+      visible_in_preview: true }));
+  } else if (sitemapBody) {
+    // 4a. Current URL in sitemap?
+    const normalizedPath = parsedUrl.pathname.replace(/\/$/, '');
+    if (!sitemapBody.includes(pageUrl) && !sitemapBody.includes(normalizedPath)) {
+      issues.push(makeIssue({ module: 'technical', severity: 'medium',
+        title: 'Страница не найдена в sitemap.xml',
+        found: `URL "${pageUrl}" отсутствует в карте сайта`, location: '/sitemap.xml',
+        why_it_matters: 'Страницы не упомянутые в sitemap индексируются медленнее',
+        how_to_fix: 'Добавьте URL в sitemap.xml',
+        example_fix: `<url><loc>${pageUrl}</loc></url>`,
+        visible_in_preview: false }));
+    }
+  }
+
+  // 5. meta noindex
+  const metaRobots = html.match(/<meta[^>]*name=["']robots["'][^>]*content=["']([^"']+)["']/i);
+  if (metaRobots && metaRobots[1].toLowerCase().includes('noindex')) {
+    issues.push(makeIssue({ module: 'technical', severity: 'critical',
+      title: 'Страница помечена как noindex',
+      found: `<meta name="robots" content="${metaRobots[1]}">`, location: '<head> → <meta name="robots">',
+      why_it_matters: 'Noindex полностью блокирует появление страницы в поисковой выдаче',
+      how_to_fix: 'Удалите noindex если страница должна индексироваться',
+      example_fix: '<meta name="robots" content="index, follow">',
+      visible_in_preview: true }));
+  }
+
+  // 6. Canonical
+  const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i)
+    || html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["']canonical["']/i);
+  const canonical = canonicalMatch ? canonicalMatch[1].trim() : null;
+  if (!canonical) {
+    issues.push(makeIssue({ module: 'technical', severity: 'high',
+      title: 'Отсутствует <link rel="canonical">',
+      found: 'Canonical не указан', location: '<head>',
+      why_it_matters: 'Без canonical могут возникнуть дубли в индексе (www/non-www, параметры, trailing slash)',
+      how_to_fix: 'Добавьте canonical, указывающий на предпочтительный URL',
+      example_fix: `<link rel="canonical" href="${pageUrl}" />`,
+      visible_in_preview: false }));
+  } else {
+    const norm = (u: string) => u.replace(/\/+$/, '').replace(/^https?:\/\/(www\.)?/, '');
+    if (norm(canonical) !== norm(pageUrl)) {
+      issues.push(makeIssue({ module: 'technical', severity: 'high',
+        title: 'Canonical указывает на другую страницу',
+        found: `Canonical: "${canonical}"\nТекущий URL: "${pageUrl}"`, location: '<head> → <link rel="canonical">',
+        why_it_matters: 'Неправильный canonical может привести к деиндексации текущей страницы',
+        how_to_fix: 'Исправьте canonical на текущий URL',
+        example_fix: `<link rel="canonical" href="${pageUrl}" />`,
+        visible_in_preview: true }));
+    }
+  }
+
+  // 7. Duplicates www/non-www warning (if no canonical)
+  if (!canonical) {
+    const altHost = parsedUrl.hostname.startsWith('www.') ? parsedUrl.hostname.replace('www.', '') : `www.${parsedUrl.hostname}`;
+    issues.push(makeIssue({ module: 'technical', severity: 'medium',
+      title: 'Риск дублей www / non-www',
+      found: `Сайт ${parsedUrl.hostname} доступен без canonical`, location: '<head>',
+      why_it_matters: `Версии ${parsedUrl.hostname} и ${altHost} могут индексироваться как отдельные страницы-дубли`,
+      how_to_fix: 'Настройте 301-редирект и canonical для консолидации версий',
+      example_fix: `RewriteRule ^(.*)$ https://${parsedUrl.hostname}/$1 [R=301,L]`,
+      visible_in_preview: false }));
+  }
+
+  // 8. Speed / LCP heuristic
+  if (loadTimeMs > 4000) {
+    issues.push(makeIssue({ module: 'technical', severity: 'critical',
+      title: `Критически медленная загрузка (${(loadTimeMs / 1000).toFixed(1)}с)`,
+      found: `Время ответа сервера: ${loadTimeMs}мс (порог LCP: 2500мс)`, location: 'HTTP ответ сервера',
+      why_it_matters: 'LCP > 4с — «плохо» по Core Web Vitals. Страница теряет позиции и пользователей',
+      how_to_fix: 'Оптимизируйте TTFB: серверное кэширование, CDN, уменьшение серверной нагрузки',
+      example_fix: 'Целевой TTFB < 600мс, LCP < 2.5с',
+      visible_in_preview: true }));
+  } else if (loadTimeMs > 2500) {
+    issues.push(makeIssue({ module: 'technical', severity: 'high',
+      title: `Медленная загрузка (${(loadTimeMs / 1000).toFixed(1)}с)`,
+      found: `Время ответа: ${loadTimeMs}мс (порог LCP: 2500мс)`, location: 'HTTP ответ сервера',
+      why_it_matters: 'LCP > 2.5с — «требует улучшения» по Core Web Vitals',
+      how_to_fix: 'Включите gzip/brotli сжатие, HTTP-кэширование, CDN',
+      example_fix: 'Добавьте заголовки: Content-Encoding: br, Cache-Control: max-age=86400',
+      visible_in_preview: true }));
+  }
+
+  // 9. Mobile-friendly: viewport
+  const vpMatch = html.match(/<meta[^>]*name=["']viewport["'][^>]*content=["']([^"']+)["']/i);
+  if (!vpMatch) {
+    issues.push(makeIssue({ module: 'technical', severity: 'critical',
+      title: 'Нет meta viewport — сайт не адаптивный',
+      found: '<meta name="viewport"> не найден', location: '<head>',
+      why_it_matters: 'Без viewport мобильные устройства показывают десктопную версию — страница теряет мобильный трафик',
+      how_to_fix: 'Добавьте meta viewport в <head>',
+      example_fix: '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      visible_in_preview: true }));
+  } else if (!vpMatch[1].includes('width=device-width')) {
+    issues.push(makeIssue({ module: 'technical', severity: 'high',
+      title: 'Неправильный viewport',
+      found: `viewport: "${vpMatch[1]}"`, location: '<head> → <meta name="viewport">',
+      why_it_matters: 'Viewport без width=device-width вызывает некорректное масштабирование на мобильных',
+      how_to_fix: 'Установите корректный viewport',
+      example_fix: '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      visible_in_preview: false }));
+  }
+
+  // 10. Images without width/height (CLS risk)
+  const imgTags = html.match(/<img[^>]*>/gi) || [];
+  const imgsNoDims = imgTags.filter(img => !(/width=/i.test(img) && /height=/i.test(img)));
+  if (imgsNoDims.length > 0) {
+    const examples = imgsNoDims.slice(0, 2).map(t => { const s = t.match(/src=["']([^"']+)["']/i); return s ? s[1] : '?'; });
+    issues.push(makeIssue({ module: 'technical', severity: imgsNoDims.length > 5 ? 'high' : 'medium',
+      title: `${imgsNoDims.length} изображений без width/height (риск CLS)`,
+      found: `Из ${imgTags.length} тегов <img> у ${imgsNoDims.length} нет атрибутов размеров.\nПримеры: ${examples.join(', ')}`,
+      location: '<img> теги',
+      why_it_matters: 'Без width/height браузер не резервирует место — это вызывает CLS (сдвиг макета), ухудшая Core Web Vitals',
+      how_to_fix: 'Добавьте width и height к каждому <img>',
+      example_fix: `<img src="${examples[0] || 'hero.jpg'}" width="800" height="600" alt="Описание">`,
+      visible_in_preview: false }));
+  }
+
+  // 11. Broken internal links
   if (brokenLinks.length > 0) {
     issues.push(makeIssue({ module: 'technical', severity: brokenLinks.length >= 3 ? 'critical' : 'high',
       title: `${brokenLinks.length} битых внутренних ссылок`,
-      found: brokenLinks.slice(0, 3).join(', '), location: 'Внутренние ссылки',
-      why_it_matters: 'Битые ссылки ухудшают краулинг и пользовательский опыт',
+      found: brokenLinks.slice(0, 5).join('\n'), location: 'Внутренние ссылки <a href>',
+      why_it_matters: 'Битые ссылки ухудшают краулинг, распределение ссылочного веса и UX',
       how_to_fix: 'Исправьте URL или удалите нерабочие ссылки',
-      example_fix: 'Замените на актуальные URL', visible_in_preview: true }));
+      example_fix: `Замените ${brokenLinks[0]} на актуальный URL или удалите ссылку`,
+      visible_in_preview: true }));
   }
-  
-  if (loadTimeMs > 3000) {
-    issues.push(makeIssue({ module: 'technical', severity: loadTimeMs > 5000 ? 'critical' : 'medium',
-      title: `Медленная загрузка (${(loadTimeMs / 1000).toFixed(1)}с)`,
-      found: `Время ответа: ${loadTimeMs}мс`, location: 'Сервер',
-      why_it_matters: 'Медленные страницы теряют позиции и пользователей',
-      how_to_fix: 'Оптимизируйте серверное время ответа, включите кэширование',
-      example_fix: 'TTFB должен быть < 600мс', visible_in_preview: false }));
+
+  // 12. No preload for hero image
+  const hasPreload = /<link[^>]*rel=["']preload["'][^>]*as=["']image["']/i.test(html);
+  if (!hasPreload && imgTags.length > 0) {
+    const firstSrc = imgTags[0].match(/src=["']([^"']+)["']/i);
+    issues.push(makeIssue({ module: 'technical', severity: 'low',
+      title: 'Нет preload для hero-изображения (LCP)',
+      found: 'Не найден <link rel="preload" as="image">', location: '<head>',
+      why_it_matters: 'Preload ускоряет загрузку LCP-элемента, улучшая Core Web Vitals',
+      how_to_fix: 'Добавьте preload для главного изображения первого экрана',
+      example_fix: `<link rel="preload" href="${firstSrc?.[1] || '/hero.jpg'}" as="image">`,
+      visible_in_preview: false }));
   }
-  
-  // CWV heuristics
-  const imgTags = html.match(/<img[^>]*>/gi) || [];
-  const imgsNoDims = imgTags.filter((img: string) => !(/width=/i.test(img) && /height=/i.test(img))).length;
-  if (imgsNoDims > 0) {
-    issues.push(makeIssue({ module: 'technical', severity: 'medium', title: `${imgsNoDims} изображений без width/height`,
-      found: `Из ${imgTags.length} изображений у ${imgsNoDims} нет размеров`, location: '<img> теги',
-      why_it_matters: 'Без размеров браузер не может зарезервировать место — это вызывает CLS (сдвиг макета)',
-      how_to_fix: 'Добавьте width и height к каждому <img>',
-      example_fix: '<img src="hero.jpg" width="800" height="600" alt="...">', visible_in_preview: false }));
-  }
-  
-  const hasMetaRobots = html.match(/<meta[^>]*name=["']robots["'][^>]*content=["']([^"']+)["']/i);
-  if (hasMetaRobots && hasMetaRobots[1].includes('noindex')) {
-    issues.push(makeIssue({ module: 'technical', severity: 'critical', title: 'Страница помечена как noindex',
-      found: `meta robots: "${hasMetaRobots[1]}"`, location: '<head>',
-      why_it_matters: 'Noindex полностью блокирует страницу от появления в поиске',
-      how_to_fix: 'Удалите noindex если страница должна индексироваться',
-      example_fix: '<meta name="robots" content="index, follow">', visible_in_preview: true }));
-  }
-  
+
   return issues;
 }
 
-// ═══ STEP 2: Content Audit ═══
-function contentAudit(html: string): Issue[] {
+// ═══ Site-mode extra technical checks ═══
+function siteModeTechnicalAudit(pages: { url: string; html: string; status: number }[]): Issue[] {
   const issues: Issue[] = [];
-  
+
+  // Pages without title
+  const noTitle = pages.filter(p => p.status === 200 && !/<title[^>]*>[^<]+<\/title>/i.test(p.html));
+  if (noTitle.length > 0) {
+    issues.push(makeIssue({ module: 'technical', severity: 'critical',
+      title: `${noTitle.length} страниц без <title>`,
+      found: noTitle.slice(0, 5).map(p => p.url).join('\n'),
+      location: 'Карта сайта',
+      why_it_matters: 'Страницы без title практически не ранжируются',
+      how_to_fix: 'Добавьте уникальный title на каждую страницу',
+      example_fix: '<title>Уникальный заголовок — Бренд</title>',
+      visible_in_preview: true }));
+  }
+
+  // Pages without H1
+  const noH1 = pages.filter(p => p.status === 200 && !/<h1[^>]*>/i.test(p.html));
+  if (noH1.length > 0) {
+    issues.push(makeIssue({ module: 'technical', severity: 'high',
+      title: `${noH1.length} страниц без <h1>`,
+      found: noH1.slice(0, 5).map(p => p.url).join('\n'),
+      location: 'Карта сайта',
+      why_it_matters: 'H1 — основной заголовок страницы, его отсутствие снижает релевантность',
+      how_to_fix: 'Добавьте один H1 на каждую страницу',
+      example_fix: '<h1>Основная тема страницы</h1>',
+      visible_in_preview: false }));
+  }
+
+  // Duplicate titles across pages
+  const titleMap: Record<string, string[]> = {};
+  for (const p of pages) {
+    const m = p.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    if (m) {
+      const t = m[1].trim().toLowerCase();
+      if (!titleMap[t]) titleMap[t] = [];
+      titleMap[t].push(p.url);
+    }
+  }
+  const dupes = Object.entries(titleMap).filter(([, urls]) => urls.length > 1);
+  if (dupes.length > 0) {
+    const totalDupes = dupes.reduce((s, [, u]) => s + u.length, 0);
+    const examples = dupes.slice(0, 3).map(([title, urls]) => `"${title}" → ${urls.slice(0, 2).join(', ')}`);
+    issues.push(makeIssue({ module: 'technical', severity: 'high',
+      title: `${totalDupes} страниц с дублирующимися title`,
+      found: examples.join('\n'),
+      location: 'Карта сайта',
+      why_it_matters: 'Дубли title размывают релевантность — поисковик не понимает какую страницу показать',
+      how_to_fix: 'Сделайте title уникальным для каждой страницы',
+      example_fix: 'Страница 1: <title>Услуга A — Бренд</title>\nСтраница 2: <title>Услуга B — Бренд</title>',
+      visible_in_preview: true }));
+  }
+
+  // 4xx internal pages
+  const broken4xx = pages.filter(p => p.status >= 400 && p.status < 500);
+  if (broken4xx.length > 0) {
+    issues.push(makeIssue({ module: 'technical', severity: broken4xx.length >= 5 ? 'critical' : 'high',
+      title: `${broken4xx.length} внутренних страниц с ошибкой 4xx`,
+      found: broken4xx.slice(0, 5).map(p => `${p.url} → ${p.status}`).join('\n'),
+      location: 'Карта сайта',
+      why_it_matters: 'Страницы 4xx тратят краулинговый бюджет и ухудшают UX',
+      how_to_fix: 'Удалите ссылки на несуществующие страницы или настройте редиректы',
+      example_fix: 'Redirect 301 /old-page /new-page',
+      visible_in_preview: false }));
+  }
+
+  return issues;
+}
+
+// ═══════════════════════════════════════
+// STEP 2: Content Audit (module="content")
+// ═══════════════════════════════════════
+function contentAudit(html: string, theme: string): Issue[] {
+  const issues: Issue[] = [];
+
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
-  if (!title) {
-    issues.push(makeIssue({ module: 'content', severity: 'critical', title: 'Тег <title> отсутствует',
-      found: '<title> не найден', location: '<head>',
-      why_it_matters: 'Title — один из главных факторов ранжирования',
-      how_to_fix: 'Добавьте уникальный title 50-60 символов',
-      example_fix: '<title>SEO-продвижение сайтов в Москве — OwnDev</title>', visible_in_preview: true }));
-  } else if (title.length < 30 || title.length > 70) {
-    issues.push(makeIssue({ module: 'content', severity: 'medium', title: `Title ${title.length < 30 ? 'слишком короткий' : 'слишком длинный'} (${title.length} симв.)`,
-      found: `"${title.slice(0, 70)}"`, location: '<title>',
-      why_it_matters: title.length < 30 ? 'Короткий title не раскрывает содержание' : 'Длинный title обрезается в выдаче',
-      how_to_fix: `${title.length < 30 ? 'Увеличьте' : 'Сократите'} до 50-60 символов`,
-      example_fix: '<title>Основной запрос — Уточнение | Бренд</title>', visible_in_preview: false }));
-  }
-  
   const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["']/i)
     || html.match(/<meta[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["']/i);
   const description = descMatch ? descMatch[1].trim() : '';
-  if (!description) {
-    issues.push(makeIssue({ module: 'content', severity: 'critical', title: 'Meta description отсутствует',
-      found: '<meta name="description"> не найден', location: '<head>',
-      why_it_matters: 'Description отображается в сниппете поиска и влияет на CTR',
-      how_to_fix: 'Добавьте meta description 150-160 символов',
-      example_fix: '<meta name="description" content="SEO-аудит и продвижение сайтов — рост трафика от 30% за 3 месяца">', visible_in_preview: true }));
-  }
-  
   const h1Matches = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi) || [];
-  if (h1Matches.length === 0) {
-    issues.push(makeIssue({ module: 'content', severity: 'critical', title: 'H1 отсутствует',
-      found: '<h1> не найден на странице', location: 'Страница',
-      why_it_matters: 'H1 — главный заголовок, сообщает поисковикам основную тему',
-      how_to_fix: 'Добавьте один H1 с основным ключевым словом',
-      example_fix: '<h1>SEO-продвижение сайтов</h1>', visible_in_preview: true }));
-  } else if (h1Matches.length > 1) {
-    issues.push(makeIssue({ module: 'content', severity: 'high', title: `Несколько H1 (${h1Matches.length})`,
-      found: `Найдено ${h1Matches.length} тегов <h1>`, location: 'Страница',
-      why_it_matters: 'Несколько H1 размывают главную тему страницы',
-      how_to_fix: 'Оставьте один H1, остальные замените на H2',
-      example_fix: '<h1>Главный заголовок</h1>\n<h2>Подзаголовок</h2>', visible_in_preview: false }));
-  }
-  
-  const imgTags = html.match(/<img[^>]*>/gi) || [];
-  const noAlt = imgTags.filter((img) => !img.match(/alt=["'][^"']+["']/i));
-  if (noAlt.length > 0) {
-    issues.push(makeIssue({ module: 'content', severity: noAlt.length > 5 ? 'high' : 'medium',
-      title: `${noAlt.length} изображений без alt`,
-      found: `${noAlt.length} из ${imgTags.length} без alt-текста`, location: '<img> теги',
-      why_it_matters: 'Alt-тексты помогают поисковикам понять изображения и улучшают доступность',
-      how_to_fix: 'Добавьте описательный alt к каждому <img>',
-      example_fix: '<img src="team.jpg" alt="Команда специалистов OwnDev">', visible_in_preview: false }));
-  }
-  
+  const h1Texts = h1Matches.map(m => m.replace(/<[^>]+>/g, '').trim());
+  const h1 = h1Texts[0] || '';
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyText = bodyMatch ? bodyMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-  const wordCount = bodyText.split(/\s+/).length;
-  if (wordCount < 300) {
-    issues.push(makeIssue({ module: 'content', severity: 'medium', title: `Мало текста (${wordCount} слов)`,
-      found: `Всего ${wordCount} слов на странице`, location: 'Контент',
-      why_it_matters: 'Страницы с малым количеством текста хуже ранжируются',
-      how_to_fix: 'Добавьте полезный контент: описания, FAQ, инструкции',
-      example_fix: 'Оптимальный объём для коммерческих страниц: 500-1500 слов', visible_in_preview: false }));
+  const bodyText = bodyMatch ? bodyMatch[1]
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  const wordCount = bodyText.split(/\s+/).filter(w => w.length > 1).length;
+  const themeWords = theme.toLowerCase().split(/[\s,—–\-]+/).filter(w => w.length > 3);
+
+  // ── Title ──
+  if (!title) {
+    issues.push(makeIssue({ module: 'content', severity: 'critical',
+      title: 'Тег <title> отсутствует',
+      found: '<title> не найден на странице', location: '<head> → <title>',
+      why_it_matters: 'Title — один из главных факторов ранжирования. Без него страница не получит релевантный сниппет в выдаче',
+      how_to_fix: 'Добавьте уникальный title длиной 50-70 символов с основным ключевым словом',
+      example_fix: `<title>${theme} — заказать в Москве | Бренд</title>`,
+      visible_in_preview: true }));
+  } else {
+    if (title.length < 50) {
+      issues.push(makeIssue({ module: 'content', severity: 'medium',
+        title: `Title слишком короткий (${title.length} символов, норма 50-70)`,
+        found: `"${title}"`, location: '<head> → <title>',
+        why_it_matters: 'Короткий title не раскрывает содержание страницы и занимает мало места в выдаче',
+        how_to_fix: 'Дополните title ключевыми словами и уточнениями до 50-70 символов',
+        example_fix: `<title>${title} — ${theme} | Бренд</title>`,
+        visible_in_preview: false }));
+    } else if (title.length > 70) {
+      issues.push(makeIssue({ module: 'content', severity: 'medium',
+        title: `Title слишком длинный (${title.length} символов, норма 50-70)`,
+        found: `"${title.slice(0, 80)}..."`, location: '<head> → <title>',
+        why_it_matters: 'Длинный title обрезается в выдаче — пользователь не видит полную информацию',
+        how_to_fix: 'Сократите title до 50-70 символов, оставив ключевое слово в начале',
+        example_fix: `<title>${theme} — краткое уточнение | Бренд</title>`,
+        visible_in_preview: false }));
+    }
+
+    // Theme keyword in title
+    const titleLower = title.toLowerCase();
+    const hasTheme = themeWords.some(w => titleLower.includes(w));
+    if (!hasTheme && themeWords.length > 0) {
+      issues.push(makeIssue({ module: 'content', severity: 'high',
+        title: 'Title не содержит ключевое слово тематики',
+        found: `Title: "${title}"\nТема сайта: "${theme}"`, location: '<head> → <title>',
+        why_it_matters: 'Title без основного ключевого слова снижает релевантность по целевым запросам',
+        how_to_fix: `Включите слова тематики («${theme}») в Title`,
+        example_fix: `<title>${theme} — ${title.split('—')[0]?.trim() || 'услуги'} | Бренд</title>`,
+        visible_in_preview: false }));
+    }
   }
-  
+
+  // ── H1 ──
+  if (h1Matches.length === 0) {
+    issues.push(makeIssue({ module: 'content', severity: 'critical',
+      title: 'H1 отсутствует',
+      found: '<h1> не найден на странице', location: 'Контент страницы',
+      why_it_matters: 'H1 — главный заголовок, сообщающий поисковикам основную тему страницы',
+      how_to_fix: 'Добавьте один H1 с основным ключевым словом',
+      example_fix: `<h1>${theme}</h1>`,
+      visible_in_preview: true }));
+  } else {
+    if (h1Matches.length > 1) {
+      issues.push(makeIssue({ module: 'content', severity: 'high',
+        title: `Несколько H1 на странице (${h1Matches.length})`,
+        found: h1Texts.map((t, i) => `H1 #${i + 1}: "${t}"`).join('\n'),
+        location: 'Контент страницы',
+        why_it_matters: 'Несколько H1 размывают главную тему — поисковик не понимает что является основным заголовком',
+        how_to_fix: 'Оставьте один H1, остальные понизьте до H2',
+        example_fix: `<h1>${h1Texts[0]}</h1>\n<h2>${h1Texts[1] || 'Подзаголовок'}</h2>`,
+        visible_in_preview: false }));
+    }
+
+    // Generic H1
+    if (/^(главная|home|добро пожаловать|welcome|о компании|о нас|about)/i.test(h1)) {
+      issues.push(makeIssue({ module: 'content', severity: 'high',
+        title: 'H1 слишком общий — не описывает услугу/товар',
+        found: `H1: "${h1}"`, location: '<h1>',
+        why_it_matters: 'Общий H1 не содержит ключевых слов и не помогает в ранжировании по целевым запросам',
+        how_to_fix: 'Замените общий H1 на конкретное описание основной услуги/товара',
+        example_fix: `<h1>${theme} — профессиональные услуги</h1>`,
+        visible_in_preview: false }));
+    }
+
+    // H1 vs Title alignment
+    if (title && h1) {
+      const getWords = (s: string) => new Set(s.toLowerCase().replace(/[^а-яa-zё\s]/gi, '').split(/\s+/).filter(w => w.length > 3));
+      const titleWords = getWords(title);
+      const h1Words = getWords(h1);
+      const overlap = [...titleWords].filter(w => h1Words.has(w)).length;
+      const maxSize = Math.max(titleWords.size, h1Words.size, 1);
+      if (overlap / maxSize < 0.2 && titleWords.size > 0 && h1Words.size > 0) {
+        issues.push(makeIssue({ module: 'content', severity: 'high',
+          title: 'Title и H1 тематически расходятся',
+          found: `Title: "${title.slice(0, 60)}"\nH1: "${h1.slice(0, 60)}"`,
+          location: '<title> и <h1>',
+          why_it_matters: 'Когда Title и H1 говорят о разном, поисковик получает противоречивые сигналы о теме страницы',
+          how_to_fix: 'Убедитесь что Title и H1 раскрывают одну тему с общими ключевыми словами',
+          example_fix: `<title>${theme} — услуги | Бренд</title>\n<h1>${theme} — профессиональный подход</h1>`,
+          visible_in_preview: true }));
+      }
+    }
+  }
+
+  // ── Description ──
+  if (!description) {
+    issues.push(makeIssue({ module: 'content', severity: 'medium',
+      title: 'Meta description отсутствует',
+      found: '<meta name="description"> не найден', location: '<head>',
+      why_it_matters: 'Description отображается в сниппете поиска и влияет на CTR (кликабельность)',
+      how_to_fix: 'Добавьте meta description длиной 120-160 символов с призывом к действию',
+      example_fix: `<meta name="description" content="${theme} — закажите бесплатную консультацию. Опыт 10+ лет, 500+ проектов.">`,
+      visible_in_preview: true }));
+  } else {
+    if (description.length < 120 || description.length > 160) {
+      issues.push(makeIssue({ module: 'content', severity: 'low',
+        title: `Description ${description.length < 120 ? 'короткий' : 'длинный'} (${description.length} симв., норма 120-160)`,
+        found: `"${description.slice(0, 160)}${description.length > 160 ? '...' : ''}"`,
+        location: '<head> → <meta name="description">',
+        why_it_matters: description.length < 120 ? 'Короткий description не использует доступное место в сниппете' : 'Длинный description обрезается в выдаче',
+        how_to_fix: `${description.length < 120 ? 'Дополните' : 'Сократите'} до 120-160 символов`,
+        example_fix: `<meta name="description" content="${theme} — результат за 30 дней. Закажите аудит бесплатно →">`,
+        visible_in_preview: false }));
+    }
+    // CTA in description
+    if (!/заказ|получи|скидк|бесплатн|акци|звони|узнай|попроб|→|☎|📞/i.test(description)) {
+      issues.push(makeIssue({ module: 'content', severity: 'low',
+        title: 'Description без призыва к действию (CTA)',
+        found: `"${description.slice(0, 100)}"`, location: '<head> → <meta name="description">',
+        why_it_matters: 'Description с CTA повышает CTR на 15-30%',
+        how_to_fix: 'Добавьте призыв: «Закажите», «Получите скидку», «Бесплатная консультация»',
+        example_fix: `<meta name="description" content="${description.slice(0, 100)} Закажите бесплатный аудит →">`,
+        visible_in_preview: false }));
+    }
+  }
+
+  // ── Content volume ──
+  if (wordCount < 300) {
+    issues.push(makeIssue({ module: 'content', severity: 'medium',
+      title: `Мало текста (${wordCount} слов, минимум 300)`,
+      found: `Всего ${wordCount} слов полезного контента на странице`, location: 'Текстовый контент <body>',
+      why_it_matters: '«Тонкие» страницы с малым объёмом текста хуже ранжируются — поисковик считает их неинформативными',
+      how_to_fix: 'Добавьте полезный контент: описание услуг, FAQ, инструкции, кейсы',
+      example_fix: 'Оптимальный объём: 500-1500 слов для коммерческих, 1000-3000 для информационных',
+      visible_in_preview: false }));
+  }
+
+  // ── H2/H3 structure ──
+  const h2Count = (html.match(/<h2[^>]*>/gi) || []).length;
+  if (h2Count === 0 && wordCount > 200) {
+    issues.push(makeIssue({ module: 'content', severity: 'low',
+      title: 'Нет подзаголовков H2',
+      found: '<h2> не найдено на странице', location: 'Контент страницы',
+      why_it_matters: 'H2-заголовки структурируют контент и помогают поисковикам понять разделы страницы',
+      how_to_fix: 'Разбейте контент на смысловые блоки с H2-подзаголовками',
+      example_fix: `<h2>Что входит в ${theme.toLowerCase()}</h2>\n<h2>Стоимость ${theme.toLowerCase()}</h2>`,
+      visible_in_preview: false }));
+  }
+
+  // ── Lists, tables ──
+  const listCount = (html.match(/<(ul|ol)[\s>]/gi) || []).length;
+  const tableCount = (html.match(/<table[\s>]/gi) || []).length;
+  if (listCount === 0 && tableCount === 0 && wordCount > 300) {
+    issues.push(makeIssue({ module: 'content', severity: 'low',
+      title: 'Нет списков и таблиц',
+      found: 'Теги <ul>, <ol>, <table> не найдены', location: 'Контент страницы',
+      why_it_matters: 'Структурированный контент лучше воспринимается и чаще попадает в расширенные сниппеты',
+      how_to_fix: 'Оформите преимущества, этапы или цены в виде списков / таблиц',
+      example_fix: '<ul>\n  <li>Преимущество 1</li>\n  <li>Преимущество 2</li>\n</ul>',
+      visible_in_preview: false }));
+  }
+
+  // ── Thematic focus (>2 unrelated topics) ──
+  const h2Matches = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) || [];
+  const h2Texts = h2Matches.map(m => m.replace(/<[^>]+>/g, '').trim().toLowerCase());
+  if (h2Texts.length >= 3 && themeWords.length > 0) {
+    const offTopic = h2Texts.filter(h2 => !themeWords.some(tw => h2.includes(tw)));
+    if (offTopic.length > h2Texts.length * 0.7) {
+      issues.push(makeIssue({ module: 'content', severity: 'high',
+        title: 'Размытый тематический фокус страницы',
+        found: `Тема: "${theme}"\nH2 без связи с темой:\n${offTopic.slice(0, 4).map(h => `• "${h}"`).join('\n')}`,
+        location: 'Структура <h2> заголовков',
+        why_it_matters: 'Когда страница смешивает несвязанные тематики, поисковики не ранжируют её хорошо ни по одному запросу',
+        how_to_fix: 'Сфокусируйте страницу на одной теме. Побочные темы вынесите на отдельные страницы',
+        example_fix: `Все H2 должны относиться к теме "${theme}"`,
+        visible_in_preview: true }));
+    }
+  }
+
+  // ── Images without alt ──
+  const imgTags = html.match(/<img[^>]*>/gi) || [];
+  const noAlt = imgTags.filter(img => !img.match(/alt=["'][^"']+["']/i));
+  if (noAlt.length > 0) {
+    const examples = noAlt.slice(0, 2).map(t => { const s = t.match(/src=["']([^"']+)["']/i); return s ? s[1] : '?'; });
+    issues.push(makeIssue({ module: 'content', severity: noAlt.length > 5 ? 'high' : 'medium',
+      title: `${noAlt.length} изображений без alt-текста`,
+      found: `${noAlt.length} из ${imgTags.length} без alt. Примеры: ${examples.join(', ')}`,
+      location: '<img> теги',
+      why_it_matters: 'Alt помогает поисковикам понять изображения и улучшает доступность',
+      how_to_fix: 'Добавьте описательный alt к каждому <img>',
+      example_fix: `<img src="${examples[0] || 'photo.jpg'}" alt="${theme} — иллюстрация">`,
+      visible_in_preview: false }));
+  }
+
   return issues;
 }
 
@@ -244,7 +632,6 @@ function directAudit(html: string, theme: string): Issue[] {
   const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
   
-  // Check commercial intent in title/h1
   const commercialWords = ['купить', 'заказать', 'цена', 'стоимость', 'услуг', 'аренда', 'аудит', 'продвижение', 'доставка', 'ремонт', 'строительство'];
   const hasCommercial = commercialWords.some(w => (title + ' ' + h1).toLowerCase().includes(w));
   if (!hasCommercial && title) {
@@ -255,17 +642,15 @@ function directAudit(html: string, theme: string): Issue[] {
       example_fix: `<title>${theme} — заказать аудит и оптимизацию | OwnDev</title>`, visible_in_preview: true }));
   }
   
-  // Check for price/CTA elements
   const hasPrices = /цена|стоимость|руб|₽|\d+\s*р\b/i.test(html);
   if (!hasPrices) {
     issues.push(makeIssue({ module: 'direct', severity: 'medium', title: 'Нет цен на странице',
       found: 'Не найдены упоминания цен или стоимости', location: 'Контент',
-      why_it_matters: 'Страницы с ценами конвертируют лучше в Директе — пользователи сразу видят стоимость',
-      how_to_fix: 'Добавьте цены или ценовые вилки на страницу',
+      why_it_matters: 'Страницы с ценами конвертируют лучше в Директе',
+      how_to_fix: 'Добавьте цены или ценовые вилки',
       example_fix: '<p>Стоимость SEO-аудита: от 5 000 ₽</p>', visible_in_preview: false }));
   }
   
-  // Check for CTA buttons
   const ctaPatterns = /заказать|оставить заявку|связаться|получить консультацию|записаться|купить/i;
   if (!ctaPatterns.test(html)) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Нет CTA (призыва к действию)',
@@ -275,7 +660,6 @@ function directAudit(html: string, theme: string): Issue[] {
       example_fix: '<button>Заказать бесплатный аудит</button>', visible_in_preview: true }));
   }
   
-  // Check OG-tags for Yandex ads
   if (!/<meta[^>]*property=["']og:title["']/i.test(html)) {
     issues.push(makeIssue({ module: 'direct', severity: 'low', title: 'Нет Open Graph тегов',
       found: 'og:title не найден', location: '<head>',
@@ -300,7 +684,6 @@ function schemaAudit(html: string): Issue[] {
       example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"..."}</script>',
       visible_in_preview: true }));
   } else {
-    // Check for required types
     const types: string[] = [];
     for (const m of jsonLdMatches) {
       try {
@@ -372,14 +755,12 @@ function aiAudit(html: string): Issue[] {
   return issues;
 }
 
-// ═══ STEP 4: Competitor Analysis (uses LLM) ═══
+// ═══ STEP 4: Competitor Analysis ═══
 async function competitorAnalysis(url: string, theme: string, html: string): Promise<{ url: string; scores: any }[]> {
-  // This step will be enhanced with real SERP data in production
-  // For now, analyze the page's competitive landscape heuristically
   return [];
 }
 
-// ═══ STEP 5: Keyword Extraction (uses LLM) ═══
+// ═══ STEP 5: Keyword Extraction ═══
 async function extractKeywords(html: string, theme: string, url: string): Promise<{ keyword: string; volume: number; cluster: string }[]> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) return [];
@@ -405,7 +786,6 @@ async function extractKeywords(html: string, theme: string, url: string): Promis
     });
     const data = await resp.json();
     const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-    // Extract JSON from potential markdown code blocks
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
   } catch { return []; }
@@ -423,7 +803,7 @@ async function generateMinusWords(theme: string, keywords: { keyword: string }[]
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash-lite',
         messages: [
-          { role: 'system', content: `Сгенерируй список из 30-50 минус-слов для Яндекс.Директа для тематики "${theme}". Минус-слова — это слова, по которым показ объявлений нежелателен (бесплатно, скачать, курс, реферат, вакансия и т.д.). Формат: JSON массив строк. Отвечай ТОЛЬКО валидным JSON.` },
+          { role: 'system', content: `Сгенерируй список из 30-50 минус-слов для Яндекс.Директа для тематики "${theme}". Минус-слова — это слова, по которым показ объявлений нежелателен. Формат: JSON массив строк. Отвечай ТОЛЬКО валидным JSON.` },
           { role: 'user', content: `Тематика: ${theme}\nПримеры ключей: ${keywords.slice(0, 10).map(k => k.keyword).join(', ')}` },
         ],
         max_tokens: 1000,
@@ -438,19 +818,18 @@ async function generateMinusWords(theme: string, keywords: { keyword: string }[]
 }
 
 // ═══ Crawl site (mode=site) ═══
-async function crawlSite(startUrl: string, maxPages = 100): Promise<string[]> {
+async function crawlSite(startUrl: string, maxPages = 50): Promise<{ url: string; html: string; status: number }[]> {
   const visited = new Set<string>();
   const queue = [startUrl];
   const parsedStart = new URL(startUrl);
+  const results: { url: string; html: string; status: number }[] = [];
   
-  // Check robots.txt for disallowed paths
   const disallowed: string[] = [];
   try {
     const robotsResp = await fetchWithTimeout(`${parsedStart.origin}/robots.txt`, 3000);
     if (robotsResp.ok) {
       const robotsTxt = await robotsResp.text();
-      const lines = robotsTxt.split('\n');
-      for (const line of lines) {
+      for (const line of robotsTxt.split('\n')) {
         const match = line.match(/^Disallow:\s*(.+)/i);
         if (match) disallowed.push(match[1].trim());
       }
@@ -461,7 +840,6 @@ async function crawlSite(startUrl: string, maxPages = 100): Promise<string[]> {
     const url = queue.shift()!;
     if (visited.has(url)) continue;
     
-    // Check against robots.txt
     const path = new URL(url).pathname;
     if (disallowed.some(d => path.startsWith(d))) continue;
     
@@ -469,12 +847,12 @@ async function crawlSite(startUrl: string, maxPages = 100): Promise<string[]> {
     
     try {
       const resp = await fetchWithTimeout(url, 5000);
-      if (!resp.ok) continue;
+      const status = resp.status;
       const contentType = resp.headers.get('content-type') || '';
-      if (!contentType.includes('text/html')) { await resp.text(); continue; }
+      if (!contentType.includes('text/html')) { await resp.text(); results.push({ url, html: '', status }); continue; }
       const html = await resp.text();
+      results.push({ url, html, status });
       
-      // Extract internal links
       const linkMatches = [...html.matchAll(/href=["']([^"'#]+)["']/gi)];
       for (const m of linkMatches) {
         let href = m[1];
@@ -486,10 +864,12 @@ async function crawlSite(startUrl: string, maxPages = 100): Promise<string[]> {
           }
         } catch {}
       }
-    } catch {}
+    } catch {
+      results.push({ url, html: '', status: 0 });
+    }
   }
   
-  return [...visited];
+  return results;
 }
 
 // ═══ Update scan progress in DB ═══
@@ -501,29 +881,31 @@ async function updateScan(scanId: string, updates: Record<string, any>) {
 // ═══ Main pipeline ═══
 async function runPipeline(scanId: string, url: string, mode: string) {
   try {
+    issueCounter = 0;
     await updateScan(scanId, { status: 'running', progress_pct: 5 });
     
     // Fetch page HTML
     const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
+    const origin = parsedUrl.origin;
     const startTime = Date.now();
     const response = await fetchWithTimeout(parsedUrl.toString(), 10000);
     const loadTimeMs = Date.now() - startTime;
+    const httpStatus = response.status;
     const html = await response.text();
     
-    await updateScan(scanId, { progress_pct: 15, raw_html: html.slice(0, 50000) });
+    await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000) });
     
     // STEP 0: Theme Detection
     const theme = await detectTheme(html, parsedUrl.toString());
-    await updateScan(scanId, { theme, progress_pct: 25 });
+    await updateScan(scanId, { theme, progress_pct: 20 });
     
-    // STEP 1 & 2 & 3: Parallel technical/content/direct checks
-    const origin = parsedUrl.origin;
+    // Fetch robots.txt and sitemap.xml in parallel
     const [robotsResult, sitemapResult] = await Promise.all([
-      checkUrl(`${origin}/robots.txt`),
-      checkUrl(`${origin}/sitemap.xml`),
+      fetchText(`${origin}/robots.txt`),
+      fetchText(`${origin}/sitemap.xml`),
     ]);
     
-    // Check broken links
+    // Check broken links (sample up to 15)
     const allLinks = [...html.matchAll(/<a[^>]*href=["']([^"'#][^"']*)["']/gi)];
     const internalHrefs: string[] = [];
     for (const m of allLinks) {
@@ -532,24 +914,45 @@ async function runPipeline(scanId: string, url: string, mode: string) {
         internalHrefs.push(href.startsWith('/') ? `${origin}${href}` : href);
       }
     }
-    const uniqueHrefs = [...new Set(internalHrefs)].slice(0, 10);
+    const uniqueHrefs = [...new Set(internalHrefs)].slice(0, 15);
     const linkResults = await Promise.all(uniqueHrefs.map(h => checkUrl(h)));
     const brokenLinks = uniqueHrefs.filter((_, i) => !linkResults[i].ok && linkResults[i].status !== 0);
     
-    // Run Steps 1-3
-    const techIssues = technicalAudit(html, parsedUrl, robotsResult.ok, sitemapResult.ok, brokenLinks, loadTimeMs);
-    const contentIssues = contentAudit(html);
+    await updateScan(scanId, { progress_pct: 35 });
+    
+    // STEP 1: Technical SEO
+    const techIssues = technicalAudit({
+      html, parsedUrl, httpStatus,
+      robotsOk: robotsResult.ok, robotsTxt: robotsResult.text,
+      sitemapOk: sitemapResult.ok, sitemapBody: sitemapResult.text,
+      brokenLinks, loadTimeMs,
+    });
+    
+    // STEP 2: Content Audit (theme-aware)
+    const contentIssues = contentAudit(html, theme);
+    
+    // STEP 3: Yandex Direct
     const directIssues = directAudit(html, theme);
+    
+    // Steps 7 & 8
     const schemaIssues = schemaAudit(html);
     const aiIssues = aiAudit(html);
     
-    const allIssues = [...techIssues, ...contentIssues, ...directIssues, ...schemaIssues, ...aiIssues];
-    const scores = calcScores(allIssues, html, parsedUrl);
+    let allIssues = [...techIssues, ...contentIssues, ...directIssues, ...schemaIssues, ...aiIssues];
     
-    await updateScan(scanId, { progress_pct: 60, scores, issues: allIssues });
+    // Site-mode: crawl and add extra checks
+    let crawledPages: { url: string; html: string; status: number }[] = [];
+    if (mode === 'site') {
+      await updateScan(scanId, { progress_pct: 45 });
+      crawledPages = await crawlSite(parsedUrl.toString(), 50);
+      const siteIssues = siteModeTechnicalAudit(crawledPages);
+      allIssues = [...allIssues, ...siteIssues];
+    }
     
-    // STEPS 4-8: Background (non-blocking for preview)
-    // Run keyword extraction and minus words in parallel
+    const scores = calcScores(allIssues);
+    await updateScan(scanId, { progress_pct: 60, scores, issues: allIssues, crawled_pages: crawledPages.map(p => p.url) });
+    
+    // STEPS 4-6: Background (non-blocking for preview)
     const [keywords, competitors] = await Promise.all([
       extractKeywords(html, theme, parsedUrl.toString()),
       competitorAnalysis(parsedUrl.toString(), theme, html),
@@ -559,22 +962,14 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     
     const minusWords = await generateMinusWords(theme, keywords);
     
-    // Crawl if site mode
-    let crawledPages: string[] = [];
-    if (mode === 'site') {
-      crawledPages = await crawlSite(parsedUrl.toString(), 100);
-    }
-    
     await updateScan(scanId, {
-      status: 'done',
-      progress_pct: 100,
+      status: 'done', progress_pct: 100,
       minus_words: minusWords,
-      crawled_pages: crawledPages,
-      issues: allIssues,
-      scores,
+      issues: allIssues, scores,
     });
     
   } catch (error) {
+    console.error('Pipeline error:', error);
     await updateScan(scanId, { status: 'error', error_message: error.message });
   }
 }
@@ -585,14 +980,12 @@ Deno.serve(async (req) => {
   
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
-  // Edge function path: /site-check-scan/...
-  // pathParts[0] = 'site-check-scan', rest is our routing
   
   const supabase = getSupabase();
   const json = async () => { try { return await req.json(); } catch { return {}; } };
   
   try {
-    // POST /start — create scan and start pipeline
+    // POST /start
     if (req.method === 'POST' && (pathParts.length <= 1 || pathParts[1] === 'start')) {
       const body = await json();
       const { url: scanUrl, mode = 'page' } = body;
@@ -601,20 +994,13 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'url is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       
-      // Create scan record
       const { data: scan, error } = await supabase.from('scans').insert({
-        url: scanUrl,
-        mode,
-        status: 'running',
+        url: scanUrl, mode, status: 'running',
       }).select('id').single();
       
       if (error) throw error;
       
-      // Start pipeline async (don't await)
-      const edgePromise = runPipeline(scan.id, scanUrl, mode);
-      // Use waitUntil pattern — run in background
-      // deno edge functions support this natively
-      edgePromise.catch(e => console.error('Pipeline error:', e));
+      runPipeline(scan.id, scanUrl, mode).catch(e => console.error('Pipeline error:', e));
       
       return new Response(JSON.stringify({ scan_id: scan.id, status: 'running' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -642,26 +1028,19 @@ Deno.serve(async (req) => {
       const previewIssues = allIssues.filter(i => i.visible_in_preview).slice(0, 5);
       
       return new Response(JSON.stringify({
-        scan_id: data.id,
-        url: data.url,
-        mode: data.mode,
-        status: data.status,
-        scores: data.scores,
-        issues: previewIssues,
-        issue_count: allIssues.length,
-        theme: data.theme,
-        created_at: data.created_at,
+        scan_id: data.id, url: data.url, mode: data.mode, status: data.status,
+        scores: data.scores, issues: previewIssues, issue_count: allIssues.length,
+        theme: data.theme, created_at: data.created_at,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
-    // GET /full/:scanId — full report data (only with valid report token)
+    // GET /full/:scanId
     if (req.method === 'GET' && pathParts[1] === 'full' && pathParts[2]) {
       const scanId = pathParts[2];
       const token = url.searchParams.get('token');
       
       if (!token) return new Response(JSON.stringify({ error: 'Token required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       
-      // Verify token via report
       const { data: report } = await supabase.from('reports').select('*').eq('scan_id', scanId).eq('download_token', token).eq('payment_status', 'paid').single();
       if (!report) return new Response(JSON.stringify({ error: 'Invalid token or unpaid' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       
