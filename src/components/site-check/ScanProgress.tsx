@@ -11,21 +11,36 @@ const steps = [
 
 interface ScanProgressProps {
   onComplete: () => void;
+  realProgress?: number;
 }
 
-const ScanProgress = ({ onComplete }: ScanProgressProps) => {
+const ScanProgress = ({ onComplete, realProgress }: ScanProgressProps) => {
   const [currentStep, setCurrentStep] = useState(0);
 
+  // Map real progress (0-100) to steps
   useEffect(() => {
+    if (realProgress !== undefined) {
+      if (realProgress >= 100) {
+        setCurrentStep(steps.length);
+        return;
+      }
+      const stepIndex = Math.min(Math.floor((realProgress / 100) * steps.length), steps.length - 1);
+      setCurrentStep(stepIndex);
+    }
+  }, [realProgress]);
+
+  // Fallback: animate steps if no realProgress
+  useEffect(() => {
+    if (realProgress !== undefined) return;
     if (currentStep >= steps.length) {
       const t = setTimeout(onComplete, 600);
       return () => clearTimeout(t);
     }
     const t = setTimeout(() => setCurrentStep((s) => s + 1), 1200 + Math.random() * 800);
     return () => clearTimeout(t);
-  }, [currentStep, onComplete]);
+  }, [currentStep, onComplete, realProgress]);
 
-  const progress = Math.min((currentStep / steps.length) * 100, 100);
+  const progress = realProgress ?? Math.min((currentStep / steps.length) * 100, 100);
 
   return (
     <div className="space-y-6">

@@ -5,9 +5,10 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
-import { createMockScan } from "@/lib/site-check-mock";
+import { startScan, getScanStatus } from "@/lib/site-check-api";
 import type { ScanMode } from "@/lib/site-check-types";
 import { Check, Lock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const checkItems = [
   { text: "Технический SEO (скорость, код, robots, sitemap)", free: true },
@@ -21,22 +22,43 @@ const checkItems = [
 
 const SiteCheck = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
-  const [scanUrl, setScanUrl] = useState("");
-  const [scanMode, setScanMode] = useState<ScanMode>("page");
+  const [scanId, setScanId] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
 
-  const handleSubmit = (url: string, mode: ScanMode) => {
-    setScanUrl(url);
-    setScanMode(mode);
+  const handleSubmit = async (url: string, mode: ScanMode) => {
     setScanning(true);
+    try {
+      const result = await startScan(url, mode);
+      setScanId(result.scan_id);
+      // Poll for status
+      pollStatus(result.scan_id);
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      setScanning(false);
+    }
   };
 
-  const handleScanComplete = useCallback(() => {
-    const scan = createMockScan(scanUrl, scanMode);
-    // In production this would save to DB; for now store in sessionStorage
-    sessionStorage.setItem(`scan_${scan.scan_id}`, JSON.stringify(scan));
-    navigate(`/tools/site-check/result/${scan.scan_id}`);
-  }, [scanUrl, scanMode, navigate]);
+  const pollStatus = useCallback(async (id: string) => {
+    const poll = async () => {
+      try {
+        const status = await getScanStatus(id);
+        setProgress(status.progress_pct);
+        if (status.status === 'done') {
+          navigate(`/tools/site-check/result/${id}`);
+        } else if (status.status === 'error') {
+          toast({ title: "Ошибка проверки", description: "Не удалось проанализировать сайт", variant: "destructive" });
+          setScanning(false);
+        } else {
+          setTimeout(poll, 2000);
+        }
+      } catch {
+        setTimeout(poll, 3000);
+      }
+    };
+    poll();
+  }, [navigate, toast]);
 
   return (
     <>
@@ -58,7 +80,7 @@ const SiteCheck = () => {
 
           <div className="glass rounded-2xl p-5 md:p-8">
             {scanning ? (
-              <ScanProgress onComplete={handleScanComplete} />
+              <ScanProgress onComplete={() => {}} realProgress={progress} />
             ) : (
               <ScanForm onSubmit={handleSubmit} />
             )}
