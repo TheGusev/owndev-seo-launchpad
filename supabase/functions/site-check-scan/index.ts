@@ -77,21 +77,106 @@ function makeIssue(partial: Omit<Issue, 'id'>): Issue {
   return { id: `issue_${++issueCounter}`, ...partial };
 }
 
-// ─── Score calculator ───
-function calcScores(issues: Issue[]) {
-  let seo = 100, direct = 100, schema = 100, ai = 100;
-  for (const i of issues) {
-    const w = i.severity === 'critical' ? 15 : i.severity === 'high' ? 8 : i.severity === 'medium' ? 4 : 2;
-    if (i.module === 'technical' || i.module === 'content') seo -= w;
-    if (i.module === 'direct') direct -= w;
-    if (i.module === 'schema') schema -= w;
-    if (i.module === 'ai') ai -= w;
+// ─── DB Rule type ───
+interface DbRule {
+  id: string;
+  rule_id: string;
+  module: string;
+  source: string;
+  severity: string;
+  title: string;
+  description: string;
+  how_to_check: string;
+  fix_template: string;
+  example_fix: string;
+  score_weight: number;
+  visible_in_preview: boolean;
+  active: boolean;
+}
+
+// ─── Load rules from DB ───
+async function loadRules(): Promise<DbRule[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('scan_rules')
+    .select('*')
+    .eq('active', true);
+  if (error || !data) {
+    console.error('Failed to load rules:', error);
+    return [];
   }
-  seo = Math.max(0, Math.min(100, seo));
-  direct = Math.max(0, Math.min(100, direct));
-  schema = Math.max(0, Math.min(100, schema));
-  ai = Math.max(0, Math.min(100, ai));
-  const total = Math.round((seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25));
+  return data as DbRule[];
+}
+
+// ─── Increment trigger counts for fired rules ───
+async function incrementTriggerCounts(ruleIds: string[]) {
+  if (ruleIds.length === 0) return;
+  const supabase = getSupabase();
+  for (const rid of ruleIds) {
+    await supabase.from('scan_rules')
+      .update({ trigger_count: supabase.rpc ? undefined : 0, last_triggered_at: new Date().toISOString() })
+      .eq('rule_id', rid);
+  }
+  // Use raw SQL via rpc would be better but just increment via multiple updates
+  // For now, do a simple approach: read current, increment, write back
+  for (const rid of ruleIds) {
+    const { data } = await supabase.from('scan_rules').select('trigger_count').eq('rule_id', rid).single();
+    if (data) {
+      await supabase.from('scan_rules').update({ 
+        trigger_count: (data.trigger_count || 0) + 1,
+        last_triggered_at: new Date().toISOString()
+      }).eq('rule_id', rid);
+    }
+  }
+}
+
+// ─── Weight-based score calculator ───
+function calcScoresWeighted(issues: Issue[], rules: DbRule[]) {
+  const moduleScores: Record<string, { totalWeight: number; passedWeight: number }> = {};
+  const scoreModuleMap: Record<string, string> = {
+    'technical': 'seo', 'content': 'seo',
+    'direct': 'direct', 'schema': 'schema', 'ai': 'ai',
+  };
+
+  // Initialize with all rules' weights
+  for (const rule of rules) {
+    const scoreKey = scoreModuleMap[rule.module] || rule.module;
+    if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 0, passedWeight: 0 };
+    moduleScores[scoreKey].totalWeight += rule.score_weight;
+    moduleScores[scoreKey].passedWeight += rule.score_weight; // assume pass, subtract on fail
+  }
+
+  // Subtract weight for each failed rule (issue found)
+  const issueRuleIds = new Set(issues.map(i => (i as any).rule_id).filter(Boolean));
+  for (const rule of rules) {
+    if (issueRuleIds.has(rule.rule_id)) {
+      const scoreKey = scoreModuleMap[rule.module] || rule.module;
+      if (moduleScores[scoreKey]) {
+        moduleScores[scoreKey].passedWeight -= rule.score_weight;
+      }
+    }
+  }
+
+  // Also handle issues without rule_id (legacy hardcoded) via severity fallback
+  for (const issue of issues) {
+    if ((issue as any).rule_id) continue; // already handled
+    const scoreKey = scoreModuleMap[issue.module] || issue.module;
+    if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 100, passedWeight: 100 };
+    const w = issue.severity === 'critical' ? 15 : issue.severity === 'high' ? 8 : issue.severity === 'medium' ? 4 : 2;
+    moduleScores[scoreKey].passedWeight -= w;
+  }
+
+  const getScore = (key: string) => {
+    const m = moduleScores[key];
+    if (!m || m.totalWeight === 0) return 100;
+    return Math.max(0, Math.min(100, Math.round((m.passedWeight / m.totalWeight) * 100)));
+  };
+
+  const seo = getScore('seo');
+  const direct = getScore('direct');
+  const schema = getScore('schema');
+  const ai = getScore('ai');
+  const total = Math.round(seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25);
   return { total, seo, direct, schema, ai };
 }
 
@@ -1420,6 +1505,10 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   try {
     issueCounter = 0;
     await updateScan(scanId, { status: 'running', progress_pct: 5 });
+
+    // Load rules from DB
+    const dbRules = await loadRules();
+    console.log(`Loaded ${dbRules.length} active rules from DB`);
     
     // Fetch page HTML
     const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
@@ -1475,7 +1564,32 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     const schemaIssues = schemaAudit(html);
     const aiIssues = aiAudit(html);
     
-    let allIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
+    // Tag issues with matching rule_id for weight-based scoring
+    const allHardcodedIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
+    
+    // Map hardcoded issues to DB rules by matching how_to_check patterns
+    const firedRuleIds: string[] = [];
+    for (const issue of allHardcodedIssues) {
+      // Try to find matching DB rule
+      const matchingRule = dbRules.find(r => {
+        if (r.module !== issue.module) return false;
+        // Match by title similarity or how_to_check pattern
+        const titleLower = issue.title.toLowerCase();
+        const ruleTitleLower = r.title.toLowerCase();
+        // Check if rule title keywords are in issue title
+        const ruleWords = ruleTitleLower.split(/\s+/).filter(w => w.length > 3);
+        const matchCount = ruleWords.filter(w => titleLower.includes(w)).length;
+        return matchCount >= Math.ceil(ruleWords.length * 0.5);
+      });
+      if (matchingRule) {
+        (issue as any).rule_id = matchingRule.rule_id;
+        // Override visible_in_preview from DB rule
+        issue.visible_in_preview = matchingRule.visible_in_preview;
+        firedRuleIds.push(matchingRule.rule_id);
+      }
+    }
+
+    let allIssues = [...allHardcodedIssues];
     
     // Site-mode: crawl and add extra checks
     let crawledPages: { url: string; html: string; status: number }[] = [];
@@ -1486,21 +1600,19 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       allIssues = [...allIssues, ...siteIssues];
     }
     
-    const scores = calcScores(allIssues);
+    const scores = calcScoresWeighted(allIssues, dbRules);
     await updateScan(scanId, { progress_pct: 60, scores, issues: allIssues, crawled_pages: crawledPages.map(p => p.url) });
     
     // STEPS 4-6: Background (non-blocking for preview)
     const crawledPageUrls = crawledPages.map(p => p.url);
     
-    // Step 4: Competitor Analysis (runs in parallel with keyword extraction)
+    // Step 4: Competitor Analysis
     const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, crawledPageUrls);
-    
-    // Add competitor gap issues to allIssues
     allIssues = [...allIssues, ...compResult.gap_issues];
     
     await updateScan(scanId, { progress_pct: 75 });
     
-    // Step 5: Keywords (enriched with competitor top_phrases)
+    // Step 5: Keywords
     const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
     const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases);
     
@@ -1509,8 +1621,11 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     // Step 6: Minus words
     const minusWords = await generateMinusWords(theme, keywords);
     
-    // Recalculate scores with competitor gap issues included
-    const finalScores = calcScores(allIssues);
+    // Final scores with all issues
+    const finalScores = calcScoresWeighted(allIssues, dbRules);
+    
+    // Increment trigger counts for fired rules (fire and forget)
+    incrementTriggerCounts(firedRuleIds).catch(e => console.error('Trigger count error:', e));
     
     await updateScan(scanId, {
       status: 'done', progress_pct: 100,

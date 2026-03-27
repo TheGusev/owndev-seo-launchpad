@@ -69,39 +69,54 @@ export type Database = {
           active: boolean
           created_at: string
           description: string | null
+          example_fix: string | null
           fix_template: string | null
           how_to_check: string | null
           id: string
+          last_triggered_at: string | null
           module: string
+          rule_id: string | null
           score_weight: number
           severity: string
+          source: string
           title: string
+          trigger_count: number
           visible_in_preview: boolean
         }
         Insert: {
           active?: boolean
           created_at?: string
           description?: string | null
+          example_fix?: string | null
           fix_template?: string | null
           how_to_check?: string | null
           id?: string
+          last_triggered_at?: string | null
           module: string
+          rule_id?: string | null
           score_weight?: number
           severity: string
+          source?: string
           title: string
+          trigger_count?: number
           visible_in_preview?: boolean
         }
         Update: {
           active?: boolean
           created_at?: string
           description?: string | null
+          example_fix?: string | null
           fix_template?: string | null
           how_to_check?: string | null
           id?: string
+          last_triggered_at?: string | null
           module?: string
+          rule_id?: string | null
           score_weight?: number
           severity?: string
+          source?: string
           title?: string
+          trigger_count?: number
           visible_in_preview?: boolean
         }
         Relationships: []
