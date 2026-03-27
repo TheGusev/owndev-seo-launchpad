@@ -20,6 +20,9 @@ import SiteCheck from "./pages/SiteCheck";
 import SiteCheckResult from "./pages/SiteCheckResult";
 import SiteCheckReport from "./pages/SiteCheckReport";
 import AdminRules from "./pages/AdminRules";
+import Offer from "./pages/Offer";
+import Refund from "./pages/Refund";
+import Contacts from "./pages/Contacts";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +37,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/offer" element={<Offer />} />
+            <Route path="/refund" element={<Refund />} />
+            <Route path="/contacts" element={<Contacts />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/site-check" element={<SiteCheck />} />

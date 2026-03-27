@@ -27,6 +27,9 @@ const Footer = () => {
   const company = [
     { label: "Политика конфиденциальности", href: "/privacy", isRoute: true },
     { label: "Пользовательское соглашение", href: "/terms", isRoute: true },
+    { label: "Оферта", href: "/offer", isRoute: true },
+    { label: "Политика возврата", href: "/refund", isRoute: true },
+    { label: "Контакты", href: "/contacts", isRoute: true },
   ];
 
 
