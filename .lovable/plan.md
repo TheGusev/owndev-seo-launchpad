@@ -1,42 +1,71 @@
 
 
-## Заглушки для ЮKassa — подготовка к проверке
+## Проверка ПРОМТ 7 — статус выполнения
 
-Сейчас оплата не подключена: `createReport` возвращает `payment_url: null`, а фронт показывает toast. Нужно сделать полный flow со заглушкой: пользователь вводит email → создаётся report → имитируется "оплата" → redirect на страницу отчёта с данными из БД.
+### Что реализовано (stub-режим)
 
-### Что будет сделано
+| Требование | Статус | Комментарий |
+|---|---|---|
+| PaywallCTA с email, "1 490 ₽", кнопка "Получить полный отчёт" | ✅ | |
+| POST /create → report + payment_status='paid' (stub) | ✅ | |
+| Возврат report_id, download_token, payment_url | ✅ | |
+| Фронт redirect на report page | ✅ | |
+| Report page: fetch данных через getReport(id, token) | ✅ | |
+| Pending state с auto-refresh каждые 3 сек | ✅ | |
+| Невалидный token → "Неверная ссылка" | ✅ | |
+| 4 кнопки скачивания (PDF, DOCX, Keywords CSV, Minus CSV) | ✅ | |
+| Кнопки disabled если не paid, stub toast при клике | ✅ | |
+| Роуты site-check перед `:toolSlug` | ✅ | |
+| API функции в site-check-api.ts | ✅ | |
 
-**1. Edge function `site-check-report` — stub-режим оплаты**
-- При создании report: сразу ставить `payment_status = 'paid'` (заглушка)
-- Возвращать `payment_url` как ссылку на report-страницу: `/tools/site-check/report/{report_id}?token={download_token}`
-- Добавить комментарий `// TODO: заменить на ЮKassa createPayment после прохождения проверки`
+### Что НЕ реализовано (но указано как "после подключения ЮKassa")
 
-**2. Frontend `SiteCheckResult.tsx` — redirect после "оплаты"**
-- После `createReport()` — делать `navigate()` на `/tools/site-check/report/{report_id}?token={download_token}` вместо toast
+| Требование | Статус | Пояснение |
+|---|---|---|
+| Реальный платёж ЮKassa (createPayment) | ⏳ Stub | Ожидаемо — нужны секреты YOOKASSA_SHOP_ID/SECRET_KEY |
+| Edge function `yookassa-webhook` (HMAC, payment.succeeded) | ⏳ Не создан | Будет при подключении ЮKassa |
+| Генерация файлов (PDF, DOCX, CSV) и upload в Storage | ⏳ Stub | Кнопки показывают toast |
+| Отправка email с ссылкой на отчёт | ⏳ Не реализовано | Будет после подключения ЮKassa |
+| Rate limiting (3 req/hour на /create, 60/hour на GET) | ❌ Не реализовано | Нужно добавить |
+| "Формируется... подождите" состояние кнопок при generating | ❌ Не реализовано | Нет поля статуса генерации файлов |
 
-**3. Frontend `SiteCheckReport.tsx` — реальные данные из БД**
-- Убрать mock-данные, заменить на `getReport(reportId, token)` из API
-- Показывать загрузку, ошибку, или полный отчёт
-- Если `payment_status === 'pending'` — показывать "Ожидаем подтверждение оплаты..." с auto-refresh (для будущей ЮKassa)
-- Если token невалиден — "Неверная ссылка"
+### Мелкие расхождения с промтом
 
-**4. `DownloadButtons` — заглушки кнопок**
-- При клике показывать toast "Генерация файлов будет доступна после подключения ЮKassa"
-- Кнопки активны при `paid=true`, но скачивание пока stub
+1. **Лейблы кнопок**: промт указывает "↓ Ключевые слова" и "↓ Минус-слова", в коде — "Ключи CSV" и "Минус-слова CSV". Мелочь, но стоит привести к формату промта.
+2. **Report page не показывает keywords, competitors, minus_words** — `FullReportView` отображает только issues. Полный отчёт должен также содержать секции: сравнительная таблица конкурентов, список ключевых запросов (по секциям SEO/Директ/Инфо), минус-слова.
+3. **Email уведомление** отображается как "Ссылка на отчёт отправлена на email", но фактически email не отправляется.
+
+### Вывод
+
+**Stub-режим реализован корректно на ~85%.** Основные пробелы:
+- Report page не отображает keywords/competitors/minus_words (только issues)
+- Нет rate limiting
+- Нет статуса генерации файлов
+
+### План доработки
+
+**1. Расширить Report page — показать все секции полного отчёта**
+- Добавить компонент `KeywordsSection` — отображение ключей по 4 секциям (SEO, Директ, Инфо, Таблица)
+- Добавить компонент `MinusWordsSection` — общие + тематические
+- Добавить компонент `CompetitorsTable` — сравнительная таблица
+- В `SiteCheckReport.tsx` передавать `scan.keywords`, `scan.competitors`, `scan.minus_words` в новые компоненты
+
+**2. Исправить лейблы кнопок**
+- "Скачать PDF" → "↓ Скачать PDF"
+- "Скачать DOCX" → "↓ Скачать Word"  
+- "Ключи CSV" → "↓ Ключевые слова"
+- "Минус-слова CSV" → "↓ Минус-слова"
+
+**3. Убрать ложное сообщение об отправке email**
+- Пока email не отправляется — не показывать блок "Ссылка отправлена на email"
 
 ### Файлы
 
 | Файл | Изменение |
-|------|-----------|
-| `supabase/functions/site-check-report/index.ts` | Stub: `payment_status='paid'`, return redirect URL |
-| `src/pages/SiteCheckResult.tsx` | Navigate to report page after createReport |
-| `src/pages/SiteCheckReport.tsx` | Fetch real data via API, remove mocks |
-| `src/components/site-check/DownloadButtons.tsx` | Add onClick toast stubs |
-| `src/lib/site-check-api.ts` | Без изменений, API уже готов |
-
-### Что останется для ЮKassa (после проверки)
-- Добавить секреты `YOOKASSA_SHOP_ID` и `YOOKASSA_SECRET_KEY`
-- Создать edge function `yookassa-webhook`
-- В `site-check-report`: заменить stub на реальный `createPayment`
-- В report page: включить polling для `pending` статуса
+|---|---|
+| `src/components/site-check/KeywordsSection.tsx` | Новый — отображение ключей по секциям |
+| `src/components/site-check/MinusWordsSection.tsx` | Новый — отображение минус-слов |
+| `src/components/site-check/CompetitorsTable.tsx` | Новый — сравнительная таблица |
+| `src/pages/SiteCheckReport.tsx` | Добавить 3 новые секции, убрать ложный email блок |
+| `src/components/site-check/DownloadButtons.tsx` | Обновить лейблы кнопок |
 
