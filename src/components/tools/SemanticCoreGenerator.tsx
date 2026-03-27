@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ToolCTA from "@/components/tools/ToolCTA";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Sparkles, Copy, CheckCircle, Loader2, Download, Clock, RefreshCw } from "lucide-react";
@@ -121,6 +122,7 @@ const SemanticCoreGenerator = () => {
           })}
         </div>
       )}
+      <ToolCTA />
     </div>
   );
 };

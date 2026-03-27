@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ToolCTA from "@/components/tools/ToolCTA";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Shield, AlertTriangle, CheckCircle, Info } from "lucide-react";
@@ -153,6 +154,7 @@ const AntiDuplicateChecker = () => {
           </div>
         )}
       </div>
+      <ToolCTA />
     </div>
   );
 };

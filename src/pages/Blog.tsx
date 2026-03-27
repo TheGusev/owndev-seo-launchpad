@@ -16,6 +16,7 @@ import { ClickRipple } from "@/components/ui/click-ripple";
 const Blog = () => {
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(12);
 
   const allTags = getAllTags();
 
@@ -102,7 +103,7 @@ const Blog = () => {
               </motion.div>
 
               <div className="grid md:grid-cols-2 gap-6">
-                {filtered.map((post, idx) => (
+                {filtered.slice(0, visibleCount).map((post, idx) => (
                   <motion.div
                     key={post.slug}
                     initial={{ opacity: 0, y: 20 }}
@@ -140,6 +141,16 @@ const Blog = () => {
                   <p className="text-muted-foreground text-center py-12 md:col-span-2">Ничего не найдено</p>
                 )}
               </div>
+              {filtered.length > visibleCount && (
+                <div className="text-center mt-8">
+                  <button
+                    onClick={() => setVisibleCount(prev => prev + 12)}
+                    className="px-6 py-3 rounded-lg border border-border text-foreground hover:border-primary/50 hover:text-primary transition-colors text-sm font-medium"
+                  >
+                    Показать ещё ({filtered.length - visibleCount})
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </main>

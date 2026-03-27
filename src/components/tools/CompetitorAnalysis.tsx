@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ToolCTA from "@/components/tools/ToolCTA";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Swords, CheckCircle, XCircle, Loader2, Clock, RefreshCw, Trophy } from "lucide-react";
@@ -237,6 +238,7 @@ const CompetitorAnalysis = () => {
           </div>
         </div>
       )}
+      <ToolCTA />
     </div>
   );
 };
