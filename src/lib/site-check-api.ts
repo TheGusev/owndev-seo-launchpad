@@ -19,8 +19,14 @@ export async function startScan(url: string, mode: 'page' | 'site') {
     headers: headers(),
     body: JSON.stringify({ url, mode }),
   });
-  if (!resp.ok) throw new Error(await resp.text());
-  return resp.json() as Promise<{ scan_id: string; status: string }>;
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({ error: 'Ошибка запроса' }));
+    if (resp.status === 429) {
+      throw new Error(body.error || 'Слишком много запросов. Подождите.');
+    }
+    throw new Error(body.error || `Ошибка ${resp.status}`);
+  }
+  return resp.json() as Promise<{ scan_id: string; status: string; cached?: boolean }>;
 }
 
 export async function getScanStatus(scanId: string) {
