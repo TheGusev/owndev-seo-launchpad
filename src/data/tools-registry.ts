@@ -44,7 +44,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/CompetitorAnalysis")),
     gradient: "bg-gradient-to-br from-orange-950/40 to-red-950/40",
     useCases: ["Сравнение с конкурентом", "Поиск слабых мест", "Анализ контент-стратегии"],
-    geoEnabled: false, status: "active",
+    geoEnabled: true, status: "active",
   },
   {
     id: "indexation-checker", slug: "indexation-checker",
@@ -95,7 +95,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/SemanticCoreGenerator")),
     gradient: "bg-gradient-to-br from-amber-950/40 to-yellow-950/40",
     useCases: ["Сбор семантики для нового сайта", "Кластеризация по интентам", "Планирование контент-стратегии"],
-    geoEnabled: false, status: "active",
+    geoEnabled: true, status: "active",
   },
   // ===== CONTENT & LLM =====
   {

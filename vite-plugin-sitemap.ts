@@ -2,7 +2,7 @@ import { type Plugin } from "vite";
 
 const BASE = "https://owndev.ru";
 
-/** Regions matching src/data/regions.ts */
+/** All regions matching src/data/regions.ts */
 const cities = [
   "moskva","sankt-peterburg","novosibirsk","ekaterinburg","kazan",
   "nizhny-novgorod","krasnoyarsk","chelyabinsk","samara","rostov-na-donu",
@@ -11,7 +11,14 @@ const cities = [
   "vladivostok","yaroslavl","tomsk","orenburg","kemerovo","novokuznetsk",
   "ryazan","astrakhan","penza","lipetsk","kirov","cheboksary","kaliningrad",
   "tula","stavropol","kursk","magnitogorsk","ivanovo","bryansk","belgorod",
-  "surgut","vladimir","arkhangelsk","smolensk","kurgan",
+  "surgut","vladimir","arkhangelsk","smolensk","kurgan","kaluga","chita",
+  "sochi","orel","tambov","vologda","tver","murmansk","petrozavodsk",
+  "saransk","yoshkar-ola","kostroma","syktyvkar","nalchik","vladikavkaz",
+  "grozny","makhachkala","yakutsk","ulan-ude","pskov","novgorod",
+  "yuzhno-sakhalinsk","komsomolsk-na-amure","blagoveshchensk","bratsk",
+  "novorossiysk","gelendzhik","pyatigorsk","khanty-mansiysk","nizhnevartovsk",
+  "nakhodka","ussuriisk","gorno-altaysk","abakan","kyzyl","simferopol",
+  "sevastopol","yalta","dagestan","kalmykiya","naberezhnye-chelny",
 ];
 
 /** Niches matching src/data/niches.ts */
@@ -22,10 +29,10 @@ const niches = [
   "deti","zhivotnye",
 ];
 
-/** Tools that exist in tools-registry AND are geoEnabled */
-const geoEnabledTools = ["seo-auditor"];
+/** Only commercial/service tools get geo pages — NOT utilities */
+const geoEnabledTools = ["seo-auditor", "competitor-analysis", "semantic-core"];
 
-/** Tools that exist in GeoNicheToolPage NICHE_ENABLED_SLUGS AND in tools-registry */
+/** Niche geo pages disabled — utilities don't need regional copies */
 const nicheEnabledTools: string[] = [];
 
 /** All tool slugs from tools-registry.ts */
