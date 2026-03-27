@@ -31,10 +31,10 @@ const SiteCheckResult = () => {
     setPaying(true);
     try {
       const result = await createReport(scanId, email);
-      // Redirect to report page with token
+      toast({ title: "Отчёт готов!", description: "Перенаправляем на страницу отчёта..." });
       navigate(`/tools/site-check/report/${result.report_id}?token=${result.download_token}`);
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      toast({ title: "Ошибка", description: e.message || "Не удалось создать отчёт. Попробуйте позже.", variant: "destructive" });
       setPaying(false);
     }
   };

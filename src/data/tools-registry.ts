@@ -75,7 +75,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/PSEOGenerator")),
     gradient: "bg-gradient-to-br from-violet-950/40 to-purple-950/40",
     useCases: ["Старт нового pSEO‑проекта", "Разработка структуры для копирайтеров", "Подготовка импорта в CMS"],
-    geoEnabled: true, status: "active",
+    geoEnabled: false, status: "active",
   },
   {
     id: "schema-generator", slug: "schema-generator",
@@ -85,7 +85,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/SchemaGenerator")),
     gradient: "bg-gradient-to-br from-emerald-950/40 to-teal-950/40",
     useCases: ["Разметка карточки компании", "Генерация FAQ‑схемы", "Подготовка к Rich Results и AI‑цитированию"],
-    geoEnabled: true, status: "active",
+    geoEnabled: false, status: "active",
   },
   {
     id: "semantic-core", slug: "semantic-core",

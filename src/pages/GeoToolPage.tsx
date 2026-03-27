@@ -50,7 +50,7 @@ const GeoToolPage = () => {
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <link rel="canonical" href={`https://owndev.ru/tools/${tool.slug}/${region.id}`} />
+        <link rel="canonical" href={`https://owndev.ru/tools/${tool.slug}`} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={`https://owndev.ru/tools/${tool.slug}/${region.id}`} />

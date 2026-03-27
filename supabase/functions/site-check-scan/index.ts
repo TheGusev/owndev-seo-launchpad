@@ -1752,9 +1752,20 @@ Deno.serve(async (req) => {
       // Rate limit: 3 scans per domain per day
       const domainOk = await checkDomainDailyLimit(supabase, domain);
       if (!domainOk) {
+        // Find last successful scan for this domain to offer user
+        const { data: lastScan } = await supabase
+          .from('scans')
+          .select('id')
+          .ilike('url', `%${domain}%`)
+          .eq('status', 'done')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
         return new Response(JSON.stringify({
           error: 'Этот домен уже проверялся 3 раза за сутки. Попробуйте завтра.',
           code: 'DOMAIN_LIMIT',
+          last_scan_id: lastScan?.id || null,
         }), { status: 429, headers: jsonHeaders });
       }
 

@@ -35,7 +35,7 @@ const GeoNicheToolPage = () => {
 
   const title = `${tool.name} для ${niche.nameCase} в ${region.nameCase} — OWNDEV`;
   const description = `${tool.shortDesc} для сферы «${niche.name}» в ${region.nameCase}. ${region.agencies} агентств, бюджеты ${region.priceRange} ₽/мес. Бесплатно.`;
-  const canonical = `https://owndev.ru/${region.id}/${niche.id}/${tool.slug}`;
+  const canonical = `https://owndev.ru/tools/${tool.slug}`;
 
   const jsonLd = {
     "@context": "https://schema.org",

@@ -22,7 +22,10 @@ export async function startScan(url: string, mode: 'page' | 'site') {
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({ error: 'Ошибка запроса' }));
     if (resp.status === 429) {
-      throw new Error(body.error || 'Слишком много запросов. Подождите.');
+      const err = new Error(body.error || 'Слишком много запросов. Подождите.') as any;
+      err.code = body.code;
+      err.lastScanId = body.last_scan_id;
+      throw err;
     }
     throw new Error(body.error || `Ошибка ${resp.status}`);
   }
