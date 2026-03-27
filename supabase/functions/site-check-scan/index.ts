@@ -77,21 +77,106 @@ function makeIssue(partial: Omit<Issue, 'id'>): Issue {
   return { id: `issue_${++issueCounter}`, ...partial };
 }
 
-// ─── Score calculator ───
-function calcScores(issues: Issue[]) {
-  let seo = 100, direct = 100, schema = 100, ai = 100;
-  for (const i of issues) {
-    const w = i.severity === 'critical' ? 15 : i.severity === 'high' ? 8 : i.severity === 'medium' ? 4 : 2;
-    if (i.module === 'technical' || i.module === 'content') seo -= w;
-    if (i.module === 'direct') direct -= w;
-    if (i.module === 'schema') schema -= w;
-    if (i.module === 'ai') ai -= w;
+// ─── DB Rule type ───
+interface DbRule {
+  id: string;
+  rule_id: string;
+  module: string;
+  source: string;
+  severity: string;
+  title: string;
+  description: string;
+  how_to_check: string;
+  fix_template: string;
+  example_fix: string;
+  score_weight: number;
+  visible_in_preview: boolean;
+  active: boolean;
+}
+
+// ─── Load rules from DB ───
+async function loadRules(): Promise<DbRule[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('scan_rules')
+    .select('*')
+    .eq('active', true);
+  if (error || !data) {
+    console.error('Failed to load rules:', error);
+    return [];
   }
-  seo = Math.max(0, Math.min(100, seo));
-  direct = Math.max(0, Math.min(100, direct));
-  schema = Math.max(0, Math.min(100, schema));
-  ai = Math.max(0, Math.min(100, ai));
-  const total = Math.round((seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25));
+  return data as DbRule[];
+}
+
+// ─── Increment trigger counts for fired rules ───
+async function incrementTriggerCounts(ruleIds: string[]) {
+  if (ruleIds.length === 0) return;
+  const supabase = getSupabase();
+  for (const rid of ruleIds) {
+    await supabase.from('scan_rules')
+      .update({ trigger_count: supabase.rpc ? undefined : 0, last_triggered_at: new Date().toISOString() })
+      .eq('rule_id', rid);
+  }
+  // Use raw SQL via rpc would be better but just increment via multiple updates
+  // For now, do a simple approach: read current, increment, write back
+  for (const rid of ruleIds) {
+    const { data } = await supabase.from('scan_rules').select('trigger_count').eq('rule_id', rid).single();
+    if (data) {
+      await supabase.from('scan_rules').update({ 
+        trigger_count: (data.trigger_count || 0) + 1,
+        last_triggered_at: new Date().toISOString()
+      }).eq('rule_id', rid);
+    }
+  }
+}
+
+// ─── Weight-based score calculator ───
+function calcScoresWeighted(issues: Issue[], rules: DbRule[]) {
+  const moduleScores: Record<string, { totalWeight: number; passedWeight: number }> = {};
+  const scoreModuleMap: Record<string, string> = {
+    'technical': 'seo', 'content': 'seo',
+    'direct': 'direct', 'schema': 'schema', 'ai': 'ai',
+  };
+
+  // Initialize with all rules' weights
+  for (const rule of rules) {
+    const scoreKey = scoreModuleMap[rule.module] || rule.module;
+    if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 0, passedWeight: 0 };
+    moduleScores[scoreKey].totalWeight += rule.score_weight;
+    moduleScores[scoreKey].passedWeight += rule.score_weight; // assume pass, subtract on fail
+  }
+
+  // Subtract weight for each failed rule (issue found)
+  const issueRuleIds = new Set(issues.map(i => (i as any).rule_id).filter(Boolean));
+  for (const rule of rules) {
+    if (issueRuleIds.has(rule.rule_id)) {
+      const scoreKey = scoreModuleMap[rule.module] || rule.module;
+      if (moduleScores[scoreKey]) {
+        moduleScores[scoreKey].passedWeight -= rule.score_weight;
+      }
+    }
+  }
+
+  // Also handle issues without rule_id (legacy hardcoded) via severity fallback
+  for (const issue of issues) {
+    if ((issue as any).rule_id) continue; // already handled
+    const scoreKey = scoreModuleMap[issue.module] || issue.module;
+    if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 100, passedWeight: 100 };
+    const w = issue.severity === 'critical' ? 15 : issue.severity === 'high' ? 8 : issue.severity === 'medium' ? 4 : 2;
+    moduleScores[scoreKey].passedWeight -= w;
+  }
+
+  const getScore = (key: string) => {
+    const m = moduleScores[key];
+    if (!m || m.totalWeight === 0) return 100;
+    return Math.max(0, Math.min(100, Math.round((m.passedWeight / m.totalWeight) * 100)));
+  };
+
+  const seo = getScore('seo');
+  const direct = getScore('direct');
+  const schema = getScore('schema');
+  const ai = getScore('ai');
+  const total = Math.round(seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25);
   return { total, seo, direct, schema, ai };
 }
 
