@@ -1439,8 +1439,8 @@ async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Prom
 }
 
 
-// ═══ Crawl site (mode=site) ═══
-async function crawlSite(startUrl: string, maxPages = 50): Promise<{ url: string; html: string; status: number }[]> {
+// ═══ Crawl site (mode=site) — max 100 pages ═══
+async function crawlSite(startUrl: string, maxPages = 100): Promise<{ url: string; html: string; status: number }[]> {
   const visited = new Set<string>();
   const queue = [startUrl];
   const parsedStart = new URL(startUrl);
@@ -1500,148 +1500,230 @@ async function updateScan(scanId: string, updates: Record<string, any>) {
   await supabase.from('scans').update(updates).eq('id', scanId);
 }
 
-// ═══ Main pipeline ═══
-async function runPipeline(scanId: string, url: string, mode: string) {
-  try {
-    issueCounter = 0;
-    await updateScan(scanId, { status: 'running', progress_pct: 5 });
+// ═══ Main pipeline with 10-minute timeout ═══
+const PIPELINE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
-    // Load rules from DB
-    const dbRules = await loadRules();
-    console.log(`Loaded ${dbRules.length} active rules from DB`);
-    
-    // Fetch page HTML
-    const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
-    const origin = parsedUrl.origin;
+async function runPipelineWithTimeout(scanId: string, url: string, mode: string) {
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Pipeline timeout: exceeded 10 minutes')), PIPELINE_TIMEOUT_MS)
+  );
+  try {
+    await Promise.race([runPipeline(scanId, url, mode), timeoutPromise]);
+  } catch (error) {
+    console.error('Pipeline failed:', error);
+    await updateScan(scanId, { status: 'error', error_message: error.message || 'Unknown error' });
+  }
+}
+
+async function runPipeline(scanId: string, url: string, mode: string) {
+  issueCounter = 0;
+  await updateScan(scanId, { status: 'running', progress_pct: 5 });
+
+  // Load rules from DB
+  const dbRules = await loadRules();
+  console.log(`Loaded ${dbRules.length} active rules from DB`);
+  
+  // Fetch page HTML with graceful error handling
+  const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
+  const origin = parsedUrl.origin;
+  let html: string;
+  let httpStatus: number;
+  let loadTimeMs: number;
+
+  try {
     const startTime = Date.now();
     const response = await fetchWithTimeout(parsedUrl.toString(), 10000);
-    const loadTimeMs = Date.now() - startTime;
-    const httpStatus = response.status;
-    const html = await response.text();
-    
-    await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000) });
-    
-    // STEP 0: Theme Detection
-    const theme = await detectTheme(html, parsedUrl.toString());
-    await updateScan(scanId, { theme, progress_pct: 20 });
-    
-    // Fetch robots.txt and sitemap.xml in parallel
-    const [robotsResult, sitemapResult] = await Promise.all([
-      fetchText(`${origin}/robots.txt`),
-      fetchText(`${origin}/sitemap.xml`),
-    ]);
-    
-    // Check broken links (sample up to 15)
-    const allLinks = [...html.matchAll(/<a[^>]*href=["']([^"'#][^"']*)["']/gi)];
-    const internalHrefs: string[] = [];
-    for (const m of allLinks) {
-      const href = m[1];
-      if (href.startsWith('/') || href.includes(parsedUrl.hostname)) {
-        internalHrefs.push(href.startsWith('/') ? `${origin}${href}` : href);
-      }
-    }
-    const uniqueHrefs = [...new Set(internalHrefs)].slice(0, 15);
-    const linkResults = await Promise.all(uniqueHrefs.map(h => checkUrl(h)));
-    const brokenLinks = uniqueHrefs.filter((_, i) => !linkResults[i].ok && linkResults[i].status !== 0);
-    
-    await updateScan(scanId, { progress_pct: 35 });
-    
-    // STEP 1: Technical SEO
-    const techIssues = technicalAudit({
-      html, parsedUrl, httpStatus,
-      robotsOk: robotsResult.ok, robotsTxt: robotsResult.text,
-      sitemapOk: sitemapResult.ok, sitemapBody: sitemapResult.text,
-      brokenLinks, loadTimeMs,
+    loadTimeMs = Date.now() - startTime;
+    httpStatus = response.status;
+    html = await response.text();
+  } catch (e) {
+    // Site unavailable — return critical issue and stop
+    const unavailableIssue = makeIssue({
+      module: 'technical', severity: 'critical',
+      title: 'Сайт недоступен или заблокировал запрос',
+      found: `URL: ${parsedUrl.toString()}\nОшибка: ${e.message}`,
+      location: 'HTTP запрос',
+      why_it_matters: 'Невозможно проанализировать сайт, если он не отвечает на запросы',
+      how_to_fix: 'Убедитесь что сайт доступен, не блокирует ботов и отвечает в течение 10 секунд',
+      example_fix: 'Проверьте настройки WAF/Cloudflare и попробуйте ещё раз',
+      visible_in_preview: true,
     });
-    
-    // STEP 2: Content Audit (theme-aware)
-    const contentIssues = contentAudit(html, theme);
-    
-    // STEP 3: Yandex Direct
-    const directResult = directAudit(html, theme);
-    
-    // Steps 7 & 8
-    const schemaIssues = schemaAudit(html);
-    const aiIssues = aiAudit(html);
-    
-    // Tag issues with matching rule_id for weight-based scoring
-    const allHardcodedIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
-    
-    // Map hardcoded issues to DB rules by matching how_to_check patterns
-    const firedRuleIds: string[] = [];
-    for (const issue of allHardcodedIssues) {
-      // Try to find matching DB rule
-      const matchingRule = dbRules.find(r => {
-        if (r.module !== issue.module) return false;
-        // Match by title similarity or how_to_check pattern
-        const titleLower = issue.title.toLowerCase();
-        const ruleTitleLower = r.title.toLowerCase();
-        // Check if rule title keywords are in issue title
-        const ruleWords = ruleTitleLower.split(/\s+/).filter(w => w.length > 3);
-        const matchCount = ruleWords.filter(w => titleLower.includes(w)).length;
-        return matchCount >= Math.ceil(ruleWords.length * 0.5);
-      });
-      if (matchingRule) {
-        (issue as any).rule_id = matchingRule.rule_id;
-        // Override visible_in_preview from DB rule
-        issue.visible_in_preview = matchingRule.visible_in_preview;
-        firedRuleIds.push(matchingRule.rule_id);
-      }
-    }
-
-    let allIssues = [...allHardcodedIssues];
-    
-    // Site-mode: crawl and add extra checks
-    let crawledPages: { url: string; html: string; status: number }[] = [];
-    if (mode === 'site') {
-      await updateScan(scanId, { progress_pct: 45 });
-      crawledPages = await crawlSite(parsedUrl.toString(), 50);
-      const siteIssues = siteModeTechnicalAudit(crawledPages);
-      allIssues = [...allIssues, ...siteIssues];
-    }
-    
-    const scores = calcScoresWeighted(allIssues, dbRules);
-    await updateScan(scanId, { progress_pct: 60, scores, issues: allIssues, crawled_pages: crawledPages.map(p => p.url) });
-    
-    // STEPS 4-6: Background (non-blocking for preview)
-    const crawledPageUrls = crawledPages.map(p => p.url);
-    
-    // Step 4: Competitor Analysis
-    const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, crawledPageUrls);
-    allIssues = [...allIssues, ...compResult.gap_issues];
-    
-    await updateScan(scanId, { progress_pct: 75 });
-    
-    // Step 5: Keywords
-    const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
-    const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases);
-    
-    await updateScan(scanId, { progress_pct: 85, keywords });
-    
-    // Step 6: Minus words
-    const minusWords = await generateMinusWords(theme, keywords);
-    
-    // Final scores with all issues
-    const finalScores = calcScoresWeighted(allIssues, dbRules);
-    
-    // Increment trigger counts for fired rules (fire and forget)
-    incrementTriggerCounts(firedRuleIds).catch(e => console.error('Trigger count error:', e));
-    
     await updateScan(scanId, {
       status: 'done', progress_pct: 100,
-      minus_words: minusWords,
-      issues: allIssues, scores: finalScores,
-      competitors: [
-        ...compResult.competitors.map(c => ({ ...c, _type: 'competitor' })),
-        { _type: 'comparison_table', ...compResult.comparison_table },
-        { _direct_meta: true, ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
-      ],
+      issues: [unavailableIssue],
+      scores: { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
+      error_message: 'Сайт недоступен',
     });
-    
-  } catch (error) {
-    console.error('Pipeline error:', error);
-    await updateScan(scanId, { status: 'error', error_message: error.message });
+    return;
   }
+  
+  await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000) });
+  
+  // STEP 0: Theme Detection
+  const theme = await detectTheme(html, parsedUrl.toString());
+  await updateScan(scanId, { theme, progress_pct: 20 });
+  
+  // Fetch robots.txt and sitemap.xml in parallel
+  const [robotsResult, sitemapResult] = await Promise.all([
+    fetchText(`${origin}/robots.txt`),
+    fetchText(`${origin}/sitemap.xml`),
+  ]);
+  
+  // Check broken links (sample up to 15)
+  const allLinks = [...html.matchAll(/<a[^>]*href=["']([^"'#][^"']*)["']/gi)];
+  const internalHrefs: string[] = [];
+  for (const m of allLinks) {
+    const href = m[1];
+    if (href.startsWith('/') || href.includes(parsedUrl.hostname)) {
+      internalHrefs.push(href.startsWith('/') ? `${origin}${href}` : href);
+    }
+  }
+  const uniqueHrefs = [...new Set(internalHrefs)].slice(0, 15);
+  const linkResults = await Promise.all(uniqueHrefs.map(h => checkUrl(h)));
+  const brokenLinks = uniqueHrefs.filter((_, i) => !linkResults[i].ok && linkResults[i].status !== 0);
+  
+  await updateScan(scanId, { progress_pct: 35 });
+  
+  // STEP 1: Technical SEO
+  const techIssues = technicalAudit({
+    html, parsedUrl, httpStatus,
+    robotsOk: robotsResult.ok, robotsTxt: robotsResult.text,
+    sitemapOk: sitemapResult.ok, sitemapBody: sitemapResult.text,
+    brokenLinks, loadTimeMs,
+  });
+  
+  // STEP 2: Content Audit
+  const contentIssues = contentAudit(html, theme);
+  
+  // STEP 3: Yandex Direct
+  const directResult = directAudit(html, theme);
+  
+  // Steps 7 & 8
+  const schemaIssues = schemaAudit(html);
+  const aiIssues = aiAudit(html);
+  
+  const allHardcodedIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
+  
+  // Map issues to DB rules
+  const firedRuleIds: string[] = [];
+  for (const issue of allHardcodedIssues) {
+    const matchingRule = dbRules.find(r => {
+      if (r.module !== issue.module) return false;
+      const titleLower = issue.title.toLowerCase();
+      const ruleTitleLower = r.title.toLowerCase();
+      const ruleWords = ruleTitleLower.split(/\s+/).filter(w => w.length > 3);
+      const matchCount = ruleWords.filter(w => titleLower.includes(w)).length;
+      return matchCount >= Math.ceil(ruleWords.length * 0.5);
+    });
+    if (matchingRule) {
+      (issue as any).rule_id = matchingRule.rule_id;
+      issue.visible_in_preview = matchingRule.visible_in_preview;
+      firedRuleIds.push(matchingRule.rule_id);
+    }
+  }
+
+  let allIssues = [...allHardcodedIssues];
+  
+  // Site-mode: crawl (max 100 pages)
+  let crawledPages: { url: string; html: string; status: number }[] = [];
+  if (mode === 'site') {
+    await updateScan(scanId, { progress_pct: 45 });
+    crawledPages = await crawlSite(parsedUrl.toString(), 100);
+    const siteIssues = siteModeTechnicalAudit(crawledPages);
+    allIssues = [...allIssues, ...siteIssues];
+  }
+  
+  const scores = calcScoresWeighted(allIssues, dbRules);
+  await updateScan(scanId, { progress_pct: 60, scores, issues: allIssues, crawled_pages: crawledPages.map(p => p.url) });
+  
+  // STEPS 4-6: Background
+  const crawledPageUrls = crawledPages.map(p => p.url);
+  
+  // Step 4: Competitor Analysis (skip unavailable competitors gracefully)
+  const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, crawledPageUrls);
+  allIssues = [...allIssues, ...compResult.gap_issues];
+  
+  await updateScan(scanId, { progress_pct: 75 });
+  
+  // Step 5: Keywords
+  const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
+  const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases);
+  
+  await updateScan(scanId, { progress_pct: 85, keywords });
+  
+  // Step 6: Minus words
+  const minusWords = await generateMinusWords(theme, keywords);
+  
+  const finalScores = calcScoresWeighted(allIssues, dbRules);
+  
+  // Increment trigger counts (fire and forget)
+  incrementTriggerCounts(firedRuleIds).catch(e => console.error('Trigger count error:', e));
+  
+  await updateScan(scanId, {
+    status: 'done', progress_pct: 100,
+    minus_words: minusWords,
+    issues: allIssues, scores: finalScores,
+    competitors: [
+      ...compResult.competitors.map(c => ({ ...c, _type: 'competitor' })),
+      { _type: 'comparison_table', ...compResult.comparison_table },
+      { _direct_meta: true, ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
+    ],
+  });
+}
+
+// ═══ Rate limiting helpers ═══
+function extractClientIp(req: Request): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('cf-connecting-ip') ||
+    req.headers.get('x-real-ip') ||
+    'unknown';
+}
+
+function normalizeDomain(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`);
+    return u.hostname.replace(/^www\./, '');
+  } catch { return rawUrl; }
+}
+
+async function checkIpRateLimit(supabase: any, ip: string): Promise<boolean> {
+  // 1 scan per 10 minutes per IP
+  const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { count } = await supabase
+    .from('scans')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', tenMinAgo);
+  // Since we can't filter by IP in DB (no ip column), we use a softer approach:
+  // Check total recent scans as a global rate limit fallback
+  // Real IP-based limiting would need an ip column — for MVP this caps total throughput
+  return (count || 0) < 25; // max 25 concurrent scans globally in 10min
+}
+
+async function checkDomainDailyLimit(supabase: any, domain: string): Promise<boolean> {
+  // 3 scans per domain per day
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count } = await supabase
+    .from('scans')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', dayAgo)
+    .ilike('url', `%${domain}%`);
+  return (count || 0) < 3;
+}
+
+async function findCachedScan(supabase: any, domain: string, mode: string): Promise<any | null> {
+  // Cache: return recent scan for same domain (1 hour TTL)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from('scans')
+    .select('id, status, progress_pct, scores')
+    .ilike('url', `%${domain}%`)
+    .eq('mode', mode)
+    .eq('status', 'done')
+    .gte('created_at', oneHourAgo)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  return data || null;
 }
 
 // ═══ HTTP Handler ═══
@@ -1653,6 +1735,7 @@ Deno.serve(async (req) => {
   
   const supabase = getSupabase();
   const json = async () => { try { return await req.json(); } catch { return {}; } };
+  const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
   
   try {
     // POST /start
@@ -1661,7 +1744,50 @@ Deno.serve(async (req) => {
       const { url: scanUrl, mode = 'page' } = body;
       
       if (!scanUrl) {
-        return new Response(JSON.stringify({ error: 'url is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'url is required' }), { status: 400, headers: jsonHeaders });
+      }
+
+      const domain = normalizeDomain(scanUrl);
+
+      // Rate limit: 3 scans per domain per day
+      const domainOk = await checkDomainDailyLimit(supabase, domain);
+      if (!domainOk) {
+        return new Response(JSON.stringify({
+          error: 'Этот домен уже проверялся 3 раза за сутки. Попробуйте завтра.',
+          code: 'DOMAIN_LIMIT',
+        }), { status: 429, headers: jsonHeaders });
+      }
+
+      // Global rate limit
+      const globalOk = await checkIpRateLimit(supabase, extractClientIp(req));
+      if (!globalOk) {
+        return new Response(JSON.stringify({
+          error: 'Слишком много запросов. Подождите несколько минут.',
+          code: 'RATE_LIMIT',
+        }), { status: 429, headers: jsonHeaders });
+      }
+
+      // Check cache: return existing recent scan
+      const cached = await findCachedScan(supabase, domain, mode);
+      if (cached) {
+        return new Response(JSON.stringify({
+          scan_id: cached.id, status: cached.status, cached: true,
+        }), { headers: jsonHeaders });
+      }
+
+      // Concurrency limit: max 8 running full_reports
+      if (mode === 'site') {
+        const { count } = await supabase
+          .from('scans')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'running')
+          .eq('mode', 'site');
+        if ((count || 0) >= 8) {
+          return new Response(JSON.stringify({
+            error: 'Сервер загружен. Попробуйте через пару минут.',
+            code: 'CONCURRENCY_LIMIT',
+          }), { status: 429, headers: jsonHeaders });
+        }
       }
       
       const { data: scan, error } = await supabase.from('scans').insert({
@@ -1670,29 +1796,26 @@ Deno.serve(async (req) => {
       
       if (error) throw error;
       
-      runPipeline(scan.id, scanUrl, mode).catch(e => console.error('Pipeline error:', e));
+      // Run pipeline with timeout wrapper
+      runPipelineWithTimeout(scan.id, scanUrl, mode).catch(e => console.error('Pipeline error:', e));
       
-      return new Response(JSON.stringify({ scan_id: scan.id, status: 'running' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({ scan_id: scan.id, status: 'running' }), { headers: jsonHeaders });
     }
     
     // GET /status/:scanId
     if (req.method === 'GET' && pathParts[1] === 'status' && pathParts[2]) {
       const scanId = pathParts[2];
       const { data, error } = await supabase.from('scans').select('status, progress_pct, scores').eq('id', scanId).single();
-      if (error || !data) return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (error || !data) return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: jsonHeaders });
       
-      return new Response(JSON.stringify({ status: data.status, progress_pct: data.progress_pct, scores_preview: data.scores }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({ status: data.status, progress_pct: data.progress_pct, scores_preview: data.scores }), { headers: jsonHeaders });
     }
     
     // GET /preview/:scanId
     if (req.method === 'GET' && pathParts[1] === 'preview' && pathParts[2]) {
       const scanId = pathParts[2];
       const { data, error } = await supabase.from('scans').select('*').eq('id', scanId).single();
-      if (error || !data) return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (error || !data) return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: jsonHeaders });
       
       const allIssues = (data.issues as Issue[]) || [];
       const previewIssues = allIssues.filter(i => i.visible_in_preview).slice(0, 5);
@@ -1701,7 +1824,7 @@ Deno.serve(async (req) => {
         scan_id: data.id, url: data.url, mode: data.mode, status: data.status,
         scores: data.scores, issues: previewIssues, issue_count: allIssues.length,
         theme: data.theme, created_at: data.created_at,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { headers: jsonHeaders });
     }
     
     // GET /full/:scanId
@@ -1709,24 +1832,24 @@ Deno.serve(async (req) => {
       const scanId = pathParts[2];
       const token = url.searchParams.get('token');
       
-      if (!token) return new Response(JSON.stringify({ error: 'Token required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (!token) return new Response(JSON.stringify({ error: 'Token required' }), { status: 401, headers: jsonHeaders });
       
       const { data: report } = await supabase.from('reports').select('*').eq('scan_id', scanId).eq('download_token', token).eq('payment_status', 'paid').single();
-      if (!report) return new Response(JSON.stringify({ error: 'Invalid token or unpaid' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (!report) return new Response(JSON.stringify({ error: 'Invalid token or unpaid' }), { status: 403, headers: jsonHeaders });
       
       const { data: scan } = await supabase.from('scans').select('*').eq('id', scanId).single();
-      if (!scan) return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (!scan) return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: jsonHeaders });
       
       return new Response(JSON.stringify({
         scan,
         report: { report_id: report.id, email: report.email, payment_status: report.payment_status },
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { headers: jsonHeaders });
     }
     
-    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: jsonHeaders });
     
   } catch (error) {
     console.error('Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: jsonHeaders });
   }
 });
