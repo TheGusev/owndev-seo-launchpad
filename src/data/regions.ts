@@ -991,6 +991,17 @@ export const regions: Region[] = [
     localNiches: ["туризм", "сельское хозяйство", "буддизм"],
     neighbors: ["volgograd", "astrakhan", "rostov-na-donu"],
   },
+  {
+    id: "naberezhnye-chelny",
+    name: "Набережные Челны",
+    nameCase: "Набережных Челнах",
+    population: 530000,
+    agencies: 25,
+    priceRange: "12000-40000",
+    localText: "Набережные Челны — автомобильная столица Татарстана (КАМАЗ) с 25 SEO-агентствами. Programmatic SEO помогает автопромышленным и логистическим компаниям масштабировать присутствие.",
+    localNiches: ["автопром", "грузовые автомобили", "логистика", "промышленность"],
+    neighbors: ["kazan", "izhevsk", "ufa"],
+  },
 ];
 
 export const getRegionById = (id: string) => regions.find((r) => r.id === id);
