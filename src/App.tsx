@@ -44,6 +44,7 @@ const App = () => (
             <Route path="/:citySlug/:nicheSlug/:toolSlug" element={<GeoNicheToolPage />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/admin/rules" element={<AdminRules />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
