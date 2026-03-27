@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ToolCTA from "@/components/tools/ToolCTA";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -105,6 +106,7 @@ const AITextGenerator = () => {
           <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{result}</div>
         </div>
       )}
+      <ToolCTA />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ToolCTA from "@/components/tools/ToolCTA";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { TrendingUp, Plus, Trash2 } from "lucide-react";
@@ -123,6 +124,7 @@ const PositionMonitor = () => {
           <p className="text-sm">Пока нет данных. Добавьте первую позицию выше.</p>
         </div>
       )}
+      <ToolCTA />
     </div>
   );
 };

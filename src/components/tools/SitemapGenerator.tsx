@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ToolCTA from "@/components/tools/ToolCTA";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -174,6 +175,7 @@ const SitemapGenerator = () => {
           )}
         </TabsContent>
       </Tabs>
+      <ToolCTA />
     </div>
   );
 };

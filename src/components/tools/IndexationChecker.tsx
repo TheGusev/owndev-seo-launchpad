@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ToolCTA from "@/components/tools/ToolCTA";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { ScanSearch, CheckCircle, XCircle, AlertTriangle, Loader2, Globe, Clock, RefreshCw } from "lucide-react";
@@ -119,6 +120,7 @@ const IndexationChecker = () => {
           </div>
         </div>
       )}
+      <ToolCTA />
     </div>
   );
 };

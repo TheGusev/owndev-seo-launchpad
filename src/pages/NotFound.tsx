@@ -6,9 +6,6 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Home } from "lucide-react";
-import { AnimatedGrid } from "@/components/ui/animated-grid";
-import { FloatingParticles } from "@/components/ui/floating-particles";
-import { SparklesCore } from "@/components/ui/sparkles";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
 
@@ -29,20 +26,8 @@ const NotFound = () => {
       <ClickRipple />
       <Header />
       <main className="flex-1 flex items-center justify-center px-4 relative">
-        {/* Background animations */}
         <div className="absolute inset-0 pointer-events-none">
-          <AnimatedGrid theme="accent" lineCount={{ h: 6, v: 8 }} />
-          <FloatingParticles count={15} className="absolute inset-0" />
-          <SparklesCore
-            id="404-sparkles"
-            background="transparent"
-            minSize={0.4}
-            maxSize={1.2}
-            particleDensity={40}
-            particleColor="hsl(var(--primary))"
-            className="absolute inset-0 opacity-30"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-secondary/5" />
         </div>
 
         <div className="text-center relative z-10">
