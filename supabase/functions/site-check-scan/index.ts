@@ -1439,8 +1439,8 @@ async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Prom
 }
 
 
-// ═══ Crawl site (mode=site) ═══
-async function crawlSite(startUrl: string, maxPages = 50): Promise<{ url: string; html: string; status: number }[]> {
+// ═══ Crawl site (mode=site) — max 100 pages ═══
+async function crawlSite(startUrl: string, maxPages = 100): Promise<{ url: string; html: string; status: number }[]> {
   const visited = new Set<string>();
   const queue = [startUrl];
   const parsedStart = new URL(startUrl);
