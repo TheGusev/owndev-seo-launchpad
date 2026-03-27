@@ -16,7 +16,7 @@ const Terms = () => {
       <Header />
       <Helmet>
         <title>Пользовательское соглашение | OWNDEV</title>
-        <meta name="description" content="Пользовательское соглашение ООО «ОВН ДИДЖИТАЛ». Условия использования сайта owndev.ru и заказа услуг." />
+        <meta name="description" content="Пользовательское соглашение OWNDEV. Условия использования сайта owndev.ru и заказа услуг." />
         <link rel="canonical" href="https://owndev.ru/terms" />
       </Helmet>
       <main className="pt-24 pb-16 relative">
@@ -78,7 +78,7 @@ const termsData = [
     title: "1. Общие положения",
     content: (
       <>
-        <p className="text-muted-foreground mb-4">1.1. Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует отношения между ООО «ОВН ДИДЖИТАЛ» (далее — «Исполнитель») и любым физическим или юридическим лицом (далее — «Заказчик»), использующим сайт owndev.ru (далее — «Сайт») и/или заказывающим услуги Исполнителя.</p>
+        <p className="text-muted-foreground mb-4">1.1. Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует отношения между OWNDEV (далее — «Исполнитель») и любым физическим или юридическим лицом (далее — «Заказчик»), использующим сайт owndev.ru (далее — «Сайт») и/или заказывающим услуги Исполнителя.</p>
         <p className="text-muted-foreground mb-4">1.2. Использование Сайта и/или отправка заявки через форму обратной связи означает полное и безоговорочное принятие Заказчиком условий настоящего Соглашения.</p>
         <p className="text-muted-foreground mb-4">1.3. Настоящее Соглашение является публичной офертой в соответствии со статьёй 437 Гражданского кодекса Российской Федерации.</p>
       </>
@@ -228,11 +228,11 @@ const termsData = [
     title: "13. Реквизиты Исполнителя",
     content: (
       <ul className="list-none text-muted-foreground space-y-2">
-        <li><strong className="text-foreground">Наименование:</strong> ООО «ОВН ДИДЖИТАЛ»</li>
+        <li><strong className="text-foreground">Наименование:</strong> OWNDEV</li>
         <li><strong className="text-foreground">Адрес:</strong> г. Москва, Россия</li>
         <li>📧 Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a></li>
-        <li>📞 Телефон: <a href="tel:89069989888" className="text-primary hover:underline">8 (906) 998-98-88</a></li>
-        <li>💬 Telegram: <a href="https://t.me/The_Suppor_t" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@The_Suppor_t</a></li>
+        <li>📞 Телефон: <a href="tel:+79939289488" className="text-primary hover:underline">+7 993 928-94-88</a></li>
+        <li>💬 Telegram: <a href="https://t.me/one_help" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@one_help</a></li>
       </ul>
     ),
   },
