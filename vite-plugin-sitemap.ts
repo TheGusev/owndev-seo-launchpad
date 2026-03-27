@@ -23,10 +23,10 @@ const niches = [
 ];
 
 /** Tools that exist in tools-registry AND are geoEnabled */
-const geoEnabledTools = ["seo-auditor", "pseo-generator", "schema-generator"];
+const geoEnabledTools = ["seo-auditor"];
 
 /** Tools that exist in GeoNicheToolPage NICHE_ENABLED_SLUGS AND in tools-registry */
-const nicheEnabledTools = ["pseo-generator", "anti-duplicate"];
+const nicheEnabledTools: string[] = [];
 
 /** All tool slugs from tools-registry.ts */
 const allToolSlugs = [

@@ -44,6 +44,7 @@ const InternalLinksChecker = () => {
       if (data.error) throw new Error(data.error);
       setResult(data);
       setCheckedAt(new Date());
+      localStorage.setItem("owndev_last_url", url.trim());
     } catch (e: any) {
       toast({ title: "Ошибка проверки", description: e.message, variant: "destructive" });
     } finally {

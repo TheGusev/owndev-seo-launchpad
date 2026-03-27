@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Globe, FileText } from "lucide-react";
@@ -10,7 +11,15 @@ interface ScanFormProps {
 }
 
 const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
+  const [searchParams] = useSearchParams();
   const [url, setUrl] = useState("");
+
+  useEffect(() => {
+    const paramUrl = searchParams.get("url");
+    const savedUrl = localStorage.getItem("owndev_last_url");
+    if (paramUrl) setUrl(paramUrl);
+    else if (savedUrl) setUrl(savedUrl);
+  }, [searchParams]);
   const [mode, setMode] = useState<ScanMode>("page");
 
   const handleSubmit = (e: React.FormEvent) => {

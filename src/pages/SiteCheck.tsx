@@ -7,7 +7,7 @@ import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
 import type { ScanMode } from "@/lib/site-check-types";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const checkItems = [
@@ -26,16 +26,22 @@ const SiteCheck = () => {
   const [scanning, setScanning] = useState(false);
   const [scanId, setScanId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [limitScanId, setLimitScanId] = useState<string | null>(null);
 
   const handleSubmit = async (url: string, mode: ScanMode) => {
     setScanning(true);
+    setLimitScanId(null);
     try {
       const result = await startScan(url, mode);
       setScanId(result.scan_id);
-      // Poll for status
       pollStatus(result.scan_id);
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      if (e.lastScanId) {
+        setLimitScanId(e.lastScanId);
+        toast({ title: "Лимит проверок", description: "Этот домен уже проверялся сегодня" });
+      } else {
+        toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      }
       setScanning(false);
     }
   };
@@ -85,6 +91,21 @@ const SiteCheck = () => {
               <ScanForm onSubmit={handleSubmit} />
             )}
           </div>
+
+          {limitScanId && (
+            <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+              <p className="text-sm text-foreground flex-1">
+                Этот домен уже проверялся сегодня. Вы можете посмотреть результаты последней проверки.
+              </p>
+              <button
+                onClick={() => navigate(`/tools/site-check/result/${limitScanId}`)}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+              >
+                Смотреть результаты
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
           <div className="mt-10">
             <h2 className="text-lg font-semibold text-foreground mb-4">Что проверяем</h2>

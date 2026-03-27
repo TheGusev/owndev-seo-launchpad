@@ -19,8 +19,8 @@ const DownloadButtons = ({ paid }: DownloadButtonsProps) => {
   const handleClick = () => {
     // TODO: заменить на реальное скачивание после подключения ЮKassa
     toast({
-      title: "Скоро будет доступно",
-      description: "Генерация файлов будет подключена после интеграции с ЮKassa",
+      title: "Бета-тестирование",
+      description: "Генерация PDF-отчетов находится на этапе бета-тестирования",
     });
   };
 
