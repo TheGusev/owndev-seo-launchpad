@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -13,8 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     if (!scanId) return;
@@ -25,13 +27,15 @@ const SiteCheckResult = () => {
   }, [scanId, toast]);
 
   const handlePay = async (email: string) => {
-    if (!scanId) return;
+    if (!scanId || paying) return;
+    setPaying(true);
     try {
       const result = await createReport(scanId, email);
-      toast({ title: "Отчёт создан", description: "Оплата ЮKassa будет подключена в следующем обновлении" });
-      // In production: window.location.href = result.payment_url;
+      // Redirect to report page with token
+      navigate(`/tools/site-check/report/${result.report_id}?token=${result.download_token}`);
     } catch (e: any) {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      setPaying(false);
     }
   };
 
@@ -103,7 +107,7 @@ const SiteCheckResult = () => {
             </div>
           </div>
 
-          <PaywallCTA issueCount={data.issue_count || 0} onPay={handlePay} />
+          <PaywallCTA issueCount={data.issue_count || 0} onPay={handlePay} loading={paying} />
         </div>
       </main>
       <Footer />
