@@ -16,7 +16,7 @@ const Privacy = () => {
       <Header />
       <Helmet>
         <title>Политика конфиденциальности | OWNDEV</title>
-        <meta name="description" content="Политика конфиденциальности ООО «ОВН ДИДЖИТАЛ». Порядок обработки персональных данных на сайте owndev.ru." />
+        <meta name="description" content="Политика конфиденциальности OWNDEV. Порядок обработки персональных данных на сайте owndev.ru." />
         <link rel="canonical" href="https://owndev.ru/privacy" />
       </Helmet>
       <main className="pt-24 pb-16 relative">
@@ -63,11 +63,10 @@ const Privacy = () => {
                   </p>
                   <p className="text-muted-foreground mb-4">
                     <strong className="text-foreground">Оператор персональных данных:</strong><br />
-                    ООО «ОВН ДИДЖИТАЛ»<br />
-                    ИНН: уточняется<br />
+                    OWNDEV<br />
                     Адрес: г. Москва, Россия<br />
                     Email: west-centro@mail.ru<br />
-                    Телефон: 8 (906) 998-98-88
+                    Телефон: +7 993 928-94-88
                   </p>
                 </>
               )},
@@ -75,7 +74,7 @@ const Privacy = () => {
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                   <li><strong className="text-foreground">Персональные данные</strong> — любая информация, относящаяся к прямо или косвенно определённому или определяемому физическому лицу (субъекту персональных данных).</li>
                   <li><strong className="text-foreground">Обработка персональных данных</strong> — любое действие (операция) или совокупность действий (операций), совершаемых с использованием средств автоматизации или без использования таких средств с персональными данными.</li>
-                  <li><strong className="text-foreground">Оператор</strong> — ООО «ОВН ДИДЖИТАЛ», организующее и (или) осуществляющее обработку персональных данных.</li>
+                  <li><strong className="text-foreground">Оператор</strong> — OWNDEV, организующее и (или) осуществляющее обработку персональных данных.</li>
                   <li><strong className="text-foreground">Пользователь</strong> — любое лицо, осуществляющее доступ к Сайту.</li>
                   <li><strong className="text-foreground">Сайт</strong> — веб-сайт owndev.ru и его поддомены.</li>
                 </ul>
@@ -192,7 +191,7 @@ function renderPrivacySection(title: string) {
       </>
     ),
     "10. Отзыв согласия": (
-      <p className="text-muted-foreground mb-4">Для отзыва согласия на обработку персональных данных необходимо направить соответствующее заявление на email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a> или позвонить по телефону: <a href="tel:89069989888" className="text-primary hover:underline">8 (906) 998-98-88</a>.</p>
+      <p className="text-muted-foreground mb-4">Для отзыва согласия на обработку персональных данных необходимо направить соответствующее заявление на email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a> или позвонить по телефону: <a href="tel:+79939289488" className="text-primary hover:underline">+7 993 928-94-88</a>.</p>
     ),
     "11. Меры по защите персональных данных": (
       <p className="text-muted-foreground mb-4">Оператор принимает необходимые и достаточные организационные и технические меры для защиты персональных данных от неправомерного или случайного доступа, уничтожения, изменения, блокирования, копирования, распространения, а также от иных неправомерных действий с ними.</p>
@@ -205,8 +204,8 @@ function renderPrivacySection(title: string) {
         <p className="text-muted-foreground mb-4">По всем вопросам, связанным с обработкой персональных данных, Вы можете обратиться:</p>
         <ul className="list-none text-muted-foreground space-y-2">
           <li>📧 Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a></li>
-          <li>📞 Телефон: <a href="tel:89069989888" className="text-primary hover:underline">8 (906) 998-98-88</a></li>
-          <li>💬 Telegram: <a href="https://t.me/The_Suppor_t" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@The_Suppor_t</a></li>
+          <li>📞 Телефон: <a href="tel:+79939289488" className="text-primary hover:underline">+7 993 928-94-88</a></li>
+          <li>💬 Telegram: <a href="https://t.me/one_help" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@one_help</a></li>
         </ul>
       </>
     ),
