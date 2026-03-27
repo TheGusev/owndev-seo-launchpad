@@ -1505,6 +1505,10 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   try {
     issueCounter = 0;
     await updateScan(scanId, { status: 'running', progress_pct: 5 });
+
+    // Load rules from DB
+    const dbRules = await loadRules();
+    console.log(`Loaded ${dbRules.length} active rules from DB`);
     
     // Fetch page HTML
     const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
@@ -1560,7 +1564,32 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     const schemaIssues = schemaAudit(html);
     const aiIssues = aiAudit(html);
     
-    let allIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
+    // Tag issues with matching rule_id for weight-based scoring
+    const allHardcodedIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
+    
+    // Map hardcoded issues to DB rules by matching how_to_check patterns
+    const firedRuleIds: string[] = [];
+    for (const issue of allHardcodedIssues) {
+      // Try to find matching DB rule
+      const matchingRule = dbRules.find(r => {
+        if (r.module !== issue.module) return false;
+        // Match by title similarity or how_to_check pattern
+        const titleLower = issue.title.toLowerCase();
+        const ruleTitleLower = r.title.toLowerCase();
+        // Check if rule title keywords are in issue title
+        const ruleWords = ruleTitleLower.split(/\s+/).filter(w => w.length > 3);
+        const matchCount = ruleWords.filter(w => titleLower.includes(w)).length;
+        return matchCount >= Math.ceil(ruleWords.length * 0.5);
+      });
+      if (matchingRule) {
+        (issue as any).rule_id = matchingRule.rule_id;
+        // Override visible_in_preview from DB rule
+        issue.visible_in_preview = matchingRule.visible_in_preview;
+        firedRuleIds.push(matchingRule.rule_id);
+      }
+    }
+
+    let allIssues = [...allHardcodedIssues];
     
     // Site-mode: crawl and add extra checks
     let crawledPages: { url: string; html: string; status: number }[] = [];
@@ -1571,21 +1600,19 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       allIssues = [...allIssues, ...siteIssues];
     }
     
-    const scores = calcScores(allIssues);
+    const scores = calcScoresWeighted(allIssues, dbRules);
     await updateScan(scanId, { progress_pct: 60, scores, issues: allIssues, crawled_pages: crawledPages.map(p => p.url) });
     
     // STEPS 4-6: Background (non-blocking for preview)
     const crawledPageUrls = crawledPages.map(p => p.url);
     
-    // Step 4: Competitor Analysis (runs in parallel with keyword extraction)
+    // Step 4: Competitor Analysis
     const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, crawledPageUrls);
-    
-    // Add competitor gap issues to allIssues
     allIssues = [...allIssues, ...compResult.gap_issues];
     
     await updateScan(scanId, { progress_pct: 75 });
     
-    // Step 5: Keywords (enriched with competitor top_phrases)
+    // Step 5: Keywords
     const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
     const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases);
     
@@ -1594,8 +1621,11 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     // Step 6: Minus words
     const minusWords = await generateMinusWords(theme, keywords);
     
-    // Recalculate scores with competitor gap issues included
-    const finalScores = calcScores(allIssues);
+    // Final scores with all issues
+    const finalScores = calcScoresWeighted(allIssues, dbRules);
+    
+    // Increment trigger counts for fired rules (fire and forget)
+    incrementTriggerCounts(firedRuleIds).catch(e => console.error('Trigger count error:', e));
     
     await updateScan(scanId, {
       status: 'done', progress_pct: 100,

@@ -19,6 +19,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import SiteCheck from "./pages/SiteCheck";
 import SiteCheckResult from "./pages/SiteCheckResult";
 import SiteCheckReport from "./pages/SiteCheckReport";
+import AdminRules from "./pages/AdminRules";
 
 const queryClient = new QueryClient();
 
