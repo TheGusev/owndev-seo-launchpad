@@ -33,22 +33,23 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // Create report
+      // TODO: заменить на ЮKassa createPayment после прохождения проверки
+      // Stub: сразу ставим payment_status = 'paid'
       const { data: report, error } = await supabase.from('reports').insert({
         scan_id,
         email,
-        payment_status: 'pending',
+        payment_status: 'paid', // stub — после подключения ЮKassa будет 'pending'
       }).select('id, download_token').single();
 
       if (error) throw error;
 
-      // In production, this would create a ЮKassa payment and return payment_url
-      // For now, return report_id and a placeholder payment_url
+      // Stub: payment_url ведёт напрямую на страницу отчёта
+      const payment_url = `/tools/site-check/report/${report.id}?token=${report.download_token}`;
+
       return new Response(JSON.stringify({
         report_id: report.id,
         download_token: report.download_token,
-        payment_url: null, // Will be ЮKassa URL after integration
-        message: 'Оплата через ЮKassa будет подключена в следующем промте',
+        payment_url,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // Without valid token, return limited info
+      // Without valid token or not paid — return limited info
       return new Response(JSON.stringify({
         report_id: report.id,
         payment_status: report.payment_status,

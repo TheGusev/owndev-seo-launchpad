@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Lock, FileText, Download, Users, Search, MinusCircle, Sparkles } from "lucide-react";
+import { Lock, FileText, Download, Users, Search, MinusCircle, Sparkles, Loader2 } from "lucide-react";
 
 interface PaywallCTAProps {
   issueCount: number;
   onPay: (email: string) => void;
+  loading?: boolean;
 }
 
 const features = [
@@ -17,7 +18,7 @@ const features = [
   { icon: Download, text: "Экспорт: PDF, DOCX, CSV" },
 ];
 
-const PaywallCTA = ({ issueCount, onPay }: PaywallCTAProps) => {
+const PaywallCTA = ({ issueCount, onPay, loading }: PaywallCTAProps) => {
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
 
@@ -68,10 +69,17 @@ const PaywallCTA = ({ issueCount, onPay }: PaywallCTAProps) => {
               variant="hero"
               size="lg"
               className="w-full"
-              disabled={!email.includes("@")}
+              disabled={!email.includes("@") || loading}
               onClick={() => onPay(email)}
             >
-              Перейти к оплате
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Создаём отчёт...
+                </>
+              ) : (
+                "Перейти к оплате"
+              )}
             </Button>
             <p className="text-[11px] text-muted-foreground text-center">
               Ссылка на отчёт будет отправлена на указанный email
