@@ -1,71 +1,68 @@
 
 
-## Проверка ПРОМТ 7 — статус выполнения
+## ПРОМТ 8 — Интеграция чек-листа блога в движок правил
 
-### Что реализовано (stub-режим)
+### Текущее состояние
 
-| Требование | Статус | Комментарий |
-|---|---|---|
-| PaywallCTA с email, "1 490 ₽", кнопка "Получить полный отчёт" | ✅ | |
-| POST /create → report + payment_status='paid' (stub) | ✅ | |
-| Возврат report_id, download_token, payment_url | ✅ | |
-| Фронт redirect на report page | ✅ | |
-| Report page: fetch данных через getReport(id, token) | ✅ | |
-| Pending state с auto-refresh каждые 3 сек | ✅ | |
-| Невалидный token → "Неверная ссылка" | ✅ | |
-| 4 кнопки скачивания (PDF, DOCX, Keywords CSV, Minus CSV) | ✅ | |
-| Кнопки disabled если не paid, stub toast при клике | ✅ | |
-| Роуты site-check перед `:toolSlug` | ✅ | |
-| API функции в site-check-api.ts | ✅ | |
+- Таблица `scan_rules` уже существует в БД с полями: `id`, `module`, `severity`, `title`, `description`, `how_to_check`, `fix_template`, `score_weight`, `visible_in_preview`, `active`. Не хватает полей `source`, `example_fix`, `rule_id` (string-идентификатор).
+- Движок (`site-check-scan`) использует **хардкод** проверок — не загружает правила из БД.
+- Скоринг считается простым вычитанием по severity, а не по `score_weight` из правил.
+- Нет admin-панели.
 
-### Что НЕ реализовано (но указано как "после подключения ЮKassa")
+### План реализации
 
-| Требование | Статус | Пояснение |
-|---|---|---|
-| Реальный платёж ЮKassa (createPayment) | ⏳ Stub | Ожидаемо — нужны секреты YOOKASSA_SHOP_ID/SECRET_KEY |
-| Edge function `yookassa-webhook` (HMAC, payment.succeeded) | ⏳ Не создан | Будет при подключении ЮKassa |
-| Генерация файлов (PDF, DOCX, CSV) и upload в Storage | ⏳ Stub | Кнопки показывают toast |
-| Отправка email с ссылкой на отчёт | ⏳ Не реализовано | Будет после подключения ЮKassa |
-| Rate limiting (3 req/hour на /create, 60/hour на GET) | ❌ Не реализовано | Нужно добавить |
-| "Формируется... подождите" состояние кнопок при generating | ❌ Не реализовано | Нет поля статуса генерации файлов |
+#### 1. Миграция БД — расширить `scan_rules`
 
-### Мелкие расхождения с промтом
+Добавить недостающие колонки:
+- `source text DEFAULT 'technical'` — откуда правило (blog_checklist, direct_rules, technical, ai_rules)
+- `example_fix text` — пример правильного варианта
+- `rule_id text UNIQUE` — человекочитаемый идентификатор (например `tech_robots_blocked`)
+- `trigger_count integer DEFAULT 0` — счётчик срабатываний для статистики
+- `last_triggered_at timestamptz` — для фильтра "за 7 дней"
 
-1. **Лейблы кнопок**: промт указывает "↓ Ключевые слова" и "↓ Минус-слова", в коде — "Ключи CSV" и "Минус-слова CSV". Мелочь, но стоит привести к формату промта.
-2. **Report page не показывает keywords, competitors, minus_words** — `FullReportView` отображает только issues. Полный отчёт должен также содержать секции: сравнительная таблица конкурентов, список ключевых запросов (по секциям SEO/Директ/Инфо), минус-слова.
-3. **Email уведомление** отображается как "Ссылка на отчёт отправлена на email", но фактически email не отправляется.
+Индексы: `(module, active)`, `(source)`.
 
-### Вывод
+#### 2. Импорт ~35 правил в `scan_rules`
 
-**Stub-режим реализован корректно на ~85%.** Основные пробелы:
-- Report page не отображает keywords/competitors/minus_words (только issues)
-- Нет rate limiting
-- Нет статуса генерации файлов
+Заполнить таблицу правилами по 5 группам из промта:
 
-### План доработки
+| Группа | Кол-во правил | Примеры |
+|--------|--------------|---------|
+| technical | 9 | HTTP 200, SSL, robots.txt, sitemap, canonical, noindex, LCP, viewport, битые ссылки |
+| content | 7 | Title длина/ключ, Description длина/CTA, H1 единственный/ключ, H2 структура, объём текста, уникальность H1≠Title, переспам |
+| direct | 5 | H1 конкретность, H1↔Title совпадение, когерентность, ≤2 тематик, коммерческие сигналы |
+| schema | 4 | JSON-LD наличие, тип разметки, валидация, OpenGraph |
+| ai | 4 | Структура без контекста, определения, FAQ-блок, H2 как вопросы |
 
-**1. Расширить Report page — показать все секции полного отчёта**
-- Добавить компонент `KeywordsSection` — отображение ключей по 4 секциям (SEO, Директ, Инфо, Таблица)
-- Добавить компонент `MinusWordsSection` — общие + тематические
-- Добавить компонент `CompetitorsTable` — сравнительная таблица
-- В `SiteCheckReport.tsx` передавать `scan.keywords`, `scan.competitors`, `scan.minus_words` в новые компоненты
+Каждое правило с `how_to_check` (инструкция для движка), `fix_template`, `example_fix`, `score_weight` (нормализованный).
 
-**2. Исправить лейблы кнопок**
-- "Скачать PDF" → "↓ Скачать PDF"
-- "Скачать DOCX" → "↓ Скачать Word"  
-- "Ключи CSV" → "↓ Ключевые слова"
-- "Минус-слова CSV" → "↓ Минус-слова"
+#### 3. Обновить edge function `site-check-scan` — использовать правила из БД
 
-**3. Убрать ложное сообщение об отправке email**
-- Пока email не отправляется — не показывать блок "Ссылка отправлена на email"
+Текущие хардкод-проверки остаются как fallback. Новая логика:
+1. В начале scan: `SELECT * FROM scan_rules WHERE active = true`
+2. Группировка по `module`
+3. Для каждого правила — выполнить проверку (how_to_check содержит ключ-паттерн типа `check_robots_blocked`, `check_title_length` и т.д.)
+4. При нарушении — создать IssueCard из `fix_template` + `example_fix`
+5. Инкрементировать `trigger_count` для сработавших правил
+6. Скоринг: `score = (Σ weight_passed / Σ weight_all) * 100` вместо текущего вычитания
+
+#### 4. Admin-панель `/admin/rules`
+
+Защита: простой пароль через `localStorage` (без auth системы — это внутренний инструмент).
+
+Функциональность:
+- Таблица всех правил с фильтрами по module, severity, source
+- Inline-редактирование полей
+- Toggle active/inactive
+- Форма добавления нового правила
+- Колонка "Срабатываний за 7 дней" (из `trigger_count` / `last_triggered_at`)
 
 ### Файлы
 
-| Файл | Изменение |
-|---|---|
-| `src/components/site-check/KeywordsSection.tsx` | Новый — отображение ключей по секциям |
-| `src/components/site-check/MinusWordsSection.tsx` | Новый — отображение минус-слов |
-| `src/components/site-check/CompetitorsTable.tsx` | Новый — сравнительная таблица |
-| `src/pages/SiteCheckReport.tsx` | Добавить 3 новые секции, убрать ложный email блок |
-| `src/components/site-check/DownloadButtons.tsx` | Обновить лейблы кнопок |
+| Файл | Действие |
+|------|----------|
+| Миграция БД | ALTER TABLE scan_rules + INSERT ~35 правил |
+| `supabase/functions/site-check-scan/index.ts` | Загрузка правил из БД, rules-based scoring |
+| `src/pages/AdminRules.tsx` | Новый — admin-панель |
+| `src/App.tsx` | Добавить роут `/admin/rules` |
 
