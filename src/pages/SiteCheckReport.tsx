@@ -5,9 +5,12 @@ import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import FullReportView from "@/components/site-check/FullReportView";
+import KeywordsSection from "@/components/site-check/KeywordsSection";
+import MinusWordsSection from "@/components/site-check/MinusWordsSection";
+import CompetitorsTable from "@/components/site-check/CompetitorsTable";
 import { getReport } from "@/lib/site-check-api";
 import { useEffect, useState, useCallback } from "react";
-import { CheckCircle2, Mail, Loader2, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle2, Loader2, AlertTriangle, Clock } from "lucide-react";
 
 const SiteCheckReport = () => {
   const { reportId } = useParams<{ reportId: string }>();
@@ -141,12 +144,17 @@ const SiteCheckReport = () => {
 
           {scan.issues && <FullReportView issues={scan.issues} />}
 
-          {data.email && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground rounded-xl border border-border/30 p-4">
-              <Mail className="w-4 h-4 shrink-0" />
-              Ссылка на отчёт отправлена на {data.email}
-            </div>
+          {scan.competitors && (
+            <CompetitorsTable
+              competitors={scan.competitors}
+              userUrl={scan.url}
+              userScores={scan.scores}
+            />
           )}
+
+          {scan.keywords && <KeywordsSection keywords={scan.keywords} />}
+
+          {scan.minus_words && <MinusWordsSection minusWords={scan.minus_words} />}
         </div>
       </main>
       <Footer />

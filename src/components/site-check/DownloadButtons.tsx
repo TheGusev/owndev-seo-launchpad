@@ -7,10 +7,10 @@ interface DownloadButtonsProps {
 }
 
 const files = [
-  { label: "Скачать PDF", key: "pdf" },
-  { label: "Скачать DOCX", key: "docx" },
-  { label: "Ключи CSV", key: "keywords" },
-  { label: "Минус-слова CSV", key: "minus" },
+  { label: "↓ Скачать PDF", key: "pdf" },
+  { label: "↓ Скачать Word", key: "docx" },
+  { label: "↓ Ключевые слова", key: "keywords" },
+  { label: "↓ Минус-слова", key: "minus" },
 ];
 
 const DownloadButtons = ({ paid }: DownloadButtonsProps) => {
