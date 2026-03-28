@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Globe, FileText } from "lucide-react";
 import type { ScanMode } from "@/lib/site-check-types";
 import { saveLastUrl } from "@/utils/lastUrl";
+import { ymGoal } from "@/utils/analytics";
 
 interface ScanFormProps {
   onSubmit: (url: string, mode: ScanMode) => void;
@@ -29,6 +30,7 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
     let cleanUrl = url.trim();
     if (!cleanUrl.startsWith("http")) cleanUrl = "https://" + cleanUrl;
     saveLastUrl(cleanUrl);
+    ymGoal("scan_started");
     onSubmit(cleanUrl, mode);
   };
 

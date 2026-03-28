@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock, FileText, Download, Users, Search, MinusCircle, Sparkles, Loader2 } from "lucide-react";
+import { ymGoal } from "@/utils/analytics";
 
 interface PaywallCTAProps {
   issueCount: number;
@@ -51,7 +52,7 @@ const PaywallCTA = ({ issueCount, onPay, loading }: PaywallCTAProps) => {
             variant="hero"
             size="lg"
             className="w-full"
-            onClick={() => setShowEmail(true)}
+            onClick={() => { setShowEmail(true); ymGoal("paywall_reached"); }}
           >
             <Lock className="w-4 h-4" />
             Получить полный отчёт
@@ -70,7 +71,7 @@ const PaywallCTA = ({ issueCount, onPay, loading }: PaywallCTAProps) => {
               size="lg"
               className="w-full"
               disabled={!email.includes("@") || loading}
-              onClick={() => onPay(email)}
+              onClick={() => { ymGoal("email_submitted"); onPay(email); }}
             >
               {loading ? (
                 <>
