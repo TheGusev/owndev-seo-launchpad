@@ -1,11 +1,11 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
 import IssueCardComponent from "@/components/site-check/IssueCard";
 import PaywallCTA from "@/components/site-check/PaywallCTA";
-import { getScanPreview, createReport } from "@/lib/site-check-api";
+import { getScanPreview } from "@/lib/site-check-api";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -13,10 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     if (!scanId) return;
