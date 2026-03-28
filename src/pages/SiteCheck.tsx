@@ -28,6 +28,16 @@ const SiteCheck = () => {
   const [scanId, setScanId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [limitScanId, setLimitScanId] = useState<string | null>(null);
+  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+
+  useEffect(() => {
+    setHistory(getHistory());
+  }, []);
+
+  const handleClearHistory = () => {
+    clearHistory();
+    setHistory([]);
+  };
 
   const handleSubmit = async (url: string, mode: ScanMode) => {
     setScanning(true);
