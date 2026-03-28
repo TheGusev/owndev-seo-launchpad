@@ -84,7 +84,11 @@ const AITextGenerator = () => {
         </div>
       </div>
 
-      {result && (
+      {!loading && result === "" && generatedAt && (
+        <EmptyState onRetry={handleGenerate} />
+      )}
+
+      {result && result.length > 0 && (
         <div className="glass rounded-xl p-5">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <p className="text-sm font-semibold text-foreground">Результат</p>
