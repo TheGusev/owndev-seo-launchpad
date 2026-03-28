@@ -66,7 +66,7 @@ const Tools = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <span className="text-gradient">12 инструментов</span> для SEO + LLM
+              <span className="text-gradient">13 инструментов</span> для SEO + LLM
             </motion.h1>
             <motion.p
               className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto"
