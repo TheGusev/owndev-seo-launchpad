@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
@@ -7,8 +7,9 @@ import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
 import type { ScanMode } from "@/lib/site-check-types";
-import { Check, Lock, ArrowRight } from "lucide-react";
+import { Check, Lock, ArrowRight, Globe, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 
 const checkItems = [
   { text: "Технический SEO (скорость, код, robots, sitemap)", free: true },
@@ -102,6 +103,40 @@ const SiteCheck = () => {
               >
                 Смотреть результаты
                 <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {history.length > 0 && (
+            <div className="mt-8" id="history">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Последние проверки</h2>
+              <div className="space-y-2">
+                {history.slice(0, 5).map((item) => (
+                  <div
+                    key={item.scanId}
+                    className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 p-3 text-sm"
+                  >
+                    <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-foreground truncate flex-1">{item.url}</span>
+                    <span className="text-muted-foreground text-xs whitespace-nowrap">
+                      {new Date(item.date).toLocaleDateString("ru-RU")}
+                    </span>
+                    <button
+                      onClick={() => navigate(`/tools/site-check/result/${item.scanId}`)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                    >
+                      Открыть
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleClearHistory}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                Очистить историю
               </button>
             </div>
           )}
