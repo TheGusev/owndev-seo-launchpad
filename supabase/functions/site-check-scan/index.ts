@@ -967,9 +967,8 @@ function schemaAudit(html: string): Issue[] {
 }
 
 // ═══ STEP 8: AI Visibility Audit ═══
-async function aiAudit(html: string, parsedUrl: URL): Promise<Issue[]> {
+function aiAudit(html: string): Issue[] {
   const issues: Issue[] = [];
-  const origin = parsedUrl.origin;
   
   const h2Matches = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) || [];
   const h2Texts = h2Matches.map(m => m.replace(/<[^>]+>/g, '').trim());
@@ -995,50 +994,6 @@ async function aiAudit(html: string, parsedUrl: URL): Promise<Issue[]> {
       visible_in_preview: false }));
   }
   
-  // Check FAQPage schema markup
-  const hasFaqSchema = /FAQPage/i.test(html);
-  if (!hasFaqSchema) {
-    issues.push(makeIssue({ module: 'ai', severity: 'medium', title: '🤖 Нет разметки Schema FAQPage',
-      found: 'Разметка FAQPage не найдена на странице', location: 'JSON-LD / Microdata',
-      why_it_matters: 'Schema FAQPage помогает поисковикам и LLM извлекать вопросы-ответы для featured snippets и AI-ответов',
-      how_to_fix: 'Добавьте JSON-LD разметку FAQPage для блока FAQ',
-      example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Вопрос?","acceptedAnswer":{"@type":"Answer","text":"Ответ."}}]}</script>',
-      visible_in_preview: false }));
-  }
-
-  // Check Article or LocalBusiness schema
-  const hasArticleOrBiz = /Article|LocalBusiness|Organization/i.test(html) && /application\/ld\+json/i.test(html);
-  if (!hasArticleOrBiz) {
-    issues.push(makeIssue({ module: 'ai', severity: 'medium', title: '🤖 Нет разметки Schema Article / LocalBusiness',
-      found: 'Не найдена разметка Article, LocalBusiness или Organization', location: 'JSON-LD',
-      why_it_matters: 'Schema.org Article/LocalBusiness повышает доверие поисковиков и улучшает представление в AI-ответах',
-      how_to_fix: 'Добавьте JSON-LD разметку Article (для статей) или LocalBusiness (для бизнеса)',
-      example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Компания","address":{"@type":"PostalAddress","addressLocality":"Москва"}}</script>',
-      visible_in_preview: false }));
-  }
-
-  // E-E-A-T: author block
-  const hasAuthor = /author|автор/i.test(html) && (/<[^>]*class="[^"]*author[^"]*"/i.test(html) || /itemprop="author"/i.test(html) || /"author"/i.test(html));
-  if (!hasAuthor) {
-    issues.push(makeIssue({ module: 'ai', severity: 'medium', title: '🤖 Нет блока об авторе (E-E-A-T)',
-      found: 'Блок автора не найден на странице', location: 'Контент страницы',
-      why_it_matters: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) — ключевой фактор для Google и LLM. Указание автора повышает доверие',
-      how_to_fix: 'Добавьте блок автора с именем, фото и кратким описанием экспертизы',
-      example_fix: '<div class="author" itemprop="author" itemscope itemtype="https://schema.org/Person"><span itemprop="name">Иван Петров</span>, SEO-эксперт с 10-летним стажем</div>',
-      visible_in_preview: false }));
-  }
-
-  // E-E-A-T: publication date
-  const hasPubDate = /datePublished|date_published|pubdate|article:published_time/i.test(html);
-  if (!hasPubDate) {
-    issues.push(makeIssue({ module: 'ai', severity: 'low', title: '🤖 Нет даты публикации',
-      found: 'Дата публикации не указана в разметке', location: 'Meta / JSON-LD',
-      why_it_matters: 'Дата публикации помогает поисковикам и LLM оценить актуальность контента',
-      how_to_fix: 'Добавьте дату публикации через meta og:article:published_time или JSON-LD datePublished',
-      example_fix: '<meta property="article:published_time" content="2024-01-15T10:00:00+03:00">',
-      visible_in_preview: false }));
-  }
-  
   const listCount = (html.match(/<(ul|ol)[\s>]/gi) || []).length;
   if (listCount === 0) {
     issues.push(makeIssue({ module: 'ai', severity: 'low', title: 'Нет структурированных списков',
@@ -1047,26 +1002,6 @@ async function aiAudit(html: string, parsedUrl: URL): Promise<Issue[]> {
       how_to_fix: 'Оформите ключевую информацию в виде списков',
       example_fix: '<ul><li>Преимущество 1</li><li>Преимущество 2</li></ul>',
       visible_in_preview: false }));
-  }
-
-  // Check /llms.txt
-  try {
-    const llmsResp = await fetchWithTimeout(`${origin}/llms.txt`, 5000, { method: 'HEAD' });
-    if (!llmsResp.ok) {
-      issues.push(makeIssue({ module: 'ai', severity: 'high', title: '🤖 Нет файла /llms.txt',
-        found: `${origin}/llms.txt → ${llmsResp.status}`, location: '/llms.txt',
-        why_it_matters: 'llms.txt — стандарт описания сайта для LLM-систем. Без него AI-агенты не получают инструкций о вашем контенте',
-        how_to_fix: 'Создайте файл llms.txt в корне сайта с описанием контента, структуры и правил использования',
-        example_fix: `# ${parsedUrl.hostname}\n\n> Краткое описание сайта\n\n## Контент\n- Страницы: /about, /services, /blog\n\n## Правила\n- Можно цитировать с указанием источника`,
-        visible_in_preview: true }));
-    }
-  } catch {
-    issues.push(makeIssue({ module: 'ai', severity: 'high', title: '🤖 Нет файла /llms.txt',
-      found: `${origin}/llms.txt → недоступен`, location: '/llms.txt',
-      why_it_matters: 'llms.txt — стандарт описания сайта для LLM-систем',
-      how_to_fix: 'Создайте файл llms.txt в корне сайта',
-      example_fix: `# ${parsedUrl.hostname}\n\n> Описание сайта`,
-      visible_in_preview: true }));
   }
   
   return issues;
@@ -1665,7 +1600,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   
   // Steps 7 & 8
   const schemaIssues = schemaAudit(html);
-  const aiIssues = await aiAudit(html, parsedUrl);
+  const aiIssues = aiAudit(html);
   
   const allHardcodedIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
   
@@ -1894,12 +1829,12 @@ Deno.serve(async (req) => {
       if (error || !data) return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: jsonHeaders });
       
       const allIssues = (data.issues as Issue[]) || [];
+      const previewIssues = allIssues.filter(i => i.visible_in_preview).slice(0, 5);
       
       return new Response(JSON.stringify({
         scan_id: data.id, url: data.url, mode: data.mode, status: data.status,
-        scores: data.scores, issues: allIssues, issue_count: allIssues.length,
+        scores: data.scores, issues: previewIssues, issue_count: allIssues.length,
         theme: data.theme, created_at: data.created_at,
-        competitors: data.competitors, keywords: data.keywords, minus_words: data.minus_words,
       }), { headers: jsonHeaders });
     }
     
