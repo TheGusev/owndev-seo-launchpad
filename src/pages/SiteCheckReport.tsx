@@ -9,7 +9,6 @@ import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import CompetitorsTable from "@/components/site-check/CompetitorsTable";
 import { getReport } from "@/lib/site-check-api";
-import { getHistory } from "@/utils/scanHistory";
 import { useEffect, useState, useCallback } from "react";
 import { CheckCircle2, Loader2, AlertTriangle, Clock } from "lucide-react";
 
@@ -142,19 +141,9 @@ const SiteCheckReport = () => {
 
           <DownloadButtons />
 
-          {scan.scores && (
-            <ScoreCards
-              scores={scan.scores}
-              previousScores={
-                (() => {
-                  const prev = getHistory().filter(h => h.url === scan.url && h.scanId !== scan.scan_id);
-                  return prev.length > 0 ? prev[0].scores : undefined;
-                })()
-              }
-            />
-          )}
+          {scan.scores && <ScoreCards scores={scan.scores} />}
 
-          {scan.issues && <FullReportView issues={scan.issues} url={scan.url} />}
+          {scan.issues && <FullReportView issues={scan.issues} />}
 
           {scan.competitors && (
             <CompetitorsTable
