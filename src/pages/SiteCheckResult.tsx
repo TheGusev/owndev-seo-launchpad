@@ -99,7 +99,7 @@ const SiteCheckResult = () => {
             </div>
           </div>
 
-          <PaywallCTA issueCount={data.issue_count || 0} onPay={handlePay} loading={paying} />
+          <PaywallCTA issueCount={data.issue_count || 0} onPay={handlePay} loading={false} />
         </div>
       </main>
       <Footer />
