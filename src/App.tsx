@@ -27,6 +27,14 @@ import Contacts from "./pages/Contacts";
 
 const queryClient = new QueryClient();
 
+const RouteTracker = () => {
+  const location = useLocation();
+  useEffect(() => {
+    ymHit(location.pathname + location.search);
+  }, [location]);
+  return null;
+};
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -35,6 +43,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ScrollToTop />
+          <RouteTracker />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/privacy" element={<Privacy />} />

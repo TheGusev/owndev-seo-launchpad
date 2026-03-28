@@ -48,6 +48,7 @@ const SiteCheckResult = () => {
       return;
     }
     setSending(true);
+    ymGoal("email_submitted");
     try {
       await supabase.functions.invoke("send-telegram", {
         body: {
