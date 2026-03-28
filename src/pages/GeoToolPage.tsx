@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { getToolBySlug } from "@/data/tools-registry";
 import { getRegionById, getRegionNeighbors } from "@/data/regions";
+import { GEO_BLOCKED_TOOLS } from "@/config/pseoConfig";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
@@ -34,6 +35,11 @@ const GeoToolPage = () => {
   const title = `${tool.name} в ${region.nameCase} — цены от ${region.priceRange.split("-")[0]}₽`;
   const description = `${tool.shortDesc} в ${region.nameCase}. ${region.agencies} SEO-агентств, бюджеты ${region.priceRange}₽/мес. Бесплатный инструмент OWNDEV.`;
 
+  const isBlocked = GEO_BLOCKED_TOOLS.includes(tool.slug);
+  const canonicalUrl = isBlocked
+    ? `https://owndev.ru/tools/${tool.slug}`
+    : `https://owndev.ru/tools/${tool.slug}/${region.id}`;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -50,7 +56,8 @@ const GeoToolPage = () => {
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <link rel="canonical" href={`https://owndev.ru/tools/${tool.slug}`} />
+        <link rel="canonical" href={canonicalUrl} />
+        {isBlocked && <meta name="robots" content="noindex, follow" />}
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={`https://owndev.ru/tools/${tool.slug}/${region.id}`} />

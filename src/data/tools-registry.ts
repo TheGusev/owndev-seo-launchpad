@@ -147,7 +147,7 @@ export const tools: ToolDef[] = [
     component: lazy(() => import("@/components/tools/InternalLinksChecker")),
     gradient: "bg-gradient-to-br from-slate-950/40 to-zinc-950/40",
     useCases: ["Поиск битых ссылок", "Аудит перелинковки", "Проверка nofollow на внутренних ссылках"],
-    geoEnabled: false, status: "active",
+    geoEnabled: true, status: "active",
   },
 ];
 
