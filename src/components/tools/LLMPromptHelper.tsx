@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Bot, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import ToolCTA from "./ToolCTA";
+import { saveLastUrl } from "@/utils/lastUrl";
 
 type Goal = "write" | "improve" | "ai-overview";
 
@@ -154,6 +155,7 @@ const LLMPromptHelper = () => {
 
   const handleGenerate = () => {
     if (!keyword.trim() || !niche.trim()) return;
+    if (url.trim()) saveLastUrl(url.trim());
     setPrompts(generatePrompts(lang, goal, keyword.trim(), niche.trim(), url.trim()));
   };
 
