@@ -5,6 +5,7 @@ import { Search, Globe, Zap, Loader2, AlertTriangle, CheckCircle, Info, Bot, Has
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import ToolCTA from "./ToolCTA";
+import { saveLastUrl } from "@/utils/lastUrl";
 
 interface AuditIssue {
   type: string;

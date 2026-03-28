@@ -5,6 +5,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { ScanSearch, CheckCircle, XCircle, AlertTriangle, Loader2, Globe, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { saveLastUrl } from "@/utils/lastUrl";
 
 interface Issue {
   type: string;
