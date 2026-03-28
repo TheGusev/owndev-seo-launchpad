@@ -1,60 +1,51 @@
 
 
-## Gamification & Retention: Было/Стало + To-Do чеклист
+## Две задачи
 
-### Задача 1: Трекинг динамики «Было / Стало»
+### Задача A: LLM-проверки — уже готово ✅
 
-**`src/components/site-check/ScoreCards.tsx`** — добавить prop `previousScores?: ScanScores`:
-- Для каждого ключа считать `diff = scores[key] - previousScores[key]`
-- diff > 0: бейдж `▲ +N` зелёным (`text-emerald-500 bg-emerald-500/10`)
-- diff < 0: бейдж `▼ N` красным (`text-red-500 bg-red-500/10`)
-- diff === 0: серый `~ без изменений`
-- Нет previousScores — ничего не показывать
+Все 6 новых AI-проверок **уже реализованы** в edge function `site-check-scan/index.ts` (строки 968–1073):
+- ✅ `/llms.txt` (HEAD-запрос)
+- ✅ FAQ-блоки + Schema FAQPage
+- ✅ Schema Article / LocalBusiness / Organization
+- ✅ E-E-A-T: блок автора
+- ✅ E-E-A-T: дата публикации
+- ✅ Списки `<ul>/<ol>`
 
-**`src/pages/SiteCheckResult.tsx`** — найти предыдущий скан:
-- После загрузки data: `getHistory().filter(h => h.url === data.url && h.scanId !== scanId)`, взять `[0]?.scores`
-- Передать в `<ScoreCards scores={data.scores} previousScores={prevScores} />`
+Все ошибки попадают в модуль `ai` и отображаются в аккордеоне "AI-видимость" в `FullReportView`. Дополнительных изменений не требуется.
 
-**`src/pages/SiteCheckReport.tsx`** — аналогично, передать previousScores в ScoreCards
+### Задача B: Экспорт отчёта в PDF из браузера
 
-### Задача 2: Интерактивный To-Do лист ошибок
+**Подход:** Установить `jspdf` и `jspdf-autotable`. Генерировать PDF программно из данных отчёта (без html2canvas — быстрее, чище, не зависит от рендера).
 
-**Новый файл `src/hooks/useIssueTracker.ts`:**
-- Ключ localStorage: `owndev_fixes_{hostname}` (извлекать hostname из URL)
-- Возвращает: `{ resolvedIds: string[], toggleIssue(id: string): void, resetFixes(): void, resolvedCount: number }`
-- При toggle — добавлять/убирать id из Set, сохранять в localStorage
+**Новый файл `src/utils/exportReportPdf.ts`:**
+- Функция `exportReportPdf({ url, theme, scores, issues, competitors, keywords, minusWords })`
+- Страница 1: заголовок "Отчёт SEO-аудита — {url}", дата, тема, 5 скоров в таблице
+- Страница 2+: все ошибки сгруппированные по модулю — таблица (severity, title, found, how_to_fix)
+- Страница 3+: конкуренты — таблица (url, total, seo, direct, schema, ai)
+- Страница 4+: ключевые запросы — таблица (keyword, volume, cluster, intent)
+- Страница 5: минус-слова — список
+- Цвета: тёмный фон не нужен (PDF белый), но severity-маркеры сохранить (красный/оранжевый/жёлтый)
 
-**`src/components/site-check/IssueCard.tsx`** — добавить props `resolved?: boolean`, `onToggle?: () => void`:
-- Если onToggle определён (не locked): показать `<Checkbox />` слева от emoji
-- Если resolved: карточка получает `opacity-50`, заголовок `line-through text-muted-foreground`, emoji заменяется на `<CheckCircle2 className="text-green-500" />`
-- Анимация: `transition-all duration-300`
+**`src/components/site-check/DownloadButtons.tsx`:**
+- Принимает пропсы `data` (url, theme, scores, issues, competitors, keywords, minus_words)
+- Кнопка "Скачать PDF" становится активной (убрать opacity-50, cursor-not-allowed)
+- onClick вызывает `exportReportPdf(data)`
+- Остальные 3 кнопки (Word, Ключевые, Минус-слова) остаются заглушками
 
-**`src/components/site-check/FullReportView.tsx`** — добавить прогресс-бар:
-- Принимает `url: string` для привязки useIssueTracker к домену
-- Над аккордеоном: заголовок "План исправления сайта" + "Исправлено: X из Y"
-- `<Progress value={percent} />` под заголовком
-- Передать `resolved` и `onToggle` в каждый `IssueCardComponent`
-- При 100% — toast "Отличная работа! Запустите проверку заново."
+**`src/pages/SiteCheckResult.tsx`:**
+- Добавить `<DownloadButtons data={data} />` в блок результатов (передать все данные)
 
-### Задача 3: Кнопка пересканирования
-
-**`src/components/site-check/FullReportView.tsx`** — если resolvedCount > 0:
-- Показать кнопку "Обновить результаты (Пересканировать)" внизу блока
-- onClick: `navigate(`/tools/site-check?url=${encodeURIComponent(url)}&rescan=true`)`
-
-**`src/pages/SiteCheck.tsx`** — обработка `?rescan=true`:
-- Из searchParams достать `url` и `rescan`
-- Если оба присутствуют — автоматически вызвать `handleSubmit(url, "page")` при mount
+**`src/pages/SiteCheckReport.tsx`:**
+- Аналогично передать данные в DownloadButtons
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/hooks/useIssueTracker.ts` | Новый — хук localStorage чеклиста |
-| `src/components/site-check/ScoreCards.tsx` | previousScores + diff бейджи |
-| `src/components/site-check/IssueCard.tsx` | Checkbox + resolved стиль |
-| `src/components/site-check/FullReportView.tsx` | Progress bar + rescan кнопка |
-| `src/pages/SiteCheckResult.tsx` | Поиск prev scan + передача previousScores |
-| `src/pages/SiteCheckReport.tsx` | Передача previousScores + url в FullReportView |
-| `src/pages/SiteCheck.tsx` | Auto-rescan из query params |
+| `src/utils/exportReportPdf.ts` | Новый — генерация PDF |
+| `src/components/site-check/DownloadButtons.tsx` | Пропсы + активная кнопка PDF |
+| `src/pages/SiteCheckResult.tsx` | Передать data в DownloadButtons |
+| `src/pages/SiteCheckReport.tsx` | Передать data в DownloadButtons |
+| `package.json` | +jspdf, +jspdf-autotable |
 
