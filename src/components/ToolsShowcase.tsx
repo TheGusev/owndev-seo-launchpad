@@ -43,8 +43,35 @@ const ToolsShowcase = () => {
           </p>
         </motion.div>
 
+        {/* Flagship card */}
+        {tools.length > 0 && tools[0].slug === "site-check" && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
+          >
+            <Link
+              to={`/tools/${tools[0].slug}`}
+              className="glass rounded-2xl p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-5 border border-primary/30 hover:border-primary/60 transition-colors duration-200 block"
+            >
+              <div className="p-3 rounded-xl bg-primary/10 inline-block self-start">
+                <tools[0].icon className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="text-xl md:text-2xl font-bold">{tools[0].name}</h3>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">Главный инструмент</span>
+                </div>
+                <p className="text-muted-foreground text-sm md:text-base">{tools[0].description}</p>
+              </div>
+              <span className="text-primary font-semibold shrink-0">Начать проверку →</span>
+            </Link>
+          </motion.div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-12">
-          {tools.map((tool, i) => (
+          {tools.slice(1).map((tool, i) => (
             <motion.div
               key={tool.slug}
               initial={{ opacity: 0, y: 30 }}

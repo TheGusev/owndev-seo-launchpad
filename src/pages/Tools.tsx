@@ -30,7 +30,7 @@ const Tools = () => {
     <div className="min-h-screen bg-background overflow-hidden">
       <Helmet>
         <title>SEO и LLM инструменты — бесплатно | OWNDEV</title>
-        <meta name="description" content="12 бесплатных инструментов для SEO-аудита, programmatic SEO, генерации контента и оптимизации под AI-поиск. Без регистрации." />
+        <meta name="description" content="13 бесплатных инструментов для SEO-аудита, programmatic SEO, генерации контента и оптимизации под AI-поиск. Без регистрации." />
         <link rel="canonical" href="https://owndev.ru/tools" />
       </Helmet>
       <MouseGradient />
