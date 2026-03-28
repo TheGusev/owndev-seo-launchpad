@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ymGoal } from "@/utils/analytics";
 
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
