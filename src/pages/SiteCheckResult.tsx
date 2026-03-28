@@ -44,7 +44,8 @@ const SiteCheckResult = () => {
       .finally(() => setLoading(false));
   }, [scanId, toast]);
 
-  const handlePay = async (_email: string) => {
+  const handlePay = async (email: string) => {
+    setPaymentEmail(email);
     setShowPaymentModal(true);
   };
 

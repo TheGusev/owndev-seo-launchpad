@@ -34,7 +34,7 @@ const DownloadButtons = () => {
         </Button>
       ))}
       <p className="col-span-full text-xs text-muted-foreground text-center">
-        Генерация файлов появится после подключения оплаты
+        Экспорт отчёта скоро будет доступен
       </p>
     </div>
   );

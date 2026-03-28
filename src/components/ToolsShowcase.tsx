@@ -39,7 +39,7 @@ const ToolsShowcase = () => {
             <span className="text-gradient">LLM + SEO инструменты</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            12 профессиональных инструментов для SEO и оптимизации под AI‑поиск
+            13 профессиональных инструментов для SEO и оптимизации под AI‑поиск
           </p>
         </motion.div>
 

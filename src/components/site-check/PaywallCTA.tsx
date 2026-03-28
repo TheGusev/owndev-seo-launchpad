@@ -79,7 +79,7 @@ const PaywallCTA = ({ issueCount, onPay, loading }: PaywallCTAProps) => {
                   Создаём отчёт...
                 </>
               ) : (
-                "Перейти к оплате"
+                "Получить полный отчёт"
               )}
             </Button>
             <p className="text-[11px] text-muted-foreground text-center">

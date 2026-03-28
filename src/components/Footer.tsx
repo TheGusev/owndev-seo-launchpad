@@ -43,7 +43,8 @@ const Footer = () => {
       e.preventDefault();
       const id = href.replace("#", "");
       if (location.pathname !== "/") {
-        navigate("/" + href);
+        navigate("/");
+        setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 400);
       } else {
         document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
       }

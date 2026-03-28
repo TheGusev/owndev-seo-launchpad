@@ -18,6 +18,7 @@ const Offer = () => {
         <title>Оферта | OWNDEV</title>
         <meta name="description" content="Публичная оферта на услугу «Полный отчёт Проверки сайта» на owndev.ru." />
         <link rel="canonical" href="https://owndev.ru/offer" />
+        <meta name="robots" content="noindex, follow" />
       </Helmet>
       <main className="pt-24 pb-16 relative">
         <div className="absolute inset-0 pointer-events-none">

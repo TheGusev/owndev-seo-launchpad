@@ -18,6 +18,7 @@ const Terms = () => {
         <title>Пользовательское соглашение | OWNDEV</title>
         <meta name="description" content="Пользовательское соглашение OWNDEV. Условия использования сайта owndev.ru и заказа услуг." />
         <link rel="canonical" href="https://owndev.ru/terms" />
+        <meta name="robots" content="noindex, follow" />
       </Helmet>
       <main className="pt-24 pb-16 relative">
         {/* Background animations */}

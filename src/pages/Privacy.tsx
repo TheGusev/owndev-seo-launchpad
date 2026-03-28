@@ -18,6 +18,7 @@ const Privacy = () => {
         <title>Политика конфиденциальности | OWNDEV</title>
         <meta name="description" content="Политика конфиденциальности OWNDEV. Порядок обработки персональных данных на сайте owndev.ru." />
         <link rel="canonical" href="https://owndev.ru/privacy" />
+        <meta name="robots" content="noindex, follow" />
       </Helmet>
       <main className="pt-24 pb-16 relative">
         {/* Background animations */}

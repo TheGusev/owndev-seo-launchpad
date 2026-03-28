@@ -53,8 +53,8 @@ const Header = () => {
           </nav>
 
           <div className="hidden md:block">
-            <GradientButton size="sm" onClick={() => navigate("/tools")}>
-              Открыть инструменты
+            <GradientButton size="sm" onClick={() => navigate("/tools/site-check")}>
+              Проверить сайт
             </GradientButton>
           </div>
 
@@ -80,8 +80,8 @@ const Header = () => {
                   {link.label}
                 </a>
               ))}
-              <GradientButton size="sm" className="mt-3" onClick={() => { navigate("/tools"); setIsOpen(false); }}>
-                Открыть инструменты
+              <GradientButton size="sm" className="mt-3" onClick={() => { navigate("/tools/site-check"); setIsOpen(false); }}>
+                Проверить сайт
               </GradientButton>
             </div>
           </nav>
