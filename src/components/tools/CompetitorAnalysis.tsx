@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { saveLastUrl } from "@/utils/lastUrl";
+import EmptyState from "@/components/ui/empty-state";
 
 interface PageMetrics {
   url: string;
@@ -140,6 +141,10 @@ const CompetitorAnalysis = () => {
           Сравнить страницы
         </GradientButton>
       </div>
+
+      {!loading && !result && checkedAt && (
+        <EmptyState message="Не удалось сравнить страницы. Проверьте URL и попробуйте снова." onRetry={handleAnalyze} />
+      )}
 
       {result && (
         <div className="space-y-4">
