@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Code2, Sparkles, Bot } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const services = [
   { icon: Code2, text: "Сайты и лендинги под ключ" },
@@ -11,6 +12,16 @@ const services = [
 
 const ServicesTeaser = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleContact = () => {
+    if (location.pathname !== "/") {
+      navigate("/#contact");
+    } else {
+      document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
     <section className="py-8 md:py-16 relative">
@@ -38,11 +49,9 @@ const ServicesTeaser = () => {
             ))}
           </div>
 
-          <a href="#contact">
-            <GradientButton variant="variant" size="sm">
-              Обсудить проект
-            </GradientButton>
-          </a>
+          <GradientButton variant="variant" size="sm" onClick={handleContact}>
+            Обсудить проект
+          </GradientButton>
         </motion.div>
       </div>
     </section>

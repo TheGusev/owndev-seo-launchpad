@@ -25,6 +25,17 @@ export const categories = [
 ];
 
 export const tools: ToolDef[] = [
+  // ===== FLAGSHIP =====
+  {
+    id: "site-check", slug: "site-check",
+    name: "Проверка сайта",
+    shortDesc: "Технический SEO, индексация, конкуренты, ключевые запросы — один отчёт",
+    category: "analysis", icon: Search,
+    component: lazy(() => import("@/components/site-check/ScanForm")),
+    gradient: "bg-gradient-to-br from-primary/20 to-blue-950/40",
+    useCases: ["Полная проверка перед запуском", "SEO + Директ аудит", "Анализ конкурентов и ключей"],
+    geoEnabled: true, status: "active",
+  },
   // ===== ANALYSIS =====
   {
     id: "seo-auditor", slug: "seo-auditor",

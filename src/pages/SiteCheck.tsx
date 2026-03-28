@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
@@ -29,6 +29,11 @@ const SiteCheck = () => {
   const [progress, setProgress] = useState(0);
   const [limitScanId, setLimitScanId] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     setHistory(getHistory());
@@ -58,8 +63,10 @@ const SiteCheck = () => {
 
   const pollStatus = useCallback(async (id: string) => {
     const poll = async () => {
+      if (!mountedRef.current) return;
       try {
         const status = await getScanStatus(id);
+        if (!mountedRef.current) return;
         setProgress(status.progress_pct);
         if (status.status === 'done') {
           navigate(`/tools/site-check/result/${id}`);
@@ -70,7 +77,7 @@ const SiteCheck = () => {
           setTimeout(poll, 2000);
         }
       } catch {
-        setTimeout(poll, 3000);
+        if (mountedRef.current) setTimeout(poll, 3000);
       }
     };
     poll();
@@ -81,6 +88,7 @@ const SiteCheck = () => {
       <Helmet>
         <title>Проверка сайта — SEO, Директ, конкуренты | OwnDev</title>
         <meta name="description" content="Бесплатная проверка сайта: SEO, готовность к Яндекс.Директ, Schema.org, AI-видимость. Полный отчёт с ключевыми запросами и конкурентами." />
+        <link rel="canonical" href="https://owndev.ru/tools/site-check" />
       </Helmet>
       <Header />
       <main className="min-h-screen pt-24 pb-16">

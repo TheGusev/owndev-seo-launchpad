@@ -18,6 +18,7 @@ const Footer = () => {
   ];
 
   const toolLinks = [
+    { label: "Проверка сайта", href: "/tools/site-check", isRoute: true },
     { label: "SEO Auditor", href: "/tools/seo-auditor", isRoute: true },
     { label: "Schema Generator", href: "/tools/schema-generator", isRoute: true },
     { label: "pSEO Generator", href: "/tools/pseo-generator", isRoute: true },
