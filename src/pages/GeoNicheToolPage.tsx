@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { tools } from "@/data/tools-registry";
 import { regions } from "@/data/regions";
 import { niches, getNicheById } from "@/data/niches";
+import { GEO_ALLOWED_TOOLS, GEO_BLOCKED_TOOLS } from "@/config/pseoConfig";
 import { MapPin } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
@@ -14,7 +15,7 @@ import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
 
 
-const NICHE_ENABLED_SLUGS = ["pseo-generator", "anti-duplicate"];
+const NICHE_ENABLED_SLUGS = [...GEO_ALLOWED_TOOLS, ...GEO_BLOCKED_TOOLS];
 
 const GeoNicheToolPage = () => {
   const { citySlug, nicheSlug, toolSlug } = useParams<{
@@ -35,7 +36,10 @@ const GeoNicheToolPage = () => {
 
   const title = `${tool.name} для ${niche.nameCase} в ${region.nameCase} — OWNDEV`;
   const description = `${tool.shortDesc} для сферы «${niche.name}» в ${region.nameCase}. ${region.agencies} агентств, бюджеты ${region.priceRange} ₽/мес. Бесплатно.`;
-  const canonical = `https://owndev.ru/tools/${tool.slug}`;
+  const isBlocked = GEO_BLOCKED_TOOLS.includes(tool.slug);
+  const canonical = isBlocked
+    ? `https://owndev.ru/tools/${tool.slug}`
+    : `https://owndev.ru/${citySlug}/${nicheSlug}/${toolSlug}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -70,6 +74,7 @@ const GeoNicheToolPage = () => {
         <title>{title}</title>
         <meta name="description" content={description} />
         <link rel="canonical" href={canonical} />
+        {isBlocked && <meta name="robots" content="noindex, follow" />}
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={canonical} />

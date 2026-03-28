@@ -30,7 +30,7 @@ const niches = [
 ];
 
 /** Only commercial/service tools get geo pages — NOT utilities */
-const geoEnabledTools = ["seo-auditor", "competitor-analysis", "semantic-core"];
+const geoEnabledTools = ["seo-auditor", "competitor-analysis", "semantic-core", "site-check", "internal-links"];
 
 /** Niche geo pages disabled — utilities don't need regional copies */
 const nicheEnabledTools: string[] = [];
