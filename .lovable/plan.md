@@ -1,44 +1,46 @@
 
 
-## Сохранение пароля админки и реализация Блока 4
+## Блок 4 — доделка (3 задачи)
 
-### Шаг 1: Добавить секрет ADMIN_PASSWORD
-Сохранить значение `Westmax324252` как секрет `ADMIN_PASSWORD` в backend.
+### 1. Аналитика
 
-### Шаг 2: Создать Edge Function `admin-auth/index.ts`
-- Принимает `{ password: string }`
-- Сравнивает с секретом `ADMIN_PASSWORD` из `Deno.env`
-- Возвращает `{ success: true, token: randomUUID() }` или `{ success: false }`
-- CORS headers
+**Новый файл `src/utils/analytics.ts`:**
+- Функция `ymGoal(goal: string)` — вызывает `window.ym(COUNTER_ID, 'reachGoal', goal)` если доступно
+- Функция `ymHit(url: string)` — для трекинга маршрутов
 
-### Шаг 3: Обновить `AdminRules.tsx`
-- Удалить хардкод `ADMIN_PASSWORD = "owndev2024"`
-- `handleLogin` → `supabase.functions.invoke('admin-auth', { body: { password } })`
-- `sessionStorage` вместо `localStorage`
-- Rate-limit: 5 попыток, блокировка 60 сек
+**`index.html`** — добавить placeholder-комментарий для счётчика ЯМ перед `</body>`.
 
-### Шаг 4: Аналитика
-- Создать `src/utils/analytics.ts` с `ymGoal()`
-- Placeholder счётчика в `index.html`
-- Трекинг маршрутов в `App.tsx`
-- Цели: `scan_started`, `tool_used`, `paywall_reached`, `email_submitted`
+**`src/App.tsx`** — добавить хук `useEffect` + `useLocation` для вызова `ymHit` при смене маршрута.
 
-### Шаг 5: Очистка мёртвого кода
-- Удалить `sparkles.tsx`
-- Удалить `three`, `@types/three` из `package.json`
+**Цели в компонентах:**
+- `ScanForm.tsx` → `ymGoal('scan_started')` в `handleSubmit`
+- `PaywallCTA.tsx` → `ymGoal('paywall_reached')` при клике "Получить полный отчёт", `ymGoal('email_submitted')` при отправке email
+- `SiteCheckResult.tsx` → `ymGoal('email_submitted')` в dialog submit
+
+### 2. Удаление мёртвого кода
+
+**`src/components/ui/sparkles.tsx`** — удалить файл. Компонент `SparklesCore` нигде не импортируется (все `Sparkles` в проекте — это иконка из `lucide-react`, не этот файл).
+
+### 3. Очистка зависимостей
+
+**`package.json`** — удалить:
+- `three`
+- `@types/three`
+- `@tsparticles/react`
+- `@tsparticles/slim`
+
+Эти пакеты используются только в удаляемом `sparkles.tsx`.
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `supabase/functions/admin-auth/index.ts` | Новый |
-| `src/pages/AdminRules.tsx` | Переписать авторизацию |
 | `src/utils/analytics.ts` | Новый |
-| `src/App.tsx` | Трекинг маршрутов |
 | `index.html` | Placeholder ЯМ |
+| `src/App.tsx` | useLocation трекинг |
 | `src/components/site-check/ScanForm.tsx` | ymGoal |
 | `src/components/site-check/PaywallCTA.tsx` | ymGoal |
 | `src/pages/SiteCheckResult.tsx` | ymGoal |
 | `src/components/ui/sparkles.tsx` | Удалить |
-| `package.json` | Убрать three, tsparticles |
+| `package.json` | Убрать 4 пакета |
 
