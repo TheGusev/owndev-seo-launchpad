@@ -1,214 +1,155 @@
 
 
-# ПОЛНЫЙ END-TO-END АУДИТ OWNDEV
+# Второй проход: критические баги OWNDEV
 
 ---
 
-## Блок 1. Общая оценка проекта
+## P0 — ЛОМАЕТ ПРОДУКТ
 
-**Уровень:** Зрелый MVP, готовый к soft-launch. Архитектурно грамотный: React 18 + Vite + Edge Functions + AI-ядро, чистая темная дизайн-система, pSEO на 85+ городов.
-
-**Сильные стороны:**
-- Единая дизайн-система (glass-карточки, gradient-кнопки, анимации framer-motion)
-- SEO-мета на всех страницах (title, description, canonical, OG, JSON-LD)
-- pSEO разделение: geo-allowed vs geo-blocked с noindex
-- Яндекс.Метрика интегрирована (ymGoal, ymHit)
-- URL persistence между инструментами (saveLastUrl / SiteCheckBanner)
-- Scan history в localStorage
-- EmptyState компонент для пустых результатов
-- Мертвый код вычищен (sparkles.tsx, three, tsparticles)
-
-**Слабые стороны:** См. ниже
+*Нет P0 багов.* Все маршруты рендерятся, site-check flow работает от ввода до результата, polling с cleanup, noindex на result/report, flagship в registry.
 
 ---
 
-## Блок 2. Критические баги (P0/P1)
+## P1 — СИЛЬНО БЬЁТ ПО КОНВЕРСИИ / SEO
 
-### P0: Флагманская карточка на /tools не рендерится
+### Баг 1: Email из PaywallCTA выбрасывается
 
-**Файл:** `src/pages/Tools.tsx`, строка 25
-**Проблема:** `FLAGSHIP_SLUG = "site-check"`, но `getToolBySlug("site-check")` возвращает `undefined`, потому что site-check НЕ зарегистрирован в `tools-registry.ts`. Условие `{flagship && (...)}` — false, секция полностью пропадает.
-**Влияние:** Главный продукт проекта невидим на странице каталога инструментов.
-**Решение:** Добавить запись site-check в `tools-registry.ts` или хардкодить данные флагмана напрямую в `Tools.tsx` без поиска по registry.
+| | |
+|---|---|
+| **Файл** | `src/pages/SiteCheckResult.tsx`, строка 47 |
+| **Компонент** | `SiteCheckResult` → `handlePay` |
+| **Сценарий** | Пользователь вводит email в PaywallCTA → нажимает "Перейти к оплате" → `onPay(email)` вызывается → `handlePay(_email)` игнорирует `_email` и открывает Dialog → Dialog имеет СВОЁ пустое поле email |
+| **Ожидание** | Email, введённый в PaywallCTA, должен автоматически подставляться в Dialog |
+| **Факт** | Пользователь вводит email дважды. Первый ввод теряется |
+| **Фикс** | `const handlePay = async (email: string) => { setPaymentEmail(email); setShowPaymentModal(true); };` |
+| **Риск** | Потеря лидов — пользователь раздражается и уходит |
 
-### P0: ToolsShowcase на главной не включает site-check
+### Баг 2: Юридические страницы индексируются
 
-**Файл:** `src/components/ToolsShowcase.tsx`
-**Проблема:** Локальный массив `tools` из 12 элементов не содержит site-check. На главной странице флагманский продукт не виден среди инструментов.
-**Решение:** Добавить site-check первым элементом в массив или вывести его отдельно вверху showcase.
+| | |
+|---|---|
+| **Файл** | `src/pages/Offer.tsx`, `Privacy.tsx`, `Refund.tsx`, `Terms.tsx` |
+| **Сценарий** | Яндекс индексирует /offer, /refund, /privacy, /terms |
+| **Ожидание** | Юр. страницы не должны занимать место в индексе |
+| **Факт** | Нет `<meta name="robots" content="noindex" />` |
+| **Фикс** | Добавить `<meta name="robots" content="noindex, follow" />` в Helmet каждой страницы |
+| **Риск** | Раздутие индекса, размытие crawl budget |
 
-### P1: Hero stats line устарел
+### Баг 3: Кнопка PaywallCTA говорит "Перейти к оплате" — оплаты нет
 
-**Файл:** `src/components/Hero.tsx`, строка 104
-**Проблема:** Написано "7 инструментов", реально 12 инструментов + site-check = 13.
-**Решение:** Обновить на "12+ инструментов" или динамически считать из registry.
-
-### P1: Polling без cleanup в SiteCheck.tsx
-
-**Файл:** `src/pages/SiteCheck.tsx`, строки 59-77
-**Проблема:** `pollStatus` использует рекурсивный `setTimeout` внутри `useCallback`, но нет cleanup при unmount компонента. Если пользователь уйдет со страницы во время скана, polling продолжится и вызовет `navigate()` на размонтированном компоненте.
-**Решение:** Добавить `useRef<boolean>` для отслеживания mount-статуса, или использовать AbortController.
-
-### P1: dangerouslySetInnerHTML в BlogPost.tsx без санитизации
-
-**Файл:** `src/pages/BlogPost.tsx`
-**Проблема:** `formatInline()` обрабатывает markdown-разметку и вставляет через `dangerouslySetInnerHTML`. Контент статический (из data-файлов), поэтому XSS-риск низкий, но архитектурно это антипаттерн.
-**Решение:** Низкий приоритет — контент контролируемый. Можно заменить на React-компоненты позже.
-
----
-
-## Блок 3. Таблица по всем инструментам
-
-| Инструмент | Работает | UX | Ценность | Статус | Баги | Быстрые улучшения |
-|---|---|---|---|---|---|---|
-| **Site Check** | Да | Хороший | Высокая | Оставить как флагман | Отсутствует в registry; polling leak | Добавить в registry; cleanup polling |
-| **SEO Auditor** | Да | Хороший | Высокая | Оставить | EmptyState есть | -- |
-| **Competitor Analysis** | Да | Хороший | Высокая | Оставить | EmptyState есть | -- |
-| **Indexation Checker** | Да | Хороший | Средняя | Оставить | EmptyState есть | -- |
-| **Internal Links** | Да | Хороший | Средняя | Оставить | EmptyState есть | -- |
-| **Semantic Core** | Да | Хороший | Высокая | Оставить | EmptyState есть | -- |
-| **Schema Generator** | Да (offline) | Хороший | Средняя | Оставить | Нет saveLastUrl | Добавить saveLastUrl |
-| **AI Text Generator** | Да | Хороший | Средняя | Оставить | EmptyState есть | -- |
-| **pSEO Generator** | Да (offline) | Средний | Средняя | Оставить как утилита | Нет saveLastUrl | -- |
-| **LLM Prompt Helper** | Да (offline) | Хороший | Средняя | Оставить | -- | -- |
-| **Anti-Duplicate** | Да (offline) | Средний | Низкая | Оставить как утилита | Нет ToolCTA в конце... имеет | -- |
-| **Position Monitor** | Да (localStorage) | Средний | Низкая | Оставить скрытым | Данные только вручную | -- |
-| **Webmaster Files** | Да (offline) | Хороший | Средняя | Оставить | -- | -- |
+| | |
+|---|---|
+| **Файл** | `src/components/site-check/PaywallCTA.tsx`, строка 82 |
+| **Компонент** | `PaywallCTA` |
+| **Сценарий** | Пользователь видит "Перейти к оплате" → нажимает → получает "Платежи скоро появятся" |
+| **Ожидание** | Текст кнопки не должен обещать то, чего нет |
+| **Факт** | Обман ожиданий → потеря доверия |
+| **Фикс** | Заменить текст на `"Получить полный отчёт"` или `"Узнать о готовности"` |
+| **Риск** | Убивает доверие к продукту на самом важном шаге воронки |
 
 ---
 
-## Блок 4. SEO/pSEO выводы
+## P2 — УХУДШАЕТ UX
 
-### SEO-матрица индексации
+### Баг 4: ToolsShowcase дублирует данные из registry
 
-| URL Pattern | Индекс | Canonical | robots | Решение |
-|---|---|---|---|---|
-| `/` | Да | self | index | OK |
-| `/tools` | Да | self | index | OK |
-| `/tools/site-check` | Да | -- (нет canonical!) | index | **Добавить canonical** |
-| `/tools/:toolSlug` | Да | self | index | OK |
-| `/tools/:toolSlug/:region` (geo-allowed) | Да | self | index | OK |
-| `/tools/:toolSlug/:region` (geo-blocked) | Нет | /tools/:toolSlug | noindex | OK |
-| `/:city/:niche/:tool` (geo-allowed) | Да | self | index | OK |
-| `/:city/:niche/:tool` (geo-blocked) | Нет | /tools/:toolSlug | noindex | OK |
-| `/blog` | Да | self | index | OK |
-| `/blog/:slug` | Да | self | index | OK |
-| `/contacts` | Да | self | index | OK |
-| `/privacy`, `/terms` | Да | self | index | Можно noindex |
-| `/offer`, `/refund` | Да | self | index | Можно noindex |
-| `/tools/site-check/result/:id` | Да | -- (нет canonical!) | **index** | **Нужен noindex!** |
-| `/tools/site-check/report/:id` | Да | -- (нет canonical!) | **index** | **Нужен noindex!** |
-| `*` (404) | Нет | -- | noindex | OK |
+| | |
+|---|---|
+| **Файл** | `src/components/ToolsShowcase.tsx`, строки 6-20 |
+| **Проблема** | Локальный массив `tools` из 13 элементов — копия `tools-registry.ts`. При добавлении/удалении инструмента нужно менять в 2 местах |
+| **Фикс** | Импортировать `import { tools } from "@/data/tools-registry"` и маппить `tool.shortDesc` вместо `tool.description` |
+| **Риск** | Рассинхрон данных при будущих изменениях |
 
-**Критичные SEO-проблемы:**
-1. **SiteCheck.tsx** — нет `<link rel="canonical">` 
-2. **SiteCheckResult.tsx** — нет `<meta name="robots" content="noindex">`, поисковики могут индексировать тысячи URL `/result/:scanId`
-3. **SiteCheckReport.tsx** — аналогично, нет noindex
-4. **Sitemap** — содержит `/tools/site-check` корректно, result/report не попадают — OK
-5. **Offer, Refund, Privacy, Terms** — имеют canonical, но не имеют noindex. Рекомендуется добавить noindex.
+### Баг 5: Header CTA "Открыть инструменты" → /tools вместо /tools/site-check
 
-### pSEO — чисто
+| | |
+|---|---|
+| **Файл** | `src/components/Header.tsx`, строка 56 |
+| **Сценарий** | CTA-кнопка ведёт на каталог, а не на флагман |
+| **Ожидание** | Главная CTA должна вести на site-check |
+| **Фикс** | `navigate("/tools/site-check")` и текст "Проверить сайт" |
+| **Риск** | Лишний шаг в воронке, теряем конверсию |
 
-- `nicheEnabledTools = []` — нишевые гео-страницы не генерируются в sitemap. Правильно.
-- `geoEnabledTools` = seo-auditor, competitor-analysis, semantic-core, site-check, internal-links — только коммерческие.
-- Утилиты (anti-duplicate, pseo-generator и др.) отмечены noindex с canonical на основной tool page.
+### Баг 6: ToolsShowcase текст "12 профессиональных инструментов" — реально 13
 
----
+| | |
+|---|---|
+| **Файл** | `src/components/ToolsShowcase.tsx`, строка 42 |
+| **Факт** | Массив содержит 13 элементов, текст говорит "12" |
+| **Фикс** | `{tools.length} инструментов` или "13 инструментов" |
 
-## Блок 5. UX / Конверсия
+### Баг 7: Tools.tsx заголовок "12 инструментов" — тоже 13
 
-### Тупики и потерянные пользователи
+| | |
+|---|---|
+| **Файл** | `src/pages/Tools.tsx`, строка 69 |
+| **Фикс** | Заменить `12` на `13` или `{tools.length}` |
 
-1. **Flagship card на /tools отсутствует** — пользователь не видит главный продукт (P0 баг выше)
-2. **ToolsShowcase на главной** — site-check не виден среди 12 карточек
-3. **Paywall "Перейти к оплате"** → показывает dialog "Платежи скоро появятся" — это OK как временное решение, но текст кнопки "Перейти к оплате" вводит в заблуждение. Лучше "Получить полный отчёт" или изменить CTA.
-4. **DownloadButtons** — все кнопки disabled с toast "В разработке". Визуально понятно, но занимают место. Можно скрыть до готовности.
-5. **Header CTA "Открыть инструменты"** → `/tools` — OK, но не ведёт на site-check напрямую
-6. **Footer toolLinks** — содержит SEO Auditor, Schema, pSEO, LLM Prompt Helper — но НЕ содержит Site Check
-7. **ServicesTeaser "Обсудить проект"** → `#contact` через `<a>` тег, а не `<Link>`. На внутренних страницах сломается (не перейдёт на главную).
+### Баг 8: Footer "О нас" и "Контакты" — якорные ссылки, сломаны на внутренних страницах
+
+| | |
+|---|---|
+| **Файл** | `src/components/Footer.tsx`, строки 16-17 |
+| **Сценарий** | На /tools пользователь кликает "О нас" → `navigate("/#about")` → главная загружается, но скролл к `#about` не происходит (SPA) |
+| **Ожидание** | Должно скроллить к секции |
+| **Факт** | `navigate("/" + href)` ставит hash, но React Router не триггерит scrollIntoView |
+| **Фикс** | После `navigate("/#about")` добавить `setTimeout(() => document.getElementById("about")?.scrollIntoView({ behavior: "smooth" }), 300)` |
+| **Риск** | Пользователь не попадает к нужному контенту |
 
 ---
 
-## Блок 6. Архитектурные проблемы
+## P3 — КОСМЕТИКА
 
-| Файл | Проблема | Тип | Критичность | Как исправить |
-|---|---|---|---|---|
-| `Tools.tsx` | site-check не в registry → flagship=undefined | Data | P0 | Добавить в registry или хардкодить |
-| `ToolsShowcase.tsx` | Дублирует данные из tools-registry локально | Дублирование | P2 | Импортировать из registry |
-| `SiteCheck.tsx` | Polling без cleanup | Memory leak | P1 | useRef / AbortController |
-| `SiteCheckResult.tsx` | Нет noindex | SEO | P1 | Добавить meta robots |
-| `SiteCheckReport.tsx` | Нет noindex | SEO | P1 | Добавить meta robots |
-| `SiteCheck.tsx` | Нет canonical | SEO | P2 | Добавить canonical |
-| `Hero.tsx` | Хардкод "7 инструментов" | UX | P2 | Обновить число |
-| `Footer.tsx` | toolLinks не содержит site-check | UX | P2 | Добавить |
-| `ServicesTeaser.tsx` | `<a href="#contact">` вместо `<Link>` | Navigation | P3 | Заменить |
-| `BlogPost.tsx` | dangerouslySetInnerHTML | Security | P3 | Контент статический, низкий риск |
+### Баг 9: ToolPage рендерит site-check через ToolPage при /tools/site-check
 
----
+| | |
+|---|---|
+| **Файл** | `src/App.tsx`, строки 55+58 |
+| **Проблема** | Маршрут `/tools/site-check` (строка 55) идёт раньше `/tools/:toolSlug` (строка 58) — это правильно, конфликта нет. Но site-check зарегистрирован в registry, и `otherTools` в ToolPage может предложить "Проверка сайта" → ведёт на `/tools/site-check` → рендерит ScanForm через отдельную страницу, не через ToolPage. **Это ОК**, просто нужно знать о двойственности |
 
-## Блок 7. Roadmap исправлений
+### Баг 10: DownloadButtons текст "Генерация файлов появится после подключения оплаты"
 
-### Сделать сегодня (30 мин)
-
-1. **P0: Добавить site-check в tools-registry.ts** — с icon=Search, slug="site-check", geoEnabled=true. Компонент может быть lazy(() => import("@/components/site-check/ScanForm")) или заглушкой, т.к. site-check имеет отдельную страницу.
-2. **P0: Обновить ToolsShowcase.tsx** — добавить site-check первым элементом или вывести отдельной секцией
-3. **P1: Добавить noindex в SiteCheckResult.tsx и SiteCheckReport.tsx** — `<meta name="robots" content="noindex, nofollow" />`
-4. **P1: Добавить canonical в SiteCheck.tsx** — `<link rel="canonical" href="https://owndev.ru/tools/site-check" />`
-5. **P2: Обновить Hero stats** — "12+ инструментов"
-6. **P2: Добавить site-check в Footer toolLinks**
-
-### Сделать за 3 дня
-
-7. **P1: Cleanup polling в SiteCheck.tsx** — добавить mounted ref
-8. **P2: ToolsShowcase импорт из registry** — убрать дублирование данных
-9. **P2: ServicesTeaser** — `<a href="#contact">` → навигация через useNavigate
-10. **P2: Noindex на Offer, Refund, Privacy, Terms** — юридические страницы
-
-### Сделать за 7 дней
-
-11. PaywallCTA — изменить текст кнопки на более честный
-12. DownloadButtons — скрыть до готовности или оставить с подписью
-13. Рассмотреть объединение Position Monitor с Site Check историей
-
-### Позже
-
-14. Замена dangerouslySetInnerHTML в BlogPost на React-компоненты
-15. Полноценная платежная интеграция (ЮKassa)
-16. PDF/DOCX генерация отчётов
+| | |
+|---|---|
+| **Файл** | `src/components/site-check/DownloadButtons.tsx`, строка 37 |
+| **Проблема** | Текст выдаёт внутреннюю кухню пользователю |
+| **Фикс** | Заменить на "Экспорт отчёта скоро будет доступен" |
 
 ---
 
-## Блок 8. Конкретные фиксы для немедленного применения
+## ГРУППИРОВКА ПО ВЛИЯНИЮ
 
-### Fix 1: site-check в tools-registry.ts
-Добавить запись с `slug: "site-check"`, `name: "Проверка сайта"`, `icon: Search`, `geoEnabled: true`, `component: lazy(() => import("@/components/site-check/ScanForm"))`.
+### Мешает конверсии в site-check:
+- **Баг 1** (P1): Email теряется между PaywallCTA и Dialog
+- **Баг 3** (P1): Кнопка "Перейти к оплате" обманывает
+- **Баг 5** (P2): Header CTA ведёт в каталог, а не в site-check
 
-### Fix 2: SiteCheckResult.tsx — добавить noindex
-В `<Helmet>` добавить `<meta name="robots" content="noindex, nofollow" />`.
+### Мешает индексации:
+- **Баг 2** (P1): Юридические страницы без noindex
 
-### Fix 3: SiteCheckReport.tsx — добавить noindex
-В `<Helmet>` добавить `<meta name="robots" content="noindex, nofollow" />`.
+### Мешает возврату пользователя:
+- **Баг 8** (P2): Якорные ссылки Footer сломаны на внутренних страницах
 
-### Fix 4: SiteCheck.tsx — добавить canonical
-В `<Helmet>` добавить `<link rel="canonical" href="https://owndev.ru/tools/site-check" />`.
-
-### Fix 5: Hero.tsx — обновить stats
-Строка 104: заменить "7 инструментов" на "12+ инструментов".
-
-### Fix 6: Footer.tsx — добавить site-check в toolLinks
-Добавить `{ label: "Проверка сайта", href: "/tools/site-check", isRoute: true }` первым элементом.
-
-### Fix 7: SiteCheck.tsx — cleanup polling
-Добавить `useRef` для mounted, проверять перед `setTimeout` и `navigate`.
-
-### Fix 8: ToolsShowcase.tsx — добавить site-check
-Добавить `{ icon: Search, name: "Проверка сайта", description: "SEO, Директ, конкуренты — полный отчёт", slug: "site-check" }` первым элементом. Или лучше: заменить на `import { tools } from "@/data/tools-registry"`.
+### Создаёт ощущение сырого продукта:
+- **Баг 3** (P1): "Перейти к оплате" → "Скоро будет"
+- **Баг 6-7** (P2): Несоответствие числа инструментов
+- **Баг 10** (P3): Текст про "подключение оплаты"
+- **Баг 4** (P2): Дублирование данных (не видно юзеру, но замедляет развитие)
 
 ---
 
-## Вердикт
+## ПЛАН ФИКСОВ (8 правок, 7 файлов)
 
-**Проект готов к мягкому запуску** при условии исправления 6 быстрых фиксов (30 минут работы). Критический баг — отсутствие site-check в registry, из-за чего флагманский продукт невидим на страницах /tools и главной. SEO-мусор (индексация result/report страниц) может навредить при активном использовании. Всё остальное — косметика и оптимизации, которые можно делать итеративно.
-
-Рекомендация: **один цикл стабилизации (фиксы 1-8), затем можно активно продвигать.**
+| # | Файл | Что сделать |
+|---|------|------------|
+| 1 | `SiteCheckResult.tsx` | `handlePay` — прокинуть email в `setPaymentEmail` |
+| 2 | `PaywallCTA.tsx` | Текст кнопки: "Получить полный отчёт" вместо "Перейти к оплате" |
+| 3 | `Offer.tsx` | Добавить `<meta name="robots" content="noindex, follow" />` |
+| 4 | `Privacy.tsx` | То же |
+| 5 | `Refund.tsx` | То же |
+| 6 | `Terms.tsx` | То же |
+| 7 | `ToolsShowcase.tsx` | Импорт из registry + поправить число "13" |
+| 8 | `Tools.tsx` | Число "13" в заголовке |
+| 9 | `Header.tsx` | CTA → `/tools/site-check`, текст "Проверить сайт" |
+| 10 | `DownloadButtons.tsx` | Текст "Экспорт отчёта скоро будет доступен" |
 
