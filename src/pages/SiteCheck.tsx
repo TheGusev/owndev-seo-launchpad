@@ -38,7 +38,6 @@ const SiteCheck = () => {
     } catch (e: any) {
       if (e.lastScanId) {
         setLimitScanId(e.lastScanId);
-        toast({ title: "Лимит проверок", description: "Этот домен уже проверялся сегодня" });
       } else {
         toast({ title: "Ошибка", description: e.message, variant: "destructive" });
       }

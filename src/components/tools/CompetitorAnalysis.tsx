@@ -6,6 +6,7 @@ import { Swords, CheckCircle, XCircle, Loader2, Clock, RefreshCw, Trophy } from 
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { saveLastUrl } from "@/utils/lastUrl";
 
 interface PageMetrics {
   url: string;
@@ -108,6 +109,7 @@ const CompetitorAnalysis = () => {
       if (data.error) throw new Error(data.error);
       setResult(data);
       setCheckedAt(new Date());
+      saveLastUrl(url1.trim());
     } catch (e: any) {
       toast({ title: "Ошибка анализа", description: e.message, variant: "destructive" });
     } finally {

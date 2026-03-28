@@ -5,6 +5,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { TrendingUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { saveLastUrl } from "@/utils/lastUrl";
 
 interface PositionEntry {
   id: string;
@@ -35,6 +36,7 @@ const PositionMonitor = () => {
 
   const handleAdd = () => {
     if (!keyword.trim() || !position.trim()) { toast({ title: "Заполните ключевое слово и позицию", variant: "destructive" }); return; }
+    if (url.trim()) saveLastUrl(url.trim());
     const entry: PositionEntry = {
       id: Date.now().toString(),
       keyword: keyword.trim(),
