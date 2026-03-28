@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import ToolCTA from "./ToolCTA";
 import { saveLastUrl } from "@/utils/lastUrl";
+import EmptyState from "@/components/ui/empty-state";
 
 interface AuditIssue {
   type: string;
@@ -192,12 +193,7 @@ const SEOAuditor = () => {
         )}
 
         {error && (
-          <div className="glass rounded-xl p-5 border border-destructive/30">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" />
-              <p className="text-sm font-medium">{error}</p>
-            </div>
-          </div>
+          <EmptyState message={error} onRetry={runAudit} />
         )}
 
         {result && (

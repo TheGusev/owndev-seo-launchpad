@@ -5,6 +5,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { Sparkles, Copy, CheckCircle, Loader2, Download, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import EmptyState from "@/components/ui/empty-state";
 
 interface Cluster {
   name: string;
@@ -77,6 +78,10 @@ const SemanticCoreGenerator = () => {
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
         </GradientButton>
       </div>
+
+      {!loading && clusters.length === 0 && topic.trim() && checkedAt && (
+        <EmptyState message="Не удалось сгенерировать семантическое ядро. Попробуйте другую тему." onRetry={handleGenerate} />
+      )}
 
       {clusters.length > 0 && (
         <div className="space-y-4">

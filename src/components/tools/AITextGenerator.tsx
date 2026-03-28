@@ -6,6 +6,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { Bot, Copy, CheckCircle, Loader2, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import EmptyState from "@/components/ui/empty-state";
 
 const textTypes = [
   { value: "meta", label: "Meta Title + Description" },

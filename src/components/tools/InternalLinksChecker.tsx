@@ -6,6 +6,7 @@ import { Link2, CheckCircle, XCircle, Loader2, ExternalLink, Globe, Clock, Refre
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { saveLastUrl } from "@/utils/lastUrl";
+import EmptyState from "@/components/ui/empty-state";
 
 interface LinkResult {
   href: string;
@@ -73,6 +74,10 @@ const InternalLinksChecker = () => {
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Link2 className="w-5 h-5" />}
         </GradientButton>
       </div>
+
+      {!loading && !result && checkedAt && (
+        <EmptyState onRetry={handleCheck} />
+      )}
 
       {result && (
         <div className="space-y-4">
