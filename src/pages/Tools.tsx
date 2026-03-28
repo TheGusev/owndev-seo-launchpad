@@ -2,17 +2,30 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { categories, getToolsByCategory } from "@/data/tools-registry";
-import { ArrowRight } from "lucide-react";
+import { tools } from "@/data/tools-registry";
+import { ArrowRight, ChevronDown, ChevronUp, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
+const FLAGSHIP_SLUG = "site-check";
+const TECHNICAL_SLUGS = ["seo-auditor", "indexation-checker", "internal-links", "competitor-analysis", "semantic-core", "schema-generator"];
+const UTILITY_SLUGS = ["pseo-generator", "ai-text-generator", "webmaster-files", "anti-duplicate", "position-monitor", "llm-prompt-helper"];
+
+const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);
 
 const Tools = () => {
+  const [showUtils, setShowUtils] = useState(false);
+  const flagship = getToolBySlug(FLAGSHIP_SLUG);
+  const technicalTools = TECHNICAL_SLUGS.map(getToolBySlug).filter(Boolean) as typeof tools;
+  const utilityTools = UTILITY_SLUGS.map(getToolBySlug).filter(Boolean) as typeof tools;
+
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       <Helmet>
@@ -24,7 +37,6 @@ const Tools = () => {
       <ClickRipple />
       <Header />
       <main className="pt-24 pb-16 relative">
-        {/* Background animations */}
         <div className="absolute inset-0 pointer-events-none">
           <AnimatedGrid theme="accent" lineCount={{ h: 6, v: 8 }} />
           <FloatingParticles count={12} className="absolute inset-0" />
@@ -32,6 +44,7 @@ const Tools = () => {
         </div>
 
         <div className="container px-4 md:px-6 relative z-10">
+          {/* Page header */}
           <motion.div
             className="text-center mb-12"
             initial={{ opacity: 0, y: 20 }}
@@ -65,55 +78,129 @@ const Tools = () => {
             </motion.p>
           </motion.div>
 
-          {categories.map((cat, catIdx) => {
-            const catTools = getToolsByCategory(cat.id);
-            if (catTools.length === 0) return null;
+          {/* Section 1 — Flagship */}
+          {flagship && (
+            <motion.section
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="mb-12"
+            >
+              <Link to="/tools/site-check" className="block glass rounded-2xl p-8 md:p-10 border border-primary/30 hover:border-primary/60 transition-all group">
+                <div className="flex flex-col md:flex-row md:items-center gap-6">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <flagship.icon className="w-7 h-7 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h2 className="text-2xl md:text-3xl font-bold font-serif text-foreground group-hover:text-primary transition-colors">
+                        {flagship.name}
+                      </h2>
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                        <Shield className="w-3 h-3" />
+                        Флагманский продукт
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-lg">
+                      Технический SEO, индексация, конкуренты, ключевые запросы — один отчёт
+                    </p>
+                  </div>
+                  <GradientButton size="lg" className="shrink-0">
+                    Начать проверку
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </GradientButton>
+                </div>
+              </Link>
+            </motion.section>
+          )}
 
-            return (
-              <motion.section
-                key={cat.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.5, delay: catIdx * 0.08 }}
-                className="mb-10"
+          {/* Section 2 — Technical tools */}
+          <motion.section
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5 }}
+            className="mb-12"
+          >
+            <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground mb-5">Технические инструменты</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {technicalTools.map((tool, i) => (
+                <motion.div
+                  key={tool.slug}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.06 }}
+                >
+                  <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group block h-full">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <tool.icon className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{tool.name}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
+                      Открыть
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </motion.section>
+
+          {/* Section 3 — Utility tools (collapsible) */}
+          <motion.section
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5 }}
+            className="mb-10"
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground">
+                Вспомогательные утилиты ({utilityTools.length})
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowUtils(!showUtils)}
+                className="gap-1"
               >
-                <div className="flex items-center gap-3 mb-5">
-                  <cat.icon className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground">{cat.name}</h2>
-                </div>
+                {showUtils ? "Скрыть" : "Показать все"}
+                {showUtils ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </Button>
+            </div>
 
-                <div className="flex flex-wrap justify-center gap-4">
-                  {catTools.map((tool, toolIdx) => (
-                    <motion.div
-                      key={tool.id}
-                      className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.75rem)]"
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.4, delay: toolIdx * 0.06 }}
-                    >
-                      <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group min-h-[44px] block h-full">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                            <tool.icon className="w-5 h-5 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{tool.name}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
-                          </div>
+            {showUtils && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {utilityTools.map((tool, i) => (
+                  <motion.div
+                    key={tool.slug}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.04 }}
+                  >
+                    <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-4 hover:border-primary/40 transition-all group block h-full">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <tool.icon className="w-4 h-4 text-primary" />
                         </div>
-                        <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
-                          Открыть
-                          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground text-sm mb-1 group-hover:text-primary transition-colors">{tool.name}</h3>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
                         </div>
-                      </Link>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.section>
-            );
-          })}
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.section>
         </div>
 
         <CornerDecorations size="lg" />
