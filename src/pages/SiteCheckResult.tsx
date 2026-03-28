@@ -7,7 +7,8 @@ import IssueCardComponent from "@/components/site-check/IssueCard";
 import PaywallCTA from "@/components/site-check/PaywallCTA";
 import { getScanPreview } from "@/lib/site-check-api";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ExternalLink, Loader2, Rocket, Send } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, Rocket, Send, History } from "lucide-react";
+import { addToHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -33,7 +34,12 @@ const SiteCheckResult = () => {
   useEffect(() => {
     if (!scanId) return;
     getScanPreview(scanId)
-      .then(setData)
+      .then((d) => {
+        setData(d);
+        if (d && scanId) {
+          addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores });
+        }
+      })
       .catch(() => toast({ title: "Ошибка", description: "Не удалось загрузить результаты", variant: "destructive" }))
       .finally(() => setLoading(false));
   }, [scanId, toast]);
@@ -105,10 +111,17 @@ const SiteCheckResult = () => {
       <main className="min-h-screen pt-24 pb-16">
         <div className="container max-w-4xl mx-auto px-4 space-y-8">
           <div>
-            <Link to="/tools/site-check" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
-              <ArrowLeft className="w-4 h-4" />
-              Новая проверка
-            </Link>
+            <div className="flex items-center gap-3 mb-4">
+              <Link to="/tools/site-check" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+                Новая проверка
+              </Link>
+              <span className="text-muted-foreground/40">|</span>
+              <Link to="/tools/site-check#history" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <History className="w-4 h-4" />
+                История проверок
+              </Link>
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold text-foreground">Результат проверки</h1>
               <a href={data.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors">
