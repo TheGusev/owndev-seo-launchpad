@@ -7,14 +7,27 @@ import IssueCardComponent from "@/components/site-check/IssueCard";
 import PaywallCTA from "@/components/site-check/PaywallCTA";
 import { getScanPreview } from "@/lib/site-check-api";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, Rocket, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentEmail, setPaymentEmail] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!scanId) return;
@@ -25,10 +38,33 @@ const SiteCheckResult = () => {
   }, [scanId, toast]);
 
   const handlePay = async (_email: string) => {
-    toast({
-      title: "Скоро будет доступно",
-      description: "Подключение платежей находится в процессе настройки. Полный функционал будет доступен в ближайшее время.",
-    });
+    setShowPaymentModal(true);
+  };
+
+  const handleNotifyMe = async () => {
+    if (!paymentEmail.trim()) {
+      toast({ title: "Введите email", variant: "destructive" });
+      return;
+    }
+    setSending(true);
+    try {
+      await supabase.functions.invoke("send-telegram", {
+        body: {
+          name: "Ожидание оплаты",
+          phone: "—",
+          email: paymentEmail.trim(),
+          service: "Site Check — полный отчёт",
+          message: `Пользователь ожидает подключения оплаты. URL проверки: ${data?.url || "—"}`,
+        },
+      });
+      toast({ title: "Вы в списке! 🎉", description: "Мы уведомим вас первыми о запуске и дадим скидку 30%." });
+      setShowPaymentModal(false);
+      setPaymentEmail("");
+    } catch {
+      toast({ title: "Ошибка", description: "Попробуйте позже", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
   };
 
   if (loading) {
@@ -103,6 +139,33 @@ const SiteCheckResult = () => {
         </div>
       </main>
       <Footer />
+
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Rocket className="w-5 h-5 text-primary" />
+              Платежи скоро появятся
+            </DialogTitle>
+            <DialogDescription>
+              Мы подключаем оплату. Оставьте email — мы уведомим вас первыми о запуске и дадим скидку 30%.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-2">
+            <Input
+              type="email"
+              placeholder="your@email.com"
+              value={paymentEmail}
+              onChange={(e) => setPaymentEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleNotifyMe()}
+            />
+            <Button onClick={handleNotifyMe} disabled={sending} className="w-full">
+              {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+              Уведомить меня
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

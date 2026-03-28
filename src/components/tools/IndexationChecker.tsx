@@ -36,6 +36,7 @@ const IndexationChecker = () => {
       if (data.error) throw new Error(data.error);
       setResult(data);
       setCheckedAt(new Date());
+      saveLastUrl(url.trim());
     } catch (e: any) {
       toast({ title: "Ошибка проверки", description: e.message, variant: "destructive" });
     } finally {

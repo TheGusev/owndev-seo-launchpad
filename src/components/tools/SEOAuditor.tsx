@@ -148,7 +148,7 @@ const SEOAuditor = () => {
       if (data.error) throw new Error(data.error);
       setResult(data as AuditResult);
       setCheckedAt(new Date());
-      localStorage.setItem("owndev_last_url", url.trim());
+      saveLastUrl(url.trim());
     } catch (e: any) {
       setError(e.message || "Произошла ошибка");
     } finally {
