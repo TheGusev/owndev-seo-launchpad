@@ -19,7 +19,6 @@ import ScrollToTop from "./components/ScrollToTop";
 import SiteCheck from "./pages/SiteCheck";
 import SiteCheckResult from "./pages/SiteCheckResult";
 import SiteCheckReport from "./pages/SiteCheckReport";
-import AdminRules from "./pages/AdminRules";
 import Offer from "./pages/Offer";
 import Refund from "./pages/Refund";
 import Contacts from "./pages/Contacts";
@@ -50,7 +49,6 @@ const App = () => (
             <Route path="/:citySlug/:nicheSlug/:toolSlug" element={<GeoNicheToolPage />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
-            <Route path="/admin/rules" element={<AdminRules />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
