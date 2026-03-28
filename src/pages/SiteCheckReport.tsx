@@ -138,7 +138,7 @@ const SiteCheckReport = () => {
             <h1 className="text-xl md:text-2xl font-bold text-foreground">Отчёт готов</h1>
           </div>
 
-          <DownloadButtons paid={paid} />
+          <DownloadButtons />
 
           {scan.scores && <ScoreCards scores={scan.scores} />}
 
