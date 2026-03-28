@@ -1,4 +1,4 @@
-const YM_COUNTER_ID = 0; // Replace with actual Yandex Metrika counter ID
+const YM_COUNTER_ID = 108194492;
 
 declare global {
   interface Window {
