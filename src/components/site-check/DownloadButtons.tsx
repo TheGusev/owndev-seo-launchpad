@@ -2,10 +2,6 @@ import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-interface DownloadButtonsProps {
-  paid: boolean;
-}
-
 const files = [
   { label: "↓ Скачать PDF", key: "pdf" },
   { label: "↓ Скачать Word", key: "docx" },
@@ -13,14 +9,13 @@ const files = [
   { label: "↓ Минус-слова", key: "minus" },
 ];
 
-const DownloadButtons = ({ paid }: DownloadButtonsProps) => {
+const DownloadButtons = () => {
   const { toast } = useToast();
 
   const handleClick = () => {
-    // TODO: заменить на реальное скачивание после подключения ЮKassa
     toast({
-      title: "Бета-тестирование",
-      description: "Генерация PDF-отчетов находится на этапе бета-тестирования",
+      title: "📄 В разработке",
+      description: "Генерация PDF-отчётов в разработке. Скоро будет доступно!",
     });
   };
 
@@ -31,19 +26,16 @@ const DownloadButtons = ({ paid }: DownloadButtonsProps) => {
           key={f.key}
           variant="outline"
           size="sm"
-          disabled={!paid}
-          className="gap-2"
-          onClick={paid ? handleClick : undefined}
+          className="gap-2 opacity-50 cursor-not-allowed"
+          onClick={handleClick}
         >
           <Download className="w-4 h-4" />
           {f.label}
         </Button>
       ))}
-      {!paid && (
-        <p className="col-span-full text-xs text-muted-foreground text-center">
-          Доступно после оплаты
-        </p>
-      )}
+      <p className="col-span-full text-xs text-muted-foreground text-center">
+        Генерация файлов появится после подключения оплаты
+      </p>
     </div>
   );
 };

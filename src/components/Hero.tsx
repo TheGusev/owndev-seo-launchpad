@@ -1,14 +1,27 @@
 import { GradientButton } from "@/components/ui/gradient-button";
-import { Search } from "lucide-react";
+import { Search, ArrowRight } from "lucide-react";
 import { TypeAnimation } from 'react-type-animation';
 import { motion } from "framer-motion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { saveLastUrl } from "@/utils/lastUrl";
 
 const Hero = () => {
+  const [url, setUrl] = useState("");
+  const navigate = useNavigate();
+
+  const handleQuickCheck = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    saveLastUrl(trimmed);
+    navigate(`/tools/site-check?url=${encodeURIComponent(trimmed)}`);
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 snap-section">
@@ -16,7 +29,6 @@ const Hero = () => {
       
       <FloatingParticles count={10} className="absolute inset-0 z-[3] pointer-events-none" />
       
-      {/* CSS sparkle replacement — zero JS */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.08),transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(var(--accent)/0.06),transparent_50%)]" />
@@ -110,14 +122,41 @@ const Hero = () => {
                 proximity={80}
                 inactiveZone={0.4}
               />
-              <Link to="/tools">
+              <Link to="/tools/site-check">
                 <GradientButton size="lg" className="group relative z-10">
                   <Search className="w-5 h-5 mr-2" />
-                  Инструменты
+                  Проверить сайт бесплатно
                 </GradientButton>
               </Link>
             </div>
+            <Link to="/tools">
+              <Button variant="outline" size="lg">
+                Все инструменты
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
           </motion.div>
+
+          {/* Quick URL input */}
+          <motion.form
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            onSubmit={handleQuickCheck}
+            className="flex w-full max-w-xl gap-2"
+          >
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://yoursite.ru"
+              className="flex-1 h-12 rounded-xl border border-border bg-card/60 backdrop-blur-xl px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+            />
+            <Button type="submit" variant="default" size="lg" className="shrink-0">
+              Проверить
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </motion.form>
         </div>
       </div>
       
