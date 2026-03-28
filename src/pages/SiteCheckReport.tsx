@@ -129,6 +129,7 @@ const SiteCheckReport = () => {
     <>
       <Helmet>
         <title>Полный отчёт — {scan.url} | OwnDev</title>
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <Header />
       <main className="min-h-screen pt-24 pb-16">

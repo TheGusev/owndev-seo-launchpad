@@ -106,6 +106,7 @@ const SiteCheckResult = () => {
     <>
       <Helmet>
         <title>Результат проверки — {data.url} | OwnDev</title>
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <Header />
       <main className="min-h-screen pt-24 pb-16">

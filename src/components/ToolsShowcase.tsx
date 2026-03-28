@@ -4,6 +4,7 @@ import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, Tre
 import { Link } from "react-router-dom";
 
 const tools = [
+  { icon: Search, name: "Проверка сайта", description: "SEO, Директ, конкуренты — полный отчёт", slug: "site-check" },
   { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor" },
   { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis" },
   { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker" },
