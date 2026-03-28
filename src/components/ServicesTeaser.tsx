@@ -18,6 +18,7 @@ const ServicesTeaser = () => {
   const handleContact = () => {
     if (location.pathname !== "/") {
       navigate("/#contact");
+      setTimeout(() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" }), 400);
     } else {
       document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
     }
