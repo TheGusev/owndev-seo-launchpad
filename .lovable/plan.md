@@ -1,34 +1,61 @@
 
 
-## БЛОК 5 — История сканов
+## БЛОК 6 — UX полировка
 
-### 1. Новый файл `src/utils/scanHistory.ts`
+### FIX 12: ScanProgress — расширенные этапы
 
-Утилита с интерфейсом `ScanHistoryItem` и функциями `addToHistory`, `getHistory`, `clearHistory`. Хранит до 10 записей в localStorage под ключом `owndev_scan_history`.
+**`src/components/site-check/ScanProgress.tsx`** — обновить список шагов на 7 этапов:
+1. Загрузка страницы
+2. Технический анализ
+3. Проверка индексации
+4. Анализ контента
+5. Проверка конкурентов
+6. Генерация рекомендаций
+7. Финализация отчёта
 
-### 2. `src/pages/SiteCheckResult.tsx`
+Прогресс-бар уже имеет `transition-all duration-700 ease-out` — оставить как есть. Иконки уже работают корректно (CheckCircle2 / Loader2 / пустой круг).
 
-После успешной загрузки данных (в `.then(setData)`) вызвать `addToHistory({ scanId, url: data.url, date: new Date().toISOString(), scores: data.scores })`.
+### FIX 13: EmptyState компонент
 
-Заменить ссылку "Новая проверка" на breadcrumb-навигацию:
-```
-← Новая проверка  |  История проверок
-```
-Обе ссылки ведут на `/tools/site-check`, вторая с якорем `#history`.
+**Новый файл `src/components/ui/empty-state.tsx`:**
+- Принимает `message?: string`, `onRetry?: () => void`
+- Рендерит AlertCircle + текст + кнопка "Повторить"
 
-### 3. `src/pages/SiteCheck.tsx`
+**Инструменты для интеграции** — обернуть пустые/ошибочные результаты:
+- `SEOAuditor.tsx` — если `result` пустой после запроса
+- `SemanticCoreGenerator.tsx` — если `result` пустой
+- `AITextGenerator.tsx` — если `result` пустой
+- `CompetitorAnalysis.tsx` — если `result` пустой
+- `IndexationChecker.tsx` — если `result.issues` пустой
+- `InternalLinksChecker.tsx` — если результат пустой
 
-Под формой (после блока `limitScanId`) добавить секцию "Последние проверки":
-- Показывается только если `getHistory().length > 0`
-- Максимум 5 записей: иконка Globe + URL + дата (форматированная) + кнопка "Открыть"
-- Кнопка "Очистить историю" серым текстом внизу
-- При очистке — обновить state, блок скрывается
+В каждом: проверить `if (data && !data.error && результат не пустой)` → показать результат, иначе EmptyState с `onRetry` = повтор запроса.
+
+### FIX 14: 404 страница
+
+**`src/pages/NotFound.tsx`:**
+- Добавить 3 ссылки под кнопкой "На главную":
+  - "Проверить сайт" → `/tools/site-check`
+  - "Все инструменты" → `/tools`
+  - "Главная" → `/`
+- Добавить поле быстрой проверки URL: Input + GradientButton → navigate(`/tools/site-check?url=${url}`)
+- tsparticles не используется — чисто
+
+### FIX 15: SEO мета-теги
+
+**`src/pages/ToolPage.tsx`** — уже имеет полный набор: `<title>`, `<meta description>`, `<link canonical>`, `<meta og:*>`, JSON-LD BreadcrumbList. **Никаких изменений не требуется.**
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/utils/scanHistory.ts` | Новый |
-| `src/pages/SiteCheckResult.tsx` | addToHistory + breadcrumb |
-| `src/pages/SiteCheck.tsx` | Блок истории |
+| `src/components/site-check/ScanProgress.tsx` | 7 этапов вместо 5 |
+| `src/components/ui/empty-state.tsx` | Новый компонент |
+| `src/components/tools/SEOAuditor.tsx` | EmptyState |
+| `src/components/tools/SemanticCoreGenerator.tsx` | EmptyState |
+| `src/components/tools/AITextGenerator.tsx` | EmptyState |
+| `src/components/tools/CompetitorAnalysis.tsx` | EmptyState |
+| `src/components/tools/IndexationChecker.tsx` | EmptyState |
+| `src/components/tools/InternalLinksChecker.tsx` | EmptyState |
+| `src/pages/NotFound.tsx` | Ссылки + поле URL |
 
