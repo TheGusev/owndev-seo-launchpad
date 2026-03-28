@@ -1,68 +1,58 @@
 
 
-## БЛОК 2 — Индекс и pSEO зачистка
+## БЛОК 3 — Реструктуризация UI и продуктовый сценарий
 
-### Текущее состояние
+### FIX 5: Переработка /tools — три визуальных раздела
 
-- **GeoToolPage**: canonical уже указывает на `/tools/${tool.slug}` (без города) — корректно для утилит, но для geo-allowed инструментов canonical должен быть на саму гео-страницу.
-- **GeoNicheToolPage**: canonical → `/tools/${tool.slug}`, `NICHE_ENABLED_SLUGS` = `["pseo-generator", "anti-duplicate"]` — оба утилиты, которые НЕ должны иметь гео-нишевые страницы.
-- **Sitemap**: `geoEnabledTools` = `["seo-auditor", "competitor-analysis", "semantic-core"]`, `nicheEnabledTools` = `[]` — sitemap уже чист.
-- **tools-registry**: `geoEnabled: true` только у seo-auditor, competitor-analysis, semantic-core — корректно.
-- **regions.ts**: ~85 городов с полными данными, поле `nameCase` (предложный падеж) уже есть.
-- **niches.ts**: ~20 ниш, но старые (saas, ecommerce и т.д.), промт требует 5 новых (crypto, startups, lawyers, online-schools, production) — по памяти они уже были добавлены ранее.
+**`src/pages/Tools.tsx`** — полная переработка контентной части:
 
-### Что нужно сделать
+**Раздел 1 — "Полная проверка сайта"** (hero-карточка на всю ширину):
+- Site Check с бейджем "Флагманский продукт"
+- Описание: "Технический SEO, индексация, конкуренты, ключевые запросы — один отчёт"
+- Крупная teal-кнопка "Начать проверку →" → `/tools/site-check`
+- Стилизация: glass-карточка с увеличенным padding, border-primary
 
-**1. Создать `src/config/pseoConfig.ts`** — единый источник правды:
-```typescript
-export const GEO_ALLOWED_TOOLS = [
-  'seo-auditor', 'competitor-analysis', 'semantic-core',
-  'site-check', 'internal-links'
-];
-export const GEO_BLOCKED_TOOLS = [
-  'anti-duplicate', 'schema-generator', 'llm-prompt-helper',
-  'ai-text-generator', 'webmaster-files', 'position-monitor',
-  'pseo-generator', 'indexation-checker'
-];
-```
+**Раздел 2 — "Технические инструменты"** (сетка 3 колонки):
+- Явный список slug'ов: `seo-auditor`, `indexation-checker`, `internal-links`, `competitor-analysis`, `semantic-core`, `schema-generator`
+- Текущий стиль карточек сохраняется
 
-**2. GeoToolPage.tsx** — условный noindex для заблокированных инструментов:
-- Импорт `GEO_BLOCKED_TOOLS` из pseoConfig
-- Если `toolSlug` в `GEO_BLOCKED_TOOLS`:
-  - canonical → `/tools/${tool.slug}`
-  - добавить `<meta name="robots" content="noindex, follow" />`
-- Если в `GEO_ALLOWED_TOOLS`:
-  - canonical → `/tools/${tool.slug}/${region.id}` (на саму гео-страницу)
-  - без noindex
+**Раздел 3 — "Вспомогательные утилиты"** (сетка 4 колонки, collapsible):
+- Slug'и: `pseo-generator`, `ai-text-generator`, `webmaster-files`, `anti-duplicate`, `position-monitor`, `llm-prompt-helper`
+- По умолчанию свёрнут — показывается заголовок "Вспомогательные утилиты (6)" + кнопка "Показать все"
+- Используем `useState` для toggle, без Radix Collapsible (проще)
 
-**3. GeoNicheToolPage.tsx** — noindex для всех нишевых страниц с утилитами:
-- Заменить `NICHE_ENABLED_SLUGS` на импорт из pseoConfig
-- Для `GEO_BLOCKED_TOOLS` — noindex + canonical на `/tools/${tool.slug}`
-- Для `GEO_ALLOWED_TOOLS` — canonical на саму страницу
+Убираем старую логику `categories.map` — вместо неё три hardcoded раздела.
 
-**4. vite-plugin-sitemap.ts** — добавить `site-check` и `internal-links` в geoEnabledTools:
-- `geoEnabledTools` = `["seo-auditor", "competitor-analysis", "semantic-core", "site-check", "internal-links"]`
-- `nicheEnabledTools` остаётся `[]`
+### FIX 6: Hero — двойная CTA + быстрый ввод URL
 
-**5. tools-registry.ts** — обновить geoEnabled:
-- `site-check` — если существует, `geoEnabled: true` (проверить наличие)
-- `internal-links` — `geoEnabled: true`
+**`src/components/Hero.tsx`:**
 
-**6. Мета-теги GeoToolPage** — обновить title/description с предложным падежом:
-- Title уже использует `region.nameCase` — OK
-- Canonical для geo-allowed: изменить на полный URL гео-страницы
+1. Заменить одну кнопку "Инструменты" на две:
+   - Главная (GradientButton, teal): "Проверить сайт бесплатно" → `/tools/site-check`
+   - Вторичная (outline Button): "Все инструменты" → `/tools`
+
+2. Под кнопками — поле быстрого ввода URL:
+   ```
+   [https://yoursite.ru          ] [Проверить →]
+   ```
+   - `useState` для url, `useNavigate` для redirect
+   - При submit → `navigate(/tools/site-check?url=${encodeURIComponent(url)})`
+   - Также вызвать `saveLastUrl(url)` из utils
+
+### FIX 7: DownloadButtons — toast вместо тишины
+
+**`src/components/site-check/DownloadButtons.tsx`:**
+- Убрать `disabled={!paid}` — кнопки всегда кликабельны
+- Добавить `className="opacity-50 cursor-not-allowed"` визуально
+- `onClick` всегда показывает toast: "Генерация PDF-отчётов в разработке. Скоро будет доступно!"
+- Под кнопками серый текст: "Генерация файлов появится после подключения оплаты"
+- Убрать старый блок `{!paid && ...}`
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/config/pseoConfig.ts` | Новый — GEO_ALLOWED_TOOLS / GEO_BLOCKED_TOOLS |
-| `src/pages/GeoToolPage.tsx` | Условный canonical + noindex |
-| `src/pages/GeoNicheToolPage.tsx` | Импорт из pseoConfig, noindex для утилит |
-| `vite-plugin-sitemap.ts` | Добавить site-check, internal-links в geoEnabledTools |
-| `src/data/tools-registry.ts` | geoEnabled: true для internal-links |
-
-### Что НЕ делаем
-- Города уже расширены (~85 штук в regions.ts с nameCase) — достаточно
-- Ниши не трогаем — nicheEnabledTools остаётся пустым, нишевые гео-страницы не генерируются в sitemap
+| `src/pages/Tools.tsx` | 3 раздела вместо категорий, collapsible утилиты |
+| `src/components/Hero.tsx` | Двойная CTA + поле ввода URL |
+| `src/components/site-check/DownloadButtons.tsx` | Toast + визуальный disabled |
 
