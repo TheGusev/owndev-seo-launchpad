@@ -8,7 +8,7 @@ import PaywallCTA from "@/components/site-check/PaywallCTA";
 import { getScanPreview } from "@/lib/site-check-api";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ExternalLink, Loader2, Rocket, Send, History } from "lucide-react";
-import { addToHistory } from "@/utils/scanHistory";
+import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -136,7 +136,17 @@ const SiteCheckResult = () => {
             )}
           </div>
 
-          {data.scores && <ScoreCards scores={data.scores} />}
+          {data.scores && (
+            <ScoreCards
+              scores={data.scores}
+              previousScores={
+                (() => {
+                  const prev = getHistory().filter(h => h.url === data.url && h.scanId !== scanId);
+                  return prev.length > 0 ? prev[0].scores : undefined;
+                })()
+              }
+            />
+          )}
 
           <div>
             <h2 className="text-lg font-semibold text-foreground mb-4">

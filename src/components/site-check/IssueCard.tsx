@@ -1,5 +1,6 @@
-import { Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { Lock, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { IssueCard as IssueCardType } from "@/lib/site-check-types";
 
 const severityConfig = {
@@ -22,16 +23,29 @@ const moduleLabels: Record<string, string> = {
 interface IssueCardProps {
   issue: IssueCardType;
   locked?: boolean;
+  resolved?: boolean;
+  onToggle?: () => void;
 }
 
-const IssueCardComponent = ({ issue, locked = false }: IssueCardProps) => {
+const IssueCardComponent = ({ issue, locked = false, resolved = false, onToggle }: IssueCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const sev = severityConfig[issue.severity];
 
   return (
-    <div className={`rounded-xl border p-4 ${sev.className}`}>
+    <div className={`rounded-xl border p-4 transition-all duration-300 ${resolved ? "opacity-50" : ""} ${sev.className}`}>
       <div className="flex items-start gap-3">
-        <span className="text-lg mt-0.5">{sev.emoji}</span>
+        {onToggle && !locked && (
+          <Checkbox
+            checked={resolved}
+            onCheckedChange={() => onToggle()}
+            className="mt-1 shrink-0"
+          />
+        )}
+        {resolved ? (
+          <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
+        ) : (
+          <span className="text-lg mt-0.5">{sev.emoji}</span>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted/40 text-muted-foreground">
@@ -39,7 +53,9 @@ const IssueCardComponent = ({ issue, locked = false }: IssueCardProps) => {
             </span>
             <span className="text-xs text-muted-foreground">{sev.label}</span>
           </div>
-          <h4 className="font-semibold text-sm text-foreground">{issue.title}</h4>
+          <h4 className={`font-semibold text-sm transition-all duration-300 ${resolved ? "line-through text-muted-foreground" : "text-foreground"}`}>
+            {issue.title}
+          </h4>
           <p className="text-xs text-muted-foreground mt-1">{issue.found}</p>
         </div>
       </div>

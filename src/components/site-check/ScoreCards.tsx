@@ -20,6 +20,28 @@ function getScoreRing(score: number) {
   return "stroke-green-500";
 }
 
+const DiffBadge = ({ diff }: { diff: number }) => {
+  if (diff > 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full text-emerald-500 bg-emerald-500/10">
+        ▲ +{diff}
+      </span>
+    );
+  }
+  if (diff < 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full text-red-500 bg-red-500/10">
+        ▼ {diff}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full text-muted-foreground bg-muted/30">
+      ~ без изменений
+    </span>
+  );
+};
+
 const CircleScore = ({ score }: { score: number }) => {
   const circumference = 2 * Math.PI * 36;
   const offset = circumference - (score / 100) * circumference;
@@ -47,19 +69,28 @@ const CircleScore = ({ score }: { score: number }) => {
 
 interface ScoreCardsProps {
   scores: ScanScores;
+  previousScores?: ScanScores;
 }
 
-const ScoreCards = ({ scores }: ScoreCardsProps) => (
+const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-    {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => (
-      <div
-        key={key}
-        className={`rounded-xl border p-4 text-center ${getScoreColor(scores[key])}`}
-      >
-        <CircleScore score={scores[key]} />
-        <p className="mt-2 text-xs font-medium text-muted-foreground">{scoreLabels[key]}</p>
-      </div>
-    ))}
+    {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => {
+      const diff = previousScores ? scores[key] - previousScores[key] : undefined;
+      return (
+        <div
+          key={key}
+          className={`rounded-xl border p-4 text-center ${getScoreColor(scores[key])}`}
+        >
+          <CircleScore score={scores[key]} />
+          <p className="mt-2 text-xs font-medium text-muted-foreground">{scoreLabels[key]}</p>
+          {diff !== undefined && (
+            <div className="mt-1">
+              <DiffBadge diff={diff} />
+            </div>
+          )}
+        </div>
+      );
+    })}
   </div>
 );
 
