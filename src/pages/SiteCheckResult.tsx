@@ -9,9 +9,9 @@ import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import { getFullScan } from "@/lib/site-check-api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ArrowLeft, ExternalLink, Loader2, History, AlertTriangle } from "lucide-react";
-import { addToHistory } from "@/utils/scanHistory";
+import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
 
 const SiteCheckResult = () => {
@@ -78,6 +78,13 @@ const SiteCheckResult = () => {
   const keywords = Array.isArray(data.keywords) ? data.keywords : [];
   const minusWords = Array.isArray(data.minus_words) ? data.minus_words : [];
 
+  const previousScores = useMemo(() => {
+    if (!data?.url || !scanId) return undefined;
+    const history = getHistory();
+    const prev = history.find(h => h.url === data.url && h.scanId !== scanId && h.scores);
+    return prev?.scores;
+  }, [data?.url, scanId]);
+
   return (
     <>
       <Helmet>
@@ -111,7 +118,7 @@ const SiteCheckResult = () => {
             )}
           </div>
 
-          {data.scores && <ScoreCards scores={data.scores} />}
+          {data.scores && <ScoreCards scores={data.scores} previousScores={previousScores} />}
 
           <DownloadButtons />
 
