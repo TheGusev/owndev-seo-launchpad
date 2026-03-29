@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ymHit } from "@/utils/analytics";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
@@ -53,8 +54,8 @@ const App = () => (
             <Route path="/terms" element={<Terms />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/site-check" element={<SiteCheck />} />
-            <Route path="/tools/site-check/result/:scanId" element={<SiteCheckResult />} />
-            <Route path="/tools/site-check/report/:reportId" element={<SiteCheckReport />} />
+            <Route path="/tools/site-check/result/:scanId" element={<ErrorBoundary><SiteCheckResult /></ErrorBoundary>} />
+            <Route path="/tools/site-check/report/:reportId" element={<ErrorBoundary><SiteCheckReport /></ErrorBoundary>} />
             <Route path="/tools/:toolSlug" element={<ToolPage />} />
             <Route path="/tools/:toolSlug/:regionSlug" element={<GeoToolPage />} />
             <Route path="/:citySlug/:nicheSlug/:toolSlug" element={<GeoNicheToolPage />} />
