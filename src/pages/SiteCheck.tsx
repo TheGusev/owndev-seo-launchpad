@@ -7,18 +7,18 @@ import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
 import type { ScanMode } from "@/lib/site-check-types";
-import { Check, Lock, ArrowRight, Globe, Trash2 } from "lucide-react";
+import { Check, ArrowRight, Globe, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 
 const checkItems = [
-  { text: "Технический SEO (скорость, код, robots, sitemap)", free: true },
-  { text: "Заголовки, Title, H1, контент", free: true },
-  { text: "Готовность к Яндекс.Директ и автотаргетингу", free: true },
-  { text: "Schema.org и AI-видимость", free: true },
-  { text: "Сравнение с топ-10 конкурентами", free: false },
-  { text: "200+ ключевых запросов", free: false },
-  { text: "Минус-слова для Директа", free: false },
+  "Технический SEO (скорость, код, robots, sitemap)",
+  "Заголовки, Title, H1, контент",
+  "Готовность к Яндекс.Директ и автотаргетингу",
+  "Schema.org и AI-видимость",
+  "Сравнение с топ-10 конкурентами",
+  "200+ ключевых запросов",
+  "Минус-слова для Директа",
 ];
 
 const SiteCheck = () => {
@@ -162,21 +162,10 @@ const SiteCheck = () => {
           <div className="mt-10">
             <h2 className="text-lg font-semibold text-foreground mb-4">Что проверяем</h2>
             <ul className="space-y-3">
-              {checkItems.map((item, i) => (
+              {checkItems.map((text, i) => (
                 <li key={i} className="flex items-center gap-3 text-sm">
-                  {item.free ? (
-                    <Check className="w-4 h-4 text-green-500 shrink-0" />
-                  ) : (
-                    <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
-                  )}
-                  <span className={item.free ? "text-foreground" : "text-muted-foreground"}>
-                    {item.text}
-                  </span>
-                  {!item.free && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">
-                      полный отчёт
-                    </span>
-                  )}
+                  <Check className="w-4 h-4 text-green-500 shrink-0" />
+                  <span className="text-foreground">{text}</span>
                 </li>
               ))}
             </ul>

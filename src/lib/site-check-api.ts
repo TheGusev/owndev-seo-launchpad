@@ -2,6 +2,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
+export async function getFullScan(scanId: string) {
+  const { data, error } = await supabase
+    .from('scans')
+    .select('*')
+    .eq('id', scanId)
+    .maybeSingle();
+  if (error || !data) throw new Error('Scan not found');
+  return data;
+}
+
 function fnUrl(name: string, path = '') {
   return `https://${PROJECT_ID}.supabase.co/functions/v1/${name}${path}`;
 }
