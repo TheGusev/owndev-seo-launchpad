@@ -40,6 +40,17 @@ const SiteCheck = () => {
     setHistory(getHistory());
   }, []);
 
+  // Auto-rescan from query params
+  const rescanTriggered = useRef(false);
+  useEffect(() => {
+    const rescanUrl = searchParams.get("url");
+    const rescan = searchParams.get("rescan");
+    if (rescanUrl && rescan === "true" && !rescanTriggered.current) {
+      rescanTriggered.current = true;
+      handleSubmit(rescanUrl, "page");
+    }
+  }, [searchParams]);
+
   const handleClearHistory = () => {
     clearHistory();
     setHistory([]);
