@@ -115,7 +115,7 @@ const SiteCheckResult = () => {
 
           <DownloadButtons />
 
-          {issues.length > 0 && <FullReportView issues={issues} />}
+          {issues.length > 0 && <FullReportView issues={issues} url={data.url} />}
 
           {competitors.length > 0 && (
             <CompetitorsTable
