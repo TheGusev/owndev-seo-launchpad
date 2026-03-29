@@ -21,6 +21,13 @@ const SiteCheckResult = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const previousScores = useMemo(() => {
+    if (!data?.url || !scanId) return undefined;
+    const history = getHistory();
+    const prev = history.find(h => h.url === data.url && h.scanId !== scanId && h.scores);
+    return prev?.scores;
+  }, [data?.url, scanId]);
+
   useEffect(() => {
     if (!scanId) {
       setError("ID скана не найден");
@@ -29,7 +36,6 @@ const SiteCheckResult = () => {
     }
     getFullScan(scanId)
       .then((d) => {
-        console.log("SCAN DATA:", d);
         setData(d);
         if (d && scanId) {
           addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
@@ -77,13 +83,6 @@ const SiteCheckResult = () => {
   const competitors = Array.isArray(data.competitors) ? data.competitors : [];
   const keywords = Array.isArray(data.keywords) ? data.keywords : [];
   const minusWords = Array.isArray(data.minus_words) ? data.minus_words : [];
-
-  const previousScores = useMemo(() => {
-    if (!data?.url || !scanId) return undefined;
-    const history = getHistory();
-    const prev = history.find(h => h.url === data.url && h.scanId !== scanId && h.scores);
-    return prev?.scores;
-  }, [data?.url, scanId]);
 
   return (
     <>
