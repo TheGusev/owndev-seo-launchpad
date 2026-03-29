@@ -23,6 +23,7 @@ const checkItems = [
 
 const SiteCheck = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
   const [scanId, setScanId] = useState<string | null>(null);
