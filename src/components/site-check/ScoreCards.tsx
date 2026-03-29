@@ -45,11 +45,34 @@ const CircleScore = ({ score }: { score: number }) => {
   );
 };
 
+const DiffBadge = ({ diff }: { diff: number }) => {
+  if (diff > 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full text-emerald-500 bg-emerald-500/10">
+        ▲ +{diff}
+      </span>
+    );
+  }
+  if (diff < 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full text-red-500 bg-red-500/10">
+        ▼ {diff}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full text-muted-foreground bg-muted/30">
+      ~ без изменений
+    </span>
+  );
+};
+
 interface ScoreCardsProps {
   scores: ScanScores;
+  previousScores?: ScanScores;
 }
 
-const ScoreCards = ({ scores }: ScoreCardsProps) => (
+const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
     {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => (
       <div
@@ -58,6 +81,11 @@ const ScoreCards = ({ scores }: ScoreCardsProps) => (
       >
         <CircleScore score={scores[key]} />
         <p className="mt-2 text-xs font-medium text-muted-foreground">{scoreLabels[key]}</p>
+        {previousScores && typeof previousScores[key] === "number" && (
+          <div className="mt-1">
+            <DiffBadge diff={scores[key] - previousScores[key]} />
+          </div>
+        )}
       </div>
     ))}
   </div>

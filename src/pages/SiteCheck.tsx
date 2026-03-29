@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -23,6 +23,7 @@ const checkItems = [
 
 const SiteCheck = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
   const [scanId, setScanId] = useState<string | null>(null);
@@ -38,6 +39,17 @@ const SiteCheck = () => {
   useEffect(() => {
     setHistory(getHistory());
   }, []);
+
+  // Auto-rescan from query params
+  const rescanTriggered = useRef(false);
+  useEffect(() => {
+    const rescanUrl = searchParams.get("url");
+    const rescan = searchParams.get("rescan");
+    if (rescanUrl && rescan === "true" && !rescanTriggered.current) {
+      rescanTriggered.current = true;
+      handleSubmit(rescanUrl, "page");
+    }
+  }, [searchParams]);
 
   const handleClearHistory = () => {
     clearHistory();
