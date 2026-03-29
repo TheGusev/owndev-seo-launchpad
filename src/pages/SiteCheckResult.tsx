@@ -3,78 +3,44 @@ import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
-import IssueCardComponent from "@/components/site-check/IssueCard";
-import PaywallCTA from "@/components/site-check/PaywallCTA";
-import { getScanPreview } from "@/lib/site-check-api";
+import FullReportView from "@/components/site-check/FullReportView";
+import CompetitorsTable from "@/components/site-check/CompetitorsTable";
+import KeywordsSection from "@/components/site-check/KeywordsSection";
+import MinusWordsSection from "@/components/site-check/MinusWordsSection";
+import DownloadButtons from "@/components/site-check/DownloadButtons";
+import { getFullScan } from "@/lib/site-check-api";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ExternalLink, Loader2, Rocket, Send, History } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, History, AlertTriangle } from "lucide-react";
 import { addToHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ymGoal } from "@/utils/analytics";
 
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentEmail, setPaymentEmail] = useState("");
-  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!scanId) return;
-    getScanPreview(scanId)
-      .then((d) => {
-        setData(d);
-        if (d && scanId) {
-          addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores });
-        }
-      })
-      .catch(() => toast({ title: "Ошибка", description: "Не удалось загрузить результаты", variant: "destructive" }))
-      .finally(() => setLoading(false));
-  }, [scanId, toast]);
-
-  const handlePay = async (email: string) => {
-    setPaymentEmail(email);
-    setShowPaymentModal(true);
-  };
-
-  const handleNotifyMe = async () => {
-    if (!paymentEmail.trim()) {
-      toast({ title: "Введите email", variant: "destructive" });
+    if (!scanId) {
+      setError("ID скана не найден");
+      setLoading(false);
       return;
     }
-    setSending(true);
-    ymGoal("email_submitted");
-    try {
-      await supabase.functions.invoke("send-telegram", {
-        body: {
-          name: "Ожидание оплаты",
-          phone: "—",
-          email: paymentEmail.trim(),
-          service: "Site Check — полный отчёт",
-          message: `Пользователь ожидает подключения оплаты. URL проверки: ${data?.url || "—"}`,
-        },
-      });
-      toast({ title: "Вы в списке! 🎉", description: "Мы уведомим вас первыми о запуске и дадим скидку 30%." });
-      setShowPaymentModal(false);
-      setPaymentEmail("");
-    } catch {
-      toast({ title: "Ошибка", description: "Попробуйте позже", variant: "destructive" });
-    } finally {
-      setSending(false);
-    }
-  };
+    getFullScan(scanId)
+      .then((d) => {
+        console.log("SCAN DATA:", d);
+        setData(d);
+        if (d && scanId) {
+          addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
+        }
+      })
+      .catch((e) => {
+        setError(e.message || "Не удалось загрузить отчёт");
+        toast({ title: "Ошибка", description: "Не удалось загрузить результаты", variant: "destructive" });
+      })
+      .finally(() => setLoading(false));
+  }, [scanId, toast]);
 
   if (loading) {
     return (
@@ -88,20 +54,29 @@ const SiteCheckResult = () => {
     );
   }
 
-  if (!data) {
+  if (error || !data) {
     return (
       <>
         <Header />
         <main className="min-h-screen pt-24 pb-16">
-          <div className="container max-w-4xl mx-auto px-4 text-center">
-            <p className="text-muted-foreground">Результаты не найдены</p>
-            <Link to="/tools/site-check" className="text-primary mt-4 inline-block">Запустить новую проверку</Link>
+          <div className="container max-w-4xl mx-auto px-4 text-center space-y-4">
+            <AlertTriangle className="w-12 h-12 text-destructive mx-auto" />
+            <h1 className="text-xl font-bold text-foreground">Не удалось загрузить отчёт</h1>
+            <p className="text-muted-foreground">{error || "Данные не найдены"}</p>
+            <Link to="/tools/site-check" className="text-primary inline-block mt-4">
+              ← Запустить новую проверку
+            </Link>
           </div>
         </main>
         <Footer />
       </>
     );
   }
+
+  const issues = Array.isArray(data.issues) ? data.issues : [];
+  const competitors = Array.isArray(data.competitors) ? data.competitors : [];
+  const keywords = Array.isArray(data.keywords) ? data.keywords : [];
+  const minusWords = Array.isArray(data.minus_words) ? data.minus_words : [];
 
   return (
     <>
@@ -125,7 +100,7 @@ const SiteCheckResult = () => {
               </Link>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl md:text-2xl font-bold text-foreground">Результат проверки</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-foreground">Полный отчёт</h1>
               <a href={data.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors">
                 {data.url}
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -138,51 +113,24 @@ const SiteCheckResult = () => {
 
           {data.scores && <ScoreCards scores={data.scores} />}
 
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-4">
-              Топ-5 критичных проблем
-            </h2>
-            <div className="space-y-3">
-              {(data.issues || []).map((issue: any) => (
-                <IssueCardComponent key={issue.id} issue={issue} locked />
-              ))}
-              {(!data.issues || data.issues.length === 0) && (
-                <p className="text-sm text-muted-foreground">Критичных проблем не найдено 🎉</p>
-              )}
-            </div>
-          </div>
+          <DownloadButtons />
 
-          <PaywallCTA issueCount={data.issue_count || 0} onPay={handlePay} loading={false} />
+          {issues.length > 0 && <FullReportView issues={issues} />}
+
+          {competitors.length > 0 && (
+            <CompetitorsTable
+              competitors={competitors}
+              userUrl={data.url}
+              userScores={data.scores}
+            />
+          )}
+
+          {keywords.length > 0 && <KeywordsSection keywords={keywords} />}
+
+          {minusWords.length > 0 && <MinusWordsSection minusWords={minusWords} />}
         </div>
       </main>
       <Footer />
-
-      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Rocket className="w-5 h-5 text-primary" />
-              Платежи скоро появятся
-            </DialogTitle>
-            <DialogDescription>
-              Мы подключаем оплату. Оставьте email — мы уведомим вас первыми о запуске и дадим скидку 30%.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 pt-2">
-            <Input
-              type="email"
-              placeholder="your@email.com"
-              value={paymentEmail}
-              onChange={(e) => setPaymentEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleNotifyMe()}
-            />
-            <Button onClick={handleNotifyMe} disabled={sending} className="w-full">
-              {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-              Уведомить меня
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

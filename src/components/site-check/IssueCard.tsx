@@ -1,4 +1,4 @@
-import { Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import type { IssueCard as IssueCardType } from "@/lib/site-check-types";
 
@@ -21,15 +21,14 @@ const moduleLabels: Record<string, string> = {
 
 interface IssueCardProps {
   issue: IssueCardType;
-  locked?: boolean;
 }
 
-const IssueCardComponent = ({ issue, locked = false }: IssueCardProps) => {
+const IssueCardComponent = ({ issue }: IssueCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const sev = severityConfig[issue.severity];
 
   return (
-    <div className={`rounded-xl border p-4 ${sev.className}`}>
+    <div className={`rounded-xl border p-4 ${sev.className} transition-all duration-300`}>
       <div className="flex items-start gap-3">
         <span className="text-lg mt-0.5">{sev.emoji}</span>
         <div className="flex-1 min-w-0">
@@ -44,25 +43,15 @@ const IssueCardComponent = ({ issue, locked = false }: IssueCardProps) => {
         </div>
       </div>
 
-      {locked ? (
-        <button
-          className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground opacity-60 cursor-not-allowed"
-          disabled
-        >
-          <Lock className="w-3.5 h-3.5" />
-          Как исправить — в полном отчёте
-        </button>
-      ) : (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="mt-3 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
-        >
-          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          {expanded ? "Свернуть" : "Как исправить"}
-        </button>
-      )}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="mt-3 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+      >
+        {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        {expanded ? "Свернуть" : "Как исправить"}
+      </button>
 
-      {expanded && !locked && (
+      {expanded && (
         <div className="mt-3 space-y-3 text-xs border-t border-border/30 pt-3">
           <div>
             <span className="font-semibold text-foreground">📍 Где:</span>
