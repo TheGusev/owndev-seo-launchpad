@@ -1,71 +1,52 @@
 
 
-## Fix: Competitors data structure mismatch
+## Исправление маппинга полей keywords и minus-words
 
-### 4 файла
+### Проблема
+
+Edge Function сохраняет keywords как `{ phrase, cluster, intent, frequency, landing_needed }`, но фронтенд ожидает `{ keyword, volume }`:
+
+- `KeywordsSection.tsx` — интерфейс `{ keyword, volume }`, рендерит `kw.keyword` и `kw.volume`
+- `DownloadButtons.tsx` — CSV берёт `kw.query ?? kw.keyword ?? kw.word` — ни один вариант не совпадает с `phrase`
+- `MinusWordsSection.tsx` — ожидает `{ word, type, reason }`, реальная структура может отличаться
+
+### Решение
+
+Нормализовать данные в одном месте (`SiteCheckResult.tsx`) перед передачей в компоненты.
 
 #### 1. `src/pages/SiteCheckResult.tsx`
 
-Строка 89 — разделить `competitors` на 3 группы:
+Добавить нормализацию keywords после получения данных:
 
 ```typescript
-const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
-const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor' || (c.url && !c._type && !c._direct_meta));
-const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table');
-const directMeta = rawCompetitors.find((c: any) => c._direct_meta);
+const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
+  keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
+  volume: kw.frequency ?? kw.volume ?? 0,
+  cluster: kw.cluster ?? 'Общие',
+  intent: kw.intent,
+  landing_needed: kw.landing_needed,
+}));
 ```
 
-Строки 154-160 — заменить блок на:
-```tsx
-{competitors.length > 0 && <CompetitorsTable competitors={competitors} userUrl={data.url} />}
-{comparisonTable && <ComparisonTable data={comparisonTable} />}
-{directMeta && <DirectMeta data={directMeta} />}
-```
+Аналогично для minus_words — нормализовать `word` из возможных полей.
 
-Добавить импорты `ComparisonTable` и `DirectMeta`.
+#### 2. `src/components/site-check/DownloadButtons.tsx`
 
-#### 2. `src/components/site-check/CompetitorsTable.tsx` — переписать
-
-Убрать интерфейс `CompetitorScores` и props `userScores`. Адаптировать под реальную структуру:
+Обновить `buildKeywordsCsv` — после нормализации данные уже в формате `{ keyword, volume, cluster, intent }`, убрать fallback-цепочки:
 
 ```typescript
-interface Competitor {
-  url: string;
-  title?: string;
-  h1?: string;
-  content_length_words?: number;
-  has_faq?: boolean;
-  has_price_block?: boolean;
-  has_reviews?: boolean;
-  has_schema?: boolean;
-  has_cta_button?: boolean;
-  load_speed_sec?: number;
-  h2_count?: number;
-  images_count?: number;
-  top_phrases?: string[];
-}
+const query = esc(kw.keyword);
+const frequency = esc(kw.volume);
 ```
 
-Desktop таблица — колонки: Сайт | Слов | FAQ | Цены | Отзывы | Schema | CTA | Скорость (с).
+#### 3. Без изменений в KeywordsSection и MinusWordsSection
 
-Бинарные `has_*` → ✓ (зелёный) / ✗ (красный). Числовые — как есть. Mobile карточки аналогично.
-
-#### 3. `src/components/site-check/ComparisonTable.tsx` — новый
-
-Принимает объект `comparison_table`. Ключи объекта — названия параметров (например, "Title (длина)", "Объём контента"). Каждое значение — объект `{ you, average, leader }`.
-
-Рендерит таблицу с 3 колонками: Параметр | Вы | Среднее | Лидер. Цвет значения "Вы": зелёный если >= leader, жёлтый если >= average, красный если < average.
-
-#### 4. `src/components/site-check/DirectMeta.tsx` — новый
-
-Принимает `{ ad_headline, autotargeting_categories }`. Карточка с заголовком "Рекомендации для Яндекс.Директ", показывает готовый заголовок объявления и список рекомендуемых категорий автотаргетинга как бейджи.
+Они уже работают с `{ keyword, volume, cluster, intent }` — после нормализации в parent всё заработает.
 
 ### Файлы
 
-| Файл | Действие |
-|------|----------|
-| `SiteCheckResult.tsx` | Разделить competitors на 3 группы |
-| `CompetitorsTable.tsx` | Переписать — реальные поля вместо scores |
-| `ComparisonTable.tsx` | Новый — Вы vs Среднее vs Лидер |
-| `DirectMeta.tsx` | Новый — заголовок + категории Директа |
+| Файл | Изменение |
+|------|-----------|
+| `SiteCheckResult.tsx` | Нормализация keywords и minusWords после загрузки |
+| `DownloadButtons.tsx` | Упростить маппинг в CSV (убрать fallback-цепочки) |
 
