@@ -35,10 +35,10 @@ const ServicesTeaser = () => {
           className="glass rounded-2xl p-6 md:p-8 text-center"
         >
           <h2 className="text-xl md:text-2xl font-bold mb-3 font-serif">
-            Когда бесплатных инструментов мало
+            Почему двойной аудит?
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
-            Используйте наши инструменты бесплатно, а если нужна команда — мы возьмём проект под ключ: от разработки сайта до масштабного pSEO.
+            Классическое SEO уже недостаточно. OWNDEV проверяет сайт по двум слоям — SEO и AI‑готовность — в одном отчёте.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
