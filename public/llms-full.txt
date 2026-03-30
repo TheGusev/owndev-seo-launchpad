@@ -1,0 +1,107 @@
+# OWNDEV — Полное описание
+> SEO-оптимизация и разработка SaaS решений. Платформа с 13 бесплатными SEO-инструментами для анализа, генерации контента и оптимизации сайтов под поисковые системы и AI.
+
+## Инструменты
+
+### Проверка сайта (Site Check)
+Флагманский инструмент. Комплексный аудит: технический SEO, индексация, конкуренты, ключевые запросы, Schema.org, AI-видимость — всё в одном отчёте. Включает сравнение с конкурентами из ТОП-10, генерацию минус-слов для Яндекс.Директ.
+URL: https://owndev.ru/tools/site-check
+
+### LLM-Friendly SEO Auditor
+Двойной аудит страницы: классический SEO-скор + проверка готовности к AI Overviews и LLM-цитированию. Анализирует структуру Q&A, Schema.org, списки, FAQ-блоки.
+URL: https://owndev.ru/tools/seo-auditor
+
+### Генератор семантического ядра
+AI-генерация кластеров ключевых слов по интентам: информационные, коммерческие, транзакционные. Автоматическая группировка и приоритизация.
+URL: https://owndev.ru/tools/semantic-core
+
+### pSEO Generator
+Генерация структуры GEO-страниц для programmatic SEO: slug, title, h1, meta description, шаблон текста. Поддержка 85+ городов России.
+URL: https://owndev.ru/tools/pseo-generator
+
+### Анализ конкурентов
+Сравнение SEO-метрик двух страниц: контент, структура заголовков, Schema.org разметка, скорость загрузки, коммерческие сигналы.
+URL: https://owndev.ru/tools/competitor-analysis
+
+### Schema.org генератор
+Генерация JSON-LD разметки: LocalBusiness, Organization, Article, Product, FAQ, HowTo. Готовый код для вставки на сайт.
+URL: https://owndev.ru/tools/schema-generator
+
+### AI Генератор текстов
+Генерация SEO-текстов с помощью AI: мета-теги, вступления, FAQ, описания услуг и товаров. Оптимизировано под поисковые системы.
+URL: https://owndev.ru/tools/ai-text-generator
+
+### LLM Prompt Helper
+Готовые промты для ChatGPT и Perplexity: генерация контента, улучшение страниц, подготовка к AI Overviews.
+URL: https://owndev.ru/tools/llm-prompt-helper
+
+### Anti-Duplicate Checker
+Проверка текста на шаблонность и риск деиндексации. Полезно после массовой генерации контента нейросетями.
+URL: https://owndev.ru/tools/anti-duplicate
+
+### Проверка индексации
+Анализ meta robots, X-Robots-Tag, canonical, HTTP-статуса — доступна ли страница для поисковых роботов.
+URL: https://owndev.ru/tools/indexation-checker
+
+### Мониторинг позиций
+Ручной трекер позиций: добавляйте данные из Google Search Console и отслеживайте динамику по ключевым словам.
+URL: https://owndev.ru/tools/position-monitor
+
+### Генератор файлов вебмастера
+Создание sitemap.xml и robots.txt: генерация, копирование и скачивание готовых файлов.
+URL: https://owndev.ru/tools/webmaster-files
+
+### Проверка внутренних ссылок
+Поиск битых ссылок, nofollow-меток и анализ внутренней перелинковки сайта.
+URL: https://owndev.ru/tools/internal-links
+
+## Блог
+
+### LLM-оптимизация
+- Что такое LLM-оптимизация и зачем она нужна — практическое руководство по оптимизации для AI-поисковиков
+- Как сделать сайт видимым для ChatGPT и Perplexity — пошаговая инструкция LLM-оптимизации
+- llms.txt — новый стандарт для AI-краулеров — что это и как создать
+
+### AI Overviews
+- Как попасть в AI Overviews Google — пошаговый чек-лист
+- Что такое AI Overviews и как они меняют SEO — влияние на CTR и стратегию
+- Как отслеживать появление в AI Overviews — метрики и инструменты
+
+### Programmatic SEO
+- pSEO: как масштабировать SEO на 1000+ страниц — полный гайд
+- Как избежать thin content при pSEO — качество vs количество
+- pSEO для локального бизнеса — GEO-страницы для 85+ городов
+
+### Schema.org и разметка
+- Schema.org разметка для AI-цитирования — какой JSON-LD добавить
+- FAQ Schema: как получить расширенные сниппеты — пошаговая инструкция
+- LocalBusiness Schema для локального SEO — обязательные поля
+
+### Контент и промты
+- Промты для SEO: как использовать ChatGPT для контента — готовые промты
+- E-E-A-T: как доказать экспертность сайта — чек-лист авторитетности
+- Как писать SEO-тексты в 2025 году — структура, длина, ключевые слова
+
+### Техническое SEO
+- Технический SEO аудит: полный чек-лист — 50+ пунктов проверки
+- Core Web Vitals: как улучшить LCP, FID, CLS — практическое руководство
+- Как настроить robots.txt и sitemap.xml — гайд для вебмастеров
+
+## Links
+- https://owndev.ru/: Главная
+- https://owndev.ru/tools: Все 13 инструментов
+- https://owndev.ru/tools/site-check: Проверка сайта (flagship)
+- https://owndev.ru/tools/seo-auditor: LLM-Friendly SEO Auditor
+- https://owndev.ru/tools/semantic-core: Генератор семантического ядра
+- https://owndev.ru/tools/schema-generator: Schema.org генератор
+- https://owndev.ru/tools/pseo-generator: pSEO Generator
+- https://owndev.ru/tools/competitor-analysis: Анализ конкурентов
+- https://owndev.ru/tools/ai-text-generator: AI Генератор текстов
+- https://owndev.ru/tools/llm-prompt-helper: LLM Prompt Helper
+- https://owndev.ru/tools/anti-duplicate: Anti-Duplicate Checker
+- https://owndev.ru/tools/indexation-checker: Проверка индексации
+- https://owndev.ru/tools/position-monitor: Мониторинг позиций
+- https://owndev.ru/tools/webmaster-files: Генератор файлов вебмастера
+- https://owndev.ru/tools/internal-links: Проверка внутренних ссылок
+- https://owndev.ru/blog: Блог
+- https://owndev.ru/contacts: Контакты
