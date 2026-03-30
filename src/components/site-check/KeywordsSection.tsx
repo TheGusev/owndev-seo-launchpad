@@ -41,8 +41,6 @@ const KeywordsSection = ({ keywords }: KeywordsSectionProps) => {
   const [activeCluster, setActiveCluster] = useState<string | null>(null);
   const [activeIntent, setActiveIntent] = useState<string | null>(null);
 
-  if (!keywords || keywords.length === 0) return null;
-
   const allClusters = useMemo(
     () => [...new Set(keywords.map((k) => k.cluster))],
     [keywords]
