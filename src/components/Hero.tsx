@@ -80,7 +80,7 @@ const Hero = () => {
               </h1>
             </div>
             <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground font-serif">
-              бесплатно и без регистрации
+              первый двойной аудит в Рунете
             </p>
           </motion.div>
           
