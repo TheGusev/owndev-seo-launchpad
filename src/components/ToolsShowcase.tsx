@@ -35,11 +35,11 @@ const ToolsShowcase = () => {
           className="text-center mb-8 md:mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            Бесплатные{" "}
-            <span className="text-gradient">LLM + SEO инструменты</span>
+            Инструменты{" "}
+            <span className="text-gradient">GEO и AI‑ready аудита</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            13 профессиональных инструментов для SEO и оптимизации под AI‑поиск
+            13 инструментов для SEO, AI‑видимости и конкурентного анализа
           </p>
         </motion.div>
 
