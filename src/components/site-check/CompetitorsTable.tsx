@@ -77,10 +77,10 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
               #{i + 1} {shortenUrl(c.url)}
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>Общий: <span className={scoreColor(c.scores.total)}>{c.scores.total}</span></div>
-              <div>SEO: <span className={scoreColor(c.scores.seo)}>{c.scores.seo}</span></div>
-              <div>Директ: <span className={scoreColor(c.scores.direct)}>{c.scores.direct}</span></div>
-              <div>Schema: <span className={scoreColor(c.scores.schema)}>{c.scores.schema}</span></div>
+              <div>Общий: <span className={scoreColor(c.scores?.total ?? 0)}>{c.scores?.total ?? 0}</span></div>
+              <div>SEO: <span className={scoreColor(c.scores?.seo ?? 0)}>{c.scores?.seo ?? 0}</span></div>
+              <div>Директ: <span className={scoreColor(c.scores?.direct ?? 0)}>{c.scores?.direct ?? 0}</span></div>
+              <div>Schema: <span className={scoreColor(c.scores?.schema ?? 0)}>{c.scores?.schema ?? 0}</span></div>
             </div>
             {c.top_phrases && c.top_phrases.length > 0 && (
               <p className="text-xs text-muted-foreground">
