@@ -1,35 +1,36 @@
 
 
-## Добавить AI-краулеры в robots.txt
+## Активация кнопок экспорта
 
-**Файл:** `public/robots.txt`
+### 3 файла, 3 правки
 
-Добавить блоки для основных AI-краулеров (GPTBot, ChatGPT-User, Google-Extended, PerplexityBot, ClaudeBot, Applebot-Extended) с `Allow: /` и указанием пути к `llms.txt` через нестандартную, но широко поддерживаемую директиву. Также добавить универсальное поле `LLMs-Txt` в конец файла.
+#### 1. `src/components/site-check/DownloadButtons.tsx` — полная переработка
 
+Переписать компонент: принимает props `{ url, theme, scores, issues, keywords, minusWords, competitors }`. 4 активные кнопки:
+
+- **Ключевые слова** → CSV через Blob (UTF-8 BOM, колонки: Кластер/Интент/Запрос/Частота). Disabled если `keywords` пуст.
+- **Минус-слова** → TXT, по строке с префиксом `-`. Disabled если `minusWords` пуст.
+- **PDF** → `window.print()`, стили через `@media print`.
+- **Word** → текстовый отчёт (.txt) с URL, баллами, списком ошибок.
+
+Хелпер `downloadBlob(content, filename, mime)` для генерации и скачивания.
+
+#### 2. `src/pages/SiteCheckResult.tsx` — строка 128
+
+Заменить `<DownloadButtons />` на:
+```tsx
+<DownloadButtons
+  url={data.url}
+  theme={data.theme}
+  scores={scores}
+  issues={issues}
+  keywords={keywords}
+  minusWords={minusWords}
+  competitors={competitors}
+/>
 ```
-# AI Crawlers
-User-agent: GPTBot
-Allow: /
 
-User-agent: ChatGPT-User
-Allow: /
+#### 3. `src/index.css` — добавить в конец файла
 
-User-agent: Google-Extended
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: Applebot-Extended
-Allow: /
-
-# LLM manifest
-# https://llmstxt.org
-LLMs-Txt: https://owndev.ru/llms.txt
-```
-
-Один файл, одна правка.
+`@media print` блок: скрыть header/footer/nav/`.no-print`, белый фон, чёрный текст, убрать backdrop-filter у glass-элементов, читаемые цвета для бейджей, `page-break-inside: avoid` для секций.
 
