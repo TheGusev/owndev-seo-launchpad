@@ -25,6 +25,7 @@ import SiteCheckReport from "./pages/SiteCheckReport";
 import Offer from "./pages/Offer";
 import Refund from "./pages/Refund";
 import Contacts from "./pages/Contacts";
+import GeoAudit from "./pages/GeoAudit";
 
 const queryClient = new QueryClient();
 
