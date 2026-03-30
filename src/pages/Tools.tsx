@@ -113,7 +113,7 @@ const Tools = () => {
                       </span>
                     </div>
                     <p className="text-muted-foreground text-lg">
-                      Технический SEO, индексация, конкуренты, ключевые запросы — один отчёт
+                      SEO Score + LLM Score, топ-10 конкурентов, 200+ ключей, E‑E‑A‑T, Schema и экспорт
                     </p>
                   </div>
                   <GradientButton size="lg" className="shrink-0">

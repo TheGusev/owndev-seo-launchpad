@@ -108,10 +108,10 @@ const SiteCheck = () => {
         <div className="container max-w-2xl mx-auto px-4">
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-              Проверка сайта
+              Полный GEO и AI‑ready аудит сайта
             </h1>
             <p className="text-muted-foreground mt-3 text-base">
-              SEO, Яндекс.Директ, конкуренты и ключевые запросы — в одном отчёте
+              Проверьте SEO Score и LLM Score сайта бесплатно. Результат — через 60 секунд.
             </p>
           </div>
 

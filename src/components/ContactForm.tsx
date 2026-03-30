@@ -58,7 +58,7 @@ const ContactForm = () => {
   const serviceLabels: Record<string, string> = {
     "pseo-setup": "Настройка pSEO‑проекта",
     "content-gen": "Генерация контента",
-    "seo-audit": "SEO‑аудит",
+    "seo-audit": "GEO‑аудит сайта",
     "ai-optimization": "Оптимизация под AI‑поиск",
     "custom": "Кастомная доработка",
     consultation: "Консультация"

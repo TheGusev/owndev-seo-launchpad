@@ -89,7 +89,7 @@ const FAQ = () => {
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
               Вопросы и <span className="text-gradient">ответы</span>
             </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Часто задаваемые вопросы об инструментах и LLM‑оптимизации</p>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Часто задаваемые вопросы о GEO‑аудите и AI‑ready SEO</p>
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.6, delay: 0.2 }} className="max-w-3xl mx-auto">
             <FAQContent />

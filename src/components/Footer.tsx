@@ -110,7 +110,7 @@ const Footer = () => {
 
         <div className="mt-10 pt-6 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-muted-foreground text-sm text-center md:text-left">© {new Date().getFullYear()} OWNDEV. Все права защищены.</p>
+            <p className="text-muted-foreground text-sm text-center md:text-left">© {new Date().getFullYear()} OWNDEV — GEO & AI‑ready аудит</p>
             <p className="text-muted-foreground text-xs">Сделано с ❤️ в России</p>
           </div>
         </div>

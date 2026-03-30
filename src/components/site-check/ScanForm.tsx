@@ -82,7 +82,7 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
         className="w-full"
         disabled={!url.trim() || isLoading}
       >
-        {isLoading ? "Проверяем..." : "Запустить проверку"}
+        {isLoading ? "Проверяем..." : "Запустить GEO‑аудит"}
       </Button>
     </form>
   );

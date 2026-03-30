@@ -64,7 +64,7 @@ const ToolsShowcase = () => {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-1">
                   <h3 className="text-xl md:text-2xl font-bold">{flagship.name}</h3>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">Главный инструмент</span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">🏆 GEO‑аудит</span>
                 </div>
                 <p className="text-muted-foreground text-sm md:text-base">{flagship.description}</p>
               </div>

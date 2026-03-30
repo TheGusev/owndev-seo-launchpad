@@ -50,8 +50,8 @@ const ServicesTeaser = () => {
             ))}
           </div>
 
-          <GradientButton variant="variant" size="sm" onClick={handleContact}>
-            Обсудить проект
+          <GradientButton variant="variant" size="sm" onClick={() => navigate("/tools/site-check")}>
+            Запустить GEO‑аудит
           </GradientButton>
         </motion.div>
       </div>

@@ -130,7 +130,7 @@ const SiteCheckResult = () => {
               </Link>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl md:text-2xl font-bold text-foreground">Полный отчёт</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-foreground">Полный GEO‑отчёт</h1>
               <a href={data.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors">
                 {data.url}
                 <ExternalLink className="w-3.5 h-3.5" />

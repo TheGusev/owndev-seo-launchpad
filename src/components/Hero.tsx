@@ -149,7 +149,7 @@ const Hero = () => {
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://yoursite.ru"
+              placeholder="https://ваш-сайт.ru"
               className="flex-1 h-12 rounded-xl border border-border bg-card/60 backdrop-blur-xl px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
             />
             <Button type="submit" variant="default" size="lg" className="shrink-0">
