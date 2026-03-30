@@ -12,6 +12,7 @@ const Footer = () => {
 
   const quickLinks = [
     { label: "Инструменты", href: "/tools", isRoute: true },
+    { label: "GEO‑аудит", href: "/geo-audit", isRoute: true },
     { label: "Блог", href: "/blog", isRoute: true },
     { label: "О нас", href: "#about" },
     { label: "Контакты", href: "#contact" },
