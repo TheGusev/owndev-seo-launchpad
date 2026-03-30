@@ -99,8 +99,8 @@ const SiteCheck = () => {
   return (
     <>
       <Helmet>
-        <title>Проверка сайта — SEO, Директ, конкуренты | OwnDev</title>
-        <meta name="description" content="Бесплатная проверка сайта: SEO, готовность к Яндекс.Директ, Schema.org, AI-видимость. Полный отчёт с ключевыми запросами и конкурентами." />
+        <title>Полный GEO и AI-ready аудит сайта — бесплатно | OWNDEV</title>
+        <meta name="description" content="Проверьте SEO Score и LLM Score сайта бесплатно. Конкуренты, 200+ ключей, минус-слова, E-E-A-T, Schema и экспорт — за 60 секунд." />
         <link rel="canonical" href="https://owndev.ru/tools/site-check" />
       </Helmet>
       <Header />
