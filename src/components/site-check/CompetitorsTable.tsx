@@ -64,10 +64,10 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
               ⭐ {shortenUrl(userUrl)}
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>Общий: <span className={scoreColor(userScores.total)}>{userScores.total}</span></div>
-              <div>SEO: <span className={scoreColor(userScores.seo)}>{userScores.seo}</span></div>
-              <div>Директ: <span className={scoreColor(userScores.direct)}>{userScores.direct}</span></div>
-              <div>Schema: <span className={scoreColor(userScores.schema)}>{userScores.schema}</span></div>
+              <div>Общий: <span className={scoreColor(userScores?.total ?? 0)}>{userScores?.total ?? 0}</span></div>
+              <div>SEO: <span className={scoreColor(userScores?.seo ?? 0)}>{userScores?.seo ?? 0}</span></div>
+              <div>Директ: <span className={scoreColor(userScores?.direct ?? 0)}>{userScores?.direct ?? 0}</span></div>
+              <div>Schema: <span className={scoreColor(userScores?.schema ?? 0)}>{userScores?.schema ?? 0}</span></div>
             </div>
           </div>
         )}
