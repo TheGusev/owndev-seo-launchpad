@@ -49,7 +49,7 @@ const Hero = () => {
             className="glass px-4 py-2 rounded-full flex items-center gap-2"
           >
             <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground font-mono">Бесплатные LLM + SEO инструменты</span>
+            <span className="text-sm text-muted-foreground font-mono">✦ Первый GEO-аудитор в Рунете</span>
           </motion.div>
           
           {/* Main heading */}
