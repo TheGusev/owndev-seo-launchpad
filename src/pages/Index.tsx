@@ -33,7 +33,7 @@ const websiteLd = {
   "@type": "WebSite",
   name: "OWNDEV",
   url: "https://owndev.ru",
-  description: "Бесплатные SEO + LLM инструменты для сайтов и pSEO",
+  description: "Первый в Рунете сервис GEO и AI-ready аудита сайта. SEO Score + LLM Score в одном отчёте.",
 };
 
 const softwareAppLd = {
