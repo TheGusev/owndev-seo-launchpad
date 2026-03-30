@@ -41,6 +41,7 @@ const allToolSlugs = [
   "pseo-generator", "schema-generator", "semantic-core",
   "ai-text-generator", "llm-prompt-helper", "anti-duplicate",
   "webmaster-files", "internal-links",
+  "geo-audit", "llm-score", "ai-ready-audit", "llms-txt-checker", "eeat-audit",
 ];
 
 /** All blog post slugs */
