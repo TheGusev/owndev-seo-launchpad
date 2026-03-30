@@ -129,9 +129,9 @@ const Hero = () => {
                 </GradientButton>
               </Link>
             </div>
-            <Link to="/tools">
+            <Link to="/tools/site-check">
               <Button variant="outline" size="lg">
-                Все инструменты
+                Смотреть пример отчёта
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
