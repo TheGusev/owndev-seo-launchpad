@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -34,19 +35,88 @@ const intentColors: Record<string, string> = {
   commercial: "bg-orange-500/10 text-orange-500 border-orange-500/20",
 };
 
+const ALL_INTENTS = ["transactional", "informational", "navigational", "commercial"];
+
 const KeywordsSection = ({ keywords }: KeywordsSectionProps) => {
+  const [activeCluster, setActiveCluster] = useState<string | null>(null);
+  const [activeIntent, setActiveIntent] = useState<string | null>(null);
+
+  const allClusters = useMemo(
+    () => [...new Set(keywords.map((k) => k.cluster))],
+    [keywords]
+  );
+
+  const filtered = useMemo(() => {
+    if (!keywords || keywords.length === 0) return [];
+    let result = keywords;
+    if (activeCluster) result = result.filter((k) => k.cluster === activeCluster);
+    if (activeIntent) result = result.filter((k) => k.intent === activeIntent);
+    return result;
+  }, [keywords, activeCluster, activeIntent]);
+
+  const clusters = useMemo(
+    () => [...new Set(filtered.map((k) => k.cluster))],
+    [filtered]
+  );
+
   if (!keywords || keywords.length === 0) return null;
 
-  const clusters = [...new Set(keywords.map((k) => k.cluster))];
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <h2 className="text-lg font-bold text-foreground">
-        Ключевые запросы ({keywords.length})
+        Ключевые запросы{" "}
+        <span className="text-muted-foreground font-normal text-base">
+          {filtered.length === keywords.length
+            ? `(${keywords.length})`
+            : `(${filtered.length} из ${keywords.length})`}
+        </span>
       </h2>
 
+      {/* Filters */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge
+            variant={activeCluster === null ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setActiveCluster(null)}
+          >
+            Все кластеры
+          </Badge>
+          {allClusters.map((c) => (
+            <Badge
+              key={c}
+              variant={activeCluster === c ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setActiveCluster(activeCluster === c ? null : c)}
+            >
+              {c}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge
+            variant={activeIntent === null ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setActiveIntent(null)}
+          >
+            Все интенты
+          </Badge>
+          {ALL_INTENTS.map((intent) => (
+            <Badge
+              key={intent}
+              variant={activeIntent === intent ? "default" : "outline"}
+              className={`cursor-pointer ${activeIntent === intent ? "" : intentColors[intent] || ""}`}
+              onClick={() => setActiveIntent(activeIntent === intent ? null : intent)}
+            >
+              {intentLabels[intent]}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      {/* Tables grouped by cluster */}
       {clusters.map((cluster) => {
-        const clusterKeywords = keywords.filter((k) => k.cluster === cluster);
+        const clusterKeywords = filtered.filter((k) => k.cluster === cluster);
         return (
           <div key={cluster} className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground/80">
