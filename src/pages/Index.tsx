@@ -42,6 +42,11 @@ const Index = () => {
         <title>OWNDEV — SEO оптимизация и разработка SaaS решений</title>
         <meta name="description" content="OWNDEV — профессиональная SEO оптимизация и разработка SaaS сайтов, платформ и приложений. Вывод в ТОП-10, создание цифровых продуктов под ключ." />
         <link rel="canonical" href="https://owndev.ru/" />
+        <meta property="og:url" content="https://owndev.ru/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="OWNDEV — SEO оптимизация и разработка SaaS решений" />
+        <meta property="og:description" content="OWNDEV — профессиональная SEO оптимизация и разработка SaaS сайтов, платформ и приложений." />
+        <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/uFFBSErXpLgk4mRuTAApiupSL4k2/social-images/social-1773011391222-0b112d3c-ebf7-4d40-b170-0933cb71ca91.webp" />
         <script type="application/ld+json">{JSON.stringify(organizationLd)}</script>
         <script type="application/ld+json">{JSON.stringify(websiteLd)}</script>
       </Helmet>

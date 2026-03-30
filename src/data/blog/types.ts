@@ -6,4 +6,6 @@ export interface BlogPost {
   tags: string[];
   readTime: number;
   content: string;
+  author: string;
+  authorRole?: string;
 }

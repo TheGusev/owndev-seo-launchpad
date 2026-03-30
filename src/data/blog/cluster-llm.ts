@@ -8,6 +8,8 @@ export const clusterLLM: BlogPost[] = [
     date: "2025-06-15",
     tags: ["LLM", "SEO", "AI Overviews"],
     readTime: 8,
+    author: "OWNDEV Team",
+    authorRole: "SEO & AI эксперты",
     content: `## Что изменилось в поиске
 
 Поисковые системы больше не просто показывают ссылки. Google AI Overviews, Perplexity, ChatGPT с поиском — все они **генерируют ответы**, цитируя источники. Если ваш сайт не оптимизирован для LLM, вы теряете трафик.
@@ -58,6 +60,8 @@ LLM-оптимизация — не замена классического SEO,
     date: "2025-06-20",
     tags: ["LLM", "ChatGPT", "Perplexity", "Мониторинг"],
     readTime: 7,
+    author: "OWNDEV Team",
+    authorRole: "SEO & AI эксперты",
     content: `## Зачем проверять AI-цитирование
 
 AI-ассистенты стали полноценным источником трафика. ChatGPT с поиском, Perplexity, Google AI Overviews — все они цитируют веб-страницы. Если ваш сайт не появляется в их ответах, вы упускаете растущий канал привлечения аудитории.
@@ -125,6 +129,8 @@ ChatGPT с поиском использует Bing в реальном врем
     date: "2025-06-25",
     tags: ["E-E-A-T", "LLM", "SEO", "AI Overviews"],
     readTime: 9,
+    author: "OWNDEV Team",
+    authorRole: "SEO & AI эксперты",
     content: `## Что такое E-E-A-T и почему это важно для AI-поиска
 
 E-E-A-T — это Experience (опыт), Expertise (экспертность), Authoritativeness (авторитетность), Trust (доверие). Google использует эти сигналы для оценки качества контента, и LLM-модели наследуют эту оценку при выборе источников для цитирования.
@@ -198,6 +204,8 @@ E-E-A-T — это фундамент AI-видимости. Без сигнал
     date: "2025-07-18",
     tags: ["LLM", "GPTBot", "SEO", "AI Overviews"],
     readTime: 8,
+    author: "OWNDEV Team",
+    authorRole: "SEO & AI эксперты",
     content: `## Какие AI-краулеры существуют в 2025
 
 AI-краулеры — это боты, которые собирают контент для обучения и работы LLM-моделей. В отличие от Googlebot, они извлекают текст для генерации ответов. Основные AI-краулеры:
