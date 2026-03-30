@@ -25,15 +25,10 @@ function downloadBlob(content: string, filename: string, mimeType: string) {
 
 function buildKeywordsCsv(keywords: any[]): string {
   const header = "Кластер,Интент,Запрос,Частота";
-  const rows = keywords.map((kw) => {
-    const esc = (v: any) => `"${String(v ?? "—").replace(/"/g, '""')}"`;
-    return [
-      esc(kw.cluster ?? kw.category),
-      esc(kw.intent ?? kw.type),
-      esc(kw.query ?? kw.keyword ?? kw.word),
-      esc(kw.frequency ?? kw.volume ?? kw.freq),
-    ].join(",");
-  });
+  const esc = (v: any) => `"${String(v ?? "—").replace(/"/g, '""')}"`;
+  const rows = keywords.map((kw) =>
+    [esc(kw.cluster), esc(kw.intent), esc(kw.keyword), esc(kw.volume)].join(",")
+  );
   return [header, ...rows].join("\n");
 }
 
