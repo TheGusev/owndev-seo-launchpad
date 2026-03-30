@@ -127,6 +127,20 @@ const SiteCheckResult = () => {
 
           <DownloadButtons />
 
+          {/* Download llms.txt button */}
+          <div className="flex justify-start">
+            <button
+              onClick={() => {
+                import('@/utils/generateLlmsTxt').then(({ downloadLlmsTxt }) => {
+                  downloadLlmsTxt({ url: data.url, theme: data.theme, keywords });
+                });
+              }}
+              className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-4"
+            >
+              🤖 Скачать llms.txt для вашего сайта
+            </button>
+          </div>
+
           {issues.length > 0 && <FullReportView issues={issues} url={data.url} />}
 
           {competitors.length > 0 && (

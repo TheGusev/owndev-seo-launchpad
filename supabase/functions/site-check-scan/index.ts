@@ -967,9 +967,121 @@ function schemaAudit(html: string): Issue[] {
 }
 
 // ═══ STEP 8: AI Visibility Audit ═══
-function aiAudit(html: string): Issue[] {
+async function aiAudit(html: string, origin: string): Promise<Issue[]> {
   const issues: Issue[] = [];
   
+  // --- 1. Check /llms.txt ---
+  try {
+    const llmsResp = await fetchWithTimeout(`${origin}/llms.txt`, 5000, { method: 'HEAD' });
+    if (!llmsResp.ok) {
+      issues.push(makeIssue({ module: 'ai', severity: 'high',
+        title: '🤖 Нет файла /llms.txt',
+        found: `${origin}/llms.txt → ${llmsResp.status}`,
+        location: '/llms.txt',
+        why_it_matters: 'llms.txt — стандарт для AI-краулеров (аналог robots.txt для LLM). Без него AI-системы не знают, как взаимодействовать с вашим сайтом',
+        how_to_fix: 'Создайте файл /llms.txt в корне сайта с описанием контента, услуг и ссылками',
+        example_fix: `# ${origin}\n> Описание вашего сайта\n\n## Offered\n- Услуга 1\n- Услуга 2\n\n## Links\n- ${origin}/: Главная`,
+        visible_in_preview: true }));
+    }
+  } catch { /* timeout — skip */ }
+
+  // --- 2. Check /llms-full.txt ---
+  try {
+    const llmsFullResp = await fetchWithTimeout(`${origin}/llms-full.txt`, 5000, { method: 'HEAD' });
+    if (!llmsFullResp.ok) {
+      issues.push(makeIssue({ module: 'ai', severity: 'medium',
+        title: '🤖 Нет файла /llms-full.txt',
+        found: `${origin}/llms-full.txt → ${llmsFullResp.status}`,
+        location: '/llms-full.txt',
+        why_it_matters: 'llms-full.txt — расширенная версия для AI-систем с подробным описанием всех страниц и контента',
+        how_to_fix: 'Создайте /llms-full.txt с детальным описанием каждого раздела сайта',
+        example_fix: `# ${origin}\n> Полное описание сайта\n\n## Pages\n- ${origin}/about: О компании — описание\n- ${origin}/services: Услуги — список`,
+        visible_in_preview: false }));
+    }
+  } catch { /* timeout — skip */ }
+
+  // --- 3. FAQPage Schema cross-check for AI visibility ---
+  const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+  const schemaTypes: string[] = [];
+  for (const m of jsonLdMatches) {
+    try {
+      const content = m.replace(/<\/?script[^>]*>/gi, '');
+      const parsed = JSON.parse(content);
+      if (parsed['@type']) schemaTypes.push(parsed['@type']);
+      if (Array.isArray(parsed['@graph'])) {
+        for (const item of parsed['@graph']) {
+          if (item['@type']) schemaTypes.push(item['@type']);
+        }
+      }
+    } catch {}
+  }
+
+  if (!schemaTypes.includes('FAQPage')) {
+    issues.push(makeIssue({ module: 'ai', severity: 'high',
+      title: '🤖 Нет FAQPage Schema для AI-видимости',
+      found: `Schema типы: ${schemaTypes.length > 0 ? schemaTypes.join(', ') : 'нет'}`,
+      location: 'JSON-LD разметка',
+      why_it_matters: 'FAQPage Schema — ключевой сигнал для AI-систем. Вопрос-ответ формат цитируется в AI Overviews в 3 раза чаще',
+      how_to_fix: 'Добавьте JSON-LD с типом FAQPage на страницы с вопросами',
+      example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Ваш вопрос?","acceptedAnswer":{"@type":"Answer","text":"Ответ"}}]}</script>',
+      visible_in_preview: true }));
+  }
+
+  // --- 4. Article / LocalBusiness Schema ---
+  const hasArticle = schemaTypes.includes('Article') || schemaTypes.includes('NewsArticle') || schemaTypes.includes('BlogPosting');
+  const hasLocalBusiness = schemaTypes.includes('LocalBusiness') || schemaTypes.some(t => 
+    ['Restaurant', 'Store', 'MedicalBusiness', 'LegalService', 'FinancialService', 'RealEstateAgent'].includes(t)
+  );
+  if (!hasArticle && !hasLocalBusiness) {
+    issues.push(makeIssue({ module: 'ai', severity: 'medium',
+      title: '🤖 Нет Article или LocalBusiness Schema',
+      found: `Schema типы: ${schemaTypes.length > 0 ? schemaTypes.join(', ') : 'нет'}`,
+      location: 'JSON-LD разметка',
+      why_it_matters: 'Article и LocalBusiness — ключевые типы для AI-цитирования. Без них LLM не может определить тип контента и авторитетность',
+      how_to_fix: 'Для статей добавьте Article Schema, для бизнеса — LocalBusiness с адресом и контактами',
+      example_fix: '{"@type":"Article","headline":"...","author":{"@type":"Person","name":"..."},"datePublished":"2025-01-01"}',
+      visible_in_preview: false }));
+  }
+
+  // --- 5. E-E-A-T signals ---
+  const htmlLower = html.toLowerCase();
+  const hasAuthor = /об\s*автор|author|автор\s*стать|написал|эксперт/i.test(html) 
+    || schemaTypes.some(t => t === 'Person')
+    || /"author"/i.test(html);
+  const hasDatePublished = /datePublished/i.test(html) 
+    || /<time[^>]*datetime/i.test(html) 
+    || /дата\s*публикац|опубликован/i.test(htmlLower);
+  
+  if (!hasAuthor && !hasDatePublished) {
+    issues.push(makeIssue({ module: 'ai', severity: 'high',
+      title: '🤖 Нет E-E-A-T сигналов',
+      found: 'Не найдены: блок об авторе, дата публикации',
+      location: 'Контент страницы',
+      why_it_matters: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trust) — ключевой фактор для AI-систем при выборе источника для цитирования. Без автора и даты контент выглядит анонимным и ненадёжным',
+      how_to_fix: 'Добавьте блок об авторе с именем и экспертизой, укажите дату публикации через <time datetime="...">',
+      example_fix: '<div class="author">\n  <img src="author.jpg" alt="Имя Автора">\n  <p>Автор: <strong>Имя Автора</strong>, SEO-эксперт с 10-летним опытом</p>\n</div>\n<time datetime="2025-01-01">1 января 2025</time>',
+      visible_in_preview: true }));
+  } else if (!hasAuthor) {
+    issues.push(makeIssue({ module: 'ai', severity: 'medium',
+      title: '🤖 Нет блока об авторе',
+      found: 'Дата публикации найдена, но автор не указан',
+      location: 'Контент страницы',
+      why_it_matters: 'Контент без указания автора теряет в авторитетности для AI-систем',
+      how_to_fix: 'Добавьте информацию об авторе с его экспертизой',
+      example_fix: '<p>Автор: <strong>Имя</strong>, специалист в области...</p>',
+      visible_in_preview: false }));
+  } else if (!hasDatePublished) {
+    issues.push(makeIssue({ module: 'ai', severity: 'medium',
+      title: '🤖 Нет даты публикации',
+      found: 'Автор найден, но дата публикации не указана',
+      location: 'Контент страницы',
+      why_it_matters: 'Без даты AI-системы не могут оценить актуальность контента',
+      how_to_fix: 'Добавьте дату публикации через тег <time> с атрибутом datetime',
+      example_fix: '<time datetime="2025-01-01">1 января 2025</time>',
+      visible_in_preview: false }));
+  }
+
+  // --- Original checks ---
   const h2Matches = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) || [];
   const h2Texts = h2Matches.map(m => m.replace(/<[^>]+>/g, '').trim());
   const questionH2s = h2Texts.filter(t => /\?$/.test(t) || /^(как|что|зачем|почему|когда|где|сколько|какой|какие)/i.test(t));
@@ -1600,7 +1712,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   
   // Steps 7 & 8
   const schemaIssues = schemaAudit(html);
-  const aiIssues = aiAudit(html);
+  const aiIssues = await aiAudit(html, parsedUrl.origin);
   
   const allHardcodedIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
   

@@ -1,0 +1,29 @@
+# OWNDEV
+> SEO-оптимизация и разработка SaaS решений. 13 бесплатных SEO-инструментов для анализа, генерации и оптимизации сайтов.
+
+## Offered
+- Бесплатная проверка сайта (SEO аудит + LLM-видимость + Яндекс.Директ)
+- LLM-Friendly SEO Auditor — двойной аудит: классический SEO + AI-готовность
+- Генератор семантического ядра — AI-кластеризация по интентам
+- pSEO Generator — генерация GEO-страниц для масштабирования
+- Анализ конкурентов — сравнение SEO-метрик двух страниц
+- Schema.org генератор — JSON-LD разметка для AI-цитирования
+- AI Генератор текстов — SEO-тексты, meta, FAQ, описания
+- LLM Prompt Helper — готовые промты для ChatGPT/Perplexity
+- Anti-Duplicate Checker — проверка текста на шаблонность
+- Проверка индексации — meta robots, canonical, X-Robots-Tag
+- Мониторинг позиций — ручной трекер позиций из GSC
+- Генератор файлов вебмастера — sitemap.xml и robots.txt
+- Проверка внутренних ссылок — битые ссылки и перелинковка
+
+## Links
+- https://owndev.ru/: Главная
+- https://owndev.ru/tools: Все 13 инструментов
+- https://owndev.ru/tools/site-check: Проверка сайта (flagship)
+- https://owndev.ru/tools/seo-auditor: LLM-Friendly SEO Auditor
+- https://owndev.ru/tools/semantic-core: Генератор семантического ядра
+- https://owndev.ru/tools/schema-generator: Schema.org генератор
+- https://owndev.ru/tools/pseo-generator: pSEO Generator
+- https://owndev.ru/tools/competitor-analysis: Анализ конкурентов
+- https://owndev.ru/blog: Блог — статьи по SEO, LLM-оптимизации, pSEO
+- https://owndev.ru/contacts: Контакты
