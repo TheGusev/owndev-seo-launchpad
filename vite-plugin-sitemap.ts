@@ -87,6 +87,7 @@ export default function sitemapPlugin(): Plugin {
         urlEntry(BASE, "1.0", "weekly"),
         urlEntry(`${BASE}/tools`, "0.9", "weekly"),
         urlEntry(`${BASE}/blog`, "0.8", "weekly"),
+        urlEntry(`${BASE}/geo-audit`, "0.9", "weekly"),
         urlEntry(`${BASE}/privacy`, "0.3"),
         urlEntry(`${BASE}/terms`, "0.3"),
       ];

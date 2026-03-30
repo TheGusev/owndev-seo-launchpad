@@ -99,7 +99,7 @@ const ToolPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              {tool.name}
+              {h1}
             </motion.h1>
             <motion.p
               className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto"

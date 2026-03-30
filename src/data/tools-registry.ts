@@ -1,4 +1,4 @@
-import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool } from "lucide-react";
+import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star } from "lucide-react";
 import { lazy, type ComponentType } from "react";
 
 export type ToolStatus = "active" | "coming_soon";
