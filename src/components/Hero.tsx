@@ -91,7 +91,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground max-w-3xl leading-relaxed"
           >
-            Набор честных инструментов для SEO, programmatic SEO и оптимизации под AI‑поиск. Без скрытых платежей.
+            Проверяем сайт сразу по двум слоям — классическое SEO и готовность к AI‑выдаче в ChatGPT, Яндекс Нейро и Perplexity. SEO Score + LLM Score в одном отчёте.
           </motion.p>
 
           {/* Stats line */}
