@@ -59,7 +59,7 @@ const Footer = () => {
           <div className="col-span-2 lg:col-span-1 space-y-5">
             <Link to="/" className="text-2xl font-bold text-gradient inline-block">OWNDEV</Link>
             <p className="text-muted-foreground text-sm">
-              Бесплатные LLM + SEO инструменты для сайтов и pSEO
+              Первый в Рунете сервис GEO и AI‑ready аудита сайта. SEO Score + LLM Score в одном отчёте.
             </p>
             <div className="space-y-3">
               {contactInfo.map((item, i) => (
