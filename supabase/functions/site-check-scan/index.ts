@@ -1712,7 +1712,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   
   // Steps 7 & 8
   const schemaIssues = schemaAudit(html);
-  const aiIssues = aiAudit(html);
+  const aiIssues = await aiAudit(html, parsedUrl.origin);
   
   const allHardcodedIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
   
