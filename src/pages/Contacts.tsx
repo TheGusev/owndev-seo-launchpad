@@ -25,6 +25,8 @@ const Contacts = () => {
         <title>Контакты | OWNDEV</title>
         <meta name="description" content="Свяжитесь с OWNDEV — email, телефон, Telegram." />
         <link rel="canonical" href="https://owndev.ru/contacts" />
+        <meta property="og:url" content="https://owndev.ru/contacts" />
+        <meta property="og:type" content="website" />
       </Helmet>
       <main className="pt-24 pb-16 relative">
         <div className="absolute inset-0 pointer-events-none">

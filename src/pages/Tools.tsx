@@ -32,6 +32,8 @@ const Tools = () => {
         <title>SEO и LLM инструменты — бесплатно | OWNDEV</title>
         <meta name="description" content="13 бесплатных инструментов для SEO-аудита, programmatic SEO, генерации контента и оптимизации под AI-поиск. Без регистрации." />
         <link rel="canonical" href="https://owndev.ru/tools" />
+        <meta property="og:url" content="https://owndev.ru/tools" />
+        <meta property="og:type" content="website" />
       </Helmet>
       <MouseGradient />
       <ClickRipple />
