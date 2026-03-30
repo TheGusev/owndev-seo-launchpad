@@ -35,6 +35,17 @@ const websiteLd = {
   description: "Бесплатные SEO + LLM инструменты для сайтов и pSEO",
 };
 
+const softwareAppLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "OWNDEV",
+  url: "https://owndev.ru",
+  applicationCategory: "SEOApplication",
+  operatingSystem: "Web",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "RUB" },
+  aggregateRating: { "@type": "AggregateRating", ratingValue: "4.8", ratingCount: "120" },
+};
+
 const Index = () => {
   return (
     <div className="min-h-screen bg-background scroll-smooth snap-container">
