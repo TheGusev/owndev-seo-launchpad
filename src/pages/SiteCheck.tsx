@@ -12,13 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 
 const checkItems = [
-  "Технический SEO (скорость, код, robots, sitemap)",
-  "Заголовки, Title, H1, контент",
-  "Готовность к Яндекс.Директ и автотаргетингу",
-  "Schema.org и AI-видимость",
-  "Сравнение с топ-10 конкурентами",
-  "200+ ключевых запросов",
+  "SEO Score (20+ параметров)",
+  "LLM Score (AI‑готовность)",
+  "Топ-10 конкурентов",
+  "200+ ключевых слов",
   "Минус-слова для Директа",
+  "E‑E‑A‑T и Schema.org",
+  "llms.txt проверка и генерация",
+  "Экспорт PDF / CSV / TXT",
 ];
 
 const SiteCheck = () => {
@@ -98,8 +99,8 @@ const SiteCheck = () => {
   return (
     <>
       <Helmet>
-        <title>Проверка сайта — SEO, Директ, конкуренты | OwnDev</title>
-        <meta name="description" content="Бесплатная проверка сайта: SEO, готовность к Яндекс.Директ, Schema.org, AI-видимость. Полный отчёт с ключевыми запросами и конкурентами." />
+        <title>Полный GEO и AI-ready аудит сайта — бесплатно | OWNDEV</title>
+        <meta name="description" content="Проверьте SEO Score и LLM Score сайта бесплатно. Конкуренты, 200+ ключей, минус-слова, E-E-A-T, Schema и экспорт — за 60 секунд." />
         <link rel="canonical" href="https://owndev.ru/tools/site-check" />
       </Helmet>
       <Header />
@@ -107,10 +108,10 @@ const SiteCheck = () => {
         <div className="container max-w-2xl mx-auto px-4">
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-              Проверка сайта
+              Полный GEO и AI‑ready аудит сайта
             </h1>
             <p className="text-muted-foreground mt-3 text-base">
-              SEO, Яндекс.Директ, конкуренты и ключевые запросы — в одном отчёте
+              Проверьте SEO Score и LLM Score сайта бесплатно. Результат — через 60 секунд.
             </p>
           </div>
 

@@ -58,7 +58,7 @@ const ContactForm = () => {
   const serviceLabels: Record<string, string> = {
     "pseo-setup": "Настройка pSEO‑проекта",
     "content-gen": "Генерация контента",
-    "seo-audit": "SEO‑аудит",
+    "seo-audit": "GEO‑аудит сайта",
     "ai-optimization": "Оптимизация под AI‑поиск",
     "custom": "Кастомная доработка",
     consultation: "Консультация"
@@ -107,7 +107,7 @@ const ContactForm = () => {
   const services = [
     { value: "pseo-setup", label: "Настройка pSEO‑проекта" },
     { value: "content-gen", label: "Генерация контента" },
-    { value: "seo-audit", label: "SEO‑аудит" },
+    { value: "seo-audit", label: "GEO‑аудит сайта" },
     { value: "ai-optimization", label: "Оптимизация под AI‑поиск" },
     { value: "custom", label: "Кастомная доработка" },
     { value: "consultation", label: "Консультация" }
@@ -132,10 +132,10 @@ const ContactForm = () => {
           className="text-center mb-8 md:mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            Нужны кастомные <span className="text-gradient">доработки?</span>
+            Нужна помощь с <span className="text-gradient">GEO‑оптимизацией?</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Если нужны кастомные доработки или сопровождение — напишите, платформа остаётся бесплатной.
+            Если нужны кастомные доработки, GEO‑аудит под ключ или сопровождение — напишите нам.
           </p>
         </motion.div>
 

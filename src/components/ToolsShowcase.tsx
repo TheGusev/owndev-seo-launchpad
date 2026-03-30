@@ -4,7 +4,7 @@ import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, Tre
 import { Link } from "react-router-dom";
 
 const tools = [
-  { icon: Search, name: "Проверка сайта", description: "SEO, Директ, конкуренты — полный отчёт", slug: "site-check" },
+  { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check" },
   { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor" },
   { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis" },
   { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker" },
@@ -35,11 +35,11 @@ const ToolsShowcase = () => {
           className="text-center mb-8 md:mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            Бесплатные{" "}
-            <span className="text-gradient">LLM + SEO инструменты</span>
+            Инструменты{" "}
+            <span className="text-gradient">GEO и AI‑ready аудита</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            13 профессиональных инструментов для SEO и оптимизации под AI‑поиск
+            13 инструментов для SEO, AI‑видимости и конкурентного анализа
           </p>
         </motion.div>
 
@@ -64,7 +64,7 @@ const ToolsShowcase = () => {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-1">
                   <h3 className="text-xl md:text-2xl font-bold">{flagship.name}</h3>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">Главный инструмент</span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">🏆 GEO‑аудит</span>
                 </div>
                 <p className="text-muted-foreground text-sm md:text-base">{flagship.description}</p>
               </div>

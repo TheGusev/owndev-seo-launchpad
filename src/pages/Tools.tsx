@@ -29,8 +29,8 @@ const Tools = () => {
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       <Helmet>
-        <title>SEO и LLM инструменты — бесплатно | OWNDEV</title>
-        <meta name="description" content="13 бесплатных инструментов для SEO-аудита, programmatic SEO, генерации контента и оптимизации под AI-поиск. Без регистрации." />
+        <title>Инструменты GEO и AI-ready аудита — бесплатно | OWNDEV</title>
+        <meta name="description" content="13 бесплатных инструментов для GEO-аудита, SEO, AI-видимости и конкурентного анализа. SEO Score + LLM Score. Без регистрации." />
         <link rel="canonical" href="https://owndev.ru/tools" />
         <meta property="og:url" content="https://owndev.ru/tools" />
         <meta property="og:type" content="website" />
@@ -68,7 +68,7 @@ const Tools = () => {
               transition={{ duration: 0.4, delay: 0.1 }}
             >
               <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-              <span className="text-sm text-muted-foreground font-mono">Все инструменты платформы</span>
+              <span className="text-sm text-muted-foreground font-mono">Все инструменты GEO‑платформы</span>
             </motion.div>
             <motion.h1
               className="text-3xl md:text-4xl lg:text-5xl font-bold font-serif mb-4"
@@ -76,7 +76,7 @@ const Tools = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <span className="text-gradient">13 инструментов</span> для SEO + LLM
+              <span className="text-gradient">13 инструментов</span> GEO и AI‑ready аудита
             </motion.h1>
             <motion.p
               className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto"
@@ -84,7 +84,7 @@ const Tools = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              Бесплатные инструменты для SEO, programmatic SEO и оптимизации под AI‑поиск
+              Инструменты для SEO, AI‑видимости и конкурентного анализа
             </motion.p>
           </motion.div>
 
@@ -109,11 +109,11 @@ const Tools = () => {
                       </h2>
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                         <Shield className="w-3 h-3" />
-                        Флагманский продукт
+                        🏆 GEO‑аудит
                       </span>
                     </div>
                     <p className="text-muted-foreground text-lg">
-                      Технический SEO, индексация, конкуренты, ключевые запросы — один отчёт
+                      SEO Score + LLM Score, топ-10 конкурентов, 200+ ключей, E‑E‑A‑T, Schema и экспорт
                     </p>
                   </div>
                   <GradientButton size="lg" className="shrink-0">

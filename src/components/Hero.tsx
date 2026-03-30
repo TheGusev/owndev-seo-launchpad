@@ -49,7 +49,7 @@ const Hero = () => {
             className="glass px-4 py-2 rounded-full flex items-center gap-2"
           >
             <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground font-mono">Бесплатные LLM + SEO инструменты</span>
+            <span className="text-sm text-muted-foreground font-mono">✦ Первый GEO-аудитор в Рунете</span>
           </motion.div>
           
           {/* Main heading */}
@@ -63,13 +63,13 @@ const Hero = () => {
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif text-center leading-tight">
                 <TypeAnimation
                   sequence={[
-                    'SEO‑аудит за секунды',
+                    'SEO Score + LLM Score',
                     2500,
-                    'Schema.org в один клик',
+                    'GEO‑аудит за 60 секунд',
                     2500,
-                    'pSEO для вашего бизнеса',
+                    'AI‑ready проверка сайта',
                     2500,
-                    'LLM‑оптимизация сайтов',
+                    'llms.txt — новый стандарт',
                     2500,
                   ]}
                   wrapper="span"
@@ -80,7 +80,7 @@ const Hero = () => {
               </h1>
             </div>
             <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground font-serif">
-              бесплатно и без регистрации
+              первый двойной аудит в Рунете
             </p>
           </motion.div>
           
@@ -91,7 +91,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground max-w-3xl leading-relaxed"
           >
-            Набор честных инструментов для SEO, programmatic SEO и оптимизации под AI‑поиск. Без скрытых платежей.
+            Проверяем сайт сразу по двум слоям — классическое SEO и готовность к AI‑выдаче в ChatGPT, Яндекс Нейро и Perplexity. SEO Score + LLM Score в одном отчёте.
           </motion.p>
 
           {/* Stats line */}
@@ -101,7 +101,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="text-sm text-muted-foreground font-medium"
           >
-            12+ инструментов &bull; SEO + LLM аудит &bull; Schema · Sitemap · pSEO
+            SEO Score + LLM Score &bull; 200+ ключей &bull; Топ-10 конкурентов &bull; Экспорт
           </motion.p>
           
           {/* CTA buttons */}
@@ -129,9 +129,9 @@ const Hero = () => {
                 </GradientButton>
               </Link>
             </div>
-            <Link to="/tools">
+            <Link to="/tools/site-check">
               <Button variant="outline" size="lg">
-                Все инструменты
+                Смотреть пример отчёта
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
@@ -149,7 +149,7 @@ const Hero = () => {
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://yoursite.ru"
+              placeholder="https://ваш-сайт.ru"
               className="flex-1 h-12 rounded-xl border border-border bg-card/60 backdrop-blur-xl px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
             />
             <Button type="submit" variant="default" size="lg" className="shrink-0">

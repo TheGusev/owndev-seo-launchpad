@@ -59,7 +59,7 @@ const Footer = () => {
           <div className="col-span-2 lg:col-span-1 space-y-5">
             <Link to="/" className="text-2xl font-bold text-gradient inline-block">OWNDEV</Link>
             <p className="text-muted-foreground text-sm">
-              Бесплатные LLM + SEO инструменты для сайтов и pSEO
+              Первый в Рунете сервис GEO и AI‑ready аудита сайта. SEO Score + LLM Score в одном отчёте.
             </p>
             <div className="space-y-3">
               {contactInfo.map((item, i) => (
@@ -110,7 +110,7 @@ const Footer = () => {
 
         <div className="mt-10 pt-6 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-muted-foreground text-sm text-center md:text-left">© {new Date().getFullYear()} OWNDEV. Все права защищены.</p>
+            <p className="text-muted-foreground text-sm text-center md:text-left">© {new Date().getFullYear()} OWNDEV — GEO & AI‑ready аудит</p>
             <p className="text-muted-foreground text-xs">Сделано с ❤️ в России</p>
           </div>
         </div>

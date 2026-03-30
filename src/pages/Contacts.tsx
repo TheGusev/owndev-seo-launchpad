@@ -22,8 +22,8 @@ const Contacts = () => {
       <ClickRipple />
       <Header />
       <Helmet>
-        <title>Контакты | OWNDEV</title>
-        <meta name="description" content="Свяжитесь с OWNDEV — email, телефон, Telegram." />
+        <title>Контакты OWNDEV — первый GEO-аудитор в Рунете</title>
+        <meta name="description" content="Свяжитесь с командой OWNDEV. Вопросы по GEO-аудиту, AI-ready SEO и партнёрству." />
         <link rel="canonical" href="https://owndev.ru/contacts" />
         <meta property="og:url" content="https://owndev.ru/contacts" />
         <meta property="og:type" content="website" />

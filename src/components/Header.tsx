@@ -54,7 +54,7 @@ const Header = () => {
 
           <div className="hidden md:block">
             <GradientButton size="sm" onClick={() => navigate("/tools/site-check")}>
-              Проверить сайт
+              GEO‑аудит
             </GradientButton>
           </div>
 
@@ -81,7 +81,7 @@ const Header = () => {
                 </a>
               ))}
               <GradientButton size="sm" className="mt-3" onClick={() => { navigate("/tools/site-check"); setIsOpen(false); }}>
-                Проверить сайт
+                GEO‑аудит
               </GradientButton>
             </div>
           </nav>

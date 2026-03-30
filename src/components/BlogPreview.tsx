@@ -21,7 +21,7 @@ const BlogPreview = () => {
         >
           <div>
             <h2 className="text-2xl md:text-3xl font-bold text-foreground">Блог</h2>
-            <p className="text-muted-foreground mt-2">Гайды по LLM-оптимизации и pSEO</p>
+            <p className="text-muted-foreground mt-2">Гайды по GEO, LLM Score и AI‑ready SEO</p>
           </div>
           <Link to="/blog">
             <GradientButton variant="variant" size="sm">

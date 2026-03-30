@@ -41,7 +41,7 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://yoursite.ru"
+          placeholder="https://ваш-сайт.ru"
           aria-label="URL сайта для проверки"
           className="pl-11 h-13 text-base bg-muted/50 border-border/50 focus:border-primary/50"
           disabled={isLoading}
@@ -82,7 +82,7 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
         className="w-full"
         disabled={!url.trim() || isLoading}
       >
-        {isLoading ? "Проверяем..." : "Запустить проверку"}
+        {isLoading ? "Проверяем..." : "Запустить GEO‑аудит"}
       </Button>
     </form>
   );

@@ -18,6 +18,7 @@ const organizationLd = {
   name: "OWNDEV",
   url: "https://owndev.ru",
   logo: "https://owndev.ru/favicon.ico",
+  description: "Первый в Рунете сервис GEO и AI-ready аудита сайта. SEO Score + LLM Score в одном отчёте.",
   contactPoint: {
     "@type": "ContactPoint",
     telephone: "+7-906-998-98-88",
@@ -32,7 +33,7 @@ const websiteLd = {
   "@type": "WebSite",
   name: "OWNDEV",
   url: "https://owndev.ru",
-  description: "Бесплатные SEO + LLM инструменты для сайтов и pSEO",
+  description: "Первый в Рунете сервис GEO и AI-ready аудита сайта. SEO Score + LLM Score в одном отчёте.",
 };
 
 const softwareAppLd = {
@@ -50,13 +51,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background scroll-smooth snap-container">
       <Helmet>
-        <title>OWNDEV — SEO оптимизация и разработка SaaS решений</title>
-        <meta name="description" content="OWNDEV — профессиональная SEO оптимизация и разработка SaaS сайтов, платформ и приложений. Вывод в ТОП-10, создание цифровых продуктов под ключ." />
+        <title>OWNDEV — Первый GEO и AI-ready аудит сайта в Рунете</title>
+        <meta name="description" content="Проверяем сайт по двум слоям: классическое SEO и готовность к AI-выдаче в ChatGPT, Яндекс Нейро и Perplexity. SEO Score + LLM Score в одном отчёте. Бесплатно." />
         <link rel="canonical" href="https://owndev.ru/" />
         <meta property="og:url" content="https://owndev.ru/" />
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="OWNDEV — SEO оптимизация и разработка SaaS решений" />
-        <meta property="og:description" content="OWNDEV — профессиональная SEO оптимизация и разработка SaaS сайтов, платформ и приложений." />
+        <meta property="og:title" content="OWNDEV — Первый GEO и AI-ready аудит сайта в Рунете" />
+        <meta property="og:description" content="Двойной аудит сайта: SEO Score + LLM Score. Проверяем готовность к поиску и к AI-выдаче. Ключевые слова, конкуренты, минус-слова — всё в одном отчёте." />
         <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/uFFBSErXpLgk4mRuTAApiupSL4k2/social-images/social-1773011391222-0b112d3c-ebf7-4d40-b170-0933cb71ca91.webp" />
         <script type="application/ld+json">{JSON.stringify(organizationLd)}</script>
         <script type="application/ld+json">{JSON.stringify(websiteLd)}</script>

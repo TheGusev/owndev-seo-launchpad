@@ -5,9 +5,9 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const services = [
-  { icon: Code2, text: "Сайты и лендинги под ключ" },
-  { icon: Sparkles, text: "pSEO‑проекты на тысячи страниц" },
-  { icon: Bot, text: "Оптимизация контента под AI‑поиск" },
+  { icon: Code2, text: "SEO Score — классический технический аудит" },
+  { icon: Sparkles, text: "LLM Score — готовность к AI‑выдаче" },
+  { icon: Bot, text: "llms.txt — инструкция для AI‑краулеров" },
 ];
 
 const ServicesTeaser = () => {
@@ -35,10 +35,10 @@ const ServicesTeaser = () => {
           className="glass rounded-2xl p-6 md:p-8 text-center"
         >
           <h2 className="text-xl md:text-2xl font-bold mb-3 font-serif">
-            Когда бесплатных инструментов мало
+            Почему двойной аудит?
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
-            Используйте наши инструменты бесплатно, а если нужна команда — мы возьмём проект под ключ: от разработки сайта до масштабного pSEO.
+            Классическое SEO уже недостаточно. OWNDEV проверяет сайт по двум слоям — SEO и AI‑готовность — в одном отчёте.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
@@ -50,8 +50,8 @@ const ServicesTeaser = () => {
             ))}
           </div>
 
-          <GradientButton variant="variant" size="sm" onClick={handleContact}>
-            Обсудить проект
+          <GradientButton variant="variant" size="sm" onClick={() => navigate("/tools/site-check")}>
+            Запустить GEO‑аудит
           </GradientButton>
         </motion.div>
       </div>
