@@ -1,20 +1,20 @@
 
 
-## Доработка нормализации keywords/minusWords
+## Фильтрация ключевых слов по кластеру и интенту
 
-Нормализация уже реализована в `SiteCheckResult.tsx` (строки 95-105) и CSV маппинг в `DownloadButtons.tsx` уже использует `kw.keyword`/`kw.volume`. Нужны точечные улучшения.
+### Файл: `src/components/site-check/KeywordsSection.tsx`
 
-### 1. `src/pages/SiteCheckResult.tsx` (строки 95-105)
+Добавить два фильтра над таблицей: по кластеру и по интенту. Используем `useState` для хранения выбранных фильтров. Фильтры — кликабельные бейджи (chips), "Все" по умолчанию.
 
-- `intent`: дефолт `"—"` вместо `''`
-- `landing_needed`: дефолт `false`
-- `cluster`: добавить fallback `kw.category`
-- minus-words: strip `^-` из word, добавить дефолты `type: "general"`, `reason: ""`
+**Реализация:**
 
-### 2. `src/components/site-check/DownloadButtons.tsx`
+1. `useState<string | null>(null)` для `activeCluster` и `activeIntent`
+2. Блок фильтров — два ряда бейджей:
+   - Кластеры: "Все" + уникальные кластеры из данных
+   - Интенты: "Все" + 4 интента (transactional, informational, navigational, commercial)
+3. Фильтрация `keywords` по обоим фильтрам перед группировкой по кластерам
+4. Счётчик в заголовке показывает отфильтрованное количество vs общее (например, "42 из 180")
+5. Активный бейдж — `bg-primary text-primary-foreground`, неактивный — `variant="outline"` с `cursor-pointer`
 
-- `buildKeywordsCsv`: добавить колонку "Нужен лендинг", дефолт `""` вместо `"—"`
-- `buildMinusTxt`: упростить — данные уже нормализованы, просто `-${w.word.trim()}`
-
-Два файла, точечные правки.
+Один файл, одна правка.
 
