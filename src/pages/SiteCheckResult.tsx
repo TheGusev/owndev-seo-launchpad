@@ -123,7 +123,7 @@ const SiteCheckResult = () => {
             )}
           </div>
 
-          {data.scores && <ScoreCards scores={data.scores} previousScores={previousScores} />}
+          {scores && <ScoreCards scores={scores} previousScores={previousScores} />}
 
           <DownloadButtons />
 
