@@ -125,7 +125,15 @@ const SiteCheckResult = () => {
 
           {scores && <ScoreCards scores={scores} previousScores={previousScores} />}
 
-          <DownloadButtons />
+          <DownloadButtons
+            url={data.url}
+            theme={data.theme}
+            scores={scores}
+            issues={issues}
+            keywords={keywords}
+            minusWords={minusWords}
+            competitors={competitors}
+          />
 
           {/* Download llms.txt button */}
           <div className="flex justify-start">
