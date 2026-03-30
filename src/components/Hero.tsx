@@ -101,7 +101,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="text-sm text-muted-foreground font-medium"
           >
-            12+ инструментов &bull; SEO + LLM аудит &bull; Schema · Sitemap · pSEO
+            SEO Score + LLM Score &bull; 200+ ключей &bull; Топ-10 конкурентов &bull; Экспорт
           </motion.p>
           
           {/* CTA buttons */}
