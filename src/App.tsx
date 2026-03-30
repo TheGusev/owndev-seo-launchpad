@@ -26,6 +26,7 @@ import Offer from "./pages/Offer";
 import Refund from "./pages/Refund";
 import Contacts from "./pages/Contacts";
 import GeoAudit from "./pages/GeoAudit";
+import BorderBot from "@/components/mascot/BorderBot";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           <CookieBanner />
+          <BorderBot />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
