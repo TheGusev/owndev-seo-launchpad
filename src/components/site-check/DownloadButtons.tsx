@@ -24,20 +24,17 @@ function downloadBlob(content: string, filename: string, mimeType: string) {
 }
 
 function buildKeywordsCsv(keywords: any[]): string {
-  const header = "Кластер,Интент,Запрос,Частота";
-  const esc = (v: any) => `"${String(v ?? "—").replace(/"/g, '""')}"`;
+  const header = "Кластер,Интент,Запрос,Частота,Нужен лендинг";
+  const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const rows = keywords.map((kw) =>
-    [esc(kw.cluster), esc(kw.intent), esc(kw.keyword), esc(kw.volume)].join(",")
+    [esc(kw.cluster), esc(kw.intent), esc(kw.keyword), esc(kw.volume), esc(kw.landing_needed ? "Да" : "")].join(",")
   );
   return [header, ...rows].join("\n");
 }
 
 function buildMinusTxt(minusWords: any[]): string {
   return minusWords
-    .map((w) => {
-      const word = (typeof w === "string" ? w : w.word ?? w.value ?? String(w)).trim();
-      return word.startsWith("-") ? word : `-${word}`;
-    })
+    .map((w) => `-${(w.word ?? '').trim()}`)
     .join("\n");
 }
 
