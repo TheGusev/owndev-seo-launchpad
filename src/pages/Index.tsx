@@ -60,6 +60,7 @@ const Index = () => {
         <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/uFFBSErXpLgk4mRuTAApiupSL4k2/social-images/social-1773011391222-0b112d3c-ebf7-4d40-b170-0933cb71ca91.webp" />
         <script type="application/ld+json">{JSON.stringify(organizationLd)}</script>
         <script type="application/ld+json">{JSON.stringify(websiteLd)}</script>
+        <script type="application/ld+json">{JSON.stringify(softwareAppLd)}</script>
       </Helmet>
       <MouseGradient />
       <ClickRipple />
