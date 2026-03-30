@@ -34,10 +34,7 @@ function buildKeywordsCsv(keywords: any[]): string {
 
 function buildMinusTxt(minusWords: any[]): string {
   return minusWords
-    .map((w) => {
-      const word = (typeof w === "string" ? w : w.word ?? w.value ?? String(w)).trim();
-      return word.startsWith("-") ? word : `-${word}`;
-    })
+    .map((w) => `-${(w.word ?? '').trim()}`)
     .join("\n");
 }
 

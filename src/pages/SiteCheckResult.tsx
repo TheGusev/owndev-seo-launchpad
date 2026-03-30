@@ -95,13 +95,17 @@ const SiteCheckResult = () => {
   const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
     keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
     volume: kw.frequency ?? kw.volume ?? 0,
-    cluster: kw.cluster ?? 'Общие',
-    intent: kw.intent ?? '',
-    landing_needed: kw.landing_needed,
+    cluster: kw.cluster ?? kw.category ?? 'Общие',
+    intent: kw.intent ?? '—',
+    landing_needed: kw.landing_needed ?? false,
   }));
   const minusWords = (Array.isArray(data.minus_words) ? data.minus_words : []).map((w: any) => {
-    if (typeof w === 'string') return { word: w };
-    return { word: w.word ?? w.phrase ?? w.value ?? String(w), type: w.type, reason: w.reason };
+    if (typeof w === 'string') return { word: w.replace(/^-/, ''), type: 'general', reason: '' };
+    return {
+      word: (w.word ?? w.phrase ?? w.value ?? String(w)).replace(/^-/, ''),
+      type: w.type ?? w.category ?? 'general',
+      reason: w.reason ?? w.description ?? '',
+    };
   });
 
   return (
