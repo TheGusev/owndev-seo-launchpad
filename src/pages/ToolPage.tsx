@@ -30,8 +30,9 @@ const ToolPage = () => {
   const ToolComponent = tool.component;
   const otherTools = tools.filter(t => t.slug !== tool.slug).slice(0, 4);
 
-  const title = `${tool.name} — бесплатный онлайн инструмент | OWNDEV`;
-  const description = `${tool.shortDesc}. Бесплатно, без регистрации. Попробуйте прямо сейчас на OWNDEV.`;
+  const title = tool.seoTitle ?? `${tool.name} — бесплатный онлайн инструмент | OWNDEV`;
+  const description = tool.seoDescription ?? `${tool.shortDesc}. Бесплатно, без регистрации. Попробуйте прямо сейчас на OWNDEV.`;
+  const h1 = tool.seoH1 ?? tool.name;
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -98,7 +99,7 @@ const ToolPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              {tool.name}
+              {h1}
             </motion.h1>
             <motion.p
               className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto"

@@ -15,4 +15,9 @@ export const GEO_BLOCKED_TOOLS = [
   'position-monitor',
   'pseo-generator',
   'indexation-checker',
+  'geo-audit',
+  'llm-score',
+  'ai-ready-audit',
+  'llms-txt-checker',
+  'eeat-audit',
 ];

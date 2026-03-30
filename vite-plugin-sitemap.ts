@@ -41,6 +41,7 @@ const allToolSlugs = [
   "pseo-generator", "schema-generator", "semantic-core",
   "ai-text-generator", "llm-prompt-helper", "anti-duplicate",
   "webmaster-files", "internal-links",
+  "geo-audit", "llm-score", "ai-ready-audit", "llms-txt-checker", "eeat-audit",
 ];
 
 /** All blog post slugs */
@@ -86,6 +87,7 @@ export default function sitemapPlugin(): Plugin {
         urlEntry(BASE, "1.0", "weekly"),
         urlEntry(`${BASE}/tools`, "0.9", "weekly"),
         urlEntry(`${BASE}/blog`, "0.8", "weekly"),
+        urlEntry(`${BASE}/geo-audit`, "0.9", "weekly"),
         urlEntry(`${BASE}/privacy`, "0.3"),
         urlEntry(`${BASE}/terms`, "0.3"),
       ];

@@ -19,10 +19,11 @@ const Footer = () => {
 
   const toolLinks = [
     { label: "Проверка сайта", href: "/tools/site-check", isRoute: true },
+    { label: "GEO-аудит", href: "/tools/geo-audit", isRoute: true },
+    { label: "LLM Score", href: "/tools/llm-score", isRoute: true },
+    { label: "llms.txt Checker", href: "/tools/llms-txt-checker", isRoute: true },
     { label: "SEO Auditor", href: "/tools/seo-auditor", isRoute: true },
     { label: "Schema Generator", href: "/tools/schema-generator", isRoute: true },
-    { label: "pSEO Generator", href: "/tools/pseo-generator", isRoute: true },
-    { label: "LLM Prompt Helper", href: "/tools/llm-prompt-helper", isRoute: true },
   ];
 
   const company = [

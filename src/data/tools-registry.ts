@@ -1,4 +1,4 @@
-import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool } from "lucide-react";
+import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star } from "lucide-react";
 import { lazy, type ComponentType } from "react";
 
 export type ToolStatus = "active" | "coming_soon";
@@ -15,6 +15,9 @@ export interface ToolDef {
   useCases: string[];
   geoEnabled: boolean;
   status: ToolStatus;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoH1?: string;
 }
 
 export const categories = [
@@ -159,6 +162,72 @@ export const tools: ToolDef[] = [
     gradient: "bg-gradient-to-br from-slate-950/40 to-zinc-950/40",
     useCases: ["Поиск битых ссылок", "Аудит перелинковки", "Проверка nofollow на внутренних ссылках"],
     geoEnabled: true, status: "active",
+  },
+  // ===== GEO pSEO PAGES =====
+  {
+    id: "geo-audit", slug: "geo-audit",
+    name: "GEO-аудит",
+    shortDesc: "Бесплатный GEO-аудит сайта. LLM Score + SEO Score в одном отчёте.",
+    category: "analysis", icon: Search,
+    component: lazy(() => import("@/components/site-check/ScanForm")),
+    gradient: "bg-gradient-to-br from-primary/20 to-blue-950/40",
+    useCases: ["Проверка AI-готовности сайта", "GEO-оптимизация", "Аудит для нейросетей"],
+    geoEnabled: false, status: "active",
+    seoTitle: "GEO-аудит сайта онлайн — бесплатно | OWNDEV",
+    seoDescription: "Бесплатный GEO-аудит сайта. LLM Score + SEO Score. Проверяем готовность к AI-выдаче ChatGPT, Яндекс Нейро и Perplexity.",
+    seoH1: "GEO-аудит сайта онлайн",
+  },
+  {
+    id: "llm-score", slug: "llm-score",
+    name: "LLM Score",
+    shortDesc: "Узнайте LLM Score вашего сайта — готовность к AI-выдаче ChatGPT и Яндекс Нейро.",
+    category: "analysis", icon: BrainCircuit,
+    component: lazy(() => import("@/components/site-check/ScanForm")),
+    gradient: "bg-gradient-to-br from-violet-950/40 to-indigo-950/40",
+    useCases: ["Проверка LLM-готовности", "Оценка AI-видимости", "Мониторинг LLM Score"],
+    geoEnabled: false, status: "active",
+    seoTitle: "LLM Score сайта — проверить онлайн | OWNDEV",
+    seoDescription: "Узнайте LLM Score вашего сайта — готовность к AI-выдаче ChatGPT и Яндекс Нейро. Бесплатно, без регистрации.",
+    seoH1: "Проверить LLM Score сайта",
+  },
+  {
+    id: "ai-ready-audit", slug: "ai-ready-audit",
+    name: "AI-ready аудит",
+    shortDesc: "Проверяем готовность сайта к AI-выдаче. E-E-A-T, Schema, llms.txt — всё в одном отчёте.",
+    category: "analysis", icon: Shield,
+    component: lazy(() => import("@/components/site-check/ScanForm")),
+    gradient: "bg-gradient-to-br from-emerald-950/40 to-cyan-950/40",
+    useCases: ["AI-ready проверка", "Аудит для ChatGPT", "Подготовка к AI-выдаче"],
+    geoEnabled: false, status: "active",
+    seoTitle: "AI-ready аудит сайта — проверка онлайн | OWNDEV",
+    seoDescription: "Проверяем готовность сайта к AI-выдаче. E-E-A-T, Schema, llms.txt — всё в одном отчёте. Бесплатно.",
+    seoH1: "AI-ready аудит сайта",
+  },
+  {
+    id: "llms-txt-checker", slug: "llms-txt-checker",
+    name: "llms.txt Checker",
+    shortDesc: "Бесплатная проверка и генерация llms.txt для вашего сайта.",
+    category: "webmaster", icon: FileCode,
+    component: lazy(() => import("@/components/site-check/ScanForm")),
+    gradient: "bg-gradient-to-br from-teal-950/40 to-green-950/40",
+    useCases: ["Проверка llms.txt", "Генерация llms.txt", "Настройка для AI-краулеров"],
+    geoEnabled: false, status: "active",
+    seoTitle: "Проверка llms.txt онлайн | OWNDEV",
+    seoDescription: "Бесплатная проверка и генерация llms.txt для вашего сайта. Стандарт для AI-краулеров ChatGPT, Claude и Perplexity.",
+    seoH1: "Проверить и сгенерировать llms.txt",
+  },
+  {
+    id: "eeat-audit", slug: "eeat-audit",
+    name: "E-E-A-T аудит",
+    shortDesc: "Проверяем E-E-A-T сигналы: экспертность, авторитетность, надёжность.",
+    category: "analysis", icon: Star,
+    component: lazy(() => import("@/components/site-check/ScanForm")),
+    gradient: "bg-gradient-to-br from-amber-950/40 to-orange-950/40",
+    useCases: ["E-E-A-T проверка", "Аудит авторитетности", "Улучшение доверия"],
+    geoEnabled: false, status: "active",
+    seoTitle: "E-E-A-T аудит сайта | OWNDEV",
+    seoDescription: "Проверяем E-E-A-T сигналы: экспертность, авторитетность, надёжность. Бесплатно онлайн.",
+    seoH1: "E-E-A-T аудит сайта онлайн",
   },
 ];
 
