@@ -18,6 +18,7 @@ const organizationLd = {
   name: "OWNDEV",
   url: "https://owndev.ru",
   logo: "https://owndev.ru/favicon.ico",
+  description: "Первый в Рунете сервис GEO и AI-ready аудита сайта. SEO Score + LLM Score в одном отчёте.",
   contactPoint: {
     "@type": "ContactPoint",
     telephone: "+7-906-998-98-88",
