@@ -12,7 +12,7 @@ interface State {
   botState: BotState;
   side: Side;
   facing: Facing;
-  progress: number; // 0→1 along current side
+  progress: number;
 }
 
 type Action =
@@ -25,93 +25,75 @@ type Action =
 
 const SIDES: Side[] = ["bottom", "right", "top", "left"];
 const SIDE_FACING: Record<Side, Facing> = {
-  bottom: "right",
-  right: "up",
-  top: "left",
-  left: "down",
+  bottom: "right", right: "up", top: "left", left: "down",
 };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case "WALK":
-      return { ...state, botState: "walking" };
-    case "STOP":
-      return { ...state, botState: "stopping" };
-    case "LOOK":
-      return { ...state, botState: "looking" };
-    case "THINK":
-      return { ...state, botState: "thinking" };
+    case "WALK": return { ...state, botState: "walking" };
+    case "STOP": return { ...state, botState: "stopping" };
+    case "LOOK": return { ...state, botState: "looking" };
+    case "THINK": return { ...state, botState: "thinking" };
     case "NEXT_SIDE": {
       const idx = (SIDES.indexOf(state.side) + 1) % 4;
       return { ...state, side: SIDES[idx], facing: SIDE_FACING[SIDES[idx]], progress: 0 };
     }
-    case "SET_PROGRESS":
-      return { ...state, progress: action.progress };
-    default:
-      return state;
+    case "SET_PROGRESS": return { ...state, progress: action.progress };
+    default: return state;
   }
 }
 
 /* ─── SVG Robot ─────────────────────────────────────── */
 const BotSvg = memo(({ facing, isWalking, isThinking, step }: {
-  facing: Facing;
-  isWalking: boolean;
-  isThinking: boolean;
-  step: number;
+  facing: Facing; isWalking: boolean; isThinking: boolean; step: number;
 }) => {
   const [blink, setBlink] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     const blinkLoop = () => {
       const delay = 3000 + Math.random() * 2000;
-      const timer = setTimeout(() => {
+      return setTimeout(() => {
+        if (!mounted) return;
         setBlink(true);
-        setTimeout(() => setBlink(false), 150);
+        setTimeout(() => { if (mounted) setBlink(false); }, 150);
         blinkLoop();
       }, delay);
-      return timer;
     };
     const t = blinkLoop();
-    return () => clearTimeout(t);
+    return () => { mounted = false; clearTimeout(t); };
   }, []);
 
   const pupilDx = facing === "left" ? -1 : facing === "right" ? 1 : 0;
   const pupilDy = facing === "up" ? -1 : facing === "down" ? 1 : 0;
-  const legOffsetL = isWalking ? (step % 2 === 0 ? -3 : 0) : 0;
-  const legOffsetR = isWalking ? (step % 2 === 0 ? 0 : -3) : 0;
+  const legL = isWalking ? (step % 2 === 0 ? -3 : 0) : 0;
+  const legR = isWalking ? (step % 2 === 0 ? 0 : -3) : 0;
 
   return (
-    <svg width="36" height="52" viewBox="0 0 36 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="36" height="56" viewBox="0 0 36 56" fill="none">
       {/* Antenna */}
       <line x1="18" y1="6" x2="18" y2="0" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" />
       <circle cx="18" cy="0" r="2" fill="rgba(167,139,250,0.9)">
-        <animate
-          attributeName="opacity"
-          values={isThinking ? "1;0.2;1" : "1;0.3;1"}
-          dur={isThinking ? "0.3s" : "2s"}
-          repeatCount="indefinite"
-        />
+        <animate attributeName="opacity" values={isThinking ? "1;0.2;1" : "1;0.3;1"} dur={isThinking ? "0.3s" : "2s"} repeatCount="indefinite" />
       </circle>
 
       {/* Head */}
       <rect x="4" y="6" width="28" height="22" rx="6" fill="rgba(139,92,246,0.15)" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" />
 
       {/* Eyes */}
-      <g transform={`translate(0, ${blink ? 3 : 0})`} style={{ transformOrigin: "18px 17px" }}>
-        <g style={{ transform: blink ? "scaleY(0.1)" : "scaleY(1)", transformOrigin: "12px 17px" }}>
-          <circle cx="12" cy="17" r="3.5" fill="rgba(167,139,250,0.9)" />
-          <circle cx={12 + pupilDx} cy={17 + pupilDy} r="1.5" fill="rgba(255,255,255,0.9)" />
-        </g>
-        <g style={{ transform: blink ? "scaleY(0.1)" : "scaleY(1)", transformOrigin: "24px 17px" }}>
-          <circle cx="24" cy="17" r="3.5" fill="rgba(167,139,250,0.9)" />
-          <circle cx={24 + pupilDx} cy={17 + pupilDy} r="1.5" fill="rgba(255,255,255,0.9)" />
-        </g>
+      <g style={{ transform: blink ? "scaleY(0.1)" : "scaleY(1)", transformOrigin: "12px 17px", transition: "transform 0.08s" }}>
+        <circle cx="12" cy="17" r="3.5" fill="rgba(167,139,250,0.9)" />
+        <circle cx={12 + pupilDx} cy={17 + pupilDy} r="1.5" fill="rgba(255,255,255,0.9)" />
+      </g>
+      <g style={{ transform: blink ? "scaleY(0.1)" : "scaleY(1)", transformOrigin: "24px 17px", transition: "transform 0.08s" }}>
+        <circle cx="24" cy="17" r="3.5" fill="rgba(167,139,250,0.9)" />
+        <circle cx={24 + pupilDx} cy={17 + pupilDy} r="1.5" fill="rgba(255,255,255,0.9)" />
       </g>
 
       {/* Body */}
       <rect x="6" y="29" width="24" height="16" rx="4" fill="rgba(139,92,246,0.1)" stroke="rgba(139,92,246,0.4)" strokeWidth="1.5" />
 
-      {/* Screen on body */}
+      {/* Screen */}
       <rect x="13" y="33" width="10" height="2" rx="1" fill="rgba(167,139,250,0.5)">
         <animate attributeName="width" values="10;6;10" dur="1.5s" repeatCount="indefinite" />
       </rect>
@@ -123,8 +105,8 @@ const BotSvg = memo(({ facing, isWalking, isThinking, step }: {
       </rect>
 
       {/* Legs */}
-      <rect x="9" y={46 + legOffsetL} width="6" height="6" rx="2" fill="rgba(139,92,246,0.2)" stroke="rgba(139,92,246,0.4)" strokeWidth="1" />
-      <rect x="21" y={46 + legOffsetR} width="6" height="6" rx="2" fill="rgba(139,92,246,0.2)" stroke="rgba(139,92,246,0.4)" strokeWidth="1" />
+      <rect x="9" y={46 + legL} width="6" height="6" rx="2" fill="rgba(139,92,246,0.2)" stroke="rgba(139,92,246,0.4)" strokeWidth="1" />
+      <rect x="21" y={46 + legR} width="6" height="6" rx="2" fill="rgba(139,92,246,0.2)" stroke="rgba(139,92,246,0.4)" strokeWidth="1" />
 
       {/* Shadow */}
       <ellipse cx="18" cy="54" rx={isWalking ? 8 : 10} ry="2" fill="rgba(139,92,246,0.15)" />
@@ -132,13 +114,13 @@ const BotSvg = memo(({ facing, isWalking, isThinking, step }: {
       {/* Thinking dots */}
       {isThinking && (
         <g>
-          <circle cx="24" cy="-4" r="1.5" fill="rgba(196,181,253,0.8)">
+          <circle cx="26" cy="-2" r="1.5" fill="rgba(196,181,253,0.8)">
             <animate attributeName="opacity" values="0;1;0" dur="1.2s" repeatCount="indefinite" />
           </circle>
-          <circle cx="28" cy="-7" r="1.5" fill="rgba(196,181,253,0.6)">
+          <circle cx="30" cy="-5" r="1.5" fill="rgba(196,181,253,0.6)">
             <animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="0.2s" repeatCount="indefinite" />
           </circle>
-          <circle cx="32" cy="-10" r="1.5" fill="rgba(196,181,253,0.4)">
+          <circle cx="34" cy="-8" r="1.5" fill="rgba(196,181,253,0.4)">
             <animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="0.4s" repeatCount="indefinite" />
           </circle>
         </g>
@@ -148,39 +130,27 @@ const BotSvg = memo(({ facing, isWalking, isThinking, step }: {
 });
 BotSvg.displayName = "BotSvg";
 
-/* ─── Position calculator ───────────────────────────── */
-function getPosition(
-  side: Side,
-  progress: number,
-  isMobile: boolean
-): { x: number; y: number } {
-  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+/* ─── Position helpers ──────────────────────────────── */
+function getPos(side: Side, progress: number, mobile: boolean) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
   const pad = 60;
-  const botW = 36;
-  const botH = 52;
 
-  if (isMobile) {
-    // only bottom
-    return { x: pad + progress * (vw - pad * 2 - botW), y: vh - botH - 8 };
+  if (mobile) {
+    return { x: pad + progress * (vw - pad * 2 - 36), y: vh - 64 };
   }
-
   switch (side) {
-    case "bottom":
-      return { x: pad + progress * (vw - pad * 2 - botW), y: vh - botH - 8 };
-    case "right":
-      return { x: vw - botW - 8, y: vh - pad - botH - progress * (vh - pad * 2 - botH) };
-    case "top":
-      return { x: vw - pad - botW - progress * (vw - pad * 2 - botW), y: 8 };
-    case "left":
-      return { x: 8, y: pad + progress * (vh - pad * 2 - botH) };
+    case "bottom": return { x: pad + progress * (vw - pad * 2 - 36), y: vh - 64 };
+    case "right":  return { x: vw - 44, y: vh - pad - 56 - progress * (vh - pad * 2 - 56) };
+    case "top":    return { x: vw - pad - 36 - progress * (vw - pad * 2 - 36), y: 8 };
+    case "left":   return { x: 8, y: pad + progress * (vh - pad * 2 - 56) };
   }
 }
 
-function getSideLength(side: Side, isMobile: boolean): number {
-  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  if (isMobile) return vw - 120;
+function sideLen(side: Side, mobile: boolean) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  if (mobile) return vw - 120;
   return side === "bottom" || side === "top" ? vw - 120 : vh - 120;
 }
 
@@ -190,23 +160,19 @@ const BorderBot = memo(() => {
   const isMobile = useIsMobile();
   const controls = useAnimationControls();
   const [hidden, setHidden] = useState(() => localStorage.getItem("hideBot") === "true");
+  const [step, setStep] = useState(0);
+  const [state, dispatch] = useReducer(reducer, {
+    botState: "walking", side: "bottom", facing: "right", progress: 0,
+  });
+
   const clickCount = useRef(0);
   const clickTimer = useRef<ReturnType<typeof setTimeout>>();
   const stepRef = useRef(0);
-  const [step, setStep] = useState(0);
   const abortRef = useRef(false);
-  const isRunning = useRef(false);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-  const [state, dispatch] = useReducer(reducer, {
-    botState: "walking",
-    side: "bottom",
-    facing: "right",
-    progress: 0,
-  });
-
-  // Hide on result pages
-  if (location.pathname.includes("/result/")) return null;
-  if (hidden) return null;
+  const shouldHide = hidden || location.pathname.includes("/result/");
 
   const handleTripleClick = useCallback(() => {
     clickCount.current++;
@@ -217,146 +183,101 @@ const BorderBot = memo(() => {
       setHidden(true);
       return;
     }
-    clickTimer.current = setTimeout(() => {
-      clickCount.current = 0;
-    }, 500);
+    clickTimer.current = setTimeout(() => { clickCount.current = 0; }, 500);
   }, []);
 
-  /* ─── Movement loop ──────────────────────────────── */
-  const runLoop = useCallback(async () => {
-    if (isRunning.current) return;
-    isRunning.current = true;
+  useEffect(() => {
+    if (shouldHide) return;
+
     abortRef.current = false;
+    const initPos = getPos("bottom", 0, isMobile);
+    controls.set({ x: initPos.x, y: initPos.y });
 
-    const sleep = (ms: number) =>
-      new Promise<void>((resolve) => {
-        const t = setTimeout(resolve, ms);
-        // Store for potential cleanup
-        if (abortRef.current) { clearTimeout(t); resolve(); }
-      });
+    const sleep = (ms: number) => new Promise<void>((res) => {
+      const t = setTimeout(res, ms);
+      // check abort after timeout
+      if (abortRef.current) { clearTimeout(t); res(); }
+    });
 
-    while (!abortRef.current) {
-      // Decide if we stop mid-side
-      const shouldStop = Math.random() < 0.3;
-      const stopAt = shouldStop ? 0.3 + Math.random() * 0.4 : 1;
-      const speed = 80 + Math.random() * 40; // px/sec
-      const currentSide = state.side;
-      const sideLen = getSideLength(currentSide, isMobile);
+    let stepInterval: ReturnType<typeof setInterval> | null = null;
 
-      // Walk to stopAt or end
-      dispatch({ type: "WALK" });
-      const walkDist = stopAt * sideLen;
-      const duration = walkDist / speed;
+    const startSteps = () => {
+      stepInterval = setInterval(() => { stepRef.current++; setStep(stepRef.current); }, 250);
+    };
+    const stopSteps = () => { if (stepInterval) { clearInterval(stepInterval); stepInterval = null; } };
 
-      const targetPos = getPosition(
-        currentSide,
-        stopAt,
-        isMobile
-      );
+    const loop = async () => {
+      let currentSide: Side = "bottom";
 
-      // Step animation
-      const stepInterval = setInterval(() => {
-        stepRef.current++;
-        setStep(stepRef.current);
-      }, 250);
+      while (!abortRef.current) {
+        const shouldStop = Math.random() < 0.3;
+        const stopAt = shouldStop ? 0.3 + Math.random() * 0.4 : 1;
+        const speed = 80 + Math.random() * 40;
+        const len = sideLen(currentSide, isMobile);
 
-      await controls.start({
-        x: targetPos.x,
-        y: targetPos.y,
-        transition: { duration, ease: "linear" },
-      });
+        dispatch({ type: "WALK" });
+        startSteps();
 
-      clearInterval(stepInterval);
-      dispatch({ type: "SET_PROGRESS", progress: stopAt });
+        const walkDist = stopAt * len;
+        const dur = walkDist / speed;
+        const target = getPos(currentSide, stopAt, isMobile);
 
-      if (abortRef.current) break;
+        await controls.start({ x: target.x, y: target.y, transition: { duration: dur, ease: "linear" } });
+        stopSteps();
 
-      // If stopped mid-side
-      if (shouldStop && stopAt < 1) {
-        const isThinking = Math.random() < 0.33;
-        if (isThinking) {
-          dispatch({ type: "THINK" });
-          await sleep(1000 + Math.random() * 1000);
-        } else {
-          dispatch({ type: "LOOK" });
-          await sleep(2000 + Math.random() * 2000);
+        if (abortRef.current) break;
+
+        if (shouldStop && stopAt < 1) {
+          if (Math.random() < 0.33) {
+            dispatch({ type: "THINK" });
+            await sleep(1000 + Math.random() * 1000);
+          } else {
+            dispatch({ type: "LOOK" });
+            await sleep(2000 + Math.random() * 2000);
+          }
+          if (abortRef.current) break;
+
+          dispatch({ type: "WALK" });
+          startSteps();
+          const remainDur = ((1 - stopAt) * len) / speed;
+          const endPos = getPos(currentSide, 1, isMobile);
+          await controls.start({ x: endPos.x, y: endPos.y, transition: { duration: remainDur, ease: "linear" } });
+          stopSteps();
         }
 
         if (abortRef.current) break;
 
-        // Continue to end of side
-        dispatch({ type: "WALK" });
-        const remainDist = (1 - stopAt) * sideLen;
-        const remainDur = remainDist / speed;
+        // Corner pause
+        dispatch({ type: "STOP" });
+        await sleep(500);
+        if (abortRef.current) break;
 
-        const endPos = getPosition(currentSide, 1, isMobile);
-
-        const stepInterval2 = setInterval(() => {
-          stepRef.current++;
-          setStep(stepRef.current);
-        }, 250);
-
-        await controls.start({
-          x: endPos.x,
-          y: endPos.y,
-          transition: { duration: remainDur, ease: "linear" },
-        });
-
-        clearInterval(stepInterval2);
+        // Next side
+        if (isMobile) {
+          // Bounce back
+          const startPos = getPos("bottom", 0, true);
+          await controls.start({ x: startPos.x, y: startPos.y, transition: { duration: 0.5 } });
+        } else {
+          const nextIdx = (SIDES.indexOf(currentSide) + 1) % 4;
+          currentSide = SIDES[nextIdx];
+          dispatch({ type: "NEXT_SIDE" });
+          const startPos = getPos(currentSide, 0, false);
+          await controls.start({ x: startPos.x, y: startPos.y, transition: { duration: 0.3 } });
+        }
       }
+    };
 
-      if (abortRef.current) break;
-
-      // Corner pause
-      dispatch({ type: "STOP" });
-      await sleep(500);
-
-      if (abortRef.current) break;
-
-      // Next side (mobile stays on bottom, reverses)
-      if (isMobile) {
-        // Reverse direction on mobile
-        dispatch({ type: "SET_PROGRESS", progress: 0 });
-        const startPos = getPosition("bottom", 0, true);
-        await controls.start({
-          x: startPos.x,
-          y: startPos.y,
-          transition: { duration: 0.3 },
-        });
-      } else {
-        dispatch({ type: "NEXT_SIDE" });
-        // Snap to start of next side
-        const nextIdx = (SIDES.indexOf(currentSide) + 1) % 4;
-        const nextSide = SIDES[nextIdx];
-        const startPos = getPosition(nextSide, 0, false);
-        await controls.start({
-          x: startPos.x,
-          y: startPos.y,
-          transition: { duration: 0.3 },
-        });
-      }
-    }
-
-    isRunning.current = false;
-  }, [controls, isMobile, state.side]);
-
-  useEffect(() => {
-    if (hidden) return;
-    // Set initial position
-    const initPos = getPosition("bottom", 0, isMobile);
-    controls.set({ x: initPos.x, y: initPos.y });
-
-    // Small delay before starting
-    const t = setTimeout(() => runLoop(), 1000);
+    const t = setTimeout(loop, 1500);
     return () => {
       abortRef.current = true;
       clearTimeout(t);
+      stopSteps();
     };
-  }, [hidden, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shouldHide, isMobile, controls]);
 
-  const bodyRotate = state.botState === "walking"
-    ? ["-2deg", "2deg", "-2deg"]
-    : "0deg";
+  if (shouldHide) return null;
+
+  const bodyRotate = state.botState === "walking" ? ["-2deg", "2deg", "-2deg"] : "0deg";
 
   return (
     <motion.div
@@ -376,7 +297,7 @@ const BorderBot = memo(() => {
         animate={{ rotate: bodyRotate }}
         transition={
           state.botState === "walking"
-            ? { duration: 0.4, repeat: Infinity, repeatType: "mirror" }
+            ? { duration: 0.4, repeat: Infinity, repeatType: "mirror" as const }
             : { duration: 0.2 }
         }
       >
