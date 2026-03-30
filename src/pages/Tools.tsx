@@ -34,6 +34,14 @@ const Tools = () => {
         <link rel="canonical" href="https://owndev.ru/tools" />
         <meta property="og:url" content="https://owndev.ru/tools" />
         <meta property="og:type" content="website" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Главная", item: "https://owndev.ru/" },
+            { "@type": "ListItem", position: 2, name: "Инструменты", item: "https://owndev.ru/tools" },
+          ],
+        })}</script>
       </Helmet>
       <MouseGradient />
       <ClickRipple />

@@ -27,6 +27,14 @@ const Contacts = () => {
         <link rel="canonical" href="https://owndev.ru/contacts" />
         <meta property="og:url" content="https://owndev.ru/contacts" />
         <meta property="og:type" content="website" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Главная", item: "https://owndev.ru/" },
+            { "@type": "ListItem", position: 2, name: "Контакты", item: "https://owndev.ru/contacts" },
+          ],
+        })}</script>
       </Helmet>
       <main className="pt-24 pb-16 relative">
         <div className="absolute inset-0 pointer-events-none">

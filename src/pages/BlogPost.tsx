@@ -128,6 +128,15 @@ const BlogPost = () => {
         <meta property="og:url" content={`https://owndev.ru/blog/${post.slug}`} />
         <meta property="og:type" content="article" />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Главная", item: "https://owndev.ru/" },
+            { "@type": "ListItem", position: 2, name: "Блог", item: "https://owndev.ru/blog" },
+            { "@type": "ListItem", position: 3, name: post.title, item: `https://owndev.ru/blog/${post.slug}` },
+          ],
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">

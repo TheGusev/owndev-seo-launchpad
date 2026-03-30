@@ -38,6 +38,14 @@ const Blog = () => {
         <meta property="og:description" content="Практические гайды по LLM-оптимизации, pSEO, Schema.org разметке и AI Overviews." />
         <meta property="og:url" content="https://owndev.ru/blog" />
         <meta property="og:type" content="website" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Главная", item: "https://owndev.ru/" },
+            { "@type": "ListItem", position: 2, name: "Блог", item: "https://owndev.ru/blog" },
+          ],
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
