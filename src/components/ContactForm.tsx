@@ -107,7 +107,7 @@ const ContactForm = () => {
   const services = [
     { value: "pseo-setup", label: "Настройка pSEO‑проекта" },
     { value: "content-gen", label: "Генерация контента" },
-    { value: "seo-audit", label: "SEO‑аудит" },
+    { value: "seo-audit", label: "GEO‑аудит сайта" },
     { value: "ai-optimization", label: "Оптимизация под AI‑поиск" },
     { value: "custom", label: "Кастомная доработка" },
     { value: "consultation", label: "Консультация" }
