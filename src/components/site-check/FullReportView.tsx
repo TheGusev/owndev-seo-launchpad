@@ -48,6 +48,8 @@ const FullReportView = ({ issues, url }: FullReportViewProps) => {
     }
   }, [percent, totalCount, toast]);
 
+  if (!issues?.length) return null;
+
   const grouped = moduleOrder
     .map((m) => ({
       ...m,
