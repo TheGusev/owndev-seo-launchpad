@@ -15,6 +15,9 @@ export interface ToolDef {
   useCases: string[];
   geoEnabled: boolean;
   status: ToolStatus;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoH1?: string;
 }
 
 export const categories = [
