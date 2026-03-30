@@ -742,3 +742,29 @@
     scroll-snap-align: start;
   }
 }
+
+/* ─── Print styles for PDF export ─────────────────────── */
+@media print {
+  header, footer, nav, .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+  main {
+    padding-top: 0 !important;
+  }
+  .glass,
+  [class*="bg-white/"],
+  [class*="backdrop"] {
+    background: white !important;
+    backdrop-filter: none !important;
+    border: 1px solid #ddd !important;
+  }
+  [class*="text-green"], [class*="text-emerald"] { color: #16a34a !important; }
+  [class*="text-red"], [class*="text-rose"] { color: #dc2626 !important; }
+  [class*="text-yellow"], [class*="text-amber"] { color: #ca8a04 !important; }
+  .report-section { page-break-inside: avoid; }
+}
