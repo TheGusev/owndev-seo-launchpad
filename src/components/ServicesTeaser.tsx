@@ -5,9 +5,9 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const services = [
-  { icon: Code2, text: "Сайты и лендинги под ключ" },
-  { icon: Sparkles, text: "pSEO‑проекты на тысячи страниц" },
-  { icon: Bot, text: "Оптимизация контента под AI‑поиск" },
+  { icon: Code2, text: "SEO Score — классический технический аудит" },
+  { icon: Sparkles, text: "LLM Score — готовность к AI‑выдаче" },
+  { icon: Bot, text: "llms.txt — инструкция для AI‑краулеров" },
 ];
 
 const ServicesTeaser = () => {
