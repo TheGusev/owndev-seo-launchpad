@@ -103,7 +103,7 @@ const BlogPost = () => {
       "@type": "WebPage",
       "@id": `https://owndev.ru/blog/${post.slug}`,
     },
-    author: { "@type": "Organization", name: "OWNDEV", url: "https://owndev.ru" },
+    author: { "@type": "Organization", name: post.author || "OWNDEV", url: "https://owndev.ru" },
     publisher: {
       "@type": "Organization",
       name: "OWNDEV",
