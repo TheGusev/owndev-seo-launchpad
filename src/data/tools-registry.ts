@@ -163,8 +163,6 @@ export const tools: ToolDef[] = [
     useCases: ["Поиск битых ссылок", "Аудит перелинковки", "Проверка nofollow на внутренних ссылках"],
     geoEnabled: true, status: "active",
   },
-];
-
   // ===== GEO pSEO PAGES =====
   {
     id: "geo-audit", slug: "geo-audit",
