@@ -12,13 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 
 const checkItems = [
-  "Технический SEO (скорость, код, robots, sitemap)",
-  "Заголовки, Title, H1, контент",
-  "Готовность к Яндекс.Директ и автотаргетингу",
-  "Schema.org и AI-видимость",
-  "Сравнение с топ-10 конкурентами",
-  "200+ ключевых запросов",
+  "SEO Score (20+ параметров)",
+  "LLM Score (AI‑готовность)",
+  "Топ-10 конкурентов",
+  "200+ ключевых слов",
   "Минус-слова для Директа",
+  "E‑E‑A‑T и Schema.org",
+  "llms.txt проверка и генерация",
+  "Экспорт PDF / CSV / TXT",
 ];
 
 const SiteCheck = () => {
