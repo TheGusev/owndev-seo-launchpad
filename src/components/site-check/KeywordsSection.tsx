@@ -47,6 +47,7 @@ const KeywordsSection = ({ keywords }: KeywordsSectionProps) => {
   );
 
   const filtered = useMemo(() => {
+    if (!keywords || keywords.length === 0) return [];
     let result = keywords;
     if (activeCluster) result = result.filter((k) => k.cluster === activeCluster);
     if (activeIntent) result = result.filter((k) => k.intent === activeIntent);
@@ -54,6 +55,11 @@ const KeywordsSection = ({ keywords }: KeywordsSectionProps) => {
   }, [keywords, activeCluster, activeIntent]);
 
   const clusters = useMemo(
+    () => [...new Set(filtered.map((k) => k.cluster))],
+    [filtered]
+  );
+
+  if (!keywords || keywords.length === 0) return null;
     () => [...new Set(filtered.map((k) => k.cluster))],
     [filtered]
   );
