@@ -60,9 +60,6 @@ const KeywordsSection = ({ keywords }: KeywordsSectionProps) => {
   );
 
   if (!keywords || keywords.length === 0) return null;
-    () => [...new Set(filtered.map((k) => k.cluster))],
-    [filtered]
-  );
 
   return (
     <div className="space-y-4">
