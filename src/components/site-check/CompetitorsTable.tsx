@@ -110,11 +110,11 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
                 <TableCell className="font-bold text-primary truncate max-w-[200px]">
                   ⭐ {shortenUrl(userUrl)}
                 </TableCell>
-                <TableCell className={`text-center font-bold ${scoreColor(userScores.total)}`}>{userScores.total}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores.seo)}`}>{userScores.seo}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores.direct)}`}>{userScores.direct}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores.schema)}`}>{userScores.schema}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores.ai)}`}>{userScores.ai}</TableCell>
+                <TableCell className={`text-center font-bold ${scoreColor(userScores?.total ?? 0)}`}>{userScores?.total ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(userScores?.seo ?? 0)}`}>{userScores?.seo ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(userScores?.direct ?? 0)}`}>{userScores?.direct ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(userScores?.schema ?? 0)}`}>{userScores?.schema ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(userScores?.ai ?? 0)}`}>{userScores?.ai ?? 0}</TableCell>
               </TableRow>
             )}
             {competitors.map((c, i) => (
