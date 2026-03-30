@@ -64,10 +64,10 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
               ⭐ {shortenUrl(userUrl)}
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>Общий: <span className={scoreColor(userScores.total)}>{userScores.total}</span></div>
-              <div>SEO: <span className={scoreColor(userScores.seo)}>{userScores.seo}</span></div>
-              <div>Директ: <span className={scoreColor(userScores.direct)}>{userScores.direct}</span></div>
-              <div>Schema: <span className={scoreColor(userScores.schema)}>{userScores.schema}</span></div>
+              <div>Общий: <span className={scoreColor(userScores?.total ?? 0)}>{userScores?.total ?? 0}</span></div>
+              <div>SEO: <span className={scoreColor(userScores?.seo ?? 0)}>{userScores?.seo ?? 0}</span></div>
+              <div>Директ: <span className={scoreColor(userScores?.direct ?? 0)}>{userScores?.direct ?? 0}</span></div>
+              <div>Schema: <span className={scoreColor(userScores?.schema ?? 0)}>{userScores?.schema ?? 0}</span></div>
             </div>
           </div>
         )}
@@ -77,10 +77,10 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
               #{i + 1} {shortenUrl(c.url)}
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>Общий: <span className={scoreColor(c.scores.total)}>{c.scores.total}</span></div>
-              <div>SEO: <span className={scoreColor(c.scores.seo)}>{c.scores.seo}</span></div>
-              <div>Директ: <span className={scoreColor(c.scores.direct)}>{c.scores.direct}</span></div>
-              <div>Schema: <span className={scoreColor(c.scores.schema)}>{c.scores.schema}</span></div>
+              <div>Общий: <span className={scoreColor(c.scores?.total ?? 0)}>{c.scores?.total ?? 0}</span></div>
+              <div>SEO: <span className={scoreColor(c.scores?.seo ?? 0)}>{c.scores?.seo ?? 0}</span></div>
+              <div>Директ: <span className={scoreColor(c.scores?.direct ?? 0)}>{c.scores?.direct ?? 0}</span></div>
+              <div>Schema: <span className={scoreColor(c.scores?.schema ?? 0)}>{c.scores?.schema ?? 0}</span></div>
             </div>
             {c.top_phrases && c.top_phrases.length > 0 && (
               <p className="text-xs text-muted-foreground">
@@ -110,11 +110,11 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
                 <TableCell className="font-bold text-primary truncate max-w-[200px]">
                   ⭐ {shortenUrl(userUrl)}
                 </TableCell>
-                <TableCell className={`text-center font-bold ${scoreColor(userScores.total)}`}>{userScores.total}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores.seo)}`}>{userScores.seo}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores.direct)}`}>{userScores.direct}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores.schema)}`}>{userScores.schema}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores.ai)}`}>{userScores.ai}</TableCell>
+                <TableCell className={`text-center font-bold ${scoreColor(userScores?.total ?? 0)}`}>{userScores?.total ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(userScores?.seo ?? 0)}`}>{userScores?.seo ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(userScores?.direct ?? 0)}`}>{userScores?.direct ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(userScores?.schema ?? 0)}`}>{userScores?.schema ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(userScores?.ai ?? 0)}`}>{userScores?.ai ?? 0}</TableCell>
               </TableRow>
             )}
             {competitors.map((c, i) => (
@@ -122,11 +122,11 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
                 <TableCell className="truncate max-w-[200px] text-foreground">
                   #{i + 1} {shortenUrl(c.url)}
                 </TableCell>
-                <TableCell className={`text-center font-bold ${scoreColor(c.scores.total)}`}>{c.scores.total}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores.seo)}`}>{c.scores.seo}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores.direct)}`}>{c.scores.direct}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores.schema)}`}>{c.scores.schema}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores.ai)}`}>{c.scores.ai}</TableCell>
+                <TableCell className={`text-center font-bold ${scoreColor(c.scores?.total ?? 0)}`}>{c.scores?.total ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(c.scores?.seo ?? 0)}`}>{c.scores?.seo ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(c.scores?.direct ?? 0)}`}>{c.scores?.direct ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(c.scores?.schema ?? 0)}`}>{c.scores?.schema ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(c.scores?.ai ?? 0)}`}>{c.scores?.ai ?? 0}</TableCell>
               </TableRow>
             ))}
           </TableBody>

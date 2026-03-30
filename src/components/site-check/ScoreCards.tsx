@@ -74,20 +74,23 @@ interface ScoreCardsProps {
 
 const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-    {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => (
+    {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => {
+      const val = scores?.[key] ?? 0;
+      return (
       <div
         key={key}
-        className={`rounded-xl border p-4 text-center ${getScoreColor(scores[key])}`}
+        className={`rounded-xl border p-4 text-center ${getScoreColor(val)}`}
       >
-        <CircleScore score={scores[key]} />
+        <CircleScore score={val} />
         <p className="mt-2 text-xs font-medium text-muted-foreground">{scoreLabels[key]}</p>
         {previousScores && typeof previousScores[key] === "number" && (
           <div className="mt-1">
-            <DiffBadge diff={scores[key] - previousScores[key]} />
+            <DiffBadge diff={val - previousScores[key]} />
           </div>
         )}
       </div>
-    ))}
+      );
+    })}
   </div>
 );
 
