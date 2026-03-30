@@ -1,21 +1,51 @@
 
 
-## 3 точечных UX/Accessibility фикса
+## BreadcrumbList JSON-LD + SoftwareApplication schema
 
-### 1. Header: «Контакты» → route `/contacts`
-**Файл:** `src/components/Header.tsx`, строка 15
+### 1. BreadcrumbList JSON-LD — 4 страницы
 
-Заменить `{ href: "#contact", label: "Контакты" }` на `{ href: "/contacts", label: "Контакты", isRoute: true }`.
+Добавить `BreadcrumbList` JSON-LD в `<Helmet>` на каждой странице:
 
-### 2. Footer: динамический год
-**Файл:** `src/components/Footer.tsx`, строка 113
+**`src/pages/Blog.tsx`** — Главная → Блог
+```json
+{ "@type": "BreadcrumbList", "itemListElement": [
+  { "position": 1, "name": "Главная", "item": "https://owndev.ru/" },
+  { "position": 2, "name": "Блог", "item": "https://owndev.ru/blog" }
+]}
+```
 
-Заменить `© 2025` на `© {new Date().getFullYear()}`.
+**`src/pages/BlogPost.tsx`** — Главная → Блог → {post.title}
+```json
+{ "position": 3, "name": post.title, "item": "https://owndev.ru/blog/{slug}" }
+```
+Добавить в существующий `jsonLd` блок рядом — отдельный `<script>`.
 
-### 3. ScanForm: aria-label на Input
-**Файл:** `src/components/site-check/ScanForm.tsx`, строка 41-47
+**`src/pages/Tools.tsx`** — Главная → Инструменты
 
-Добавить `aria-label="URL сайта для проверки"` на `<Input>`.
+**`src/pages/Contacts.tsx`** — Главная → Контакты
 
-Три файла, три однострочных правки.
+### 2. SoftwareApplication schema — `src/pages/Index.tsx`
+
+Добавить третий JSON-LD блок после `websiteLd`:
+
+```json
+{
+  "@type": "SoftwareApplication",
+  "name": "OWNDEV",
+  "applicationCategory": "SEOApplication",
+  "operatingSystem": "Web",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "RUB" },
+  "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "ratingCount": "120" }
+}
+```
+
+### Файлы (5)
+
+| Файл | Изменение |
+|------|-----------|
+| `Index.tsx` | SoftwareApplication JSON-LD |
+| `Blog.tsx` | BreadcrumbList JSON-LD |
+| `BlogPost.tsx` | BreadcrumbList JSON-LD |
+| `Tools.tsx` | BreadcrumbList JSON-LD |
+| `Contacts.tsx` | BreadcrumbList JSON-LD |
 
