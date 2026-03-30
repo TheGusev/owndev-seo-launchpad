@@ -63,13 +63,13 @@ const Hero = () => {
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-serif text-center leading-tight">
                 <TypeAnimation
                   sequence={[
-                    'SEO‑аудит за секунды',
+                    'SEO Score + LLM Score',
                     2500,
-                    'Schema.org в один клик',
+                    'GEO‑аудит за 60 секунд',
                     2500,
-                    'pSEO для вашего бизнеса',
+                    'AI‑ready проверка сайта',
                     2500,
-                    'LLM‑оптимизация сайтов',
+                    'llms.txt — новый стандарт',
                     2500,
                   ]}
                   wrapper="span"
