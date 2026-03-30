@@ -1,76 +1,49 @@
 
 
-## Снятие Paywall + Единый маршрут результатов
+## Исправление ошибки "Cannot read properties of undefined (reading 'total')"
 
-### Суть проблемы
+### Причина
 
-1. `getScanPreview()` вызывает edge function `/preview/:id`, которая фильтрует issues до 5 штук (`visible_in_preview + slice(0,5)`) и не возвращает competitors/keywords/minus_words
-2. `IssueCard` рендерится с `locked` prop — детали скрыты
-3. `PaywallCTA` занимает место внизу результатов
-4. `SiteCheckReport.tsx` — отдельный маршрут для платного отчёта, который зависит от payment token
+Поле `scores` в таблице `scans` имеет тип `Json | null`. Данные приходят, но `scores` может быть `null` или иметь неожиданную структуру. Хотя в `SiteCheckResult.tsx` есть проверка `data.scores &&` перед `ScoreCards`, проблема в том, что `data.scores` может быть truthy (например, пустой объект `{}`), но не содержать `total`. Также `CompetitorsTable` получает `userScores={data.scores}` без проверки на наличие полей, а внутри конкуренты обращаются к `c.scores.total` без optional chaining.
 
-### План (7 файлов)
+### План (4 файла)
 
-#### 1. `src/lib/site-check-api.ts` — добавить `getFullScan(scanId)`
+#### 1. `src/pages/SiteCheckResult.tsx`
 
-Новая функция, которая читает данные напрямую из таблицы `scans` через supabase client (RLS разрешает public SELECT):
+Добавить нормализацию scores перед передачей в компоненты:
 
 ```typescript
-export async function getFullScan(scanId: string) {
-  const { data, error } = await supabase
-    .from('scans').select('*').eq('id', scanId).single();
-  if (error || !data) throw new Error('Scan not found');
-  return data;
-}
+const defaultScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 };
+const scores = data.scores 
+  ? { ...defaultScores, ...(data.scores as any) } 
+  : null;
 ```
 
-Это обходит edge function preview-фильтр и возвращает ВСЕ данные: все issues, competitors, keywords, minus_words.
+Использовать `scores` вместо `data.scores` в JSX:
+- `{scores && <ScoreCards scores={scores} ... />}`
+- `userScores={scores}` в CompetitorsTable
 
-#### 2. `src/pages/SiteCheckResult.tsx` — полный рефакторинг
+#### 2. `src/components/site-check/ScoreCards.tsx`
 
-- Заменить `getScanPreview(scanId)` на `getFullScan(scanId)`
-- Убрать импорт и рендер `PaywallCTA`
-- Убрать Dialog оплаты, состояния `showPaymentModal`, `paymentEmail`, `sending`, `handlePay`, `handleNotifyMe`
-- Убрать заголовок "Топ-5 критичных проблем"
-- Рендерить полный отчёт: `FullReportView` (все issues), `CompetitorsTable`, `KeywordsSection`, `MinusWordsSection`
-- Issues передавать без `locked` prop
-- Добавить `DownloadButtons` (уже с заглушкой)
+Добавить defensive defaults в компонент:
+- `const safeScore = scores?.[key] ?? 0` перед использованием в `CircleScore` и `getScoreColor`
 
-#### 3. `src/components/site-check/IssueCard.tsx`
+#### 3. `src/components/site-check/CompetitorsTable.tsx`
 
-- Убрать prop `locked` (по умолчанию всегда false)
-- Удалить блок с замочком "Как исправить — в полном отчёте"
-- Оставить только кнопку раскрытия "Как исправить" / "Свернуть" (которая уже работает)
+Добавить optional chaining для `c.scores`:
+- `c.scores?.total ?? 0` во всех обращениях
+- `userScores?.total ?? 0` во всех обращениях
 
-#### 4. `src/pages/SiteCheckReport.tsx` — редирект
+#### 4. `src/components/site-check/FullReportView.tsx`
 
-Заменить весь компонент на редирект:
-```typescript
-import { useParams, Navigate } from 'react-router-dom';
-export default function SiteCheckReport() {
-  const { reportId } = useParams();
-  return <Navigate to={`/tools/site-check/result/${reportId}`} replace />;
-}
-```
+Проверить что `issues` передаётся как массив — уже защищено в SiteCheckResult, но добавить `if (!issues?.length) return null` внутри компонента.
 
-#### 5. `src/App.tsx` — маршруты
+### Файлы
 
-- Маршрут `/tools/site-check/result/:scanId` → `SiteCheckResult` (без изменений)
-- Маршрут `/tools/site-check/report/:reportId` → `SiteCheckReport` (теперь редирект)
-
-#### 6. `src/pages/SiteCheck.tsx` — убрать free/locked разделение
-
-В списке "Что проверяем" убрать иконки замков и бейджи "полный отчёт" — все пункты теперь бесплатные (зелёные галочки).
-
-#### 7. `src/components/ErrorBoundary.tsx` — новый
-
-Обёртка для защиты от чёрных экранов. Оборачивает маршруты site-check в App.tsx.
-
-### Итоговый flow после правок
-
-1. `/tools/site-check` → ввод URL → скан
-2. Polling → navigate `/tools/site-check/result/:id`
-3. `SiteCheckResult` загружает ВСЕ данные через `supabase.from('scans').select('*')`
-4. Рендерит: ScoreCards, все Issues (без замков, раскрываемые), CompetitorsTable, KeywordsSection, MinusWordsSection
-5. Никаких PaywallCTA, замков, лимитов
+| Файл | Изменение |
+|------|-----------|
+| `SiteCheckResult.tsx` | Нормализация scores с defaultScores |
+| `ScoreCards.tsx` | `scores[key] ?? 0` |
+| `CompetitorsTable.tsx` | Optional chaining на все scores |
+| `FullReportView.tsx` | Guard на пустой issues |
 
