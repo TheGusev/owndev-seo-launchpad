@@ -133,7 +133,7 @@ const SiteCheckResult = () => {
             <CompetitorsTable
               competitors={competitors}
               userUrl={data.url}
-              userScores={data.scores}
+              userScores={scores}
             />
           )}
 

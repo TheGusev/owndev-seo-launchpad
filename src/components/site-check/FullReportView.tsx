@@ -30,6 +30,7 @@ interface FullReportViewProps {
 }
 
 const FullReportView = ({ issues, url }: FullReportViewProps) => {
+  if (!issues?.length) return null;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isResolved, toggleIssue, resolvedCount } = useIssueTracker(url);

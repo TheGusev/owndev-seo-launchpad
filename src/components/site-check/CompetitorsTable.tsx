@@ -122,11 +122,11 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
                 <TableCell className="truncate max-w-[200px] text-foreground">
                   #{i + 1} {shortenUrl(c.url)}
                 </TableCell>
-                <TableCell className={`text-center font-bold ${scoreColor(c.scores.total)}`}>{c.scores.total}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores.seo)}`}>{c.scores.seo}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores.direct)}`}>{c.scores.direct}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores.schema)}`}>{c.scores.schema}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores.ai)}`}>{c.scores.ai}</TableCell>
+                <TableCell className={`text-center font-bold ${scoreColor(c.scores?.total ?? 0)}`}>{c.scores?.total ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(c.scores?.seo ?? 0)}`}>{c.scores?.seo ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(c.scores?.direct ?? 0)}`}>{c.scores?.direct ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(c.scores?.schema ?? 0)}`}>{c.scores?.schema ?? 0}</TableCell>
+                <TableCell className={`text-center ${scoreColor(c.scores?.ai ?? 0)}`}>{c.scores?.ai ?? 0}</TableCell>
               </TableRow>
             ))}
           </TableBody>

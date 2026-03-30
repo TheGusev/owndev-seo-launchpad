@@ -85,11 +85,12 @@ const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
         <p className="mt-2 text-xs font-medium text-muted-foreground">{scoreLabels[key]}</p>
         {previousScores && typeof previousScores[key] === "number" && (
           <div className="mt-1">
-            <DiffBadge diff={scores[key] - previousScores[key]} />
+            <DiffBadge diff={val - previousScores[key]} />
           </div>
         )}
       </div>
-    ))}
+      );
+    })}
   </div>
 );
 
