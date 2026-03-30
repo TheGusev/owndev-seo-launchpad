@@ -79,6 +79,12 @@ const SiteCheckResult = () => {
     );
   }
 
+  const defaultScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 };
+  const rawScores = data.scores;
+  const scores = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
+    ? { ...defaultScores, ...(rawScores as any) }
+    : null;
+
   const issues = Array.isArray(data.issues) ? data.issues : [];
   const competitors = Array.isArray(data.competitors) ? data.competitors : [];
   const keywords = Array.isArray(data.keywords) ? data.keywords : [];
