@@ -31,11 +31,11 @@ const Blog = () => {
   return (
     <>
       <Helmet>
-        <title>Блог — LLM-оптимизация и pSEO гайды | OWNDEV</title>
-        <meta name="description" content="Практические гайды по LLM-оптимизации, pSEO, Schema.org разметке и AI Overviews. Бесплатные знания от команды OWNDEV." />
+        <title>Блог OWNDEV — GEO, AI-ready SEO и оптимизация для нейросетей</title>
+        <meta name="description" content="Статьи о GEO, LLM Score, AI-ready аудите, llms.txt и новом стандарте SEO для ChatGPT и Яндекс Нейро." />
         <link rel="canonical" href="https://owndev.ru/blog" />
-        <meta property="og:title" content="Блог — LLM-оптимизация и pSEO гайды | OWNDEV" />
-        <meta property="og:description" content="Практические гайды по LLM-оптимизации, pSEO, Schema.org разметке и AI Overviews." />
+        <meta property="og:title" content="Блог OWNDEV — GEO, AI-ready SEO и оптимизация для нейросетей" />
+        <meta property="og:description" content="Статьи о GEO, LLM Score, AI-ready аудите, llms.txt и новом стандарте SEO для ChatGPT и Яндекс Нейро." />
         <meta property="og:url" content="https://owndev.ru/blog" />
         <meta property="og:type" content="website" />
         <script type="application/ld+json">{JSON.stringify({
