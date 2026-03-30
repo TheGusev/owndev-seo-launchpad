@@ -88,7 +88,10 @@ const SiteCheckResult = () => {
     : null;
 
   const issues = Array.isArray(data.issues) ? data.issues : [];
-  const competitors = Array.isArray(data.competitors) ? data.competitors : [];
+  const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
+  const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor' || (c.url && !c._type && !c._direct_meta));
+  const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table');
+  const directMeta = rawCompetitors.find((c: any) => c._direct_meta);
   const keywords = Array.isArray(data.keywords) ? data.keywords : [];
   const minusWords = Array.isArray(data.minus_words) ? data.minus_words : [];
 
@@ -153,13 +156,9 @@ const SiteCheckResult = () => {
 
           {issues.length > 0 && <FullReportView issues={issues} url={data.url} />}
 
-          {competitors.length > 0 && (
-            <CompetitorsTable
-              competitors={competitors}
-              userUrl={data.url}
-              userScores={scores}
-            />
-          )}
+          {competitors.length > 0 && <CompetitorsTable competitors={competitors} userUrl={data.url} />}
+          {comparisonTable && <ComparisonTable data={comparisonTable} />}
+          {directMeta && <DirectMeta data={directMeta} />}
 
           {keywords.length > 0 && <KeywordsSection keywords={keywords} />}
 
