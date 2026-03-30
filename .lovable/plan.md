@@ -1,52 +1,20 @@
 
 
-## Исправление маппинга полей keywords и minus-words
+## Доработка нормализации keywords/minusWords
 
-### Проблема
+Нормализация уже реализована в `SiteCheckResult.tsx` (строки 95-105) и CSV маппинг в `DownloadButtons.tsx` уже использует `kw.keyword`/`kw.volume`. Нужны точечные улучшения.
 
-Edge Function сохраняет keywords как `{ phrase, cluster, intent, frequency, landing_needed }`, но фронтенд ожидает `{ keyword, volume }`:
+### 1. `src/pages/SiteCheckResult.tsx` (строки 95-105)
 
-- `KeywordsSection.tsx` — интерфейс `{ keyword, volume }`, рендерит `kw.keyword` и `kw.volume`
-- `DownloadButtons.tsx` — CSV берёт `kw.query ?? kw.keyword ?? kw.word` — ни один вариант не совпадает с `phrase`
-- `MinusWordsSection.tsx` — ожидает `{ word, type, reason }`, реальная структура может отличаться
+- `intent`: дефолт `"—"` вместо `''`
+- `landing_needed`: дефолт `false`
+- `cluster`: добавить fallback `kw.category`
+- minus-words: strip `^-` из word, добавить дефолты `type: "general"`, `reason: ""`
 
-### Решение
+### 2. `src/components/site-check/DownloadButtons.tsx`
 
-Нормализовать данные в одном месте (`SiteCheckResult.tsx`) перед передачей в компоненты.
+- `buildKeywordsCsv`: добавить колонку "Нужен лендинг", дефолт `""` вместо `"—"`
+- `buildMinusTxt`: упростить — данные уже нормализованы, просто `-${w.word.trim()}`
 
-#### 1. `src/pages/SiteCheckResult.tsx`
-
-Добавить нормализацию keywords после получения данных:
-
-```typescript
-const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
-  keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
-  volume: kw.frequency ?? kw.volume ?? 0,
-  cluster: kw.cluster ?? 'Общие',
-  intent: kw.intent,
-  landing_needed: kw.landing_needed,
-}));
-```
-
-Аналогично для minus_words — нормализовать `word` из возможных полей.
-
-#### 2. `src/components/site-check/DownloadButtons.tsx`
-
-Обновить `buildKeywordsCsv` — после нормализации данные уже в формате `{ keyword, volume, cluster, intent }`, убрать fallback-цепочки:
-
-```typescript
-const query = esc(kw.keyword);
-const frequency = esc(kw.volume);
-```
-
-#### 3. Без изменений в KeywordsSection и MinusWordsSection
-
-Они уже работают с `{ keyword, volume, cluster, intent }` — после нормализации в parent всё заработает.
-
-### Файлы
-
-| Файл | Изменение |
-|------|-----------|
-| `SiteCheckResult.tsx` | Нормализация keywords и minusWords после загрузки |
-| `DownloadButtons.tsx` | Упростить маппинг в CSV (убрать fallback-цепочки) |
+Два файла, точечные правки.
 
