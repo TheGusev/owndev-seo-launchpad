@@ -1,49 +1,75 @@
 
 
-## Исправление ошибки "Cannot read properties of undefined (reading 'total')"
+# LLM-проверки в Site Check + llms.txt для OWNDEV
 
-### Причина
+## Часть 1: Расширение AI Audit в Edge Function
 
-Поле `scores` в таблице `scans` имеет тип `Json | null`. Данные приходят, но `scores` может быть `null` или иметь неожиданную структуру. Хотя в `SiteCheckResult.tsx` есть проверка `data.scores &&` перед `ScoreCards`, проблема в том, что `data.scores` может быть truthy (например, пустой объект `{}`), но не содержать `total`. Также `CompetitorsTable` получает `userScores={data.scores}` без проверки на наличие полей, а внутри конкуренты обращаются к `c.scores.total` без optional chaining.
+**Файл:** `supabase/functions/site-check-scan/index.ts`
 
-### План (4 файла)
+Функция `aiAudit(html, origin)` — сделать асинхронной, добавить параметр `origin` для fetch проверок. Новые проверки:
 
-#### 1. `src/pages/SiteCheckResult.tsx`
+1. **Проверка /llms.txt** — `HEAD` запрос на `{origin}/llms.txt`. Если 404 → issue module=ai, severity=high: "Нет файла /llms.txt"
+2. **Проверка /llms-full.txt** — аналогично, severity=medium
+3. **FAQPage Schema** — уже есть в `schemaAudit`, но добавить перекрёстную проверку в ai модуль: если нет FAQPage в JSON-LD → issue "Нет FAQPage Schema для AI-видимости"
+4. **Article/LocalBusiness Schema** — проверка наличия `@type: Article` или `LocalBusiness` в JSON-LD
+5. **E-E-A-T сигналы** — поиск блока об авторе (паттерны: `об авторе`, `author`, `автор`, `<address`), даты публикации (`datePublished`, `<time`, `datetime`). Если нет → issue "Нет E-E-A-T сигналов"
 
-Добавить нормализацию scores перед передачей в компоненты:
+Вызов в `runPipeline`: заменить `aiAudit(html)` на `await aiAudit(html, origin)`.
 
-```typescript
-const defaultScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 };
-const scores = data.scores 
-  ? { ...defaultScores, ...(data.scores as any) } 
-  : null;
+## Часть 2: Кнопка "Скачать llms.txt" в результатах
+
+**Файл:** `src/pages/SiteCheckResult.tsx`
+
+Добавить кнопку "Скачать llms.txt" после DownloadButtons. При клике — генерирует текстовый файл на основе данных скана (url, theme, keywords) и скачивает через `Blob` + `URL.createObjectURL`.
+
+**Новый файл:** `src/utils/generateLlmsTxt.ts`
+
+Функция `generateLlmsTxt(data)` → возвращает строку в формате llms.txt:
+```
+# {url}
+> {theme}
+
+## Offered
+- Ключевое слово 1
+- Ключевое слово 2
+
+## Links
+- {url}: Главная страница
 ```
 
-Использовать `scores` вместо `data.scores` в JSX:
-- `{scores && <ScoreCards scores={scores} ... />}`
-- `userScores={scores}` в CompetitorsTable
+## Часть 3: Собственные llms.txt для OWNDEV
 
-#### 2. `src/components/site-check/ScoreCards.tsx`
+**Новый файл:** `public/llms.txt`
+```
+# OWNDEV
+> SEO-оптимизация и разработка SaaS решений. 13 бесплатных SEO-инструментов.
 
-Добавить defensive defaults в компонент:
-- `const safeScore = scores?.[key] ?? 0` перед использованием в `CircleScore` и `getScoreColor`
+## Offered
+- Бесплатная проверка сайта (SEO аудит)
+- LLM-Friendly SEO аудитор
+- Генератор семантического ядра
+- pSEO генератор страниц
+- Анализ конкурентов
+- Schema.org генератор
+...остальные инструменты из registry
 
-#### 3. `src/components/site-check/CompetitorsTable.tsx`
+## Links
+- https://owndev.ru/: Главная
+- https://owndev.ru/tools: Все инструменты
+- https://owndev.ru/tools/site-check: Проверка сайта
+- https://owndev.ru/blog: Блог
+- https://owndev.ru/contacts: Контакты
+```
 
-Добавить optional chaining для `c.scores`:
-- `c.scores?.total ?? 0` во всех обращениях
-- `userScores?.total ?? 0` во всех обращениях
+**Новый файл:** `public/llms-full.txt` — расширенная версия с описанием каждого инструмента (shortDesc из registry) и списком статей блога.
 
-#### 4. `src/components/site-check/FullReportView.tsx`
+## Файлы
 
-Проверить что `issues` передаётся как массив — уже защищено в SiteCheckResult, но добавить `if (!issues?.length) return null` внутри компонента.
-
-### Файлы
-
-| Файл | Изменение |
-|------|-----------|
-| `SiteCheckResult.tsx` | Нормализация scores с defaultScores |
-| `ScoreCards.tsx` | `scores[key] ?? 0` |
-| `CompetitorsTable.tsx` | Optional chaining на все scores |
-| `FullReportView.tsx` | Guard на пустой issues |
+| Файл | Действие |
+|------|----------|
+| `supabase/functions/site-check-scan/index.ts` | Расширить `aiAudit` — 5 новых проверок, сделать async |
+| `src/utils/generateLlmsTxt.ts` | Новый — генерация llms.txt из данных скана |
+| `src/pages/SiteCheckResult.tsx` | Кнопка "Скачать llms.txt" |
+| `public/llms.txt` | Новый — llms.txt для OWNDEV |
+| `public/llms-full.txt` | Новый — расширенный llms-full.txt для OWNDEV |
 
