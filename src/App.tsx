@@ -52,6 +52,7 @@ const App = () => (
             <Route path="/refund" element={<Refund />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/geo-audit" element={<GeoAudit />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/site-check" element={<SiteCheck />} />
             <Route path="/tools/site-check/result/:scanId" element={<ErrorBoundary><SiteCheckResult /></ErrorBoundary>} />
