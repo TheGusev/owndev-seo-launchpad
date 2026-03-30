@@ -1,41 +1,27 @@
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-
-interface CompetitorScores {
-  total: number;
-  seo: number;
-  direct: number;
-  schema: number;
-  ai: number;
-}
+import { Check, X } from "lucide-react";
 
 interface Competitor {
   url: string;
-  scores: CompetitorScores;
   title?: string;
-  word_count?: number;
+  h1?: string;
+  content_length_words?: number;
   has_faq?: boolean;
+  has_price_block?: boolean;
   has_reviews?: boolean;
   has_schema?: boolean;
+  has_cta_button?: boolean;
+  load_speed_sec?: number;
+  h2_count?: number;
+  images_count?: number;
   top_phrases?: string[];
 }
 
 interface CompetitorsTableProps {
   competitors: Competitor[];
   userUrl?: string;
-  userScores?: CompetitorScores;
-}
-
-function scoreColor(val: number) {
-  if (val >= 71) return "text-green-500";
-  if (val >= 41) return "text-yellow-500";
-  return "text-red-500";
 }
 
 function shortenUrl(url: string) {
@@ -47,40 +33,36 @@ function shortenUrl(url: string) {
   }
 }
 
-const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTableProps) => {
+function BoolCell({ value }: { value?: boolean }) {
+  return value
+    ? <Check className="w-4 h-4 text-emerald-500 mx-auto" />
+    : <X className="w-4 h-4 text-red-500 mx-auto" />;
+}
+
+const CompetitorsTable = ({ competitors, userUrl }: CompetitorsTableProps) => {
   if (!competitors || competitors.length === 0) return null;
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-foreground">
-        Сравнение с конкурентами ({competitors.length})
+        Анализ конкурентов ({competitors.length})
       </h2>
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
-        {userScores && userUrl && (
-          <div className="border-2 border-primary/30 rounded-xl p-4 space-y-2 bg-primary/5">
-            <p className="text-sm font-bold text-primary truncate">
-              ⭐ {shortenUrl(userUrl)}
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>Общий: <span className={scoreColor(userScores?.total ?? 0)}>{userScores?.total ?? 0}</span></div>
-              <div>SEO: <span className={scoreColor(userScores?.seo ?? 0)}>{userScores?.seo ?? 0}</span></div>
-              <div>Директ: <span className={scoreColor(userScores?.direct ?? 0)}>{userScores?.direct ?? 0}</span></div>
-              <div>Schema: <span className={scoreColor(userScores?.schema ?? 0)}>{userScores?.schema ?? 0}</span></div>
-            </div>
-          </div>
-        )}
         {competitors.map((c, i) => (
-          <div key={i} className="border rounded-xl p-4 space-y-2">
+          <div key={i} className="border rounded-xl p-4 space-y-2 bg-card/50 backdrop-blur">
             <p className="text-sm font-medium text-foreground truncate">
               #{i + 1} {shortenUrl(c.url)}
             </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>Общий: <span className={scoreColor(c.scores?.total ?? 0)}>{c.scores?.total ?? 0}</span></div>
-              <div>SEO: <span className={scoreColor(c.scores?.seo ?? 0)}>{c.scores?.seo ?? 0}</span></div>
-              <div>Директ: <span className={scoreColor(c.scores?.direct ?? 0)}>{c.scores?.direct ?? 0}</span></div>
-              <div>Schema: <span className={scoreColor(c.scores?.schema ?? 0)}>{c.scores?.schema ?? 0}</span></div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <div>Слов: <span className="font-medium">{c.content_length_words ?? "—"}</span></div>
+              <div>Скорость: <span className="font-medium">{c.load_speed_sec != null ? `${c.load_speed_sec}с` : "—"}</span></div>
+              <div className="flex items-center gap-1">FAQ: <BoolCell value={c.has_faq} /></div>
+              <div className="flex items-center gap-1">Цены: <BoolCell value={c.has_price_block} /></div>
+              <div className="flex items-center gap-1">Отзывы: <BoolCell value={c.has_reviews} /></div>
+              <div className="flex items-center gap-1">Schema: <BoolCell value={c.has_schema} /></div>
+              <div className="flex items-center gap-1">CTA: <BoolCell value={c.has_cta_button} /></div>
             </div>
             {c.top_phrases && c.top_phrases.length > 0 && (
               <p className="text-xs text-muted-foreground">
@@ -97,36 +79,30 @@ const CompetitorsTable = ({ competitors, userUrl, userScores }: CompetitorsTable
           <TableHeader>
             <TableRow>
               <TableHead>Сайт</TableHead>
-              <TableHead className="text-center w-20">Общий</TableHead>
-              <TableHead className="text-center w-16">SEO</TableHead>
-              <TableHead className="text-center w-16">Директ</TableHead>
+              <TableHead className="text-center w-20">Слов</TableHead>
+              <TableHead className="text-center w-14">FAQ</TableHead>
+              <TableHead className="text-center w-14">Цены</TableHead>
+              <TableHead className="text-center w-16">Отзывы</TableHead>
               <TableHead className="text-center w-16">Schema</TableHead>
-              <TableHead className="text-center w-16">AI</TableHead>
+              <TableHead className="text-center w-14">CTA</TableHead>
+              <TableHead className="text-center w-20">Скорость</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {userScores && userUrl && (
-              <TableRow className="bg-primary/5 border-primary/20">
-                <TableCell className="font-bold text-primary truncate max-w-[200px]">
-                  ⭐ {shortenUrl(userUrl)}
-                </TableCell>
-                <TableCell className={`text-center font-bold ${scoreColor(userScores?.total ?? 0)}`}>{userScores?.total ?? 0}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores?.seo ?? 0)}`}>{userScores?.seo ?? 0}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores?.direct ?? 0)}`}>{userScores?.direct ?? 0}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores?.schema ?? 0)}`}>{userScores?.schema ?? 0}</TableCell>
-                <TableCell className={`text-center ${scoreColor(userScores?.ai ?? 0)}`}>{userScores?.ai ?? 0}</TableCell>
-              </TableRow>
-            )}
             {competitors.map((c, i) => (
               <TableRow key={i}>
                 <TableCell className="truncate max-w-[200px] text-foreground">
                   #{i + 1} {shortenUrl(c.url)}
                 </TableCell>
-                <TableCell className={`text-center font-bold ${scoreColor(c.scores?.total ?? 0)}`}>{c.scores?.total ?? 0}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores?.seo ?? 0)}`}>{c.scores?.seo ?? 0}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores?.direct ?? 0)}`}>{c.scores?.direct ?? 0}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores?.schema ?? 0)}`}>{c.scores?.schema ?? 0}</TableCell>
-                <TableCell className={`text-center ${scoreColor(c.scores?.ai ?? 0)}`}>{c.scores?.ai ?? 0}</TableCell>
+                <TableCell className="text-center">{c.content_length_words ?? "—"}</TableCell>
+                <TableCell className="text-center"><BoolCell value={c.has_faq} /></TableCell>
+                <TableCell className="text-center"><BoolCell value={c.has_price_block} /></TableCell>
+                <TableCell className="text-center"><BoolCell value={c.has_reviews} /></TableCell>
+                <TableCell className="text-center"><BoolCell value={c.has_schema} /></TableCell>
+                <TableCell className="text-center"><BoolCell value={c.has_cta_button} /></TableCell>
+                <TableCell className="text-center">
+                  {c.load_speed_sec != null ? `${c.load_speed_sec}с` : "—"}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

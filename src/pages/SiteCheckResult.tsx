@@ -5,6 +5,8 @@ import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
 import FullReportView from "@/components/site-check/FullReportView";
 import CompetitorsTable from "@/components/site-check/CompetitorsTable";
+import ComparisonTable from "@/components/site-check/ComparisonTable";
+import DirectMeta from "@/components/site-check/DirectMeta";
 import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
@@ -86,7 +88,10 @@ const SiteCheckResult = () => {
     : null;
 
   const issues = Array.isArray(data.issues) ? data.issues : [];
-  const competitors = Array.isArray(data.competitors) ? data.competitors : [];
+  const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
+  const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor' || (c.url && !c._type && !c._direct_meta));
+  const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table');
+  const directMeta = rawCompetitors.find((c: any) => c._direct_meta);
   const keywords = Array.isArray(data.keywords) ? data.keywords : [];
   const minusWords = Array.isArray(data.minus_words) ? data.minus_words : [];
 
@@ -151,13 +156,9 @@ const SiteCheckResult = () => {
 
           {issues.length > 0 && <FullReportView issues={issues} url={data.url} />}
 
-          {competitors.length > 0 && (
-            <CompetitorsTable
-              competitors={competitors}
-              userUrl={data.url}
-              userScores={scores}
-            />
-          )}
+          {competitors.length > 0 && <CompetitorsTable competitors={competitors} userUrl={data.url} />}
+          {comparisonTable && <ComparisonTable data={comparisonTable} />}
+          {directMeta && <DirectMeta data={directMeta} />}
 
           {keywords.length > 0 && <KeywordsSection keywords={keywords} />}
 
