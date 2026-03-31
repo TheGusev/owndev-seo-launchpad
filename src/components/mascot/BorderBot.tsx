@@ -3,8 +3,10 @@ import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 /* ─── SVG Robot ─────────────────────────────────────── */
-const BotSvg = memo(({ size, isWalking, step }: {
+const BotSvg = memo(({ size, isWalking, step, pupilL, pupilR, cursorNear }: {
   size: number; isWalking: boolean; step: number;
+  pupilL: { dx: number; dy: number }; pupilR: { dx: number; dy: number };
+  cursorNear: boolean;
 }) => {
   const [blink, setBlink] = useState(false);
 
@@ -28,27 +30,59 @@ const BotSvg = memo(({ size, isWalking, step }: {
   const h = size * 1.55;
 
   return (
-    <svg width={size} height={h} viewBox="0 0 36 56" fill="none">
+    <svg width={size} height={h} viewBox="0 0 36 56" fill="none" style={{ contain: "layout style" }}>
+      {/* Antenna */}
       <line x1="18" y1="6" x2="18" y2="0" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" />
       <circle cx="18" cy="0" r="2" fill="rgba(167,139,250,0.9)">
         <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" />
       </circle>
+
+      {/* Head */}
       <rect x="4" y="6" width="28" height="22" rx="6" fill="rgba(139,92,246,0.15)" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" />
+
+      {/* Cursor attention glow */}
+      {cursorNear && (
+        <rect x="3" y="5" width="30" height="24" rx="7" fill="none" stroke="rgba(139,92,246,0.3)" strokeWidth="2">
+          <animate attributeName="opacity" values="0.3;0.7;0.3" dur="1.5s" repeatCount="indefinite" />
+        </rect>
+      )}
+
+      {/* Left eye */}
       <g style={{ transform: blink ? "scaleY(0.1)" : "scaleY(1)", transformOrigin: "12px 17px", transition: "transform 0.08s" }}>
         <circle cx="12" cy="17" r="3.5" fill="rgba(167,139,250,0.9)" />
-        <circle cx="12" cy="17" r="1.5" fill="rgba(255,255,255,0.9)" />
+        <circle cx={12 + pupilL.dx} cy={17 + pupilL.dy} r="1.5" fill="rgba(255,255,255,0.9)" />
       </g>
+      {/* Right eye */}
       <g style={{ transform: blink ? "scaleY(0.1)" : "scaleY(1)", transformOrigin: "24px 17px", transition: "transform 0.08s" }}>
         <circle cx="24" cy="17" r="3.5" fill="rgba(167,139,250,0.9)" />
-        <circle cx="24" cy="17" r="1.5" fill="rgba(255,255,255,0.9)" />
+        <circle cx={24 + pupilR.dx} cy={17 + pupilR.dy} r="1.5" fill="rgba(255,255,255,0.9)" />
       </g>
+
+      {/* Body */}
       <rect x="6" y="29" width="24" height="16" rx="4" fill="rgba(139,92,246,0.1)" stroke="rgba(139,92,246,0.4)" strokeWidth="1.5" />
-      <rect x="13" y="33" width="10" height="2" rx="1" fill="rgba(167,139,250,0.5)">
-        <animate attributeName="width" values="10;6;10" dur="1.5s" repeatCount="indefinite" />
+
+      {/* Screen frame */}
+      <rect x="10" y="31" width="16" height="12" rx="2" fill="rgba(139,92,246,0.08)" stroke="rgba(139,92,246,0.3)" strokeWidth="0.5" />
+
+      {/* Screen bars — animated via SMIL */}
+      <rect x="12" y="33" rx="1" height="2" fill="rgba(167,139,250,0.6)">
+        <animate attributeName="width" values="12;6;12" dur="1.8s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.8s" repeatCount="indefinite" />
       </rect>
-      <rect x="13" y="36.5" width="7" height="2" rx="1" fill="rgba(167,139,250,0.35)" />
+      <rect x="12" y="36.5" rx="1" height="2" fill="rgba(167,139,250,0.45)">
+        <animate attributeName="width" values="8;14;8" dur="2.2s" begin="0.4s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.6;1;0.6" dur="2.2s" begin="0.4s" repeatCount="indefinite" />
+      </rect>
+      <rect x="12" y="40" rx="1" height="2" fill="rgba(167,139,250,0.3)">
+        <animate attributeName="width" values="10;5;10" dur="1.6s" begin="0.8s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.6s" begin="0.8s" repeatCount="indefinite" />
+      </rect>
+
+      {/* Legs */}
       <rect x="9" y={46 + legL} width="6" height="6" rx="2" fill="rgba(139,92,246,0.2)" stroke="rgba(139,92,246,0.4)" strokeWidth="1" />
       <rect x="21" y={46 + legR} width="6" height="6" rx="2" fill="rgba(139,92,246,0.2)" stroke="rgba(139,92,246,0.4)" strokeWidth="1" />
+
+      {/* Shadow */}
       <ellipse cx="18" cy="54" rx={isWalking ? 8 : 10} ry="2" fill="rgba(139,92,246,0.15)" />
     </svg>
   );
@@ -64,6 +98,8 @@ const PHRASES = [
   "50+ параметров анализа",
 ];
 
+const DETECTION_RADIUS = 120;
+
 /* ─── Main Component ────────────────────────────────── */
 const BorderBot = memo(() => {
   const location = useLocation();
@@ -72,14 +108,18 @@ const BorderBot = memo(() => {
   const [step, setStep] = useState(0);
   const [isWalking, setIsWalking] = useState(false);
   const [posX, setPosX] = useState(0);
-  const [direction, setDirection] = useState(1); // 1=right, -1=left
+  const [direction, setDirection] = useState(1);
   const [speech, setSpeech] = useState("");
   const [showSpeech, setShowSpeech] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [cursorNear, setCursorNear] = useState(false);
+  const [cursorAngle, setCursorAngle] = useState<number | null>(null);
 
   const clickCount = useRef(0);
   const clickTimer = useRef<ReturnType<typeof setTimeout>>();
   const animFrameRef = useRef<number>();
+  const robotRef = useRef<HTMLDivElement>(null);
+  const hasGreetedCursor = useRef(false);
 
   const shouldHide = hidden || location.pathname.includes("/result/") || location.pathname.includes("/report/");
 
@@ -88,6 +128,44 @@ const BorderBot = memo(() => {
     const t = setTimeout(() => setMounted(true), 2000);
     return () => clearTimeout(t);
   }, []);
+
+  // Cursor tracking (desktop only)
+  useEffect(() => {
+    if (isMobile || shouldHide || !mounted) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!robotRef.current) return;
+      const rect = robotRef.current.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < DETECTION_RADIUS) {
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        setCursorAngle(angle);
+        setCursorNear(true);
+      } else {
+        setCursorAngle(null);
+        setCursorNear(false);
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [isMobile, shouldHide, mounted]);
+
+  // Greet on first cursor proximity
+  useEffect(() => {
+    if (cursorNear && !hasGreetedCursor.current) {
+      hasGreetedCursor.current = true;
+      setSpeech("👀");
+      setShowSpeech(true);
+      setTimeout(() => setShowSpeech(false), 2000);
+      setTimeout(() => { hasGreetedCursor.current = false; }, 30000);
+    }
+  }, [cursorNear]);
 
   // Walking animation along bottom edge
   useEffect(() => {
@@ -101,22 +179,19 @@ const BorderBot = memo(() => {
       stepTimer = setInterval(() => setStep(s => s + 1), 250);
 
       const maxX = window.innerWidth - 60;
-      const speed = 0.5; // px per frame
+      const speed = 0.5;
       let currentX = 0;
       let dir = 1;
 
       const tick = () => {
         if (cancelled) return;
         currentX += speed * dir;
-
         if (currentX >= maxX) { dir = -1; setDirection(-1); }
         if (currentX <= 0) { dir = 1; setDirection(1); }
-
         setPosX(currentX);
         animFrameRef.current = requestAnimationFrame(tick);
       };
 
-      // Random pauses
       const pauseLoop = () => {
         if (cancelled) return;
         const delay = 5000 + Math.random() * 8000;
@@ -125,7 +200,6 @@ const BorderBot = memo(() => {
           setIsWalking(false);
           if (stepTimer) clearInterval(stepTimer);
 
-          // Show speech during pause
           const phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
           setSpeech(phrase);
           setShowSpeech(true);
@@ -165,7 +239,6 @@ const BorderBot = memo(() => {
     }
     clickTimer.current = setTimeout(() => { clickCount.current = 0; }, 500);
 
-    // Single click: show speech
     if (clickCount.current === 1) {
       setSpeech("Кликните 3 раза чтобы скрыть меня!");
       setShowSpeech(true);
@@ -173,20 +246,25 @@ const BorderBot = memo(() => {
     }
   }, []);
 
+  // Pupil offset calculation
+  const getPupilOffset = (eyeSide: "left" | "right") => {
+    if (cursorAngle === null || !cursorNear) return { dx: 0, dy: 0 };
+    const MAX_OFFSET = 1.2;
+    const baseAngle = eyeSide === "right" ? cursorAngle - 5 : cursorAngle + 5;
+    const rad = baseAngle * (Math.PI / 180);
+    return { dx: Math.cos(rad) * MAX_OFFSET, dy: Math.sin(rad) * MAX_OFFSET };
+  };
+
   if (shouldHide || !mounted) return null;
 
   const botSize = isMobile ? 28 : 36;
+  const pupilL = getPupilOffset("left");
+  const pupilR = getPupilOffset("right");
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        zIndex: 9999,
-        pointerEvents: "none",
-        inset: 0,
-      }}
-    >
+    <div style={{ position: "fixed", zIndex: 9999, pointerEvents: "none", inset: 0 }}>
       <div
+        ref={robotRef}
         onClick={handleTripleClick}
         style={{
           position: "absolute",
@@ -194,7 +272,7 @@ const BorderBot = memo(() => {
           left: posX + 16,
           pointerEvents: "auto",
           cursor: "pointer",
-          transform: direction === -1 ? "scaleX(-1)" : "scaleX(1)",
+          transform: `scaleX(${direction === -1 ? -1 : 1}) translateZ(0)`,
           transition: "transform 0.3s",
           willChange: "left",
         }}
@@ -225,12 +303,15 @@ const BorderBot = memo(() => {
           </div>
         )}
 
-        <div
-          style={{
-            animation: isWalking ? "botSway 0.4s ease-in-out infinite alternate" : "none",
-          }}
-        >
-          <BotSvg size={botSize} isWalking={isWalking} step={step} />
+        <div style={{ animation: isWalking && !cursorNear ? "botSway 0.4s ease-in-out infinite alternate" : "none" }}>
+          <BotSvg
+            size={botSize}
+            isWalking={isWalking && !cursorNear}
+            step={step}
+            pupilL={pupilL}
+            pupilR={pupilR}
+            cursorNear={cursorNear}
+          />
         </div>
       </div>
 

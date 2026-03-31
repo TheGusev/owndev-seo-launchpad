@@ -576,6 +576,7 @@ function contentAudit(html: string, theme: string): Issue[] {
       why_it_matters: 'Title — один из главных факторов ранжирования. Без него страница не получит релевантный сниппет в выдаче',
       how_to_fix: 'Добавьте уникальный title длиной 50-70 символов с основным ключевым словом',
       example_fix: `<title>${theme} — заказать в Москве | Бренд</title>`,
+      impact_score: 15, docs_url: 'https://yandex.ru/support/webmaster/recommendations/title-description.html',
       visible_in_preview: true }));
   } else {
     if (title.length < 50) {
@@ -699,9 +700,10 @@ function contentAudit(html: string, theme: string): Issue[] {
     issues.push(makeIssue({ module: 'content', severity: 'medium',
       title: `Мало текста (${wordCount} слов, минимум 300)`,
       found: `Всего ${wordCount} слов полезного контента на странице`, location: 'Текстовый контент <body>',
-      why_it_matters: '«Тонкие» страницы с малым объёмом текста хуже ранжируются — поисковик считает их неинформативными',
-      how_to_fix: 'Добавьте полезный контент: описание услуг, FAQ, инструкции, кейсы',
-      example_fix: 'Оптимальный объём: 500-1500 слов для коммерческих, 1000-3000 для информационных',
+      why_it_matters: '«Тонкие» страницы с малым объёмом текста хуже ранжируются — поисковик считает их неинформативными. Нейросети предпочитают подробные страницы как источник ответов',
+      how_to_fix: '1. Расширьте основной текст страницы\n2. Добавьте раздел FAQ с 5-7 вопросами\n3. Добавьте блок преимуществ\n4. Целевой объём: 800-1500 слов для коммерческой страницы',
+      example_fix: 'Структура коммерческой страницы:\nH1: Ключевой запрос\nH2: Описание услуги\nH2: Преимущества (3-5 пунктов)\nH2: Этапы работы\nH2: Стоимость\nH2: FAQ (5 вопросов)',
+      impact_score: 10, docs_url: 'https://yandex.ru/support/webmaster/recommendations/content-quality.html',
       visible_in_preview: false }));
   }
 
@@ -711,9 +713,10 @@ function contentAudit(html: string, theme: string): Issue[] {
     issues.push(makeIssue({ module: 'content', severity: 'low',
       title: 'Нет подзаголовков H2',
       found: '<h2> не найдено на странице', location: 'Контент страницы',
-      why_it_matters: 'H2-заголовки структурируют контент и помогают поисковикам понять разделы страницы',
-      how_to_fix: 'Разбейте контент на смысловые блоки с H2-подзаголовками',
+      why_it_matters: 'H2-заголовки структурируют контент для поисковиков и пользователей. Страницы без H2 хуже ранжируются по средне- и низкочастотным запросам, а нейросети не могут извлечь структурированные факты',
+      how_to_fix: '1. Разбейте текст на логические разделы\n2. Каждый раздел оберните в тег H2\n3. Добавьте ключевые слова в H2 естественно\n4. Рекомендуемое количество H2: 3-8 на странице',
       example_fix: `<h2>Что входит в ${theme.toLowerCase()}</h2>\n<h2>Стоимость ${theme.toLowerCase()}</h2>`,
+      impact_score: 7, docs_url: 'https://yandex.ru/support/webmaster/recommendations/h1.html',
       visible_in_preview: false }));
   }
 
@@ -802,6 +805,7 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       why_it_matters: 'Автотаргетинг Яндекс.Директа читает H1 для подбора аудитории. Общий H1 («Услуги», «Главная») приводит к показам по нерелевантным запросам и сливу бюджета',
       how_to_fix: 'Замените общий H1 на конкретное название услуги, товара или ниши',
       example_fix: `Было: <h1>${h1}</h1>\nСтало: <h1>${theme} — профессиональные услуги в Москве</h1>`,
+      impact_score: 11, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: true,
     }));
   }
@@ -890,8 +894,9 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       found: `Отсутствуют: ${missingSignals.join(', ')}`,
       location: 'Контент страницы',
       why_it_matters: 'Без цен, CTA и условий посетители из Директа не конвертируются. Яндекс также учитывает коммерческие факторы при ранжировании рекламных посадочных',
-      how_to_fix: 'Добавьте блок с ценами, заметную кнопку CTA и условия работы (доставка, гарантия)',
+      how_to_fix: '1. Добавьте блок с ценами/прайс-листом\n2. Добавьте заметную кнопку CTA\n3. Укажите условия работы (доставка, гарантия, оплата)',
       example_fix: `<section>\n  <h2>Стоимость ${theme.toLowerCase()}</h2>\n  <p>от 5 000 ₽</p>\n  <button>Заказать бесплатную консультацию</button>\n  <p>Доставка по Москве — бесплатно</p>\n</section>`,
+      impact_score: 9, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: false,
     }));
   } else if (!hasCta) {
@@ -901,8 +906,9 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       found: 'Не найдены кнопки заказа, формы или призывы к действию',
       location: 'Контент страницы',
       why_it_matters: 'Без CTA посетители из Директа уходят, не совершив целевое действие — деньги на рекламу потрачены впустую',
-      how_to_fix: 'Добавьте заметную кнопку CTA выше первого экрана и повторите в конце страницы',
+      how_to_fix: '1. Добавьте заметную кнопку CTA выше первого экрана\n2. Повторите CTA в конце страницы\n3. Добавьте форму заявки с 2-3 полями',
       example_fix: `<button>Заказать ${theme.toLowerCase()}</button>`,
+      impact_score: 11, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: true,
     }));
   }
@@ -1058,9 +1064,10 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
       title: '🤖 Нет FAQPage Schema для AI-видимости',
       found: `Schema типы: ${schemaTypes.length > 0 ? schemaTypes.join(', ') : 'нет'}`,
       location: 'JSON-LD разметка',
-      why_it_matters: 'FAQPage Schema — ключевой сигнал для AI-систем. Вопрос-ответ формат цитируется в AI Overviews в 3 раза чаще',
-      how_to_fix: 'Добавьте JSON-LD с типом FAQPage на страницы с вопросами',
+      why_it_matters: 'FAQPage Schema — ключевой сигнал для AI-систем. Вопрос-ответ формат цитируется в AI Overviews в 3 раза чаще. FAQ-блоки — главный источник контента для AI-ответов',
+      how_to_fix: '1. Добавьте раздел FAQ на страницу с 5-7 вопросами\n2. Добавьте JSON-LD с типом FAQPage\n3. Вопросы должны отражать реальные запросы пользователей',
       example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Ваш вопрос?","acceptedAnswer":{"@type":"Answer","text":"Ответ"}}]}</script>',
+      impact_score: 10, docs_url: 'https://developers.google.com/search/docs/appearance/structured-data/faqpage',
       visible_in_preview: true }));
   }
 
@@ -1095,8 +1102,9 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
       found: 'Не найдены: блок об авторе, дата публикации',
       location: 'Контент страницы',
       why_it_matters: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trust) — ключевой фактор для AI-систем при выборе источника для цитирования. Без автора и даты контент выглядит анонимным и ненадёжным',
-      how_to_fix: 'Добавьте блок об авторе с именем и экспертизой, укажите дату публикации через <time datetime="...">',
+      how_to_fix: '1. Добавьте блок об авторе с именем и экспертизой\n2. Укажите дату публикации через <time datetime="...">\n3. Добавьте Schema Person для автора\n4. Добавьте страницу автора на сайте',
       example_fix: '<div class="author">\n  <img src="author.jpg" alt="Имя Автора">\n  <p>Автор: <strong>Имя Автора</strong>, SEO-эксперт с 10-летним опытом</p>\n</div>\n<time datetime="2025-01-01">1 января 2025</time>',
+      impact_score: 8, docs_url: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
       visible_in_preview: true }));
   } else if (!hasAuthor) {
     issues.push(makeIssue({ module: 'ai', severity: 'medium',
@@ -1127,9 +1135,10 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
     issues.push(makeIssue({ module: 'ai', severity: 'high', title: 'H2 не в формате вопросов',
       found: `${h2Texts.length} заголовков H2, ни один не является вопросом`,
       location: '<h2> заголовки',
-      why_it_matters: 'LLM-системы (ChatGPT, Perplexity) чаще цитируют контент в формате Q&A',
-      how_to_fix: 'Переформулируйте H2 в вопросы целевой аудитории',
+      why_it_matters: 'LLM-системы (ChatGPT, Perplexity) чаще цитируют контент в формате Q&A. Страницы с вопросами-ответами получают в 3-4 раза больше AI-упоминаний',
+      how_to_fix: '1. Переформулируйте H2 в вопросы целевой аудитории\n2. Под каждым H2-вопросом давайте конкретный ответ\n3. Начинайте H2 с «Как», «Что», «Почему», «Сколько»',
       example_fix: `Было: <h2>Наши услуги</h2>\nСтало: <h2>Какие SEO-услуги мы предоставляем?</h2>`,
+      impact_score: 8, docs_url: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
       visible_in_preview: true }));
   }
   
@@ -1137,9 +1146,10 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
   if (!hasFaq) {
     issues.push(makeIssue({ module: 'ai', severity: 'medium', title: 'Нет FAQ-блока',
       found: 'Не найден раздел FAQ или часто задаваемых вопросов', location: 'Контент',
-      why_it_matters: 'FAQ-блоки — основной источник цитирования для AI-поисковиков',
-      how_to_fix: 'Добавьте секцию FAQ с 5-10 вопросами целевой аудитории',
+      why_it_matters: 'FAQ-блоки — основной источник цитирования для AI-поисковиков. Нейросети активно используют вопросы и ответы с сайтов. FAQPage разметка даёт расширенные сниппеты (+20-30% CTR)',
+      how_to_fix: '1. Добавьте секцию FAQ с 5-10 вопросами\n2. Ответы: 50-150 слов каждый\n3. Вопросы должны отражать реальные запросы',
       example_fix: '<h2>Часто задаваемые вопросы</h2>\n<h3>Сколько стоит SEO?</h3>\n<p>Стоимость зависит от...</p>',
+      impact_score: 10, docs_url: 'https://developers.google.com/search/docs/appearance/structured-data/faqpage',
       visible_in_preview: false }));
   }
   
@@ -2023,7 +2033,15 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     }
   }
 
-  let allIssues = [...allHardcodedIssues];
+  // Validate and enrich all issues with fallbacks
+  let allIssues = [...allHardcodedIssues].map(issue => ({
+    ...issue,
+    impact_score: issue.impact_score || (issue.severity === 'critical' ? 15 : issue.severity === 'high' ? 10 : issue.severity === 'medium' ? 5 : 2),
+    docs_url: issue.docs_url || 'https://yandex.ru/support/webmaster/',
+    why_it_matters: issue.why_it_matters || issue.found || '',
+    how_to_fix: issue.how_to_fix || 'Обратитесь к SEO-специалисту для исправления.',
+    example_fix: issue.example_fix || '',
+  }));
   
   // Site-mode: crawl (max 100 pages)
   let crawledPages: { url: string; html: string; status: number }[] = [];

@@ -10,6 +10,7 @@ import { ClickRipple } from "@/components/ui/click-ripple";
 import HowItWorks from "@/components/landing/HowItWorks";
 import ReportValue from "@/components/landing/ReportValue";
 import ComparisonSection from "@/components/landing/ComparisonSection";
+import Testimonials from "@/components/landing/Testimonials";
 
 const FAQ = lazy(() => import("@/components/FAQ"));
 const ContactForm = lazy(() => import("@/components/ContactForm"));
@@ -74,6 +75,7 @@ const Index = () => {
         <Hero />
         <ServicesTeaser />
         <HowItWorks />
+        <Testimonials />
         <ReportValue />
         <ToolsShowcase />
         <ComparisonSection />
