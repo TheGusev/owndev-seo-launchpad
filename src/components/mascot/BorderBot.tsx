@@ -183,7 +183,7 @@ const BorderBot = memo(() => {
     if (clickTimer.current) clearTimeout(clickTimer.current);
     if (clickCount.current >= 3) {
       clickCount.current = 0;
-      localStorage.setItem("hideBot", "true");
+      localStorage.setItem("owndev_bot_hidden", "true");
       setHidden(true);
       return;
     }
