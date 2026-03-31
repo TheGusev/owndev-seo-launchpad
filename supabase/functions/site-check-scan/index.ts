@@ -713,9 +713,10 @@ function contentAudit(html: string, theme: string): Issue[] {
     issues.push(makeIssue({ module: 'content', severity: 'low',
       title: 'Нет подзаголовков H2',
       found: '<h2> не найдено на странице', location: 'Контент страницы',
-      why_it_matters: 'H2-заголовки структурируют контент и помогают поисковикам понять разделы страницы',
-      how_to_fix: 'Разбейте контент на смысловые блоки с H2-подзаголовками',
+      why_it_matters: 'H2-заголовки структурируют контент для поисковиков и пользователей. Страницы без H2 хуже ранжируются по средне- и низкочастотным запросам, а нейросети не могут извлечь структурированные факты',
+      how_to_fix: '1. Разбейте текст на логические разделы\n2. Каждый раздел оберните в тег H2\n3. Добавьте ключевые слова в H2 естественно\n4. Рекомендуемое количество H2: 3-8 на странице',
       example_fix: `<h2>Что входит в ${theme.toLowerCase()}</h2>\n<h2>Стоимость ${theme.toLowerCase()}</h2>`,
+      impact_score: 7, docs_url: 'https://yandex.ru/support/webmaster/recommendations/h1.html',
       visible_in_preview: false }));
   }
 
