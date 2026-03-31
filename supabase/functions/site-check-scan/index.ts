@@ -365,9 +365,10 @@ function technicalAudit(input: TechAuditInput): Issue[] {
     issues.push(makeIssue({ module: 'technical', severity: 'high',
       title: 'Отсутствует <link rel="canonical">',
       found: 'Canonical не указан', location: '<head>',
-      why_it_matters: 'Без canonical могут возникнуть дубли в индексе (www/non-www, параметры, trailing slash)',
-      how_to_fix: 'Добавьте canonical, указывающий на предпочтительный URL',
+      why_it_matters: 'Без canonical могут возникнуть дубли в индексе (www/non-www, параметры, trailing slash). Это размывает ссылочный вес и позиции',
+      how_to_fix: '1. Добавьте в <head> страницы тег canonical\n2. URL должен быть абсолютным (с https://)\n3. Используйте один формат URL на всём сайте',
       example_fix: `<link rel="canonical" href="${pageUrl}" />`,
+      impact_score: 5, docs_url: 'https://yandex.ru/support/webmaster/robot-workings/canonical.html',
       visible_in_preview: false }));
   } else {
     const norm = (u: string) => u.replace(/\/+$/, '').replace(/^https?:\/\/(www\.)?/, '');
