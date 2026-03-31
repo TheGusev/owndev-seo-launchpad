@@ -1,69 +1,55 @@
 
 
-## Стабилизация LLM в site-check-scan
+## Профессиональные PDF и Word экспорты для Site Check
 
-### Обзор LLM-вызовов (5 шт)
+### Обзор
 
-| # | Шаг | Строка | Текущая модель | Новая модель |
-|---|------|--------|---------------|-------------|
-| 1 | `detectTheme` | 198 | `gemini-3-flash-preview` | `google/gemini-2.0-flash` |
-| 2 | Competitor: search queries | 1228 | `gemini-3-flash-preview` | `google/gemini-2.0-flash` |
-| 3 | Competitor: URLs | 1251 | `gemini-2.5-pro` | `google/gemini-2.5-pro` (без изменений) |
-| 4 | `extractKeywords` (×3 batch) | 1471 | `gemini-2.5-pro` | `google/gemini-2.5-pro` (без изменений) |
-| 5 | `generateMinusWords` | 1531 | `gemini-2.5-flash` | `google/gemini-2.5-flash` (без изменений) |
+Создаём 3 новых файла и обновляем 1. Устанавливаем 4 npm-зависимости. Заменяем текущий `window.print()` и текстовый отчёт на полноценные брендированные PDF (jsPDF) и DOCX (docx) генераторы.
 
-### Изменения (1 файл: `supabase/functions/site-check-scan/index.ts`)
+### Зависимости
 
-#### A. Модели и параметры генерации
+`jspdf`, `jspdf-autotable`, `docx`, `file-saver`, `@types/file-saver`
 
-- Вызовы 1, 2: сменить модель на `google/gemini-2.0-flash`
-- Ко всем 5 вызовам добавить: `temperature: 0.1, top_p: 0.85, top_k: 20, max_tokens: 8192` (для keywords оставить `max_tokens: 16000`)
-- В конец каждого system prompt добавить: `"ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без ```json, только сам JSON."`
+### Новые файлы
 
-#### B. Единый JSON-парсер
+#### 1. `src/lib/reportHelpers.ts`
+Общие утилиты: цветовая палитра OWNDEV, `getSeverityColor/Label`, `getCategoryLabel`, `getScoreStatus`, `calcPotentialGain`, `formatDate`, `truncate`, интерфейс `ReportData`.
 
-Заменить `tryParseJsonArray` (строки 47-66) на `safeParseJson<T>(raw, fallback)`:
-- Очистка: убрать ````json`, control chars
-- Извлечение: regex для `[...]` и `{...}`
-- Fallback: truncated array recovery
-- Логирование ошибок
+#### 2. `src/lib/generatePdfReport.ts`
+Полный PDF через jsPDF + autoTable. Страницы:
+- Титульный лист (OWNDEV, URL, 5 карточек оценок)
+- Технический паспорт (autoTable ~16 строк)
+- План исправления (каждая ошибка с why_important / how_to_fix / example)
+- Анализ конкурентов (summary cards + autoTable + инсайты)
+- Семантическое ядро (топ-100 ключей, autoTable)
+- Минус-слова по категориям
+- Приоритетный план действий (топ-10)
 
-Заменить все вызовы `tryParseJsonArray(...)` → `safeParseJson(...)`:
-- Строка 1479 (keywords)
-- Строка 1541 (minus words)
-- Строки 1238, 1261 (competitor queries/urls — inline `JSON.parse` → `safeParseJson`)
+Тёмная тема, фиолетовый акцент, колонтитулы на каждой странице.
 
-#### C. Строгие промпты
+#### 3. `src/lib/generateWordReport.ts`
+DOCX через `docx` библиотеку. Та же структура, адаптированная под Word: styled tables, severity-coded borders, code blocks в Courier New, header/footer с OWNDEV и номером страницы. Сохранение через `file-saver`.
 
-1. **extractKeywords** (строка 1454): полная замена system prompt на схему из ТЗ — 150 запросов, кластеры ≤7, поля `phrase/cluster/intent/frequency/landing_needed`
-2. **generateMinusWords** (строка 1533): замена на схему из ТЗ — 50-80 слов, поля `word/category/reason`
-3. **detectTheme**: оставить как есть (простая классификация)
-4. **Competitor queries/URLs**: добавить суффикс про JSON
+### Обновление `src/components/site-check/DownloadButtons.tsx`
 
-#### D. Логирование
+- Расширить props: добавить `scanDate`, `seoData`, `comparisonTable`, `directMeta`
+- Импортировать `generatePdfReport` и `generateWordReport`
+- Собирать `ReportData` из props
+- 4 кнопки: PDF, Word, CSV (ключи), TXT (минус-слова)
+- Состояния загрузки `isGeneratingPdf` / `isGeneratingWord`
+- Toast уведомления при генерации
 
-Перед каждым `fetch` к AI Gateway:
-```
-console.log(`[OWNDEV] Шаг: ${stepName} | Модель: ${model} | URL: ${url}`);
-```
-После получения raw response:
-```
-console.log(`[OWNDEV] Ответ ${stepName}:`, rawContent.slice(0, 200));
-```
-После парсинга:
-```
-console.log(`[OWNDEV] Распарсено ${stepName}: ${Array.isArray(r) ? r.length + ' элементов' : 'объект'}`);
-```
+### Обновление `src/pages/SiteCheckResult.tsx`
 
-#### Замечание по схемам данных
+Прокинуть дополнительные props в `<DownloadButtons>`: `scanDate={data.created_at}`, `seoData={data.seo_data}`, `comparisonTable`, `directMeta`.
 
-Промпт keywords меняет формат с `type/priority/use_for_seo/use_for_direct/landing_needed(string)` на `cluster/intent/frequency/landing_needed(bool)`. Интерфейс `KeywordEntry` (строка 1424) будет обновлён соответственно. UI-компонент `KeywordsSection.tsx` уже поддерживает `cluster` и `intent` — поля `frequency` и `landing_needed` будут доступны в данных, но рендер не меняется (задача — только стабилизация бэкенда).
+### Файлы (5)
 
-Промпт minus words меняет `type: general|thematic` на `category: informational|irrelevant|competitor|geo|other`. Интерфейс `MinusWordEntry` обновится. Hardcoded `GENERAL_MINUS_WORDS` массив получит поле `category` вместо `type`.
-
-### Файлы
-
-| Файл | Изменение |
-|------|-----------|
-| `supabase/functions/site-check-scan/index.ts` | Модели, параметры, safeParseJson, промпты, логирование |
+| Файл | Действие |
+|------|----------|
+| `src/lib/reportHelpers.ts` | Новый — утилиты |
+| `src/lib/generatePdfReport.ts` | Новый — PDF генератор |
+| `src/lib/generateWordReport.ts` | Новый — Word генератор |
+| `src/components/site-check/DownloadButtons.tsx` | Обновить — новые кнопки |
+| `src/pages/SiteCheckResult.tsx` | Обновить — прокинуть props |
 
