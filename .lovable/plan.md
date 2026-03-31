@@ -1,61 +1,60 @@
 
 
-## Анимированный SVG-маскот BorderBot
+## Починка BorderBot — видимость и надёжность
 
-### Новый файл: `src/components/mascot/BorderBot.tsx`
+### Диагноз
 
-Один самодостаточный компонент (~400 строк), обёрнутый в `React.memo`:
+Код структурно корректен, ошибок нет, подключение в App.tsx на месте. Вероятные причины невидимости:
 
-**SVG робот (`BotSvg`):**
-- 36x44px, glassmorphism purple стиль
-- Голова (rect r=6, fill rgba(139,92,246,0.15), stroke 0.6)
-- Антенна с пульсирующим кружком
-- Глаза с зрачками, которые смещаются по направлению движения
-- Моргание: случайный интервал 3-5сек, scaleY 1→0.1→1
-- Тело с экранчиком (3 полоски-loading bars)
-- Ноги с анимацией ходьбы (попеременный translateY)
+1. **Начальная позиция `x:0, y:0`** — `controls.set()` вызывается в `useEffect`, но до этого Framer Motion рендерит div в `(0,0)` без `initial` prop — бот может быть за пределами видимой области или в углу под шапкой
+2. **`isMobile` стартует как `undefined` → `false`** — `useIsMobile()` возвращает `!!undefined = false` на первом рендере, потом меняется — effect перезапускается, `abortRef` сбрасывается, но позиция может не обновиться
+3. **`sleep` не проверяет abort корректно** — проверка `abortRef.current` происходит синхронно до `setTimeout`, а не после
+4. **localStorage ключ `hideBot`** — пользователь мог случайно тройным кликом скрыть бота, и теперь он не виден
 
-**State machine через `useReducer`:**
-```
-walking → stopping → looking | thinking → walking
-```
-- `walking`: движение вдоль текущей стороны, покачивание тела, шаги ног
-- `looking`: зрачки смотрят лево→право→верх, 2-4 сек
-- `thinking`: быстрое мигание антенны, "..." над головой
-- Углы: пауза 0.5сек + смена `facing`
+### Изменения (1 файл)
 
-**Маршрут по границам экрана:**
-- bottom → right → top → left → bottom (замкнутый цикл)
-- Framer Motion `animate` для перемещения, duration от distance/speed
-- Скорость 80-120px/сек (рандом)
-- 30% шанс остановки посередине стороны
-- На мобильных (< 768px): только bottom
+#### `src/components/mascot/BorderBot.tsx`
 
-**Доп. детали:**
-- Тень-эллипс под ногами (blur, purple/20)
-- Hover: при курсоре < 80px — бот смотрит на курсор (pointer-events на wrapper)
-- Тройной клик → бот уходит за экран, `localStorage.setItem('hideBot', 'true')`
-- `will-change: transform` для 60fps
+1. **Добавить `console.log('[BorderBot] mounted, shouldHide:', shouldHide)`** — для отладки
 
-**Скрытие:**
-- `localStorage.getItem('hideBot')` → не рендерить
-- `location.pathname.includes('/result/')` → не рендерить
-
-### Изменение: `src/App.tsx`
-
-Добавить `<BorderBot />` после `<CookieBanner />` внутри `<BrowserRouter>`:
-
+2. **Добавить `initial` prop** на `motion.div`:
 ```tsx
-import BorderBot from '@/components/mascot/BorderBot';
-// ...
-<CookieBanner />
-<BorderBot />
+initial={{ x: getPos("bottom", 0, false).x, y: getPos("bottom", 0, false).y }}
 ```
+Это гарантирует что бот виден сразу, а не ждёт effect
+
+3. **Расширить `shouldHide`** — добавить `/report/`:
+```tsx
+const shouldHide = hidden || location.pathname.includes("/result/") || location.pathname.includes("/report/");
+```
+
+4. **Сменить localStorage ключ** на `owndev_bot_hidden` (как в ТЗ):
+```tsx
+localStorage.getItem("owndev_bot_hidden")
+localStorage.setItem("owndev_bot_hidden", "true")
+```
+
+5. **Исправить `sleep`** — abort должен проверяться внутри промиса:
+```tsx
+const sleep = (ms: number) => new Promise<void>((res) => {
+  const t = setTimeout(() => res(), ms);
+  const check = setInterval(() => {
+    if (abortRef.current) { clearTimeout(t); clearInterval(check); res(); }
+  }, 100);
+});
+```
+
+6. **Защита от SSR/initial render** — дождаться `isMobile !== undefined`:
+```tsx
+// В useEffect: если isMobile ещё undefined, не запускать loop
+```
+Но `useIsMobile` уже возвращает `boolean`, так что достаточно добавить `initial` prop.
+
+7. **Минимизация анимаций** — убрать SVG `<animate>` на экранчике (3 полоски) и тени, оставить только движение + моргание. Добавить их обратно позже если FPS ок.
 
 ### Файлы
 
-| Файл | Действие |
-|------|----------|
-| `src/components/mascot/BorderBot.tsx` | Новый — маскот |
-| `src/App.tsx` | Добавить import + компонент |
+| Файл | Изменение |
+|------|-----------|
+| `src/components/mascot/BorderBot.tsx` | initial prop, localStorage ключ, sleep fix, console.log, /report/ hide, упрощение анимаций |
 
