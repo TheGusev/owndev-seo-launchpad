@@ -159,7 +159,7 @@ const BorderBot = memo(() => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const controls = useAnimationControls();
-  const [hidden, setHidden] = useState(() => localStorage.getItem("hideBot") === "true");
+  const [hidden, setHidden] = useState(() => localStorage.getItem("owndev_bot_hidden") === "true");
   const [step, setStep] = useState(0);
   const [state, dispatch] = useReducer(reducer, {
     botState: "walking", side: "bottom", facing: "right", progress: 0,
@@ -172,14 +172,18 @@ const BorderBot = memo(() => {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const shouldHide = hidden || location.pathname.includes("/result/");
+  const shouldHide = hidden || location.pathname.includes("/result/") || location.pathname.includes("/report/");
+
+  useEffect(() => {
+    console.log('[BorderBot] mounted, shouldHide:', shouldHide);
+  }, [shouldHide]);
 
   const handleTripleClick = useCallback(() => {
     clickCount.current++;
     if (clickTimer.current) clearTimeout(clickTimer.current);
     if (clickCount.current >= 3) {
       clickCount.current = 0;
-      localStorage.setItem("hideBot", "true");
+      localStorage.setItem("owndev_bot_hidden", "true");
       setHidden(true);
       return;
     }
@@ -194,9 +198,10 @@ const BorderBot = memo(() => {
     controls.set({ x: initPos.x, y: initPos.y });
 
     const sleep = (ms: number) => new Promise<void>((res) => {
-      const t = setTimeout(res, ms);
-      // check abort after timeout
-      if (abortRef.current) { clearTimeout(t); res(); }
+      const t = setTimeout(() => { clearInterval(check); res(); }, ms);
+      const check = setInterval(() => {
+        if (abortRef.current) { clearTimeout(t); clearInterval(check); res(); }
+      }, 100);
     });
 
     let stepInterval: ReturnType<typeof setInterval> | null = null;
@@ -281,6 +286,7 @@ const BorderBot = memo(() => {
 
   return (
     <motion.div
+      initial={{ x: getPos("bottom", 0, false).x, y: getPos("bottom", 0, false).y }}
       animate={controls}
       onClick={handleTripleClick}
       style={{
