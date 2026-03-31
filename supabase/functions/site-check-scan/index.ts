@@ -90,11 +90,19 @@ interface Issue {
   id: string; module: string; severity: string; title: string;
   found: string; location: string; why_it_matters: string;
   how_to_fix: string; example_fix: string; visible_in_preview: boolean;
+  impact_score: number; docs_url: string; is_auto_fixable: boolean;
 }
 
 let issueCounter = 0;
-function makeIssue(partial: Omit<Issue, 'id'>): Issue {
-  return { id: `issue_${++issueCounter}`, ...partial };
+function makeIssue(partial: Omit<Issue, 'id' | 'impact_score' | 'docs_url' | 'is_auto_fixable'> & { impact_score?: number; docs_url?: string; is_auto_fixable?: boolean }): Issue {
+  const severityScores: Record<string, number> = { critical: 15, high: 10, medium: 5, low: 2 };
+  return {
+    id: `issue_${++issueCounter}`,
+    impact_score: partial.impact_score ?? severityScores[partial.severity] ?? 5,
+    docs_url: partial.docs_url ?? '',
+    is_auto_fixable: partial.is_auto_fixable ?? false,
+    ...partial,
+  };
 }
 
 // ─── DB Rule type ───
@@ -296,9 +304,10 @@ function technicalAudit(input: TechAuditInput): Issue[] {
       issues.push(makeIssue({ module: 'technical', severity: 'critical',
         title: 'Страница закрыта от индексации в robots.txt',
         found: `Путь "${currentPath}" попадает под Disallow`, location: '/robots.txt',
-        why_it_matters: 'Закрытая в robots.txt страница не будет проиндексирована поисковиками',
-        how_to_fix: 'Удалите или скорректируйте Disallow-директиву для этого URL',
-        example_fix: `# Удалите строку:\n# Disallow: ${currentPath}`,
+        why_it_matters: 'Закрытая в robots.txt страница полностью исчезает из поиска Яндекс и Google. Это самая критическая SEO-ошибка — трафик станет нулевым',
+        how_to_fix: '1. Откройте файл /robots.txt в корне сайта\n2. Найдите строку Disallow, блокирующую путь\n3. Удалите или скорректируйте эту строку\n4. Проверьте через Яндекс.Вебмастер → Инструменты → Проверка robots.txt',
+        example_fix: `User-agent: *\nDisallow: /admin/\nDisallow: /cart/\nAllow: /\nSitemap: ${origin}/sitemap.xml`,
+        impact_score: 20, docs_url: 'https://yandex.ru/support/webmaster/controlling-robot/robots-txt.html',
         visible_in_preview: true }));
     }
     // 3b. Sitemap directive in robots.txt
@@ -356,9 +365,10 @@ function technicalAudit(input: TechAuditInput): Issue[] {
     issues.push(makeIssue({ module: 'technical', severity: 'high',
       title: 'Отсутствует <link rel="canonical">',
       found: 'Canonical не указан', location: '<head>',
-      why_it_matters: 'Без canonical могут возникнуть дубли в индексе (www/non-www, параметры, trailing slash)',
-      how_to_fix: 'Добавьте canonical, указывающий на предпочтительный URL',
+      why_it_matters: 'Без canonical могут возникнуть дубли в индексе (www/non-www, параметры, trailing slash). Это размывает ссылочный вес и позиции',
+      how_to_fix: '1. Добавьте в <head> страницы тег canonical\n2. URL должен быть абсолютным (с https://)\n3. Используйте один формат URL на всём сайте',
       example_fix: `<link rel="canonical" href="${pageUrl}" />`,
+      impact_score: 5, docs_url: 'https://yandex.ru/support/webmaster/robot-workings/canonical.html',
       visible_in_preview: false }));
   } else {
     const norm = (u: string) => u.replace(/\/+$/, '').replace(/^https?:\/\/(www\.)?/, '');
@@ -956,9 +966,10 @@ function schemaAudit(html: string): Issue[] {
   if (jsonLdMatches.length === 0) {
     issues.push(makeIssue({ module: 'schema', severity: 'high', title: 'Нет Schema.org разметки',
       found: 'JSON-LD не найден на странице', location: 'Вся страница',
-      why_it_matters: 'Без Schema.org страница не получит расширенные сниппеты в поиске',
-      how_to_fix: 'Добавьте JSON-LD разметку Organization, WebPage или Product',
-      example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"..."}</script>',
+      why_it_matters: 'Schema.org — структурированные данные помогающие поисковикам и нейросетям понять контент. Сайты с Schema получают расширенные сниппеты и лучше попадают в AI-ответы',
+      how_to_fix: '1. Добавьте JSON-LD разметку Organization для компании\n2. Добавьте WebSite для главной\n3. Проверьте: search.google.com/test/rich-results',
+      example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"...","url":"..."}</script>',
+      impact_score: 12, docs_url: 'https://schema.org/docs/gs.html',
       visible_in_preview: true }));
   } else {
     const types: string[] = [];
@@ -1003,9 +1014,10 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
         title: '🤖 Нет файла /llms.txt',
         found: `${origin}/llms.txt → ${llmsResp.status}`,
         location: '/llms.txt',
-        why_it_matters: 'llms.txt — стандарт для AI-краулеров (аналог robots.txt для LLM). Без него AI-системы не знают, как взаимодействовать с вашим сайтом',
-        how_to_fix: 'Создайте файл /llms.txt в корне сайта с описанием контента, услуг и ссылками',
-        example_fix: `# ${origin}\n> Описание вашего сайта\n\n## Offered\n- Услуга 1\n- Услуга 2\n\n## Links\n- ${origin}/: Главная`,
+        why_it_matters: 'llms.txt — стандарт для AI-краулеров (ChatGPT, Perplexity, Claude). Файл говорит нейросетям как читать ваш сайт. Без llms.txt сайт теряет 20 баллов LLM Score',
+        how_to_fix: '1. Создайте файл llms.txt в корне сайта\n2. Укажите название, описание, разделы\n3. Используйте генератор OWNDEV: /tools/llms-txt-checker',
+        example_fix: `# ${origin}\n> Описание вашего сайта\n\n## Основные страницы\n- [Услуги](${origin}/services/): описание\n- [Контакты](${origin}/contacts/): адрес и телефон`,
+        impact_score: 20, docs_url: 'https://llmstxt.org',
         visible_in_preview: true }));
     }
   } catch { /* timeout — skip */ }
