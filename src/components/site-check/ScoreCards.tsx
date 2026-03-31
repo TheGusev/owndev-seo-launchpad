@@ -36,7 +36,7 @@ const CircleScore = ({ score }: { score: number }) => {
           className={`${getScoreRing(score)} transition-all duration-1000`}
         />
       </svg>
-      <span className={`absolute inset-0 flex items-center justify-center text-lg font-bold ${
+      <span className={`absolute inset-0 flex items-center justify-center text-sm md:text-lg font-bold ${
         score <= 40 ? "text-red-500" : score <= 70 ? "text-yellow-500" : "text-green-500"
       }`}>
         {score}
