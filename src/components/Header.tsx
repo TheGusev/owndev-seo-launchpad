@@ -8,9 +8,9 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navLinks: { href: string; label: string; isRoute?: boolean }[] = [
+  const navLinks: { href: string; label: string; isRoute?: boolean; isNew?: boolean }[] = [
     { href: "/tools", label: "Инструменты", isRoute: true },
-    { href: "/geo-audit", label: "GEO‑аудит", isRoute: true },
+    { href: "/geo-audit", label: "GEO‑аудит", isRoute: true, isNew: true },
     { href: "/blog", label: "Блог", isRoute: true },
     { href: "#about", label: "О нас" },
     { href: "/contacts", label: "Контакты", isRoute: true },
@@ -46,16 +46,21 @@ const Header = () => {
                 key={link.href}
                 href={link.href}
                 onClick={(e) => handleNavClick(e, link)}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium flex items-center gap-1"
               >
                 {link.label}
+                {link.isNew && (
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full leading-none">
+                    NEW
+                  </span>
+                )}
               </a>
             ))}
           </nav>
 
           <div className="hidden md:block">
             <GradientButton size="sm" onClick={() => navigate("/tools/site-check")}>
-              GEO‑аудит
+              Проверить сайт
             </GradientButton>
           </div>
 
@@ -76,13 +81,18 @@ const Header = () => {
                   key={link.href}
                   href={link.href}
                   onClick={(e) => handleNavClick(e, link)}
-                  className="text-muted-foreground hover:text-foreground transition-colors font-medium py-3 px-2 min-h-[44px] flex items-center rounded-lg hover:bg-muted/50"
+                  className="text-muted-foreground hover:text-foreground transition-colors font-medium py-3 px-2 min-h-[44px] flex items-center rounded-lg hover:bg-muted/50 gap-2"
                 >
                   {link.label}
+                  {link.isNew && (
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full leading-none">
+                      NEW
+                    </span>
+                  )}
                 </a>
               ))}
               <GradientButton size="sm" className="mt-3" onClick={() => { navigate("/tools/site-check"); setIsOpen(false); }}>
-                GEO‑аудит
+                Проверить сайт
               </GradientButton>
             </div>
           </nav>
