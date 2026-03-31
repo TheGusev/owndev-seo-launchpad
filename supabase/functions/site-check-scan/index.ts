@@ -43,26 +43,46 @@ async function checkUrl(url: string): Promise<{ ok: boolean; status: number }> {
   } catch { return { ok: false, status: 0 }; }
 }
 
-// ─── Robust JSON array parser (handles truncated LLM output) ───
-function tryParseJsonArray(raw: string): any[] {
-  // Try full match first
-  const m = raw.match(/\[[\s\S]*\]/);
-  if (m) {
-    try { return JSON.parse(m[0]); } catch { /* fall through */ }
+// ─── Robust JSON parser (handles truncated LLM output) ───
+function safeParseJson<T>(raw: string, fallback: T): T {
+  if (!raw || typeof raw !== 'string') return fallback;
+
+  let cleaned = raw
+    .replace(/```json\n?/gi, '')
+    .replace(/```\n?/gi, '')
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+    .trim();
+
+  // Try extracting array or object
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+
+  if (arrMatch) {
+    try { return JSON.parse(arrMatch[0]) as T; } catch { /* fall through */ }
   }
-  // If array started but was truncated (no closing ]), try to recover
-  const start = raw.indexOf('[');
-  if (start === -1) return [];
-  let text = raw.slice(start);
-  // Find the last complete object (ends with })
-  const lastBrace = text.lastIndexOf('}');
-  if (lastBrace === -1) return [];
-  text = text.slice(0, lastBrace + 1) + ']';
-  try { return JSON.parse(text); } catch {
-    // Try fixing trailing comma
-    text = text.replace(/,\s*\]$/, ']');
-    try { return JSON.parse(text); } catch { return []; }
+  if (objMatch) {
+    try { return JSON.parse(objMatch[0]) as T; } catch { /* fall through */ }
   }
+
+  // Truncated array recovery
+  const start = cleaned.indexOf('[');
+  if (start !== -1) {
+    let text = cleaned.slice(start);
+    const lastBrace = text.lastIndexOf('}');
+    if (lastBrace !== -1) {
+      text = text.slice(0, lastBrace + 1) + ']';
+      try { return JSON.parse(text) as T; } catch {
+        text = text.replace(/,\s*\]$/, ']');
+        try { return JSON.parse(text) as T; } catch { /* fall through */ }
+      }
+    }
+  }
+
+  // Last chance — direct parse
+  try { return JSON.parse(cleaned) as T; } catch {}
+
+  console.error('[OWNDEV] JSON parse failed:', cleaned.slice(0, 300));
+  return fallback;
 }
 
 // ─── Issue builder ───
@@ -191,21 +211,26 @@ async function detectTheme(html: string, url: string): Promise<string> {
   if (!LOVABLE_API_KEY) return 'Общая тематика';
   
   try {
+    console.log(`[OWNDEV] Шаг: detectTheme | Модель: google/gemini-2.0-flash | URL: ${url}`);
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'google/gemini-2.0-flash',
         messages: [
-          { role: 'system', content: 'Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Определи тематику/нишу сайта одной короткой фразой на русском (2-5 слов). Примеры: "SEO-продвижение", "Интернет-магазин одежды", "Юридические услуги", "Стоматология". Отвечай ТОЛЬКО тематику, без пояснений.' },
+          { role: 'system', content: 'Определи тематику/нишу сайта одной короткой фразой на русском (2-5 слов). Примеры: "SEO-продвижение", "Интернет-магазин одежды", "Юридические услуги", "Стоматология". Отвечай ТОЛЬКО тематику, без пояснений. ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без ```json, только сам JSON.' },
           { role: 'user', content: `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 1000)}` },
         ],
         max_tokens: 30,
         temperature: 0.1,
+        top_p: 0.85,
+        top_k: 20,
       }),
     });
     const data = await resp.json();
-    return data.choices?.[0]?.message?.content?.trim() || 'Общая тематика';
+    const result = data.choices?.[0]?.message?.content?.trim() || 'Общая тематика';
+    console.log(`[OWNDEV] Ответ detectTheme:`, result.slice(0, 200));
+    return result;
   } catch { return 'Общая тематика'; }
 }
 
@@ -1221,22 +1246,24 @@ async function competitorAnalysis(
   // ── Step A: Generate commercial search queries from theme ──
   let searchQueries: string[] = [];
   try {
+    console.log(`[OWNDEV] Шаг: competitorQueries | Модель: google/gemini-2.0-flash | URL: ${url}`);
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'google/gemini-2.0-flash',
         messages: [
-          { role: 'system', content: 'Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк.' },
+          { role: 'system', content: 'Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк. ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без ```json, только сам JSON.' },
           { role: 'user', content: `Тема: "${theme}"` },
         ],
-        max_tokens: 200, temperature: 0.1,
+        max_tokens: 200, temperature: 0.1, top_p: 0.85, top_k: 20,
       }),
     });
     const data = await resp.json();
     const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-    const m = content.match(/\[[\s\S]*\]/);
-    searchQueries = m ? JSON.parse(m[0]) : [];
+    console.log(`[OWNDEV] Ответ competitorQueries:`, content.slice(0, 200));
+    searchQueries = safeParseJson<string[]>(content, []);
+    console.log(`[OWNDEV] Распарсено competitorQueries: ${searchQueries.length} элементов`);
   } catch { searchQueries = [theme]; }
   if (searchQueries.length === 0) searchQueries = [theme];
 
@@ -1250,16 +1277,17 @@ async function competitorAnalysis(
       body: JSON.stringify({
           model: 'google/gemini-2.5-pro',
           messages: [
-            { role: 'system', content: `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://).` },
+            { role: 'system', content: `Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://). ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без \`\`\`json, только сам JSON.` },
             { role: 'user', content: `Запрос: "${query}"\nИсключить домен: ${ownHostname}` },
           ],
-          max_tokens: 500, temperature: 0.1,
+          max_tokens: 500, temperature: 0.1, top_p: 0.85, top_k: 20,
         }),
       });
       const data = await resp.json();
       const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-      const m = content.match(/\[[\s\S]*\]/);
-      const urls: string[] = m ? JSON.parse(m[0]) : [];
+      console.log(`[OWNDEV] Ответ competitorURLs:`, content.slice(0, 200));
+      const urls: string[] = safeParseJson<string[]>(content, []);
+      console.log(`[OWNDEV] Распарсено competitorURLs: ${urls.length} элементов`);
       for (const u of urls) {
         if (!isExcludedUrl(u, ownHostname) && competitorUrls.size < 10) {
           competitorUrls.add(u);
@@ -1423,13 +1451,10 @@ async function competitorAnalysis(
 // ═══ STEP 5: Keyword Generation (ПРОМТ 6) ═══
 interface KeywordEntry {
   phrase: string;
-  type: 'seo' | 'direct' | 'informational' | 'branded' | 'regional';
   cluster: string;
-  intent: 'commercial' | 'informational' | 'navigational';
-  priority: 'high' | 'medium' | 'low';
-  use_for_seo: boolean;
-  use_for_direct: boolean;
-  landing_needed: string;
+  intent: 'commercial' | 'informational' | 'navigational' | 'transactional';
+  frequency: number;
+  landing_needed: boolean;
 }
 
 async function extractKeywords(
@@ -1451,12 +1476,26 @@ async function extractKeywords(
     ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}`
     : '';
 
-  const systemPrompt = `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Ты — SEO-специалист. Сгенерируй 100 ключевых запросов для "${theme}".
-Коммерческие: цена, заказать, купить, под ключ, в Москве, недорого, отзывы.
-Информационные: что такое, как выбрать, зачем, виды.
-Региональные: в Москве, в СПб, по России.
-JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"commercial","priority":"high","use_for_seo":true,"use_for_direct":false,"landing_needed":"..."}]
-Ровно 100 фраз.`;
+  const systemPrompt = `Ты — профессиональный SEO-специалист для Рунета.
+Сгенерируй список ключевых слов для продвижения сайта.
+
+Входные данные:
+- URL сайта: ${url}
+- Тематика: ${theme}
+
+ТРЕБОВАНИЯ:
+- Ровно 150 ключевых запросов
+- Только реальные запросы которые реально ищут в Яндексе
+- Без дублей, без общих фраз типа "купить онлайн"
+- Кластеризация: максимум 7 смысловых кластеров
+- intent строго одно из: commercial / informational / navigational / transactional
+- frequency: целое число от 50 до 50000
+- landing_needed: true если нужна отдельная страница под запрос
+
+ФОРМАТ — строго JSON-массив из 150 объектов:
+[{"phrase":"ключевой запрос","cluster":"название кластера","intent":"commercial","frequency":2400,"landing_needed":false}]
+
+ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без \`\`\`json, только сам JSON.`;
 
   const allKeywords: KeywordEntry[] = [];
   for (let batch = 0; batch < 3; batch++) {
@@ -1464,24 +1503,26 @@ JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"comme
       ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
       : `Ещё 100 НОВЫХ запросов для "${theme}". Не дублируй: ${allKeywords.slice(0, 20).map(k => k.phrase).join(', ')}.\nКластеры: ${[...new Set(allKeywords.map(k => k.cluster))].join(', ')}`;
     try {
+      console.log(`[OWNDEV] Шаг: extractKeywords batch ${batch} | Модель: google/gemini-2.5-pro | URL: ${url}`);
       const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'google/gemini-2.5-pro',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: batchPrompt }],
-          max_tokens: 16000, temperature: 0.1,
+          max_tokens: 16000, temperature: 0.1, top_p: 0.85, top_k: 20,
         }),
       });
-      if (!resp.ok) { console.error(`Keyword batch ${batch}: ${resp.status}`); continue; }
+      if (!resp.ok) { console.error(`[OWNDEV] Keyword batch ${batch}: ${resp.status}`); continue; }
       const data = await resp.json();
-      const kwRaw = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-      const parsed = tryParseJsonArray(kwRaw);
+      const kwRaw = data.choices?.[0]?.message?.content?.trim() || '[]';
+      console.log(`[OWNDEV] Ответ extractKeywords batch ${batch}:`, kwRaw.slice(0, 200));
+      const parsed = safeParseJson<KeywordEntry[]>(kwRaw, []);
       if (parsed.length > 0) {
         allKeywords.push(...parsed);
-        console.log(`KW batch ${batch}: got ${parsed.length}, total: ${allKeywords.length}`);
-      } else { console.error('KW parse fail:', kwRaw.slice(0, 500)); }
-    } catch (e) { console.error('KW error:', e); }
+        console.log(`[OWNDEV] Распарсено extractKeywords batch ${batch}: ${parsed.length} элементов, total: ${allKeywords.length}`);
+      } else { console.error('[OWNDEV] KW parse fail:', kwRaw.slice(0, 500)); }
+    } catch (e) { console.error('[OWNDEV] KW error:', e); }
     if (allKeywords.length >= 200) break;
   }
   const seen = new Set<string>();
@@ -1496,26 +1537,26 @@ JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"comme
 // ═══ STEP 6: Minus Words (ПРОМТ 6) ═══
 interface MinusWordEntry {
   word: string;
-  type: 'general' | 'thematic';
+  category: 'informational' | 'irrelevant' | 'competitor' | 'geo' | 'other';
   reason: string;
 }
 
 const GENERAL_MINUS_WORDS: MinusWordEntry[] = [
-  { word: 'бесплатно', type: 'general', reason: 'Нецелевая аудитория' },
-  { word: 'бесплатная', type: 'general', reason: 'Нецелевая аудитория' },
-  { word: 'бесплатный', type: 'general', reason: 'Нецелевая аудитория' },
-  { word: 'скачать', type: 'general', reason: 'Информационный интент' },
-  { word: 'торрент', type: 'general', reason: 'Пиратский контент' },
-  { word: 'своими руками', type: 'general', reason: 'DIY-аудитория' },
-  { word: 'самостоятельно', type: 'general', reason: 'DIY-аудитория' },
-  { word: 'самому', type: 'general', reason: 'DIY-аудитория' },
-  { word: 'видеоурок', type: 'general', reason: 'Образовательный интент' },
-  { word: 'смотреть онлайн', type: 'general', reason: 'Развлекательный интент' },
-  { word: 'wikipedia', type: 'general', reason: 'Информационный интент' },
-  { word: 'реферат', type: 'general', reason: 'Образовательный интент' },
-  { word: 'курсовая', type: 'general', reason: 'Образовательный интент' },
-  { word: 'диплом', type: 'general', reason: 'Образовательный интент' },
-  { word: 'вики', type: 'general', reason: 'Информационный интент' },
+  { word: 'бесплатно', category: 'irrelevant', reason: 'Нецелевая аудитория' },
+  { word: 'бесплатная', category: 'irrelevant', reason: 'Нецелевая аудитория' },
+  { word: 'бесплатный', category: 'irrelevant', reason: 'Нецелевая аудитория' },
+  { word: 'скачать', category: 'informational', reason: 'Информационный интент' },
+  { word: 'торрент', category: 'irrelevant', reason: 'Пиратский контент' },
+  { word: 'своими руками', category: 'informational', reason: 'DIY-аудитория' },
+  { word: 'самостоятельно', category: 'informational', reason: 'DIY-аудитория' },
+  { word: 'самому', category: 'informational', reason: 'DIY-аудитория' },
+  { word: 'видеоурок', category: 'informational', reason: 'Образовательный интент' },
+  { word: 'смотреть онлайн', category: 'irrelevant', reason: 'Развлекательный интент' },
+  { word: 'wikipedia', category: 'informational', reason: 'Информационный интент' },
+  { word: 'реферат', category: 'informational', reason: 'Образовательный интент' },
+  { word: 'курсовая', category: 'informational', reason: 'Образовательный интент' },
+  { word: 'диплом', category: 'informational', reason: 'Образовательный интент' },
+  { word: 'вики', category: 'informational', reason: 'Информационный интент' },
 ];
 
 async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Promise<MinusWordEntry[]> {
@@ -1524,22 +1565,41 @@ async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Prom
   if (!LOVABLE_API_KEY) return result;
   const sampleKeys = keywords.filter(k => k.intent === 'commercial').slice(0, 15).map(k => k.phrase).join(', ');
   try {
+    console.log(`[OWNDEV] Шаг: generateMinusWords | Модель: google/gemini-2.5-flash`);
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Сгенерируй 40-60 тематических минус-слов для Директа по теме "${theme}". Категории: DIY, информационные, нерелевантные. JSON: [{"word":"слово","type":"thematic","reason":"почему"}].` },
+          { role: 'system', content: `Ты — специалист по Яндекс.Директ.
+Сгенерируй список минус-слов для рекламной кампании.
+
+Входные данные:
+- Тематика: ${theme}
+- Коммерческие ключи: ${sampleKeys}
+
+ТРЕБОВАНИЯ:
+- 50-80 минус-слов
+- Только слова которые реально отсекают нецелевой трафик
+- Не дублировать стандартные минуса (бесплатно, скачать, своими руками, реферат, курсовая)
+- category строго одно из: informational / irrelevant / competitor / geo / other
+
+ФОРМАТ — строго JSON-массив:
+[{"word":"слово","category":"informational","reason":"почему минусовать"}]
+
+ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без \`\`\`json, только сам JSON.` },
           { role: 'user', content: `Тема: ${theme}\nКлючи: ${sampleKeys}` },
         ],
-        max_tokens: 3000, temperature: 0.1,
+        max_tokens: 8192, temperature: 0.1, top_p: 0.85, top_k: 20,
       }),
     });
     const data = await resp.json();
-    const content = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-    const parsed = tryParseJsonArray(content);
-    result.push(...parsed.map((t: any) => ({ ...t, type: 'thematic' })));
+    const content = data.choices?.[0]?.message?.content?.trim() || '[]';
+    console.log(`[OWNDEV] Ответ generateMinusWords:`, content.slice(0, 200));
+    const parsed = safeParseJson<MinusWordEntry[]>(content, []);
+    console.log(`[OWNDEV] Распарсено generateMinusWords: ${parsed.length} элементов`);
+    result.push(...parsed);
   } catch {}
   const seen = new Set<string>();
   return result.filter(m => {
