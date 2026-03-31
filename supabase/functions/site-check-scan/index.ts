@@ -304,9 +304,10 @@ function technicalAudit(input: TechAuditInput): Issue[] {
       issues.push(makeIssue({ module: 'technical', severity: 'critical',
         title: 'Страница закрыта от индексации в robots.txt',
         found: `Путь "${currentPath}" попадает под Disallow`, location: '/robots.txt',
-        why_it_matters: 'Закрытая в robots.txt страница не будет проиндексирована поисковиками',
-        how_to_fix: 'Удалите или скорректируйте Disallow-директиву для этого URL',
-        example_fix: `# Удалите строку:\n# Disallow: ${currentPath}`,
+        why_it_matters: 'Закрытая в robots.txt страница полностью исчезает из поиска Яндекс и Google. Это самая критическая SEO-ошибка — трафик станет нулевым',
+        how_to_fix: '1. Откройте файл /robots.txt в корне сайта\n2. Найдите строку Disallow, блокирующую путь\n3. Удалите или скорректируйте эту строку\n4. Проверьте через Яндекс.Вебмастер → Инструменты → Проверка robots.txt',
+        example_fix: `User-agent: *\nDisallow: /admin/\nDisallow: /cart/\nAllow: /\nSitemap: ${origin}/sitemap.xml`,
+        impact_score: 20, docs_url: 'https://yandex.ru/support/webmaster/controlling-robot/robots-txt.html',
         visible_in_preview: true }));
     }
     // 3b. Sitemap directive in robots.txt
