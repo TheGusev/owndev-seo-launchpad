@@ -1277,16 +1277,17 @@ async function competitorAnalysis(
       body: JSON.stringify({
           model: 'google/gemini-2.5-pro',
           messages: [
-            { role: 'system', content: `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://).` },
+            { role: 'system', content: `Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://). ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без \`\`\`json, только сам JSON.` },
             { role: 'user', content: `Запрос: "${query}"\nИсключить домен: ${ownHostname}` },
           ],
-          max_tokens: 500, temperature: 0.1,
+          max_tokens: 500, temperature: 0.1, top_p: 0.85, top_k: 20,
         }),
       });
       const data = await resp.json();
       const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-      const m = content.match(/\[[\s\S]*\]/);
-      const urls: string[] = m ? JSON.parse(m[0]) : [];
+      console.log(`[OWNDEV] Ответ competitorURLs:`, content.slice(0, 200));
+      const urls: string[] = safeParseJson<string[]>(content, []);
+      console.log(`[OWNDEV] Распарсено competitorURLs: ${urls.length} элементов`);
       for (const u of urls) {
         if (!isExcludedUrl(u, ownHostname) && competitorUrls.size < 10) {
           competitorUrls.add(u);
