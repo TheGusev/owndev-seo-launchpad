@@ -966,9 +966,10 @@ function schemaAudit(html: string): Issue[] {
   if (jsonLdMatches.length === 0) {
     issues.push(makeIssue({ module: 'schema', severity: 'high', title: 'Нет Schema.org разметки',
       found: 'JSON-LD не найден на странице', location: 'Вся страница',
-      why_it_matters: 'Без Schema.org страница не получит расширенные сниппеты в поиске',
-      how_to_fix: 'Добавьте JSON-LD разметку Organization, WebPage или Product',
-      example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"..."}</script>',
+      why_it_matters: 'Schema.org — структурированные данные помогающие поисковикам и нейросетям понять контент. Сайты с Schema получают расширенные сниппеты и лучше попадают в AI-ответы',
+      how_to_fix: '1. Добавьте JSON-LD разметку Organization для компании\n2. Добавьте WebSite для главной\n3. Проверьте: search.google.com/test/rich-results',
+      example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"...","url":"..."}</script>',
+      impact_score: 12, docs_url: 'https://schema.org/docs/gs.html',
       visible_in_preview: true }));
   } else {
     const types: string[] = [];
