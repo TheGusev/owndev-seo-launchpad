@@ -1530,10 +1530,10 @@ async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Prom
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: `Сгенерируй 40-60 тематических минус-слов для Директа по теме "${theme}". Категории: DIY, информационные, нерелевантные. JSON: [{"word":"слово","type":"thematic","reason":"почему"}]. Только JSON.` },
+          { role: 'system', content: `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Сгенерируй 40-60 тематических минус-слов для Директа по теме "${theme}". Категории: DIY, информационные, нерелевантные. JSON: [{"word":"слово","type":"thematic","reason":"почему"}].` },
           { role: 'user', content: `Тема: ${theme}\nКлючи: ${sampleKeys}` },
         ],
-        max_tokens: 3000, temperature: 0.3,
+        max_tokens: 3000, temperature: 0.1,
       }),
     });
     const data = await resp.json();
