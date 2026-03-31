@@ -195,9 +195,9 @@ async function detectTheme(html: string, url: string): Promise<string> {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
+        model: 'google/gemini-3-flash-preview',
         messages: [
-          { role: 'system', content: 'Определи тематику/нишу сайта одной короткой фразой на русском (2-5 слов). Примеры: "SEO-продвижение", "Интернет-магазин одежды", "Юридические услуги", "Стоматология". Отвечай ТОЛЬКО тематику, без пояснений.' },
+          { role: 'system', content: 'Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Определи тематику/нишу сайта одной короткой фразой на русском (2-5 слов). Примеры: "SEO-продвижение", "Интернет-магазин одежды", "Юридические услуги", "Стоматология". Отвечай ТОЛЬКО тематику, без пояснений.' },
           { role: 'user', content: `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 1000)}` },
         ],
         max_tokens: 30,
@@ -1225,12 +1225,12 @@ async function competitorAnalysis(
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
+        model: 'google/gemini-3-flash-preview',
         messages: [
-          { role: 'system', content: 'Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк. Только JSON, без markdown.' },
+          { role: 'system', content: 'Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк.' },
           { role: 'user', content: `Тема: "${theme}"` },
         ],
-        max_tokens: 200, temperature: 0.3,
+        max_tokens: 200, temperature: 0.1,
       }),
     });
     const data = await resp.json();
@@ -1247,13 +1247,13 @@ async function competitorAnalysis(
       const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+      body: JSON.stringify({
+          model: 'google/gemini-2.5-pro',
           messages: [
-            { role: 'system', content: `Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://). Только JSON.` },
+            { role: 'system', content: `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://).` },
             { role: 'user', content: `Запрос: "${query}"\nИсключить домен: ${ownHostname}` },
           ],
-          max_tokens: 500, temperature: 0.4,
+          max_tokens: 500, temperature: 0.1,
         }),
       });
       const data = await resp.json();
@@ -1451,12 +1451,12 @@ async function extractKeywords(
     ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}`
     : '';
 
-  const systemPrompt = `Ты — SEO-специалист. Сгенерируй 100 ключевых запросов для "${theme}".
+  const systemPrompt = `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Ты — SEO-специалист. Сгенерируй 100 ключевых запросов для "${theme}".
 Коммерческие: цена, заказать, купить, под ключ, в Москве, недорого, отзывы.
 Информационные: что такое, как выбрать, зачем, виды.
 Региональные: в Москве, в СПб, по России.
 JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"commercial","priority":"high","use_for_seo":true,"use_for_direct":false,"landing_needed":"..."}]
-Ровно 100 фраз. Только JSON без markdown.`;
+Ровно 100 фраз.`;
 
   const allKeywords: KeywordEntry[] = [];
   for (let batch = 0; batch < 3; batch++) {
@@ -1468,9 +1468,9 @@ JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"comme
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-lite',
+          model: 'google/gemini-2.5-pro',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: batchPrompt }],
-          max_tokens: 16000, temperature: 0.5 + batch * 0.15,
+          max_tokens: 16000, temperature: 0.1,
         }),
       });
       if (!resp.ok) { console.error(`Keyword batch ${batch}: ${resp.status}`); continue; }
@@ -1530,10 +1530,10 @@ async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Prom
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: `Сгенерируй 40-60 тематических минус-слов для Директа по теме "${theme}". Категории: DIY, информационные, нерелевантные. JSON: [{"word":"слово","type":"thematic","reason":"почему"}]. Только JSON.` },
+          { role: 'system', content: `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Сгенерируй 40-60 тематических минус-слов для Директа по теме "${theme}". Категории: DIY, информационные, нерелевантные. JSON: [{"word":"слово","type":"thematic","reason":"почему"}].` },
           { role: 'user', content: `Тема: ${theme}\nКлючи: ${sampleKeys}` },
         ],
-        max_tokens: 3000, temperature: 0.3,
+        max_tokens: 3000, temperature: 0.1,
       }),
     });
     const data = await resp.json();
