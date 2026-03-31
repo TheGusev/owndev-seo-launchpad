@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
 import FullReportView from "@/components/site-check/FullReportView";
 import CompetitorsTable from "@/components/site-check/CompetitorsTable";
-import ComparisonTable from "@/components/site-check/ComparisonTable";
+
 import DirectMeta from "@/components/site-check/DirectMeta";
 import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
