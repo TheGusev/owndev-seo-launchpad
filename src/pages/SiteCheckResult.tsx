@@ -170,9 +170,15 @@ const SiteCheckResult = () => {
 
           {issues.length > 0 && <FullReportView issues={issues} url={data.url} />}
 
-          {competitors.length > 0 && <CompetitorsTable competitors={competitors} userUrl={data.url} />}
-          {comparisonTable && <ComparisonTable data={comparisonTable} />}
-          {directMeta && <DirectMeta data={directMeta} />}
+          {competitors.length > 0 && (
+            <CompetitorsTable
+              competitors={competitors}
+              comparisonTable={comparisonTable}
+              directMeta={directMeta}
+              userUrl={data.url}
+            />
+          )}
+          {directAdMeta && <DirectMeta data={directAdMeta} />}
 
           {keywords.length > 0 && <KeywordsSection keywords={keywords} />}
 
