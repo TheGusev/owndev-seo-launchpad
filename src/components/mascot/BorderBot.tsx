@@ -159,7 +159,7 @@ const BorderBot = memo(() => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const controls = useAnimationControls();
-  const [hidden, setHidden] = useState(() => localStorage.getItem("hideBot") === "true");
+  const [hidden, setHidden] = useState(() => localStorage.getItem("owndev_bot_hidden") === "true");
   const [step, setStep] = useState(0);
   const [state, dispatch] = useReducer(reducer, {
     botState: "walking", side: "bottom", facing: "right", progress: 0,
