@@ -1805,6 +1805,86 @@ async function crawlSite(startUrl: string, maxPages = 100): Promise<{ url: strin
   
   return results;
 }
+// ─── Extract SEO data from HTML for reports ───
+function extractSeoData(html: string, parsedUrl: URL, httpStatus: number, loadTimeMs: number, robotsResult: { ok: boolean; text: string }, sitemapResult: { ok: boolean; text: string }, hasLlmsTxt: boolean) {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1].trim() : '';
+
+  const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i) ||
+                    html.match(/<meta[^>]*content=["']([^"']*)["'][^>]*name=["']description["']/i);
+  const description = descMatch ? descMatch[1].trim() : '';
+
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
+  const h1Count = (html.match(/<h1[\s>]/gi) || []).length;
+  const h2Count = (html.match(/<h2[\s>]/gi) || []).length;
+  const h3Count = (html.match(/<h3[\s>]/gi) || []).length;
+
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  const wordCount = bodyText.split(/\s+/).filter((w: string) => w.length > 1).length;
+
+  const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']*)["']/i);
+  const canonical = canonicalMatch ? canonicalMatch[1] : '';
+
+  const ogTitle = (html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']*)["']/i) || [])[1] || '';
+  const ogDescription = (html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["']/i) || [])[1] || '';
+  const ogImage = (html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']*)["']/i) || [])[1] || '';
+  const ogUrl = (html.match(/<meta[^>]*property=["']og:url["'][^>]*content=["']([^"']*)["']/i) || [])[1] || '';
+
+  const langMatch = html.match(/<html[^>]*lang=["']([^"']*)["']/i);
+  const lang = langMatch ? langMatch[1] : '';
+
+  const allImages = html.match(/<img[^>]*>/gi) || [];
+  const imagesTotal = allImages.length;
+  const imagesWithoutAlt = allImages.filter((img: string) => !img.match(/alt=["'][^"']+["']/i)).length;
+  const imagesWithoutDimensions = allImages.filter((img: string) => !img.match(/width=/i) || !img.match(/height=/i)).length;
+
+  const jsonLdBlocks = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+  const schemaTypes: string[] = [];
+  let hasFaq = false;
+  for (const block of jsonLdBlocks) {
+    const content = block.replace(/<\/?script[^>]*>/gi, '');
+    try {
+      const parsed = JSON.parse(content);
+      const extractTypes = (obj: any) => {
+        if (obj?.['@type']) {
+          const types = Array.isArray(obj['@type']) ? obj['@type'] : [obj['@type']];
+          schemaTypes.push(...types);
+          if (types.some((t: string) => t.toLowerCase().includes('faq'))) hasFaq = true;
+        }
+        if (obj?.['@graph'] && Array.isArray(obj['@graph'])) obj['@graph'].forEach(extractTypes);
+      };
+      extractTypes(parsed);
+    } catch {}
+  }
+  const hasSchema = schemaTypes.length > 0;
+
+  const robotsMetaMatch = html.match(/<meta[^>]*name=["']robots["'][^>]*content=["']([^"']*)["']/i);
+  const robotsMeta = robotsMetaMatch ? robotsMetaMatch[1] : '';
+  const hasViewport = /<meta[^>]*name=["']viewport["']/i.test(html);
+
+  const hasPriceBlock = /(?:цен[аы]|прайс|стоимость|price|от\s*\d+\s*₽|руб)/i.test(bodyText);
+  const hasReviews = /(?:отзыв|review|testimonial)/i.test(bodyText);
+  const hasVideo = /<(video|iframe)[^>]*(youtube|vimeo|rutube|embed)/i.test(html);
+
+  return {
+    title, titleLength: title.length,
+    description, descriptionLength: description.length,
+    h1, h1Count, h2Count, h3Count,
+    wordCount, canonical,
+    ogTitle, ogDescription, ogImage, ogUrl,
+    lang,
+    imagesTotal, imagesWithoutAlt, imagesWithoutDimensions,
+    hasSchema, schemaTypes: [...new Set(schemaTypes)],
+    hasFaq, hasLlmsTxt,
+    robotsMeta, hasViewport,
+    hasPriceBlock, hasReviews, hasVideo,
+    loadTimeMs, httpStatus,
+    hasRobotsTxt: robotsResult.ok,
+    hasSitemap: sitemapResult.ok,
+  };
+}
 
 // ═══ Update scan progress in DB ═══
 async function updateScan(scanId: string, updates: Record<string, any>) {
@@ -1894,7 +1974,16 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   const linkResults = await Promise.all(uniqueHrefs.map(h => checkUrl(h)));
   const brokenLinks = uniqueHrefs.filter((_, i) => !linkResults[i].ok && linkResults[i].status !== 0);
   
-  await updateScan(scanId, { progress_pct: 35 });
+  // Extract SEO data for reports
+  let hasLlmsTxt = false;
+  try {
+    const llmsCheck = await fetchWithTimeout(`${origin}/llms.txt`, 5000, { method: 'HEAD' });
+    hasLlmsTxt = llmsCheck.ok;
+  } catch {}
+  const seoData = extractSeoData(html, parsedUrl, httpStatus, loadTimeMs, robotsResult, sitemapResult, hasLlmsTxt);
+  console.log('[OWNDEV] seoData extracted:', JSON.stringify({ title: seoData.title?.slice(0, 50), wordCount: seoData.wordCount, hasSchema: seoData.hasSchema }));
+
+  await updateScan(scanId, { progress_pct: 35, seo_data: seoData });
   
   // STEP 1: Technical SEO
   const techIssues = technicalAudit({
@@ -1975,6 +2064,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     status: 'done', progress_pct: 100,
     minus_words: minusWords,
     issues: allIssues, scores: finalScores,
+    seo_data: seoData,
     competitors: [
       compResult.directMeta,
       ...compResult.competitors,

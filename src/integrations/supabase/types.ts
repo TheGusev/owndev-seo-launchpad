@@ -136,6 +136,7 @@ export type Database = {
           progress_pct: number
           raw_html: string | null
           scores: Json | null
+          seo_data: Json | null
           status: string
           theme: string | null
           url: string
@@ -154,6 +155,7 @@ export type Database = {
           progress_pct?: number
           raw_html?: string | null
           scores?: Json | null
+          seo_data?: Json | null
           status?: string
           theme?: string | null
           url: string
@@ -172,6 +174,7 @@ export type Database = {
           progress_pct?: number
           raw_html?: string | null
           scores?: Json | null
+          seo_data?: Json | null
           status?: string
           theme?: string | null
           url?: string
