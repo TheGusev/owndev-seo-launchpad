@@ -1976,10 +1976,11 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     minus_words: minusWords,
     issues: allIssues, scores: finalScores,
     competitors: [
-      ...compResult.competitors.map(c => ({ ...c, _type: 'competitor' })),
-      { _type: 'comparison_table', ...compResult.comparison_table },
-      { _direct_meta: true, ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
-    ],
+      compResult.directMeta,
+      ...compResult.competitors,
+      compResult.comparisonTable,
+      { _type: 'direct_ad_meta', ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
+    ].filter(Boolean),
   });
 }
 
