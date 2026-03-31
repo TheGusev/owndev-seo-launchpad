@@ -576,6 +576,7 @@ function contentAudit(html: string, theme: string): Issue[] {
       why_it_matters: 'Title — один из главных факторов ранжирования. Без него страница не получит релевантный сниппет в выдаче',
       how_to_fix: 'Добавьте уникальный title длиной 50-70 символов с основным ключевым словом',
       example_fix: `<title>${theme} — заказать в Москве | Бренд</title>`,
+      impact_score: 15, docs_url: 'https://yandex.ru/support/webmaster/recommendations/title-description.html',
       visible_in_preview: true }));
   } else {
     if (title.length < 50) {
