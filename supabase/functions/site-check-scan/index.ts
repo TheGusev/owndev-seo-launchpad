@@ -2026,7 +2026,15 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     }
   }
 
-  let allIssues = [...allHardcodedIssues];
+  // Validate and enrich all issues with fallbacks
+  let allIssues = [...allHardcodedIssues].map(issue => ({
+    ...issue,
+    impact_score: issue.impact_score || (issue.severity === 'critical' ? 15 : issue.severity === 'high' ? 10 : issue.severity === 'medium' ? 5 : 2),
+    docs_url: issue.docs_url || 'https://yandex.ru/support/webmaster/',
+    why_it_matters: issue.why_it_matters || issue.found || '',
+    how_to_fix: issue.how_to_fix || 'Обратитесь к SEO-специалисту для исправления.',
+    example_fix: issue.example_fix || '',
+  }));
   
   // Site-mode: crawl (max 100 pages)
   let crawledPages: { url: string; html: string; status: number }[] = [];
