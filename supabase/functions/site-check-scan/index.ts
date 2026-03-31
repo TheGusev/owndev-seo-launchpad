@@ -1102,8 +1102,9 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
       found: 'Не найдены: блок об авторе, дата публикации',
       location: 'Контент страницы',
       why_it_matters: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trust) — ключевой фактор для AI-систем при выборе источника для цитирования. Без автора и даты контент выглядит анонимным и ненадёжным',
-      how_to_fix: 'Добавьте блок об авторе с именем и экспертизой, укажите дату публикации через <time datetime="...">',
+      how_to_fix: '1. Добавьте блок об авторе с именем и экспертизой\n2. Укажите дату публикации через <time datetime="...">\n3. Добавьте Schema Person для автора\n4. Добавьте страницу автора на сайте',
       example_fix: '<div class="author">\n  <img src="author.jpg" alt="Имя Автора">\n  <p>Автор: <strong>Имя Автора</strong>, SEO-эксперт с 10-летним опытом</p>\n</div>\n<time datetime="2025-01-01">1 января 2025</time>',
+      impact_score: 8, docs_url: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
       visible_in_preview: true }));
   } else if (!hasAuthor) {
     issues.push(makeIssue({ module: 'ai', severity: 'medium',
