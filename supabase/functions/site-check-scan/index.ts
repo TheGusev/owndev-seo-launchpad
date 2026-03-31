@@ -211,21 +211,26 @@ async function detectTheme(html: string, url: string): Promise<string> {
   if (!LOVABLE_API_KEY) return 'Общая тематика';
   
   try {
+    console.log(`[OWNDEV] Шаг: detectTheme | Модель: google/gemini-2.0-flash | URL: ${url}`);
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'google/gemini-2.0-flash',
         messages: [
-          { role: 'system', content: 'Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Определи тематику/нишу сайта одной короткой фразой на русском (2-5 слов). Примеры: "SEO-продвижение", "Интернет-магазин одежды", "Юридические услуги", "Стоматология". Отвечай ТОЛЬКО тематику, без пояснений.' },
+          { role: 'system', content: 'Определи тематику/нишу сайта одной короткой фразой на русском (2-5 слов). Примеры: "SEO-продвижение", "Интернет-магазин одежды", "Юридические услуги", "Стоматология". Отвечай ТОЛЬКО тематику, без пояснений. ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без ```json, только сам JSON.' },
           { role: 'user', content: `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 1000)}` },
         ],
         max_tokens: 30,
         temperature: 0.1,
+        top_p: 0.85,
+        top_k: 20,
       }),
     });
     const data = await resp.json();
-    return data.choices?.[0]?.message?.content?.trim() || 'Общая тематика';
+    const result = data.choices?.[0]?.message?.content?.trim() || 'Общая тематика';
+    console.log(`[OWNDEV] Ответ detectTheme:`, result.slice(0, 200));
+    return result;
   } catch { return 'Общая тематика'; }
 }
 
