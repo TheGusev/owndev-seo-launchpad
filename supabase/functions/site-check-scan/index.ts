@@ -1013,9 +1013,10 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
         title: '🤖 Нет файла /llms.txt',
         found: `${origin}/llms.txt → ${llmsResp.status}`,
         location: '/llms.txt',
-        why_it_matters: 'llms.txt — стандарт для AI-краулеров (аналог robots.txt для LLM). Без него AI-системы не знают, как взаимодействовать с вашим сайтом',
-        how_to_fix: 'Создайте файл /llms.txt в корне сайта с описанием контента, услуг и ссылками',
-        example_fix: `# ${origin}\n> Описание вашего сайта\n\n## Offered\n- Услуга 1\n- Услуга 2\n\n## Links\n- ${origin}/: Главная`,
+        why_it_matters: 'llms.txt — стандарт для AI-краулеров (ChatGPT, Perplexity, Claude). Файл говорит нейросетям как читать ваш сайт. Без llms.txt сайт теряет 20 баллов LLM Score',
+        how_to_fix: '1. Создайте файл llms.txt в корне сайта\n2. Укажите название, описание, разделы\n3. Используйте генератор OWNDEV: /tools/llms-txt-checker',
+        example_fix: `# ${origin}\n> Описание вашего сайта\n\n## Основные страницы\n- [Услуги](${origin}/services/): описание\n- [Контакты](${origin}/contacts/): адрес и телефон`,
+        impact_score: 20, docs_url: 'https://llmstxt.org',
         visible_in_preview: true }));
     }
   } catch { /* timeout — skip */ }
