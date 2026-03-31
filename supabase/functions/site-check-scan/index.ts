@@ -1451,40 +1451,32 @@ async function competitorAnalysis(
 // ═══ STEP 5: Keyword Generation (ПРОМТ 6) ═══
 interface KeywordEntry {
   phrase: string;
-  type: 'seo' | 'direct' | 'informational' | 'branded' | 'regional';
   cluster: string;
-  intent: 'commercial' | 'informational' | 'navigational';
-  priority: 'high' | 'medium' | 'low';
-  use_for_seo: boolean;
-  use_for_direct: boolean;
-  landing_needed: string;
+  intent: 'commercial' | 'informational' | 'navigational' | 'transactional';
+  frequency: number;
+  landing_needed: boolean;
 }
 
-async function extractKeywords(
-  html: string, theme: string, url: string, competitorPhrases: string[] = []
-): Promise<KeywordEntry[]> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) return [];
+  const systemPrompt = `Ты — профессиональный SEO-специалист для Рунета.
+Сгенерируй список ключевых слов для продвижения сайта.
 
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyText = bodyMatch
-    ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-    : '';
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim() : '';
-  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
+Входные данные:
+- URL сайта: ${url}
+- Тематика: ${theme}
 
-  const phrasesBlock = competitorPhrases.length > 0
-    ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}`
-    : '';
+ТРЕБОВАНИЯ:
+- Ровно 150 ключевых запросов
+- Только реальные запросы которые реально ищут в Яндексе
+- Без дублей, без общих фраз типа "купить онлайн"
+- Кластеризация: максимум 7 смысловых кластеров
+- intent строго одно из: commercial / informational / navigational / transactional
+- frequency: целое число от 50 до 50000
+- landing_needed: true если нужна отдельная страница под запрос
 
-  const systemPrompt = `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Ты — SEO-специалист. Сгенерируй 100 ключевых запросов для "${theme}".
-Коммерческие: цена, заказать, купить, под ключ, в Москве, недорого, отзывы.
-Информационные: что такое, как выбрать, зачем, виды.
-Региональные: в Москве, в СПб, по России.
-JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"commercial","priority":"high","use_for_seo":true,"use_for_direct":false,"landing_needed":"..."}]
-Ровно 100 фраз.`;
+ФОРМАТ — строго JSON-массив из 150 объектов:
+[{"phrase":"ключевой запрос","cluster":"название кластера","intent":"commercial","frequency":2400,"landing_needed":false}]
+
+ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без \`\`\`json, только сам JSON.`;
 
   const allKeywords: KeywordEntry[] = [];
   for (let batch = 0; batch < 3; batch++) {
