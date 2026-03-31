@@ -906,8 +906,9 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       found: 'Не найдены кнопки заказа, формы или призывы к действию',
       location: 'Контент страницы',
       why_it_matters: 'Без CTA посетители из Директа уходят, не совершив целевое действие — деньги на рекламу потрачены впустую',
-      how_to_fix: 'Добавьте заметную кнопку CTA выше первого экрана и повторите в конце страницы',
+      how_to_fix: '1. Добавьте заметную кнопку CTA выше первого экрана\n2. Повторите CTA в конце страницы\n3. Добавьте форму заявки с 2-3 полями',
       example_fix: `<button>Заказать ${theme.toLowerCase()}</button>`,
+      impact_score: 11, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: true,
     }));
   }
