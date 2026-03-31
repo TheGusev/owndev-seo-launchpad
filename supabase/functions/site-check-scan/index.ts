@@ -2064,6 +2064,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     status: 'done', progress_pct: 100,
     minus_words: minusWords,
     issues: allIssues, scores: finalScores,
+    seo_data: seoData,
     competitors: [
       compResult.directMeta,
       ...compResult.competitors,
