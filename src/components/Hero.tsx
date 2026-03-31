@@ -64,7 +64,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="space-y-4"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight font-serif leading-tight">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight font-serif leading-tight">
               Ваш сайт не попадает{" "}
               <br className="hidden sm:block" />
               в ответы <span className="text-gradient">нейросетей</span>?
