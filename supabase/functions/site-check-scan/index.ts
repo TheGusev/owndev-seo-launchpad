@@ -1135,9 +1135,10 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
     issues.push(makeIssue({ module: 'ai', severity: 'high', title: 'H2 не в формате вопросов',
       found: `${h2Texts.length} заголовков H2, ни один не является вопросом`,
       location: '<h2> заголовки',
-      why_it_matters: 'LLM-системы (ChatGPT, Perplexity) чаще цитируют контент в формате Q&A',
-      how_to_fix: 'Переформулируйте H2 в вопросы целевой аудитории',
+      why_it_matters: 'LLM-системы (ChatGPT, Perplexity) чаще цитируют контент в формате Q&A. Страницы с вопросами-ответами получают в 3-4 раза больше AI-упоминаний',
+      how_to_fix: '1. Переформулируйте H2 в вопросы целевой аудитории\n2. Под каждым H2-вопросом давайте конкретный ответ\n3. Начинайте H2 с «Как», «Что», «Почему», «Сколько»',
       example_fix: `Было: <h2>Наши услуги</h2>\nСтало: <h2>Какие SEO-услуги мы предоставляем?</h2>`,
+      impact_score: 8, docs_url: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
       visible_in_preview: true }));
   }
   
