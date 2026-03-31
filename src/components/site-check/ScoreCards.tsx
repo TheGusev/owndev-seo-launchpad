@@ -25,8 +25,8 @@ const CircleScore = ({ score }: { score: number }) => {
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="relative w-16 h-16 mx-auto">
-      <svg className="w-16 h-16 -rotate-90" viewBox="0 0 80 80">
+    <div className="relative w-12 h-12 md:w-16 md:h-16 mx-auto">
+      <svg className="w-12 h-12 md:w-16 md:h-16 -rotate-90" viewBox="0 0 80 80">
         <circle cx="40" cy="40" r="36" fill="none" strokeWidth="5" className="stroke-muted/30" />
         <circle
           cx="40" cy="40" r="36" fill="none" strokeWidth="5"
