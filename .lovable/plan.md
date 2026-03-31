@@ -1,55 +1,48 @@
 
 
-## Добавить seo_data в Edge Function и БД
+## Переработка главной и GEO-аудит страницы
 
-### Проблема
-Фронтенд передаёт `data.seo_data` в PDF/Word генераторы, но поле `seo_data` не существует в таблице `scans` и не заполняется бэкендом. Технический паспорт в отчётах всегда пустой.
+### Диагностика: точки входа на главной
 
-### Изменения
+| Компонент | Элемент | Действие |
+|-----------|---------|----------|
+| `Hero.tsx` | 2 кнопки + 1 инпут URL | Оставить ТОЛЬКО инпут, убрать 2 кнопки |
+| `ServicesTeaser.tsx` | Кнопка "Запустить GEO-аудит" | Заменить на якорь к `#site-check-input` |
+| `ToolsShowcase.tsx` | Flagship card → `/tools/site-check` | Оставить как ссылку (это каталог, не дубль) |
 
-#### 1. Миграция: добавить колонку `seo_data` (JSONB) в таблицу `scans`
-```sql
-ALTER TABLE public.scans ADD COLUMN IF NOT EXISTS seo_data jsonb DEFAULT NULL;
-```
+### Файлы и изменения (5 файлов)
 
-#### 2. `supabase/functions/site-check-scan/index.ts` — собрать и сохранить `seo_data`
+#### 1. `src/components/Hero.tsx` — полная переработка
+- Убрать 2 кнопки (GradientButton + outline Button)
+- Оставить инпут URL как единственный CTA, добавить `id="site-check-input"`
+- Новый badge: "#1 GEO и AI-ready аудит в Рунете"
+- Новый H1: "Ваш сайт не попадает в ответы **нейросетей**?" (статичный, без TypeAnimation)
+- Подзаголовок: про 50+ параметров, 4 направления, 2 минуты
+- Trust bar: 5 пунктов (50+ параметров, 2 минуты, PDF/Word, Бесплатно, GEO+AI)
+- Подпись под инпутом: "Нет регистрации · Результат через 2 минуты · Экспорт в PDF и Word"
 
-В `runPipeline()`, после парсинга HTML и до `updateScan` на шаге progress 35%, извлечь все SEO-метрики из HTML в объект:
+#### 2. `src/components/ServicesTeaser.tsx` — якорь вместо навигации
+- Заменить кнопку "Запустить GEO-аудит" на якорный скролл к `#site-check-input` с фокусом инпута
+- Обновить тексты: "Полный аудит по 4 направлениям"
+- Добавить 4 карточки: SEO (18 проверок), Schema.org (12 типов), GEO/AI-ready (NEW 2025), Яндекс.Директ (150 ключей)
 
-```typescript
-const seoData = extractSeoData(html, parsedUrl, robotsResult, sitemapResult);
-```
+#### 3. `src/pages/Index.tsx` — добавить секции "Как получить отчёт" и "Что в отчёте"
+- После ToolsShowcase добавить секцию "3 шага" (Введите URL → Ждите 2 мин → Получите отчёт)
+- Добавить секцию "Что вы получите" (PDF столбец + Word столбец)
+- Добавить таблицу сравнения OWNDEV vs Semrush/Screaming Frog/Арсенкин (10 строк)
+- Все CTA в новых секциях — якорные ссылки к `#site-check-input`
 
-Новая функция `extractSeoData()` собирает из уже распарсенного HTML:
-- `title`, `titleLength`
-- `description`, `descriptionLength`
-- `h1`, `h1Count`, `h2Count`, `h3Count`
-- `wordCount`
-- `canonical`
-- `ogTitle`, `ogDescription`, `ogImage`, `ogUrl`
-- `lang` (из `<html lang="...">`)
-- `imagesTotal`, `imagesWithoutAlt`, `imagesWithoutDimensions`
-- `hasSchema`, `schemaTypes` (массив типов из JSON-LD)
-- `hasFaq` (FAQPage в schema или текстовые маркеры)
-- `hasLlmsTxt` (проверка `{origin}/llms.txt` — уже делается в aiAudit)
-- `robotsMeta` (содержимое `<meta name="robots">`)
-- `hasViewport`
-- `loadTimeMs`
-- `httpStatus`
+#### 4. `src/pages/GeoAudit.tsx` — обновление контента
+- Hero: H1 "Ваш сайт невидим для нейросетей?", 3 статистики (73% / 4x / 20 б.)
+- Секция "SEO → AI-поиск → GEO" (3 колонки с эволюцией)
+- 6 карточек с весом LLM Score (+20, +15, +15, +20, +15, отдельная метрика)
+- CTA внизу с инпутом URL (навигация на `/tools/site-check?url=...`)
 
-Сохранить `seo_data` в финальном `updateScan()` (строка ~1974):
-```typescript
-await updateScan(scanId, {
-  status: 'done', ...,
-  seo_data: seoData,
-});
-```
+#### 5. `src/components/Header.tsx` — метка NEW на GEO-аудит
+- Добавить badge "NEW" рядом с "GEO-аудит" в навигации
 
-Также в промежуточный `updateScan` на строке ~1949 для раннего доступа.
+### Не трогаем
+- Edge Functions, логику сканирования, компоненты отчёта
+- Footer (уже обновлён ранее)
+- ToolsShowcase (flagship card — это каталог инструментов, не дублирующий CTA)
 
-### Файлы
-
-| Файл | Действие |
-|------|----------|
-| Миграция SQL | Новая колонка `seo_data jsonb` |
-| `supabase/functions/site-check-scan/index.ts` | Новая функция `extractSeoData` + сохранение |
