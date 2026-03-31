@@ -1974,7 +1974,16 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   const linkResults = await Promise.all(uniqueHrefs.map(h => checkUrl(h)));
   const brokenLinks = uniqueHrefs.filter((_, i) => !linkResults[i].ok && linkResults[i].status !== 0);
   
-  await updateScan(scanId, { progress_pct: 35 });
+  // Extract SEO data for reports
+  let hasLlmsTxt = false;
+  try {
+    const llmsCheck = await fetchWithTimeout(`${origin}/llms.txt`, 5000, { method: 'HEAD' });
+    hasLlmsTxt = llmsCheck.ok;
+  } catch {}
+  const seoData = extractSeoData(html, parsedUrl, httpStatus, loadTimeMs, robotsResult, sitemapResult, hasLlmsTxt);
+  console.log('[OWNDEV] seoData extracted:', JSON.stringify({ title: seoData.title?.slice(0, 50), wordCount: seoData.wordCount, hasSchema: seoData.hasSchema }));
+
+  await updateScan(scanId, { progress_pct: 35, seo_data: seoData });
   
   // STEP 1: Technical SEO
   const techIssues = technicalAudit({
