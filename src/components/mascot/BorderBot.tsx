@@ -172,7 +172,11 @@ const BorderBot = memo(() => {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const shouldHide = hidden || location.pathname.includes("/result/");
+  const shouldHide = hidden || location.pathname.includes("/result/") || location.pathname.includes("/report/");
+
+  useEffect(() => {
+    console.log('[BorderBot] mounted, shouldHide:', shouldHide);
+  }, [shouldHide]);
 
   const handleTripleClick = useCallback(() => {
     clickCount.current++;
