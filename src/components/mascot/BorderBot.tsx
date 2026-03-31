@@ -286,6 +286,7 @@ const BorderBot = memo(() => {
 
   return (
     <motion.div
+      initial={{ x: getPos("bottom", 0, false).x, y: getPos("bottom", 0, false).y }}
       animate={controls}
       onClick={handleTripleClick}
       style={{
