@@ -1518,26 +1518,26 @@ interface KeywordEntry {
 // ═══ STEP 6: Minus Words (ПРОМТ 6) ═══
 interface MinusWordEntry {
   word: string;
-  type: 'general' | 'thematic';
+  category: 'informational' | 'irrelevant' | 'competitor' | 'geo' | 'other';
   reason: string;
 }
 
 const GENERAL_MINUS_WORDS: MinusWordEntry[] = [
-  { word: 'бесплатно', type: 'general', reason: 'Нецелевая аудитория' },
-  { word: 'бесплатная', type: 'general', reason: 'Нецелевая аудитория' },
-  { word: 'бесплатный', type: 'general', reason: 'Нецелевая аудитория' },
-  { word: 'скачать', type: 'general', reason: 'Информационный интент' },
-  { word: 'торрент', type: 'general', reason: 'Пиратский контент' },
-  { word: 'своими руками', type: 'general', reason: 'DIY-аудитория' },
-  { word: 'самостоятельно', type: 'general', reason: 'DIY-аудитория' },
-  { word: 'самому', type: 'general', reason: 'DIY-аудитория' },
-  { word: 'видеоурок', type: 'general', reason: 'Образовательный интент' },
-  { word: 'смотреть онлайн', type: 'general', reason: 'Развлекательный интент' },
-  { word: 'wikipedia', type: 'general', reason: 'Информационный интент' },
-  { word: 'реферат', type: 'general', reason: 'Образовательный интент' },
-  { word: 'курсовая', type: 'general', reason: 'Образовательный интент' },
-  { word: 'диплом', type: 'general', reason: 'Образовательный интент' },
-  { word: 'вики', type: 'general', reason: 'Информационный интент' },
+  { word: 'бесплатно', category: 'irrelevant', reason: 'Нецелевая аудитория' },
+  { word: 'бесплатная', category: 'irrelevant', reason: 'Нецелевая аудитория' },
+  { word: 'бесплатный', category: 'irrelevant', reason: 'Нецелевая аудитория' },
+  { word: 'скачать', category: 'informational', reason: 'Информационный интент' },
+  { word: 'торрент', category: 'irrelevant', reason: 'Пиратский контент' },
+  { word: 'своими руками', category: 'informational', reason: 'DIY-аудитория' },
+  { word: 'самостоятельно', category: 'informational', reason: 'DIY-аудитория' },
+  { word: 'самому', category: 'informational', reason: 'DIY-аудитория' },
+  { word: 'видеоурок', category: 'informational', reason: 'Образовательный интент' },
+  { word: 'смотреть онлайн', category: 'irrelevant', reason: 'Развлекательный интент' },
+  { word: 'wikipedia', category: 'informational', reason: 'Информационный интент' },
+  { word: 'реферат', category: 'informational', reason: 'Образовательный интент' },
+  { word: 'курсовая', category: 'informational', reason: 'Образовательный интент' },
+  { word: 'диплом', category: 'informational', reason: 'Образовательный интент' },
+  { word: 'вики', category: 'informational', reason: 'Информационный интент' },
 ];
 
 async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Promise<MinusWordEntry[]> {
@@ -1546,22 +1546,41 @@ async function generateMinusWords(theme: string, keywords: KeywordEntry[]): Prom
   if (!LOVABLE_API_KEY) return result;
   const sampleKeys = keywords.filter(k => k.intent === 'commercial').slice(0, 15).map(k => k.phrase).join(', ');
   try {
+    console.log(`[OWNDEV] Шаг: generateMinusWords | Модель: google/gemini-2.5-flash`);
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Сгенерируй 40-60 тематических минус-слов для Директа по теме "${theme}". Категории: DIY, информационные, нерелевантные. JSON: [{"word":"слово","type":"thematic","reason":"почему"}].` },
+          { role: 'system', content: `Ты — специалист по Яндекс.Директ.
+Сгенерируй список минус-слов для рекламной кампании.
+
+Входные данные:
+- Тематика: ${theme}
+- Коммерческие ключи: ${sampleKeys}
+
+ТРЕБОВАНИЯ:
+- 50-80 минус-слов
+- Только слова которые реально отсекают нецелевой трафик
+- Не дублировать стандартные минуса (бесплатно, скачать, своими руками, реферат, курсовая)
+- category строго одно из: informational / irrelevant / competitor / geo / other
+
+ФОРМАТ — строго JSON-массив:
+[{"word":"слово","category":"informational","reason":"почему минусовать"}]
+
+ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без \`\`\`json, только сам JSON.` },
           { role: 'user', content: `Тема: ${theme}\nКлючи: ${sampleKeys}` },
         ],
-        max_tokens: 3000, temperature: 0.1,
+        max_tokens: 8192, temperature: 0.1, top_p: 0.85, top_k: 20,
       }),
     });
     const data = await resp.json();
-    const content = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-    const parsed = tryParseJsonArray(content);
-    result.push(...parsed.map((t: any) => ({ ...t, type: 'thematic' })));
+    const content = data.choices?.[0]?.message?.content?.trim() || '[]';
+    console.log(`[OWNDEV] Ответ generateMinusWords:`, content.slice(0, 200));
+    const parsed = safeParseJson<MinusWordEntry[]>(content, []);
+    console.log(`[OWNDEV] Распарсено generateMinusWords: ${parsed.length} элементов`);
+    result.push(...parsed);
   } catch {}
   const seen = new Set<string>();
   return result.filter(m => {
