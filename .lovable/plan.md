@@ -1,60 +1,69 @@
 
 
-## Починка BorderBot — видимость и надёжность
+## Стабилизация LLM в site-check-scan
 
-### Диагноз
+### Обзор LLM-вызовов (5 шт)
 
-Код структурно корректен, ошибок нет, подключение в App.tsx на месте. Вероятные причины невидимости:
+| # | Шаг | Строка | Текущая модель | Новая модель |
+|---|------|--------|---------------|-------------|
+| 1 | `detectTheme` | 198 | `gemini-3-flash-preview` | `google/gemini-2.0-flash` |
+| 2 | Competitor: search queries | 1228 | `gemini-3-flash-preview` | `google/gemini-2.0-flash` |
+| 3 | Competitor: URLs | 1251 | `gemini-2.5-pro` | `google/gemini-2.5-pro` (без изменений) |
+| 4 | `extractKeywords` (×3 batch) | 1471 | `gemini-2.5-pro` | `google/gemini-2.5-pro` (без изменений) |
+| 5 | `generateMinusWords` | 1531 | `gemini-2.5-flash` | `google/gemini-2.5-flash` (без изменений) |
 
-1. **Начальная позиция `x:0, y:0`** — `controls.set()` вызывается в `useEffect`, но до этого Framer Motion рендерит div в `(0,0)` без `initial` prop — бот может быть за пределами видимой области или в углу под шапкой
-2. **`isMobile` стартует как `undefined` → `false`** — `useIsMobile()` возвращает `!!undefined = false` на первом рендере, потом меняется — effect перезапускается, `abortRef` сбрасывается, но позиция может не обновиться
-3. **`sleep` не проверяет abort корректно** — проверка `abortRef.current` происходит синхронно до `setTimeout`, а не после
-4. **localStorage ключ `hideBot`** — пользователь мог случайно тройным кликом скрыть бота, и теперь он не виден
+### Изменения (1 файл: `supabase/functions/site-check-scan/index.ts`)
 
-### Изменения (1 файл)
+#### A. Модели и параметры генерации
 
-#### `src/components/mascot/BorderBot.tsx`
+- Вызовы 1, 2: сменить модель на `google/gemini-2.0-flash`
+- Ко всем 5 вызовам добавить: `temperature: 0.1, top_p: 0.85, top_k: 20, max_tokens: 8192` (для keywords оставить `max_tokens: 16000`)
+- В конец каждого system prompt добавить: `"ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без ```json, только сам JSON."`
 
-1. **Добавить `console.log('[BorderBot] mounted, shouldHide:', shouldHide)`** — для отладки
+#### B. Единый JSON-парсер
 
-2. **Добавить `initial` prop** на `motion.div`:
-```tsx
-initial={{ x: getPos("bottom", 0, false).x, y: getPos("bottom", 0, false).y }}
+Заменить `tryParseJsonArray` (строки 47-66) на `safeParseJson<T>(raw, fallback)`:
+- Очистка: убрать ````json`, control chars
+- Извлечение: regex для `[...]` и `{...}`
+- Fallback: truncated array recovery
+- Логирование ошибок
+
+Заменить все вызовы `tryParseJsonArray(...)` → `safeParseJson(...)`:
+- Строка 1479 (keywords)
+- Строка 1541 (minus words)
+- Строки 1238, 1261 (competitor queries/urls — inline `JSON.parse` → `safeParseJson`)
+
+#### C. Строгие промпты
+
+1. **extractKeywords** (строка 1454): полная замена system prompt на схему из ТЗ — 150 запросов, кластеры ≤7, поля `phrase/cluster/intent/frequency/landing_needed`
+2. **generateMinusWords** (строка 1533): замена на схему из ТЗ — 50-80 слов, поля `word/category/reason`
+3. **detectTheme**: оставить как есть (простая классификация)
+4. **Competitor queries/URLs**: добавить суффикс про JSON
+
+#### D. Логирование
+
+Перед каждым `fetch` к AI Gateway:
 ```
-Это гарантирует что бот виден сразу, а не ждёт effect
-
-3. **Расширить `shouldHide`** — добавить `/report/`:
-```tsx
-const shouldHide = hidden || location.pathname.includes("/result/") || location.pathname.includes("/report/");
+console.log(`[OWNDEV] Шаг: ${stepName} | Модель: ${model} | URL: ${url}`);
+```
+После получения raw response:
+```
+console.log(`[OWNDEV] Ответ ${stepName}:`, rawContent.slice(0, 200));
+```
+После парсинга:
+```
+console.log(`[OWNDEV] Распарсено ${stepName}: ${Array.isArray(r) ? r.length + ' элементов' : 'объект'}`);
 ```
 
-4. **Сменить localStorage ключ** на `owndev_bot_hidden` (как в ТЗ):
-```tsx
-localStorage.getItem("owndev_bot_hidden")
-localStorage.setItem("owndev_bot_hidden", "true")
-```
+#### Замечание по схемам данных
 
-5. **Исправить `sleep`** — abort должен проверяться внутри промиса:
-```tsx
-const sleep = (ms: number) => new Promise<void>((res) => {
-  const t = setTimeout(() => res(), ms);
-  const check = setInterval(() => {
-    if (abortRef.current) { clearTimeout(t); clearInterval(check); res(); }
-  }, 100);
-});
-```
+Промпт keywords меняет формат с `type/priority/use_for_seo/use_for_direct/landing_needed(string)` на `cluster/intent/frequency/landing_needed(bool)`. Интерфейс `KeywordEntry` (строка 1424) будет обновлён соответственно. UI-компонент `KeywordsSection.tsx` уже поддерживает `cluster` и `intent` — поля `frequency` и `landing_needed` будут доступны в данных, но рендер не меняется (задача — только стабилизация бэкенда).
 
-6. **Защита от SSR/initial render** — дождаться `isMobile !== undefined`:
-```tsx
-// В useEffect: если isMobile ещё undefined, не запускать loop
-```
-Но `useIsMobile` уже возвращает `boolean`, так что достаточно добавить `initial` prop.
-
-7. **Минимизация анимаций** — убрать SVG `<animate>` на экранчике (3 полоски) и тени, оставить только движение + моргание. Добавить их обратно позже если FPS ок.
+Промпт minus words меняет `type: general|thematic` на `category: informational|irrelevant|competitor|geo|other`. Интерфейс `MinusWordEntry` обновится. Hardcoded `GENERAL_MINUS_WORDS` массив получит поле `category` вместо `type`.
 
 ### Файлы
 
 | Файл | Изменение |
 |------|-----------|
-| `src/components/mascot/BorderBot.tsx` | initial prop, localStorage ключ, sleep fix, console.log, /report/ hide, упрощение анимаций |
+| `supabase/functions/site-check-scan/index.ts` | Модели, параметры, safeParseJson, промпты, логирование |
 
