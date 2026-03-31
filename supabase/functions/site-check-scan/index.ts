@@ -1457,6 +1457,25 @@ interface KeywordEntry {
   landing_needed: boolean;
 }
 
+async function extractKeywords(
+  html: string, theme: string, url: string, competitorPhrases: string[] = []
+): Promise<KeywordEntry[]> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) return [];
+
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyText = bodyMatch
+    ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1].trim() : '';
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
+
+  const phrasesBlock = competitorPhrases.length > 0
+    ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}`
+    : '';
+
   const systemPrompt = `Ты — профессиональный SEO-специалист для Рунета.
 Сгенерируй список ключевых слов для продвижения сайта.
 
