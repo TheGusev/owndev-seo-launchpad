@@ -1484,24 +1484,26 @@ interface KeywordEntry {
       ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
       : `Ещё 100 НОВЫХ запросов для "${theme}". Не дублируй: ${allKeywords.slice(0, 20).map(k => k.phrase).join(', ')}.\nКластеры: ${[...new Set(allKeywords.map(k => k.cluster))].join(', ')}`;
     try {
+      console.log(`[OWNDEV] Шаг: extractKeywords batch ${batch} | Модель: google/gemini-2.5-pro | URL: ${url}`);
       const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'google/gemini-2.5-pro',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: batchPrompt }],
-          max_tokens: 16000, temperature: 0.1,
+          max_tokens: 16000, temperature: 0.1, top_p: 0.85, top_k: 20,
         }),
       });
-      if (!resp.ok) { console.error(`Keyword batch ${batch}: ${resp.status}`); continue; }
+      if (!resp.ok) { console.error(`[OWNDEV] Keyword batch ${batch}: ${resp.status}`); continue; }
       const data = await resp.json();
-      const kwRaw = (data.choices?.[0]?.message?.content?.trim() || '[]').replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-      const parsed = tryParseJsonArray(kwRaw);
+      const kwRaw = data.choices?.[0]?.message?.content?.trim() || '[]';
+      console.log(`[OWNDEV] Ответ extractKeywords batch ${batch}:`, kwRaw.slice(0, 200));
+      const parsed = safeParseJson<KeywordEntry[]>(kwRaw, []);
       if (parsed.length > 0) {
         allKeywords.push(...parsed);
-        console.log(`KW batch ${batch}: got ${parsed.length}, total: ${allKeywords.length}`);
-      } else { console.error('KW parse fail:', kwRaw.slice(0, 500)); }
-    } catch (e) { console.error('KW error:', e); }
+        console.log(`[OWNDEV] Распарсено extractKeywords batch ${batch}: ${parsed.length} элементов, total: ${allKeywords.length}`);
+      } else { console.error('[OWNDEV] KW parse fail:', kwRaw.slice(0, 500)); }
+    } catch (e) { console.error('[OWNDEV] KW error:', e); }
     if (allKeywords.length >= 200) break;
   }
   const seen = new Set<string>();
