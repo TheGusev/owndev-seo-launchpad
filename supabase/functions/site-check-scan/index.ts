@@ -1451,12 +1451,12 @@ async function extractKeywords(
     ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}`
     : '';
 
-  const systemPrompt = `Ты — SEO-специалист. Сгенерируй 100 ключевых запросов для "${theme}".
+  const systemPrompt = `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Ты — SEO-специалист. Сгенерируй 100 ключевых запросов для "${theme}".
 Коммерческие: цена, заказать, купить, под ключ, в Москве, недорого, отзывы.
 Информационные: что такое, как выбрать, зачем, виды.
 Региональные: в Москве, в СПб, по России.
 JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"commercial","priority":"high","use_for_seo":true,"use_for_direct":false,"landing_needed":"..."}]
-Ровно 100 фраз. Только JSON без markdown.`;
+Ровно 100 фраз.`;
 
   const allKeywords: KeywordEntry[] = [];
   for (let batch = 0; batch < 3; batch++) {
@@ -1468,9 +1468,9 @@ JSON массив: [{"phrase":"...","type":"seo","cluster":"...","intent":"comme
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-lite',
+          model: 'google/gemini-2.5-pro',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: batchPrompt }],
-          max_tokens: 16000, temperature: 0.5 + batch * 0.15,
+          max_tokens: 16000, temperature: 0.1,
         }),
       });
       if (!resp.ok) { console.error(`Keyword batch ${batch}: ${resp.status}`); continue; }
