@@ -1064,9 +1064,10 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
       title: '🤖 Нет FAQPage Schema для AI-видимости',
       found: `Schema типы: ${schemaTypes.length > 0 ? schemaTypes.join(', ') : 'нет'}`,
       location: 'JSON-LD разметка',
-      why_it_matters: 'FAQPage Schema — ключевой сигнал для AI-систем. Вопрос-ответ формат цитируется в AI Overviews в 3 раза чаще',
-      how_to_fix: 'Добавьте JSON-LD с типом FAQPage на страницы с вопросами',
+      why_it_matters: 'FAQPage Schema — ключевой сигнал для AI-систем. Вопрос-ответ формат цитируется в AI Overviews в 3 раза чаще. FAQ-блоки — главный источник контента для AI-ответов',
+      how_to_fix: '1. Добавьте раздел FAQ на страницу с 5-7 вопросами\n2. Добавьте JSON-LD с типом FAQPage\n3. Вопросы должны отражать реальные запросы пользователей',
       example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Ваш вопрос?","acceptedAnswer":{"@type":"Answer","text":"Ответ"}}]}</script>',
+      impact_score: 10, docs_url: 'https://developers.google.com/search/docs/appearance/structured-data/faqpage',
       visible_in_preview: true }));
   }
 
