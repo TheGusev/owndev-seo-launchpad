@@ -1,87 +1,70 @@
 
 
-## Mobile polish, Robot fix, Tool improvements
+## QA-аудит OWNDEV — найденные проблемы и план фиксов
 
-This is a large task spanning 3 directions. I'll focus on the highest-impact changes.
+### Методология
+Код-ревью всех компонентов, проверка структуры данных, навигации, мобильной адаптации, экспортов и маскота.
 
-### Part 1: Mobile fixes (8 files)
+---
 
-#### `src/components/Hero.tsx`
-- H1: `text-3xl md:text-5xl lg:text-6xl` (smaller on 375px)
-- Trust bar: `grid grid-cols-2 sm:flex` instead of flex-wrap
-- Input + button: already `flex-col sm:flex-row` -- verify input has `min-h-[48px]`, button `min-h-[44px]`
+### ❌ BLOCKER (ломает основной сценарий)
 
-#### `src/components/Header.tsx`
-- Already has mobile hamburger menu -- just ensure CTA button text shortens on mobile: "Проверить" instead of "Проверить сайт"
-- Mobile menu items: add `min-h-[44px]` (already has it)
+Нет критических блокеров обнаружено на уровне кода. Приложение компилируется, маршруты корректны, Edge Function задеплоена.
 
-#### `src/components/landing/ComparisonSection.tsx`
-- Add `min-w-[600px]` on the table for horizontal scroll
-- Add hint text below on mobile: "← Прокрутите таблицу →"
+---
 
-#### `src/components/site-check/ScoreCards.tsx`
-- Change grid to `grid-cols-5` with smaller sizing: `gap-2` on mobile, circle `w-12 h-12` on mobile vs `w-16 h-16` on md+
+### ❌ MAJOR (мешает работе)
 
-#### `src/components/site-check/IssueCard.tsx`
-- Pre block: add `max-w-full` and ensure `overflow-x-auto` + `break-all` for long URLs
-- Expand button: `min-h-[44px]` for touch
-- Copy button: always visible (not just hover)
+| # | Проблема | Файл | Описание |
+|---|----------|------|----------|
+| M1 | **Ссылка "#about" ведёт в никуда** | `Header.tsx:15`, `Footer.tsx:24` | `href="#about"` — элемента с `id="about"` не существует нигде на сайте. Клик ничего не делает. |
+| M2 | **Footer "Контакты" ведёт на #contact, а не на /contacts** | `Footer.tsx:25` | `quickLinks` содержит `{ href: "#contact" }` вместо `{ href: "/contacts", isRoute: true }`. На страницах кроме главной ссылка не работает. |
+| M3 | **MinusWordsSection фильтрует только "general"/"thematic"** | `MinusWordsSection.tsx:23-24` | Бэкенд теперь отдаёт `category: "informational"/"irrelevant"/"competitor"/"geo"/"other"`, но UI фильтрует по `type: "general"/"thematic"`. Все минус-слова попадают в "Общие" или вообще не отображаются. |
+| M4 | **Footer tool links ведут на несуществующие slug** | `Footer.tsx:30-31` | `/tools/geo-audit` и `/tools/llm-score` — таких маршрутов нет в `App.tsx`. Клик → 404. |
 
-#### `src/components/site-check/CompetitorsTable.tsx`
-- Already has overflow-x-auto -- verify `min-w-[700px]` on table
-- Add mobile scroll hint
+---
 
-#### `src/components/site-check/DownloadButtons.tsx`
-- Already `grid-cols-2 sm:grid-cols-4` -- add `min-h-[44px]` to buttons
+### ⚠️ MINOR (косметика / улучшения)
 
-#### `src/components/ServicesTeaser.tsx`
-- Cards grid: ensure `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
-- CTA button: `min-h-[44px]`
+| # | Проблема | Файл | Описание |
+|---|----------|------|----------|
+| m1 | Нет `id="about"` секции на главной | `Index.tsx` | Если ссылка "О нас" нужна — добавить `id="about"` на FAQ или ContactForm. Или убрать ссылку. |
+| m2 | ScoreCards не показывает текстовую оценку | `ScoreCards.tsx` | Нет подписей "Отлично"/"Хорошо"/"Критично" под числами. Только label "SEO"/"AI". |
+| m3 | Comparison table — нет sticky первой колонки | `ComparisonSection.tsx` | На мобильном скролле таблицы колонка "Функция" уезжает. |
+| m4 | ScanForm — кнопка не disabled при пустом инпуте на Hero | `Hero.tsx:120` | Hero form `handleQuickCheck` проверяет `!trimmed` но кнопка не disabled визуально. |
+| m5 | Copyright год динамический, но задачей указан 2025 | `Footer.tsx:144` | `new Date().getFullYear()` → показывает 2026. Мелочь, но несоответствие. |
 
-### Part 2: Robot fix (1 file)
+---
 
-#### `src/components/mascot/BorderBot.tsx` -- rewrite visibility
+### План фиксов (только найденные баги)
 
-**Root cause**: `initial={{ x: getPos("bottom", 0, false).x, y: getPos("bottom", 0, false).y }}` uses `false` for mobile even on mobile devices. Also `controls.set()` in useEffect may race with initial render.
+#### 1. `src/components/Header.tsx` — убрать мёртвую ссылку "#about"
+- Заменить `{ href: "#about", label: "О нас" }` на `{ href: "/contacts", label: "Контакты", isRoute: true }` или убрать дубль (Контакты уже есть в навигации)
+- Проще: убрать "О нас" из navLinks, т.к. "Контакты" уже есть
 
-**Fix**:
-- Set `initial` to use actual screen position: `bottom: 20px, right: 16px` via CSS, not framer motion x/y initially
-- Simplify: on mount, place bot at fixed bottom-right position, THEN start walking loop after delay
-- Add speech bubble with periodic idle phrases (simple div, no drag complexity)
-- Reduce SVG size on mobile: `w-[28px] h-[44px]` on mobile, `w-[36px] h-[56px]` on desktop
-- Ensure `pointer-events-none` on wrapper, `pointer-events-auto` on robot itself
-- Keep triple-click hide and localStorage logic
+#### 2. `src/components/Footer.tsx` — 3 фикса
+- quickLinks: заменить `{ label: "О нас", href: "#about" }` на `{ label: "О нас", href: "/contacts", isRoute: true }` или убрать
+- quickLinks: заменить `{ label: "Контакты", href: "#contact" }` на `{ href: "/contacts", isRoute: true }`
+- toolLinks: убрать `/tools/geo-audit` и `/tools/llm-score` (несуществующие routes), заменить на реальные: `/tools/semantic-core`, `/tools/internal-links`
 
-### Part 3: Tool polish (3 files)
+#### 3. `src/components/site-check/MinusWordsSection.tsx` — поддержка новых категорий
+- Заменить фильтрацию `general/thematic` на группировку по полю `type` (которое маппится из `category` бэкенда)
+- Добавить маппинг категорий: `informational → "Информационные"`, `irrelevant → "Нерелевантные"`, `competitor → "Конкуренты"`, `geo → "Регионы"`, `other → "Прочие"`, `general → "Общие"`, `thematic → "Тематические"`
+- Рендерить каждую непустую группу отдельным блоком
 
-#### `src/components/tools/SchemaGenerator.tsx`
-- Form fields: `grid-cols-1 sm:grid-cols-2` layout
-- Copy button: always visible, not hover-only
-- Generated JSON pre block: `overflow-x-auto max-w-full`
-- All buttons: `min-h-[44px]`
+#### 4. `src/components/Hero.tsx` — disabled кнопка при пустом URL
+- Добавить `disabled={!url.trim()}` на Button
 
-#### `src/components/tools/SemanticCoreGenerator.tsx`
-- Results table: wrap in `overflow-x-auto` with `min-w-[500px]`
-- Export button: `w-full sm:w-auto`
+#### 5. `src/components/site-check/ScoreCards.tsx` — текстовая оценка
+- Добавить `getScoreStatus` label под каждым score: "Отлично"/"Хорошо"/"Требует работы"/"Критично"
 
-#### `src/components/tools/IndexationChecker.tsx`
-- Status cards: `grid-cols-2` on mobile
-- All interactive elements: `min-h-[44px]`
+### Файлы
 
-### Files summary
-
-| File | Change |
-|------|--------|
-| `src/components/Hero.tsx` | Smaller H1 on mobile, trust bar grid, input sizing |
-| `src/components/Header.tsx` | Shorter CTA text on mobile |
-| `src/components/landing/ComparisonSection.tsx` | Table min-width + scroll hint |
-| `src/components/site-check/ScoreCards.tsx` | 5-col grid with smaller circles on mobile |
-| `src/components/site-check/IssueCard.tsx` | Code overflow fix, touch targets |
-| `src/components/site-check/CompetitorsTable.tsx` | Scroll hint on mobile |
-| `src/components/site-check/DownloadButtons.tsx` | Button min-height |
-| `src/components/ServicesTeaser.tsx` | Touch targets |
-| `src/components/mascot/BorderBot.tsx` | Fix initial position, add speech bubble, responsive size |
-| `src/components/tools/SchemaGenerator.tsx` | Form layout, copy button visibility |
-| `src/components/tools/SemanticCoreGenerator.tsx` | Table scroll wrapper |
-| `src/components/tools/IndexationChecker.tsx` | Grid + touch targets |
+| Файл | Действие |
+|------|----------|
+| `src/components/Header.tsx` | Убрать мёртвую ссылку "#about" |
+| `src/components/Footer.tsx` | Починить 3 битых ссылки |
+| `src/components/site-check/MinusWordsSection.tsx` | Поддержка новых категорий |
+| `src/components/Hero.tsx` | Disabled кнопка при пустом URL |
+| `src/components/site-check/ScoreCards.tsx` | Добавить текстовые оценки |
 
