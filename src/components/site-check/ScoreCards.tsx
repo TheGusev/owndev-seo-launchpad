@@ -73,7 +73,7 @@ interface ScoreCardsProps {
 }
 
 const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
-  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+  <div className="grid grid-cols-5 gap-2 md:gap-3">
     {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => {
       const val = scores?.[key] ?? 0;
       return (
