@@ -14,6 +14,13 @@ function getScoreColor(score: number) {
   return "text-green-500 border-green-500/30 bg-green-500/5";
 }
 
+function getScoreStatus(score: number) {
+  if (score <= 40) return "Критично";
+  if (score <= 60) return "Требует работы";
+  if (score <= 70) return "Хорошо";
+  return "Отлично";
+}
+
 function getScoreRing(score: number) {
   if (score <= 40) return "stroke-red-500";
   if (score <= 70) return "stroke-yellow-500";
