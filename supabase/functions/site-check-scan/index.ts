@@ -1225,12 +1225,12 @@ async function competitorAnalysis(
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
+        model: 'google/gemini-3-flash-preview',
         messages: [
-          { role: 'system', content: 'Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк. Только JSON, без markdown.' },
+          { role: 'system', content: 'Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк.' },
           { role: 'user', content: `Тема: "${theme}"` },
         ],
-        max_tokens: 200, temperature: 0.3,
+        max_tokens: 200, temperature: 0.1,
       }),
     });
     const data = await resp.json();
