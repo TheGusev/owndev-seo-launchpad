@@ -90,11 +90,19 @@ interface Issue {
   id: string; module: string; severity: string; title: string;
   found: string; location: string; why_it_matters: string;
   how_to_fix: string; example_fix: string; visible_in_preview: boolean;
+  impact_score: number; docs_url: string; is_auto_fixable: boolean;
 }
 
 let issueCounter = 0;
-function makeIssue(partial: Omit<Issue, 'id'>): Issue {
-  return { id: `issue_${++issueCounter}`, ...partial };
+function makeIssue(partial: Omit<Issue, 'id' | 'impact_score' | 'docs_url' | 'is_auto_fixable'> & { impact_score?: number; docs_url?: string; is_auto_fixable?: boolean }): Issue {
+  const severityScores: Record<string, number> = { critical: 15, high: 10, medium: 5, low: 2 };
+  return {
+    id: `issue_${++issueCounter}`,
+    impact_score: partial.impact_score ?? severityScores[partial.severity] ?? 5,
+    docs_url: partial.docs_url ?? '',
+    is_auto_fixable: partial.is_auto_fixable ?? false,
+    ...partial,
+  };
 }
 
 // ─── DB Rule type ───

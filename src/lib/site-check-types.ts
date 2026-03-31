@@ -15,6 +15,9 @@ export interface IssueCard {
   how_to_fix: string;
   example_fix: string;
   visible_in_preview: boolean;
+  impact_score?: number;
+  docs_url?: string;
+  is_auto_fixable?: boolean;
 }
 
 export interface ScanScores {
