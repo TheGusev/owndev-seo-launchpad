@@ -1247,13 +1247,13 @@ async function competitorAnalysis(
       const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+      body: JSON.stringify({
+          model: 'google/gemini-2.5-pro',
           messages: [
-            { role: 'system', content: `Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://). Только JSON.` },
+            { role: 'system', content: `Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://).` },
             { role: 'user', content: `Запрос: "${query}"\nИсключить домен: ${ownHostname}` },
           ],
-          max_tokens: 500, temperature: 0.4,
+          max_tokens: 500, temperature: 0.1,
         }),
       });
       const data = await resp.json();
