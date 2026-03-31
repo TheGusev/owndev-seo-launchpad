@@ -1158,33 +1158,73 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
 
 // ═══ STEP 4: Competitor Analysis (ПРОМТ 5) ═══
 interface CompetitorProfile {
+  _type: 'competitor';
+  position: number;
   url: string;
-  title: string;
-  h1: string;
+  domain: string;
+  title: string | null;
+  h1: string | null;
   content_length_words: number;
   has_faq: boolean;
   has_price_block: boolean;
   has_reviews: boolean;
   has_schema: boolean;
   has_cta_button: boolean;
-  load_speed_sec: number;
+  has_video: boolean;
+  has_blog: boolean;
+  load_speed_sec: number | null;
+  h2_count: number;
+  h3_count: number;
+  images_count: number;
+  internal_links_count: number;
+  top_phrases: string[];
+  is_analyzed: boolean;
+}
+
+interface CompetitorMetrics {
+  content_length_words: number;
   h2_count: number;
   images_count: number;
-  top_phrases: string[];
+  has_faq: boolean;
+  has_price_block: boolean;
+  has_reviews: boolean;
+  has_schema: boolean;
+  has_video: boolean;
+}
+
+interface ComparisonTableData {
+  _type: 'comparison_table';
+  your_site: CompetitorMetrics;
+  avg_top10: CompetitorMetrics;
+  leader: CompetitorMetrics;
+  leader_domain: string;
+  insights: string[];
+}
+
+interface DirectMetaData {
+  _type: 'direct_meta';
+  query: string;
+  region: string;
+  serp_date: string;
+  total_found: number;
 }
 
 interface CompetitorAnalysisResult {
   competitors: CompetitorProfile[];
-  comparison_table: Record<string, { yours: string; avg_top10: string; leader: string }>;
+  comparisonTable: ComparisonTableData | null;
+  directMeta: DirectMetaData | null;
   gap_issues: Issue[];
 }
 
-// Parse a single competitor page into a profile
-function parseCompetitorHtml(url: string, html: string, loadMs: number): CompetitorProfile {
+// Parse a single competitor page into a profile (pure DOM, no LLM)
+function parseCompetitorHtml(url: string, html: string, loadMs: number, position: number): CompetitorProfile {
+  const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
+  
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim() : '';
+  const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() || null : null;
+
   const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
+  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() || null : null;
 
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const bodyText = bodyMatch
@@ -1192,43 +1232,63 @@ function parseCompetitorHtml(url: string, html: string, loadMs: number): Competi
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
         .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     : '';
-  const words = bodyText.split(/\s+/).filter(w => w.length > 1);
+  const words = bodyText.split(/\s+/).filter(w => w.length > 2);
 
-  const has_faq = /faq|часто\s*задаваемые|вопрос.*ответ|\bfaq\b/i.test(html) || /<details[\s>]/i.test(html);
-  const has_price_block = /цена|стоимость|руб|₽|\d+\s*р\b|прайс|тариф/i.test(bodyText);
-  const has_reviews = /отзыв|review|testimonial|рекоменд|клиент\s*говор/i.test(bodyText);
-  const jsonLd = html.match(/<script[^>]*type=["']application\/ld\+json["']/i);
-  const has_schema = !!jsonLd;
+  const htmlLower = html.toLowerCase();
+  const has_faq = /faq|часто\s*задаваемые|вопрос.*ответ/i.test(html) || html.includes('FAQPage') || /<details[\s>]/i.test(html);
+  const has_price_block = /прайс|стоимость|цена|руб|₽|\d+\s*р\b|тариф/i.test(bodyText);
+  const has_reviews = /отзыв|review|testimonial|рекоменд|клиент\s*говор/i.test(bodyText) || html.includes('schema.org/Review');
+  const has_schema = !!html.match(/<script[^>]*type=["']application\/ld\+json["']/i);
   const has_cta_button = /заказ|купи|оставить заявку|запис|получить|корзин|связаться|консультац/i.test(html);
+  const has_video = htmlLower.includes('<video') || htmlLower.includes('youtube.com') || htmlLower.includes('rutube.ru');
+  const has_blog = htmlLower.includes('/blog') || htmlLower.includes('/stati') || htmlLower.includes('/news') || htmlLower.includes('/articles');
 
   const h2_count = (html.match(/<h2[\s>]/gi) || []).length;
+  const h3_count = (html.match(/<h3[\s>]/gi) || []).length;
   const images_count = (html.match(/<img[\s>]/gi) || []).length;
+  
+  // Internal links
+  const internalLinkRegex = new RegExp(`href=["'][^"']*${domain.replace(/\./g, '\\.')}[^"']*["']`, 'gi');
+  const internal_links_count = (html.match(internalLinkRegex) || []).length + (html.match(/href=["']\//g) || []).length;
 
-  // Extract top phrases (2-3 word combos by frequency)
-  const wordList = bodyText.toLowerCase().replace(/[^а-яa-zё\s]/gi, '').split(/\s+/).filter(w => w.length > 3);
-  const bigramMap: Record<string, number> = {};
-  for (let i = 0; i < wordList.length - 1; i++) {
-    const bigram = `${wordList[i]} ${wordList[i + 1]}`;
-    bigramMap[bigram] = (bigramMap[bigram] || 0) + 1;
-  }
-  const top_phrases = Object.entries(bigramMap)
-    .filter(([, c]) => c >= 2)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([phrase]) => phrase);
+  // Top phrases from H1 and H2
+  const h2Matches = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) || [];
+  const top_phrases = [
+    ...(h1 ? [h1] : []),
+    ...h2Matches
+      .map(h => h.replace(/<[^>]+>/g, '').trim())
+      .filter(h => h.length > 5)
+      .slice(0, 4)
+  ].slice(0, 5);
 
   return {
-    url, title, h1,
+    _type: 'competitor',
+    position,
+    url,
+    domain,
+    title,
+    h1,
     content_length_words: words.length,
-    has_faq, has_price_block, has_reviews, has_schema, has_cta_button,
+    has_faq,
+    has_price_block,
+    has_reviews,
+    has_schema,
+    has_cta_button,
+    has_video,
+    has_blog,
     load_speed_sec: Math.round(loadMs / 100) / 10,
-    h2_count, images_count, top_phrases,
+    h2_count,
+    h3_count,
+    images_count,
+    internal_links_count,
+    top_phrases,
+    is_analyzed: true,
   };
 }
 
 // Build "yours" profile from main page HTML
 function buildOwnProfile(url: string, html: string, loadTimeMs: number): CompetitorProfile {
-  return parseCompetitorHtml(url, html, loadTimeMs);
+  return parseCompetitorHtml(url, html, loadTimeMs, 0);
 }
 
 // Excluded domains
@@ -1251,9 +1311,10 @@ async function competitorAnalysis(
   url: string, theme: string, html: string, mode: string, loadTimeMs: number, crawledPages: string[]
 ): Promise<CompetitorAnalysisResult> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) return { competitors: [], comparison_table: {}, gap_issues: [] };
+  if (!LOVABLE_API_KEY) return { competitors: [], comparisonTable: null, directMeta: null, gap_issues: [] };
 
   const ownHostname = new URL(url).hostname;
+  const searchQuery = theme ? `${theme}` : ownHostname;
 
   // ── Step A: Generate commercial search queries from theme ──
   let searchQueries: string[] = [];
@@ -1276,8 +1337,8 @@ async function competitorAnalysis(
     console.log(`[OWNDEV] Ответ competitorQueries:`, content.slice(0, 200));
     searchQueries = safeParseJson<string[]>(content, []);
     console.log(`[OWNDEV] Распарсено competitorQueries: ${searchQueries.length} элементов`);
-  } catch { searchQueries = [theme]; }
-  if (searchQueries.length === 0) searchQueries = [theme];
+  } catch { searchQueries = [searchQuery]; }
+  if (searchQueries.length === 0) searchQueries = [searchQuery];
 
   // ── Step Б: Get top competitor URLs via web search ──
   const competitorUrls = new Set<string>();
@@ -1286,7 +1347,7 @@ async function competitorAnalysis(
       const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+        body: JSON.stringify({
           model: 'google/gemini-2.5-pro',
           messages: [
             { role: 'system', content: `Ты помогаешь SEO-специалисту найти конкурентов. Для запроса "${query}" назови 5-7 реальных коммерческих сайтов которые были бы в топ-10 Яндекса. Исключи агрегаторы (avito, hh.ru), соцсети, википедию. Формат: JSON массив URL (полных, с https://). ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без \`\`\`json, только сам JSON.` },
@@ -1309,69 +1370,135 @@ async function competitorAnalysis(
     if (competitorUrls.size >= 10) break;
   }
 
-  // ── Step В: Parse each competitor ──
+  // ── Step В: Parse each competitor (pure DOM, no LLM) ──
   const competitors: CompetitorProfile[] = [];
+  let positionCounter = 0;
   const fetchPromises = [...competitorUrls].map(async (compUrl) => {
+    const pos = ++positionCounter;
     try {
       const start = Date.now();
-      const resp = await fetchWithTimeout(compUrl, 5000);
+      const resp = await fetchWithTimeout(compUrl, 8000);
       const ms = Date.now() - start;
-      if (!resp.ok) return null;
+      if (!resp.ok) return { _type: 'competitor' as const, position: pos, url: compUrl, domain: new URL(compUrl).hostname.replace(/^www\./, ''), title: null, h1: null, content_length_words: 0, has_faq: false, has_price_block: false, has_reviews: false, has_schema: false, has_cta_button: false, has_video: false, has_blog: false, load_speed_sec: null, h2_count: 0, h3_count: 0, images_count: 0, internal_links_count: 0, top_phrases: [] as string[], is_analyzed: false };
       const ct = resp.headers.get('content-type') || '';
       if (!ct.includes('text/html')) return null;
       const compHtml = await resp.text();
-      return parseCompetitorHtml(compUrl, compHtml, ms);
-    } catch { return null; }
+      return parseCompetitorHtml(compUrl, compHtml, ms, pos);
+    } catch {
+      return { _type: 'competitor' as const, position: pos, url: compUrl, domain: (() => { try { return new URL(compUrl).hostname.replace(/^www\./, ''); } catch { return compUrl; } })(), title: null, h1: null, content_length_words: 0, has_faq: false, has_price_block: false, has_reviews: false, has_schema: false, has_cta_button: false, has_video: false, has_blog: false, load_speed_sec: null, h2_count: 0, h3_count: 0, images_count: 0, internal_links_count: 0, top_phrases: [] as string[], is_analyzed: false };
+    }
   });
 
   const results = await Promise.all(fetchPromises);
   for (const r of results) {
-    if (r && r.content_length_words > 50) competitors.push(r);
+    if (r) competitors.push(r);
   }
 
   // ── Build own profile ──
   const own = buildOwnProfile(url, html, loadTimeMs);
 
-  // ── Step Г: Comparison table ──
+  // ── Build comparison table (no LLM) ──
+  const analyzed = competitors.filter(c => c.is_analyzed && c.content_length_words > 50);
   const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
-  const boolPct = (arr: boolean[]) => arr.length ? `${Math.round(arr.filter(Boolean).length / arr.length * 100)}%` : '0%';
-  const leader = competitors.length ? competitors.reduce((best, c) => c.content_length_words > best.content_length_words ? c : best, competitors[0]) : own;
+  const pct = (arr: boolean[]) => arr.length ? Math.round(arr.filter(Boolean).length / arr.length * 100) : 0;
+  const leader = analyzed.length ? analyzed.reduce((best, c) => c.content_length_words > best.content_length_words ? c : best, analyzed[0]) : own;
 
-  const comparison_table: Record<string, { yours: string; avg_top10: string; leader: string }> = {
-    'Title (длина)': { yours: `${own.title.length} симв.`, avg_top10: `${avg(competitors.map(c => c.title.length))} симв.`, leader: `${leader.title.length} симв.` },
-    'Объём контента': { yours: `${own.content_length_words} слов`, avg_top10: `${avg(competitors.map(c => c.content_length_words))} слов`, leader: `${leader.content_length_words} слов` },
-    'H2 заголовков': { yours: `${own.h2_count}`, avg_top10: `${avg(competitors.map(c => c.h2_count))}`, leader: `${leader.h2_count}` },
-    'Изображений': { yours: `${own.images_count}`, avg_top10: `${avg(competitors.map(c => c.images_count))}`, leader: `${leader.images_count}` },
-    'FAQ': { yours: own.has_faq ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_faq)), leader: leader.has_faq ? 'Да' : 'Нет' },
-    'Блок цен': { yours: own.has_price_block ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_price_block)), leader: leader.has_price_block ? 'Да' : 'Нет' },
-    'Отзывы': { yours: own.has_reviews ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_reviews)), leader: leader.has_reviews ? 'Да' : 'Нет' },
-    'Schema.org': { yours: own.has_schema ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_schema)), leader: leader.has_schema ? 'Да' : 'Нет' },
-    'CTA кнопка': { yours: own.has_cta_button ? 'Да' : 'Нет', avg_top10: boolPct(competitors.map(c => c.has_cta_button)), leader: leader.has_cta_button ? 'Да' : 'Нет' },
-    'Скорость (сек)': { yours: `${own.load_speed_sec}с`, avg_top10: `${(competitors.reduce((s, c) => s + c.load_speed_sec, 0) / Math.max(competitors.length, 1)).toFixed(1)}с`, leader: `${leader.load_speed_sec}с` },
+  const avgMetrics: CompetitorMetrics = {
+    content_length_words: avg(analyzed.map(c => c.content_length_words)),
+    h2_count: avg(analyzed.map(c => c.h2_count)),
+    images_count: avg(analyzed.map(c => c.images_count)),
+    has_faq: pct(analyzed.map(c => c.has_faq)) >= 50,
+    has_price_block: pct(analyzed.map(c => c.has_price_block)) >= 50,
+    has_reviews: pct(analyzed.map(c => c.has_reviews)) >= 50,
+    has_schema: pct(analyzed.map(c => c.has_schema)) >= 50,
+    has_video: pct(analyzed.map(c => c.has_video)) >= 50,
   };
 
-  // ── Step Д: Gap analysis → IssueCards ──
+  // Auto-generate insights without LLM
+  const insights: string[] = [];
+  if (own.content_length_words < avgMetrics.content_length_words - 300) {
+    insights.push(`Объём контента ниже среднего на ${avgMetrics.content_length_words - own.content_length_words} слов — добавьте описания, FAQ и этапы работы`);
+  }
+  if (!own.has_faq && avgMetrics.has_faq) {
+    const faqCount = analyzed.filter(c => c.has_faq).length;
+    insights.push(`FAQ-блок есть у ${faqCount} из ${analyzed.length} конкурентов — добавьте его для расширенных сниппетов`);
+  }
+  if (!own.has_reviews && avgMetrics.has_reviews) {
+    insights.push(`Отзывы есть у большинства конкурентов — это повышает доверие и CTR`);
+  }
+  if (!own.has_schema && avgMetrics.has_schema) {
+    insights.push(`Schema.org есть у большинства конкурентов — добавьте для расширенных сниппетов`);
+  }
+  if (!own.has_price_block && avgMetrics.has_price_block) {
+    insights.push(`Блок с ценами найден у конкурентов — пользователи ожидают видеть стоимость на странице`);
+  }
+  if (own.h2_count < avgMetrics.h2_count - 2) {
+    insights.push(`Структура контента слабее: у вас ${own.h2_count} H2, у конкурентов в среднем ${avgMetrics.h2_count}`);
+  }
+  if (!own.has_video && avgMetrics.has_video) {
+    insights.push(`Видео есть у большинства конкурентов — добавьте видео для повышения вовлечённости`);
+  }
+  if (insights.length === 0) {
+    insights.push('Сайт хорошо конкурентоспособен по структурным параметрам');
+  }
+
+  const comparisonTable: ComparisonTableData = {
+    _type: 'comparison_table',
+    your_site: {
+      content_length_words: own.content_length_words,
+      h2_count: own.h2_count,
+      images_count: own.images_count,
+      has_faq: own.has_faq,
+      has_price_block: own.has_price_block,
+      has_reviews: own.has_reviews,
+      has_schema: own.has_schema,
+      has_video: own.has_video,
+    },
+    avg_top10: avgMetrics,
+    leader: {
+      content_length_words: leader.content_length_words,
+      h2_count: leader.h2_count,
+      images_count: leader.images_count,
+      has_faq: leader.has_faq,
+      has_price_block: leader.has_price_block,
+      has_reviews: leader.has_reviews,
+      has_schema: leader.has_schema,
+      has_video: leader.has_video,
+    },
+    leader_domain: leader.domain,
+    insights,
+  };
+
+  const directMeta: DirectMetaData = {
+    _type: 'direct_meta',
+    query: searchQueries[0] || theme,
+    region: 'Россия',
+    serp_date: new Date().toISOString().split('T')[0],
+    total_found: competitors.length,
+  };
+
+  // ── Gap analysis → IssueCards ──
   const gap_issues: Issue[] = [];
-  const total = competitors.length;
+  const total = analyzed.length;
   if (total >= 3) {
     const gaps: { param: string; ownHas: boolean; compCount: number; fixTitle: string; fixHow: string; fixExample: string }[] = [
-      { param: 'FAQ', ownHas: own.has_faq, compCount: competitors.filter(c => c.has_faq).length,
+      { param: 'FAQ', ownHas: own.has_faq, compCount: analyzed.filter(c => c.has_faq).length,
         fixTitle: 'Нет блока FAQ — есть у большинства конкурентов',
         fixHow: 'Добавьте раздел «Часто задаваемые вопросы» с 5-10 вопросами по теме',
         fixExample: '<h2>Часто задаваемые вопросы</h2>\n<h3>Сколько стоит ' + theme.toLowerCase() + '?</h3>\n<p>Стоимость зависит от объёма работ...</p>' },
-      { param: 'Блок цен', ownHas: own.has_price_block, compCount: competitors.filter(c => c.has_price_block).length,
+      { param: 'Блок цен', ownHas: own.has_price_block, compCount: analyzed.filter(c => c.has_price_block).length,
         fixTitle: 'Нет блока с ценами — есть у большинства конкурентов',
         fixHow: 'Добавьте блок с ценами или тарифами на странице',
         fixExample: '<section><h2>Стоимость</h2><p>от 5 000 ₽</p></section>' },
-      { param: 'Отзывы', ownHas: own.has_reviews, compCount: competitors.filter(c => c.has_reviews).length,
+      { param: 'Отзывы', ownHas: own.has_reviews, compCount: analyzed.filter(c => c.has_reviews).length,
         fixTitle: 'Нет блока с отзывами — есть у большинства конкурентов',
         fixHow: 'Добавьте блок с реальными отзывами клиентов',
         fixExample: '<section><h2>Отзывы клиентов</h2><blockquote>«Отличный результат!» — Иван, ООО «Компания»</blockquote></section>' },
-      { param: 'Schema.org', ownHas: own.has_schema, compCount: competitors.filter(c => c.has_schema).length,
+      { param: 'Schema.org', ownHas: own.has_schema, compCount: analyzed.filter(c => c.has_schema).length,
         fixTitle: 'Нет Schema.org разметки — есть у большинства конкурентов',
         fixHow: 'Добавьте JSON-LD разметку (Organization, FAQPage, Product)',
         fixExample: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"..."}</script>' },
-      { param: 'CTA кнопка', ownHas: own.has_cta_button, compCount: competitors.filter(c => c.has_cta_button).length,
+      { param: 'CTA кнопка', ownHas: own.has_cta_button, compCount: analyzed.filter(c => c.has_cta_button).length,
         fixTitle: 'Нет CTA — есть у большинства конкурентов',
         fixHow: 'Добавьте заметную кнопку призыва к действию',
         fixExample: '<button>Заказать ' + theme.toLowerCase() + '</button>' },
@@ -1396,7 +1523,7 @@ async function competitorAnalysis(
     }
 
     // Content volume gap
-    const avgWords = avg(competitors.map(c => c.content_length_words));
+    const avgWords = avg(analyzed.map(c => c.content_length_words));
     if (own.content_length_words < avgWords * 0.5 && avgWords > 300) {
       gap_issues.push(makeIssue({
         module: 'competitors', severity: 'high',
@@ -1411,7 +1538,7 @@ async function competitorAnalysis(
     }
 
     // H2 count gap
-    const avgH2 = avg(competitors.map(c => c.h2_count));
+    const avgH2 = avg(analyzed.map(c => c.h2_count));
     if (own.h2_count < avgH2 * 0.4 && avgH2 >= 3) {
       gap_issues.push(makeIssue({
         module: 'competitors', severity: 'medium',
@@ -1427,8 +1554,7 @@ async function competitorAnalysis(
   }
 
   // ── Site-mode extra: compare site structure with leader ──
-  if (mode === 'site' && competitors.length > 0 && crawledPages.length > 0) {
-    // Get leader site pages
+  if (mode === 'site' && analyzed.length > 0 && crawledPages.length > 0) {
     try {
       const leaderUrl = new URL(leader.url);
       const leaderResp = await fetchText(leaderUrl.origin, 5000);
@@ -1457,7 +1583,9 @@ async function competitorAnalysis(
     } catch {}
   }
 
-  return { competitors, comparison_table, gap_issues };
+  console.log('[OWNDEV competitors raw]', JSON.stringify(competitors.map(c => ({ url: c.url, domain: c.domain, is_analyzed: c.is_analyzed, words: c.content_length_words }))).slice(0, 500));
+
+  return { competitors, comparisonTable, directMeta, gap_issues };
 }
 
 // ═══ STEP 5: Keyword Generation (ПРОМТ 6) ═══
@@ -1848,10 +1976,11 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     minus_words: minusWords,
     issues: allIssues, scores: finalScores,
     competitors: [
-      ...compResult.competitors.map(c => ({ ...c, _type: 'competitor' })),
-      { _type: 'comparison_table', ...compResult.comparison_table },
-      { _direct_meta: true, ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
-    ],
+      compResult.directMeta,
+      ...compResult.competitors,
+      compResult.comparisonTable,
+      { _type: 'direct_ad_meta', ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
+    ].filter(Boolean),
   });
 }
 
