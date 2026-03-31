@@ -107,7 +107,7 @@ const IndexationChecker = () => {
             ))}
           </div>
 
-          <div className="glass rounded-xl p-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="glass rounded-xl p-5 grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-muted-foreground">Ссылок</p>
               <p className="text-lg font-bold text-foreground">{result.meta.totalLinks}</p>

@@ -258,7 +258,7 @@ const SchemaGenerator = () => {
                 {copied ? "Скопировано" : "Копировать"}
               </button>
             </div>
-            <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap">
+            <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap break-all max-w-full">
               {`<script type="application/ld+json">\n${generated}\n</script>`}
             </pre>
 

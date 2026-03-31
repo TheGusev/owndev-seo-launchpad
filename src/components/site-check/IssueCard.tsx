@@ -130,7 +130,7 @@ const IssueCardComponent = ({ issue, resolved = false, onToggle }: IssueCardProp
                   Копировать
                 </button>
               </div>
-              <pre className="p-3 rounded-lg bg-muted/40 text-[11px] overflow-x-auto whitespace-pre-wrap text-foreground/80 border border-border/20">
+              <pre className="p-3 rounded-lg bg-muted/40 text-[11px] overflow-x-auto whitespace-pre-wrap break-all max-w-full text-foreground/80 border border-border/20">
                 {issue.example_fix}
               </pre>
             </div>

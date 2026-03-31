@@ -92,7 +92,7 @@ const ServicesTeaser = () => {
         >
           <button
             onClick={scrollToInput}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-foreground bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all text-sm"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-foreground bg-primary/10 border border-primary/20 hover:bg-primary/20 active:bg-primary/20 transition-all text-sm min-h-[44px]"
           >
             <Sparkles className="w-4 h-4" />
             Проверить сайт →

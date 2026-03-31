@@ -68,6 +68,7 @@ const ComparisonSection = () => {
           </div>
         </motion.div>
 
+        <p className="text-center text-muted-foreground/50 text-xs mt-2 md:hidden">← Прокрутите таблицу →</p>
         <p className="text-center text-muted-foreground/50 text-xs mt-4">
           * Все инструменты требуют платной подписки, кроме OWNDEV
         </p>

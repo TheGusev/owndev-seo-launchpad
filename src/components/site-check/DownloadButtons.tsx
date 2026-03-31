@@ -132,7 +132,7 @@ export default function DownloadButtons({
           key={label}
           variant="outline"
           size="sm"
-          className="gap-2"
+          className="gap-2 min-h-[44px]"
           onClick={onClick}
           disabled={disabled}
         >
