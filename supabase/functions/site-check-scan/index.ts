@@ -1246,22 +1246,24 @@ async function competitorAnalysis(
   // ── Step A: Generate commercial search queries from theme ──
   let searchQueries: string[] = [];
   try {
+    console.log(`[OWNDEV] Шаг: competitorQueries | Модель: google/gemini-2.0-flash | URL: ${url}`);
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'google/gemini-2.0-flash',
         messages: [
-          { role: 'system', content: 'Отвечай строго на русском языке. Возвращай только валидный JSON без markdown. Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк.' },
+          { role: 'system', content: 'Сгенерируй 3-5 коммерческих поисковых запросов для Яндекса по заданной теме. Запросы должны быть такими, какие вводят потенциальные клиенты. Формат: JSON массив строк. ВАЖНО: Отвечай СТРОГО на русском языке. Возвращай ТОЛЬКО валидный JSON без markdown-блоков, без пояснений, без ```json, только сам JSON.' },
           { role: 'user', content: `Тема: "${theme}"` },
         ],
-        max_tokens: 200, temperature: 0.1,
+        max_tokens: 200, temperature: 0.1, top_p: 0.85, top_k: 20,
       }),
     });
     const data = await resp.json();
     const content = data.choices?.[0]?.message?.content?.trim() || '[]';
-    const m = content.match(/\[[\s\S]*\]/);
-    searchQueries = m ? JSON.parse(m[0]) : [];
+    console.log(`[OWNDEV] Ответ competitorQueries:`, content.slice(0, 200));
+    searchQueries = safeParseJson<string[]>(content, []);
+    console.log(`[OWNDEV] Распарсено competitorQueries: ${searchQueries.length} элементов`);
   } catch { searchQueries = [theme]; }
   if (searchQueries.length === 0) searchQueries = [theme];
 
