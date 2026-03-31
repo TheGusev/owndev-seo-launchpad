@@ -1,48 +1,87 @@
 
 
-## Переработка главной и GEO-аудит страницы
+## Mobile polish, Robot fix, Tool improvements
 
-### Диагностика: точки входа на главной
+This is a large task spanning 3 directions. I'll focus on the highest-impact changes.
 
-| Компонент | Элемент | Действие |
-|-----------|---------|----------|
-| `Hero.tsx` | 2 кнопки + 1 инпут URL | Оставить ТОЛЬКО инпут, убрать 2 кнопки |
-| `ServicesTeaser.tsx` | Кнопка "Запустить GEO-аудит" | Заменить на якорь к `#site-check-input` |
-| `ToolsShowcase.tsx` | Flagship card → `/tools/site-check` | Оставить как ссылку (это каталог, не дубль) |
+### Part 1: Mobile fixes (8 files)
 
-### Файлы и изменения (5 файлов)
+#### `src/components/Hero.tsx`
+- H1: `text-3xl md:text-5xl lg:text-6xl` (smaller on 375px)
+- Trust bar: `grid grid-cols-2 sm:flex` instead of flex-wrap
+- Input + button: already `flex-col sm:flex-row` -- verify input has `min-h-[48px]`, button `min-h-[44px]`
 
-#### 1. `src/components/Hero.tsx` — полная переработка
-- Убрать 2 кнопки (GradientButton + outline Button)
-- Оставить инпут URL как единственный CTA, добавить `id="site-check-input"`
-- Новый badge: "#1 GEO и AI-ready аудит в Рунете"
-- Новый H1: "Ваш сайт не попадает в ответы **нейросетей**?" (статичный, без TypeAnimation)
-- Подзаголовок: про 50+ параметров, 4 направления, 2 минуты
-- Trust bar: 5 пунктов (50+ параметров, 2 минуты, PDF/Word, Бесплатно, GEO+AI)
-- Подпись под инпутом: "Нет регистрации · Результат через 2 минуты · Экспорт в PDF и Word"
+#### `src/components/Header.tsx`
+- Already has mobile hamburger menu -- just ensure CTA button text shortens on mobile: "Проверить" instead of "Проверить сайт"
+- Mobile menu items: add `min-h-[44px]` (already has it)
 
-#### 2. `src/components/ServicesTeaser.tsx` — якорь вместо навигации
-- Заменить кнопку "Запустить GEO-аудит" на якорный скролл к `#site-check-input` с фокусом инпута
-- Обновить тексты: "Полный аудит по 4 направлениям"
-- Добавить 4 карточки: SEO (18 проверок), Schema.org (12 типов), GEO/AI-ready (NEW 2025), Яндекс.Директ (150 ключей)
+#### `src/components/landing/ComparisonSection.tsx`
+- Add `min-w-[600px]` on the table for horizontal scroll
+- Add hint text below on mobile: "← Прокрутите таблицу →"
 
-#### 3. `src/pages/Index.tsx` — добавить секции "Как получить отчёт" и "Что в отчёте"
-- После ToolsShowcase добавить секцию "3 шага" (Введите URL → Ждите 2 мин → Получите отчёт)
-- Добавить секцию "Что вы получите" (PDF столбец + Word столбец)
-- Добавить таблицу сравнения OWNDEV vs Semrush/Screaming Frog/Арсенкин (10 строк)
-- Все CTA в новых секциях — якорные ссылки к `#site-check-input`
+#### `src/components/site-check/ScoreCards.tsx`
+- Change grid to `grid-cols-5` with smaller sizing: `gap-2` on mobile, circle `w-12 h-12` on mobile vs `w-16 h-16` on md+
 
-#### 4. `src/pages/GeoAudit.tsx` — обновление контента
-- Hero: H1 "Ваш сайт невидим для нейросетей?", 3 статистики (73% / 4x / 20 б.)
-- Секция "SEO → AI-поиск → GEO" (3 колонки с эволюцией)
-- 6 карточек с весом LLM Score (+20, +15, +15, +20, +15, отдельная метрика)
-- CTA внизу с инпутом URL (навигация на `/tools/site-check?url=...`)
+#### `src/components/site-check/IssueCard.tsx`
+- Pre block: add `max-w-full` and ensure `overflow-x-auto` + `break-all` for long URLs
+- Expand button: `min-h-[44px]` for touch
+- Copy button: always visible (not just hover)
 
-#### 5. `src/components/Header.tsx` — метка NEW на GEO-аудит
-- Добавить badge "NEW" рядом с "GEO-аудит" в навигации
+#### `src/components/site-check/CompetitorsTable.tsx`
+- Already has overflow-x-auto -- verify `min-w-[700px]` on table
+- Add mobile scroll hint
 
-### Не трогаем
-- Edge Functions, логику сканирования, компоненты отчёта
-- Footer (уже обновлён ранее)
-- ToolsShowcase (flagship card — это каталог инструментов, не дублирующий CTA)
+#### `src/components/site-check/DownloadButtons.tsx`
+- Already `grid-cols-2 sm:grid-cols-4` -- add `min-h-[44px]` to buttons
+
+#### `src/components/ServicesTeaser.tsx`
+- Cards grid: ensure `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
+- CTA button: `min-h-[44px]`
+
+### Part 2: Robot fix (1 file)
+
+#### `src/components/mascot/BorderBot.tsx` -- rewrite visibility
+
+**Root cause**: `initial={{ x: getPos("bottom", 0, false).x, y: getPos("bottom", 0, false).y }}` uses `false` for mobile even on mobile devices. Also `controls.set()` in useEffect may race with initial render.
+
+**Fix**:
+- Set `initial` to use actual screen position: `bottom: 20px, right: 16px` via CSS, not framer motion x/y initially
+- Simplify: on mount, place bot at fixed bottom-right position, THEN start walking loop after delay
+- Add speech bubble with periodic idle phrases (simple div, no drag complexity)
+- Reduce SVG size on mobile: `w-[28px] h-[44px]` on mobile, `w-[36px] h-[56px]` on desktop
+- Ensure `pointer-events-none` on wrapper, `pointer-events-auto` on robot itself
+- Keep triple-click hide and localStorage logic
+
+### Part 3: Tool polish (3 files)
+
+#### `src/components/tools/SchemaGenerator.tsx`
+- Form fields: `grid-cols-1 sm:grid-cols-2` layout
+- Copy button: always visible, not hover-only
+- Generated JSON pre block: `overflow-x-auto max-w-full`
+- All buttons: `min-h-[44px]`
+
+#### `src/components/tools/SemanticCoreGenerator.tsx`
+- Results table: wrap in `overflow-x-auto` with `min-w-[500px]`
+- Export button: `w-full sm:w-auto`
+
+#### `src/components/tools/IndexationChecker.tsx`
+- Status cards: `grid-cols-2` on mobile
+- All interactive elements: `min-h-[44px]`
+
+### Files summary
+
+| File | Change |
+|------|--------|
+| `src/components/Hero.tsx` | Smaller H1 on mobile, trust bar grid, input sizing |
+| `src/components/Header.tsx` | Shorter CTA text on mobile |
+| `src/components/landing/ComparisonSection.tsx` | Table min-width + scroll hint |
+| `src/components/site-check/ScoreCards.tsx` | 5-col grid with smaller circles on mobile |
+| `src/components/site-check/IssueCard.tsx` | Code overflow fix, touch targets |
+| `src/components/site-check/CompetitorsTable.tsx` | Scroll hint on mobile |
+| `src/components/site-check/DownloadButtons.tsx` | Button min-height |
+| `src/components/ServicesTeaser.tsx` | Touch targets |
+| `src/components/mascot/BorderBot.tsx` | Fix initial position, add speech bubble, responsive size |
+| `src/components/tools/SchemaGenerator.tsx` | Form layout, copy button visibility |
+| `src/components/tools/SemanticCoreGenerator.tsx` | Table scroll wrapper |
+| `src/components/tools/IndexationChecker.tsx` | Grid + touch targets |
 
