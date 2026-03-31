@@ -198,9 +198,10 @@ const BorderBot = memo(() => {
     controls.set({ x: initPos.x, y: initPos.y });
 
     const sleep = (ms: number) => new Promise<void>((res) => {
-      const t = setTimeout(res, ms);
-      // check abort after timeout
-      if (abortRef.current) { clearTimeout(t); res(); }
+      const t = setTimeout(() => { clearInterval(check); res(); }, ms);
+      const check = setInterval(() => {
+        if (abortRef.current) { clearTimeout(t); clearInterval(check); res(); }
+      }, 100);
     });
 
     let stepInterval: ReturnType<typeof setInterval> | null = null;
