@@ -805,6 +805,7 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       why_it_matters: 'Автотаргетинг Яндекс.Директа читает H1 для подбора аудитории. Общий H1 («Услуги», «Главная») приводит к показам по нерелевантным запросам и сливу бюджета',
       how_to_fix: 'Замените общий H1 на конкретное название услуги, товара или ниши',
       example_fix: `Было: <h1>${h1}</h1>\nСтало: <h1>${theme} — профессиональные услуги в Москве</h1>`,
+      impact_score: 11, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: true,
     }));
   }
