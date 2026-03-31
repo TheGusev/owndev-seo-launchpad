@@ -43,26 +43,46 @@ async function checkUrl(url: string): Promise<{ ok: boolean; status: number }> {
   } catch { return { ok: false, status: 0 }; }
 }
 
-// ─── Robust JSON array parser (handles truncated LLM output) ───
-function tryParseJsonArray(raw: string): any[] {
-  // Try full match first
-  const m = raw.match(/\[[\s\S]*\]/);
-  if (m) {
-    try { return JSON.parse(m[0]); } catch { /* fall through */ }
+// ─── Robust JSON parser (handles truncated LLM output) ───
+function safeParseJson<T>(raw: string, fallback: T): T {
+  if (!raw || typeof raw !== 'string') return fallback;
+
+  let cleaned = raw
+    .replace(/```json\n?/gi, '')
+    .replace(/```\n?/gi, '')
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+    .trim();
+
+  // Try extracting array or object
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+
+  if (arrMatch) {
+    try { return JSON.parse(arrMatch[0]) as T; } catch { /* fall through */ }
   }
-  // If array started but was truncated (no closing ]), try to recover
-  const start = raw.indexOf('[');
-  if (start === -1) return [];
-  let text = raw.slice(start);
-  // Find the last complete object (ends with })
-  const lastBrace = text.lastIndexOf('}');
-  if (lastBrace === -1) return [];
-  text = text.slice(0, lastBrace + 1) + ']';
-  try { return JSON.parse(text); } catch {
-    // Try fixing trailing comma
-    text = text.replace(/,\s*\]$/, ']');
-    try { return JSON.parse(text); } catch { return []; }
+  if (objMatch) {
+    try { return JSON.parse(objMatch[0]) as T; } catch { /* fall through */ }
   }
+
+  // Truncated array recovery
+  const start = cleaned.indexOf('[');
+  if (start !== -1) {
+    let text = cleaned.slice(start);
+    const lastBrace = text.lastIndexOf('}');
+    if (lastBrace !== -1) {
+      text = text.slice(0, lastBrace + 1) + ']';
+      try { return JSON.parse(text) as T; } catch {
+        text = text.replace(/,\s*\]$/, ']');
+        try { return JSON.parse(text) as T; } catch { /* fall through */ }
+      }
+    }
+  }
+
+  // Last chance — direct parse
+  try { return JSON.parse(cleaned) as T; } catch {}
+
+  console.error('[OWNDEV] JSON parse failed:', cleaned.slice(0, 300));
+  return fallback;
 }
 
 // ─── Issue builder ───
