@@ -7,6 +7,9 @@ import ToolsShowcase from "@/components/ToolsShowcase";
 import Footer from "@/components/Footer";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
+import HowItWorks from "@/components/landing/HowItWorks";
+import ReportValue from "@/components/landing/ReportValue";
+import ComparisonSection from "@/components/landing/ComparisonSection";
 
 const FAQ = lazy(() => import("@/components/FAQ"));
 const ContactForm = lazy(() => import("@/components/ContactForm"));
@@ -70,7 +73,10 @@ const Index = () => {
       <main>
         <Hero />
         <ServicesTeaser />
+        <HowItWorks />
+        <ReportValue />
         <ToolsShowcase />
+        <ComparisonSection />
         <Suspense fallback={<div className="min-h-[200px]" />}>
           <BlogPreview />
         </Suspense>
