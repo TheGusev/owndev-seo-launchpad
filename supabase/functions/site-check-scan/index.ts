@@ -894,8 +894,9 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       found: `Отсутствуют: ${missingSignals.join(', ')}`,
       location: 'Контент страницы',
       why_it_matters: 'Без цен, CTA и условий посетители из Директа не конвертируются. Яндекс также учитывает коммерческие факторы при ранжировании рекламных посадочных',
-      how_to_fix: 'Добавьте блок с ценами, заметную кнопку CTA и условия работы (доставка, гарантия)',
+      how_to_fix: '1. Добавьте блок с ценами/прайс-листом\n2. Добавьте заметную кнопку CTA\n3. Укажите условия работы (доставка, гарантия, оплата)',
       example_fix: `<section>\n  <h2>Стоимость ${theme.toLowerCase()}</h2>\n  <p>от 5 000 ₽</p>\n  <button>Заказать бесплатную консультацию</button>\n  <p>Доставка по Москве — бесплатно</p>\n</section>`,
+      impact_score: 9, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: false,
     }));
   } else if (!hasCta) {
