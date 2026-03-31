@@ -1146,9 +1146,10 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
   if (!hasFaq) {
     issues.push(makeIssue({ module: 'ai', severity: 'medium', title: 'Нет FAQ-блока',
       found: 'Не найден раздел FAQ или часто задаваемых вопросов', location: 'Контент',
-      why_it_matters: 'FAQ-блоки — основной источник цитирования для AI-поисковиков',
-      how_to_fix: 'Добавьте секцию FAQ с 5-10 вопросами целевой аудитории',
+      why_it_matters: 'FAQ-блоки — основной источник цитирования для AI-поисковиков. Нейросети активно используют вопросы и ответы с сайтов. FAQPage разметка даёт расширенные сниппеты (+20-30% CTR)',
+      how_to_fix: '1. Добавьте секцию FAQ с 5-10 вопросами\n2. Ответы: 50-150 слов каждый\n3. Вопросы должны отражать реальные запросы',
       example_fix: '<h2>Часто задаваемые вопросы</h2>\n<h3>Сколько стоит SEO?</h3>\n<p>Стоимость зависит от...</p>',
+      impact_score: 10, docs_url: 'https://developers.google.com/search/docs/appearance/structured-data/faqpage',
       visible_in_preview: false }));
   }
   
