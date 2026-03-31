@@ -79,7 +79,7 @@ const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
       return (
       <div
         key={key}
-        className={`rounded-xl border p-4 text-center ${getScoreColor(val)}`}
+        className={`rounded-xl border p-2 md:p-4 text-center ${getScoreColor(val)}`}
       >
         <CircleScore score={val} />
         <p className="mt-2 text-xs font-medium text-muted-foreground">{scoreLabels[key]}</p>
