@@ -94,7 +94,7 @@ const IssueCardComponent = ({ issue, resolved = false, onToggle }: IssueCardProp
       {/* Expand toggle */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="mt-3 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+        className="mt-3 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 active:text-primary/80 transition-colors min-h-[44px]"
       >
         {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         {expanded ? "Свернуть" : "Как исправить"}
