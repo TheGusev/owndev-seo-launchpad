@@ -14,6 +14,13 @@ function getScoreColor(score: number) {
   return "text-green-500 border-green-500/30 bg-green-500/5";
 }
 
+function getScoreStatus(score: number) {
+  if (score <= 40) return "Критично";
+  if (score <= 60) return "Требует работы";
+  if (score <= 70) return "Хорошо";
+  return "Отлично";
+}
+
 function getScoreRing(score: number) {
   if (score <= 40) return "stroke-red-500";
   if (score <= 70) return "stroke-yellow-500";
@@ -83,6 +90,7 @@ const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
       >
         <CircleScore score={val} />
         <p className="mt-1 md:mt-2 text-[10px] md:text-xs font-medium text-muted-foreground">{scoreLabels[key]}</p>
+        <p className="text-[9px] md:text-[10px] font-medium opacity-70">{getScoreStatus(val)}</p>
         {previousScores && typeof previousScores[key] === "number" && (
           <div className="mt-1">
             <DiffBadge diff={val - previousScores[key]} />

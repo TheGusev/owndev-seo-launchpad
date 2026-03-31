@@ -21,14 +21,13 @@ const Footer = () => {
     { label: "Инструменты", href: "/tools", isRoute: true },
     { label: "GEO‑аудит", href: "/geo-audit", isRoute: true },
     { label: "Блог", href: "/blog", isRoute: true },
-    { label: "О нас", href: "#about" },
-    { label: "Контакты", href: "#contact" },
+    { label: "Контакты", href: "/contacts", isRoute: true },
   ];
 
   const toolLinks = [
     { label: "Проверка сайта", href: "/tools/site-check", isRoute: true },
-    { label: "GEO-аудит", href: "/tools/geo-audit", isRoute: true },
-    { label: "LLM Score", href: "/tools/llm-score", isRoute: true },
+    { label: "Семантическое ядро", href: "/tools/semantic-core", isRoute: true },
+    { label: "Внутренние ссылки", href: "/tools/internal-links", isRoute: true },
     { label: "llms.txt Checker", href: "/tools/llms-txt-checker", isRoute: true },
     { label: "SEO Auditor", href: "/tools/seo-auditor", isRoute: true },
     { label: "Schema Generator", href: "/tools/schema-generator", isRoute: true },
