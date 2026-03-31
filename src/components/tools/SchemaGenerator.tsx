@@ -239,7 +239,7 @@ const SchemaGenerator = () => {
 
         {type && (
           <div className="text-center">
-            <GradientButton size="lg" onClick={handleGenerate}>
+            <GradientButton size="lg" className="w-full sm:w-auto min-h-[44px]" onClick={handleGenerate}>
               <Code2 className="w-5 h-5 mr-2" />
               Сгенерировать JSON-LD
             </GradientButton>
@@ -258,7 +258,7 @@ const SchemaGenerator = () => {
                 {copied ? "Скопировано" : "Копировать"}
               </button>
             </div>
-            <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap">
+            <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap break-all max-w-full">
               {`<script type="application/ld+json">\n${generated}\n</script>`}
             </pre>
 

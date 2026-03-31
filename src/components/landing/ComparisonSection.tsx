@@ -43,7 +43,7 @@ const ComparisonSection = () => {
           className="rounded-2xl border border-border overflow-hidden bg-card/40"
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left p-3 md:p-4 font-medium text-muted-foreground">Функция</th>
@@ -68,6 +68,7 @@ const ComparisonSection = () => {
           </div>
         </motion.div>
 
+        <p className="text-center text-muted-foreground/50 text-xs mt-2 md:hidden">← Прокрутите таблицу →</p>
         <p className="text-center text-muted-foreground/50 text-xs mt-4">
           * Все инструменты требуют платной подписки, кроме OWNDEV
         </p>

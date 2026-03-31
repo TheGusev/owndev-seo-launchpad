@@ -94,7 +94,7 @@ const IssueCardComponent = ({ issue, resolved = false, onToggle }: IssueCardProp
       {/* Expand toggle */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="mt-3 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+        className="mt-3 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 active:text-primary/80 transition-colors min-h-[44px]"
       >
         {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         {expanded ? "Свернуть" : "Как исправить"}
@@ -130,7 +130,7 @@ const IssueCardComponent = ({ issue, resolved = false, onToggle }: IssueCardProp
                   Копировать
                 </button>
               </div>
-              <pre className="p-3 rounded-lg bg-muted/40 text-[11px] overflow-x-auto whitespace-pre-wrap text-foreground/80 border border-border/20">
+              <pre className="p-3 rounded-lg bg-muted/40 text-[11px] overflow-x-auto whitespace-pre-wrap break-all max-w-full text-foreground/80 border border-border/20">
                 {issue.example_fix}
               </pre>
             </div>

@@ -64,7 +64,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="space-y-4"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight font-serif leading-tight">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight font-serif leading-tight">
               Ваш сайт не попадает{" "}
               <br className="hidden sm:block" />
               в ответы <span className="text-gradient">нейросетей</span>?
@@ -80,7 +80,7 @@ const Hero = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
+            className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
           >
             {trustItems.map((item, i) => (
               <span key={i} className="flex items-center gap-1.5">
@@ -115,11 +115,11 @@ const Hero = () => {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://yoursite.ru"
-                  className="flex-1 h-14 rounded-xl border border-border bg-card/60 backdrop-blur-xl px-5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-base"
+                  className="flex-1 h-14 min-h-[48px] rounded-xl border border-border bg-card/60 backdrop-blur-xl px-5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-base"
                 />
-                <Button type="submit" variant="default" size="lg" className="h-14 px-8 shrink-0 text-base font-semibold">
-                  Проверить сайт
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                <Button type="submit" variant="default" size="lg" className="h-14 min-h-[44px] px-8 shrink-0 text-base font-semibold">
+                  <span className="sm:hidden">Проверить →</span>
+                  <span className="hidden sm:inline-flex items-center gap-2">Проверить сайт <ArrowRight className="w-4 h-4" /></span>
                 </Button>
               </form>
             </div>

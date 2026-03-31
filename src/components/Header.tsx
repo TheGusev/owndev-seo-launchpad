@@ -59,8 +59,9 @@ const Header = () => {
           </nav>
 
           <div className="hidden md:block">
-            <GradientButton size="sm" onClick={() => navigate("/tools/site-check")}>
-              Проверить сайт
+            <GradientButton size="sm" className="min-h-[36px]" onClick={() => navigate("/tools/site-check")}>
+              <span className="hidden lg:inline">Проверить сайт</span>
+              <span className="lg:hidden">Проверить</span>
             </GradientButton>
           </div>
 
