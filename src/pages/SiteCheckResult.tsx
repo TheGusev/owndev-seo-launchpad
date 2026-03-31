@@ -89,9 +89,10 @@ const SiteCheckResult = () => {
 
   const issues = Array.isArray(data.issues) ? data.issues : [];
   const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
-  const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor' || (c.url && !c._type && !c._direct_meta));
-  const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table');
-  const directMeta = rawCompetitors.find((c: any) => c._direct_meta);
+  const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor');
+  const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table') || null;
+  const directMeta = rawCompetitors.find((c: any) => c._type === 'direct_meta') || null;
+  const directAdMeta = rawCompetitors.find((c: any) => c._type === 'direct_ad_meta' || c._direct_meta);
   const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
     keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
     volume: kw.frequency ?? kw.volume ?? 0,
