@@ -90,6 +90,7 @@ const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
       >
         <CircleScore score={val} />
         <p className="mt-1 md:mt-2 text-[10px] md:text-xs font-medium text-muted-foreground">{scoreLabels[key]}</p>
+        <p className="text-[9px] md:text-[10px] font-medium opacity-70">{getScoreStatus(val)}</p>
         {previousScores && typeof previousScores[key] === "number" && (
           <div className="mt-1">
             <DiffBadge diff={val - previousScores[key]} />
