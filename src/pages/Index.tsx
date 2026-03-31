@@ -75,6 +75,7 @@ const Index = () => {
         <Hero />
         <ServicesTeaser />
         <HowItWorks />
+        <Testimonials />
         <ReportValue />
         <ToolsShowcase />
         <ComparisonSection />
