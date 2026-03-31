@@ -152,6 +152,10 @@ const SiteCheckResult = () => {
             keywords={keywords}
             minusWords={minusWords}
             competitors={competitors}
+            scanDate={data.created_at}
+            seoData={data.seo_data}
+            comparisonTable={comparisonTable}
+            directMeta={directMeta}
           />
 
           {/* Download llms.txt button */}

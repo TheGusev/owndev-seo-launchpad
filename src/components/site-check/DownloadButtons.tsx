@@ -1,6 +1,11 @@
-import { Download, FileText, FileDown, Printer } from "lucide-react";
+import { Download, FileText, FileDown, Printer, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { generatePdfReport } from "@/lib/generatePdfReport";
+import { generateWordReport } from "@/lib/generateWordReport";
+import { saveAs } from "file-saver";
+import type { ReportData } from "@/lib/reportHelpers";
 
 interface DownloadButtonsProps {
   url: string;
@@ -10,69 +15,10 @@ interface DownloadButtonsProps {
   keywords: any[];
   minusWords: any[];
   competitors: any[];
-}
-
-function downloadBlob(content: string, filename: string, mimeType: string) {
-  const BOM = mimeType.includes("csv") ? "\uFEFF" : "";
-  const blob = new Blob([BOM + content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function buildKeywordsCsv(keywords: any[]): string {
-  const header = "Кластер,Интент,Запрос,Частота,Нужен лендинг";
-  const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const rows = keywords.map((kw) =>
-    [esc(kw.cluster), esc(kw.intent), esc(kw.keyword), esc(kw.volume), esc(kw.landing_needed ? "Да" : "")].join(",")
-  );
-  return [header, ...rows].join("\n");
-}
-
-function buildMinusTxt(minusWords: any[]): string {
-  return minusWords
-    .map((w) => `-${(w.word ?? '').trim()}`)
-    .join("\n");
-}
-
-function buildReportTxt(
-  url: string,
-  theme: string | undefined,
-  scores: Record<string, number> | null,
-  issues: any[],
-): string {
-  const line = "─".repeat(50);
-  const scoreBlock = scores
-    ? Object.entries(scores).map(([k, v]) => `  ${k}: ${v}`).join("\n")
-    : "  Данные недоступны";
-
-  const issuesBlock = issues.length
-    ? issues.map((iss, i) => {
-        const title = iss.title ?? iss.name ?? "Без названия";
-        const desc = iss.description ?? "";
-        const sev = iss.severity ?? iss.level ?? "";
-        return `  ${i + 1}. [${sev}] ${title}${desc ? `\n     ${desc}` : ""}`;
-      }).join("\n")
-    : "  Ошибок не обнаружено";
-
-  return [
-    "OWNDEV — Отчёт аудита сайта",
-    `Дата: ${new Date().toLocaleDateString("ru-RU")}`,
-    line,
-    `URL:      ${url}`,
-    `Тематика: ${theme ?? "Общая"}`,
-    line,
-    "ОЦЕНКИ:",
-    scoreBlock,
-    line,
-    `ОШИБКИ (${issues.length}):`,
-    issuesBlock,
-    line,
-    "Сгенерировано: owndev.ru",
-  ].join("\n");
+  scanDate?: string;
+  seoData?: any;
+  comparisonTable?: any;
+  directMeta?: any;
 }
 
 export default function DownloadButtons({
@@ -82,19 +28,82 @@ export default function DownloadButtons({
   issues,
   keywords,
   minusWords,
+  competitors,
+  scanDate,
+  seoData,
+  comparisonTable,
+  directMeta,
 }: DownloadButtonsProps) {
   const { toast } = useToast();
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingWord, setIsGeneratingWord] = useState(false);
 
   const hostname = (() => {
-    try { return new URL(url).hostname; } catch { return "report"; }
+    try { return new URL(url).hostname.replace('www.', ''); } catch { return "report"; }
   })();
+
+  const buildReportData = (): ReportData => ({
+    url,
+    domain: hostname,
+    theme: theme || 'Общая тематика',
+    scanDate: scanDate || new Date().toISOString(),
+    scores: {
+      total: scores?.total || 0,
+      seo: scores?.seo || 0,
+      direct: scores?.direct || 0,
+      schema: scores?.schema || 0,
+      ai: scores?.ai || 0,
+    },
+    issues: issues || [],
+    keywords: keywords || [],
+    minusWords: minusWords || [],
+    competitors: competitors || [],
+    comparisonTable: comparisonTable || null,
+    directMeta: directMeta || null,
+    seoData: seoData || {},
+  });
+
+  const handlePdf = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      toast({ title: "⏳ Генерируем PDF...", description: "Создаём полный отчёт" });
+      await generatePdfReport(buildReportData());
+      toast({ title: "✅ PDF готов!", description: "Файл сохранён на устройство" });
+    } catch (err) {
+      console.error('PDF error:', err);
+      toast({ title: "Ошибка PDF", description: "Попробуйте снова", variant: "destructive" });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleWord = async () => {
+    try {
+      setIsGeneratingWord(true);
+      toast({ title: "⏳ Генерируем Word...", description: "Создаём DOCX-документ" });
+      await generateWordReport(buildReportData());
+      toast({ title: "✅ Word готов!", description: "Файл сохранён на устройство" });
+    } catch (err) {
+      console.error('Word error:', err);
+      toast({ title: "Ошибка Word", description: "Попробуйте снова", variant: "destructive" });
+    } finally {
+      setIsGeneratingWord(false);
+    }
+  };
 
   const handleKeywords = () => {
     if (!keywords?.length) {
       toast({ title: "Нет данных", description: "Ключевые слова не загружены.", variant: "destructive" });
       return;
     }
-    downloadBlob(buildKeywordsCsv(keywords), `${hostname}_keywords.csv`, "text/csv;charset=utf-8");
+    const header = "Запрос,Кластер,Интент,Частота,Нужен лендинг";
+    const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = keywords.map((kw) =>
+      [esc(kw.phrase || kw.keyword), esc(kw.cluster), esc(kw.intent), esc(kw.frequency || kw.volume || 0), esc(kw.landing_needed ? "Да" : "")].join(","),
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    saveAs(blob, `owndev_keywords_${hostname}.csv`);
     toast({ title: "✅ Готово", description: `Выгружено ${keywords.length} ключевых слов.` });
   };
 
@@ -103,21 +112,15 @@ export default function DownloadButtons({
       toast({ title: "Нет данных", description: "Минус-слова не загружены.", variant: "destructive" });
       return;
     }
-    downloadBlob(buildMinusTxt(minusWords), `${hostname}_minus.txt`, "text/plain;charset=utf-8");
+    const content = minusWords.map((w) => `-${(w.word ?? '').trim()}`).join("\n");
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
+    saveAs(blob, `owndev_minus_${hostname}.txt`);
     toast({ title: "✅ Готово", description: `Выгружено ${minusWords.length} минус-слов.` });
   };
 
-  const handlePdf = () => window.print();
-
-  const handleWord = () => {
-    const text = buildReportTxt(url, theme, scores, issues ?? []);
-    downloadBlob(text, `${hostname}_report.txt`, "text/plain;charset=utf-8");
-    toast({ title: "✅ Готово", description: "Текстовый отчёт скачан." });
-  };
-
   const buttons = [
-    { label: "Скачать PDF", icon: <Printer className="w-4 h-4" />, onClick: handlePdf, disabled: false },
-    { label: "Скачать отчёт", icon: <FileDown className="w-4 h-4" />, onClick: handleWord, disabled: false },
+    { label: isGeneratingPdf ? "Генерируем..." : "PDF-отчёт", icon: isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />, onClick: handlePdf, disabled: isGeneratingPdf },
+    { label: isGeneratingWord ? "Генерируем..." : "Word-отчёт", icon: isGeneratingWord ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />, onClick: handleWord, disabled: isGeneratingWord },
     { label: "Ключевые слова", icon: <FileText className="w-4 h-4" />, onClick: handleKeywords, disabled: !keywords?.length },
     { label: "Минус-слова", icon: <Download className="w-4 h-4" />, onClick: handleMinusWords, disabled: !minusWords?.length },
   ];
