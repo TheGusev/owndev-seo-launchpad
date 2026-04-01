@@ -168,7 +168,7 @@ const SiteCheckResult = () => {
               }}
               className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-4"
             >
-              🤖 Скачать llms.txt для вашего сайта
+              <Bot className="w-4 h-4" /> Скачать llms.txt для вашего сайта
             </button>
           </div>
 

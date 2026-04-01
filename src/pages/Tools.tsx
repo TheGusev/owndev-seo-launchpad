@@ -109,7 +109,7 @@ const Tools = () => {
                       </h2>
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                         <Shield className="w-3 h-3" />
-                        🏆 GEO‑аудит
+                        <Trophy className="w-3 h-3" /> GEO‑аудит
                       </span>
                     </div>
                     <p className="text-muted-foreground text-lg">

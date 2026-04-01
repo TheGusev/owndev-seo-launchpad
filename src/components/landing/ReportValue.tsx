@@ -73,7 +73,7 @@ const ReportValue = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="p-6 rounded-2xl border border-border bg-card/40"
           >
-            <h3 className="text-lg font-semibold mb-1">📝 Word-отчёт</h3>
+            <h3 className="text-lg font-semibold mb-1 flex items-center gap-2"><FileText className="w-5 h-5 text-primary" /> Word-отчёт</h3>
             <p className="text-xs text-muted-foreground mb-4">Редактируемый документ для команды</p>
             <ul className="space-y-2">
               {wordItems.map((item, i) => (

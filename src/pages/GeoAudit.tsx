@@ -152,7 +152,7 @@ const GeoAudit = () => {
 
               {evolution.map((e, i) => (
                 <div key={i} className="glass rounded-xl p-6 text-center">
-                  <div className="text-3xl mb-3">{e.icon}</div>
+                  <div className="mb-3 flex justify-center"><e.icon className="w-7 h-7 text-primary" /></div>
                   <h3 className="font-semibold text-foreground mb-2 flex items-center justify-center gap-2">
                     {e.title}
                     {e.pulse && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
