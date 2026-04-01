@@ -107,6 +107,28 @@ const Hero = () => {
             ))}
           </motion.div>
 
+          {/* Rotating capabilities */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="h-8 flex items-center justify-center"
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={capIndex}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.4 }}
+                className="flex items-center gap-2 text-primary font-medium text-sm md:text-base"
+              >
+                {(() => { const Icon = capabilities[capIndex].icon; return <Icon className="w-4 h-4 shrink-0" />; })()}
+                {capabilities[capIndex].text}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+
           {/* Single CTA: URL input */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
