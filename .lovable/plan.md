@@ -1,50 +1,43 @@
 
 
-## Фиксы: дубль блога, активные карточки, анимированный текст
+## Замена emoji-иконок на Lucide-иконки
 
-### 1. Дубль «Блог» в навигации
-**Файл:** `src/components/Header.tsx` строка 15 — дублирующая запись `{ href: "/blog", label: "Блог" }`. Удалить строку 15.
+### Проблема
+На сайте в нескольких местах используются emoji (📊, 🤖, 🚀, 📄, 📝, 🏆) вместо современных Lucide-иконок. Это выглядит непрофессионально и не вписывается в тёмную tech-эстетику сайта.
 
-### 2. Карточки 4 направлений — сделать кликабельными
-**Файл:** `src/components/ServicesTeaser.tsx`
+### Замены по файлам
 
-Каждая карточка получает поле `link` и оборачивается в `onClick → navigate(link)`:
+#### 1. `src/pages/GeoAudit.tsx` — секция "SEO → AI → GEO"
+| Было | Станет |
+|------|--------|
+| `📊` SEO (было) | `<BarChart3>` из lucide-react |
+| `🤖` AI-поиск | `<BrainCircuit>` из lucide-react |
+| `🚀` GEO (ответ) | `<Rocket>` из lucide-react |
 
-| Карточка | Ссылка |
-|----------|--------|
-| SEO-аудит | `/tools/site-check` |
-| Schema.org | `/tools/schema-generator` |
-| GEO-готовность | `/tools/geo-audit` |
-| Яндекс.Директ | `/tools/site-check` |
+Заменить `icon: "📊"` (string) на `icon: BarChart3` (компонент). Обновить рендер: вместо `<div>{e.icon}</div>` → `<e.icon className="w-7 h-7 text-primary" />`.
 
-Добавить `cursor-pointer` и визуальный индикатор (стрелка или подсветка при hover).
+#### 2. `src/components/landing/ReportValue.tsx` — заголовки отчётов
+| Было | Станет |
+|------|--------|
+| `📄 PDF-отчёт` | `<FileDown className="w-5 h-5 text-primary inline" /> PDF-отчёт` |
+| `📝 Word-отчёт` | `<FileText className="w-5 h-5 text-primary inline" /> Word-отчёт` |
 
-### 3. Анимированный сменяющийся текст в Hero
-**Файл:** `src/components/Hero.tsx`
+#### 3. `src/components/ToolsShowcase.tsx` — badge "🏆 GEO-аудит"
+Заменить `🏆` на `<Trophy className="w-3 h-3" />` (уже в flex с gap, просто заменить символ).
 
-Добавить блок с ротацией фраз (capabilities) между trust bar и инпутом. Фразы плавно появляются и сменяются каждые 3 секунды с fade+slide анимацией через framer-motion `AnimatePresence`:
+#### 4. `src/pages/Tools.tsx` — badge "🏆 GEO-аудит"
+Аналогично: `🏆` → `<Trophy className="w-3 h-3" />`.
 
-Фразы:
-- «SEO-аудит по 18 параметрам»
-- «Schema.org разметка — 12 типов»
-- «GEO-готовность к AI-выдаче»
-- «Семантика 150+ ключей для Директа»
-- «PDF и Word отчёт за 2 минуты»
-- «Анализ конкурентов из ТОП-10»
+#### 5. `src/pages/SiteCheckResult.tsx` — ссылка "🤖 Скачать llms.txt"
+Заменить `🤖` → `<Bot className="w-4 h-4" />`.
 
-Визуально: фиолетовый текст с иконкой слева, плавная смена (opacity + translateY), высота фиксирована чтобы не прыгал layout.
+### Файлы (5)
 
-### 4. Текстовая инфо на страницах инструментов (скрины 3-4)
-**Файл:** `src/pages/ToolPage.tsx`
-
-Под описанием инструмента уже есть `useCases` в виде тегов «КОГДА ИСПОЛЬЗОВАТЬ». Добавить блок с анимированным появлением возможностей — аналогично Hero, но статичный список с staggered fade-in анимацией (framer-motion). Использовать `tool.useCases` для контента.
-
-### Файлы
-
-| Файл | Действие |
-|------|----------|
-| `src/components/Header.tsx` | Удалить дубль «Блог» (строка 15) |
-| `src/components/ServicesTeaser.tsx` | Добавить `link` + `onClick` + `cursor-pointer` на карточки |
-| `src/components/Hero.tsx` | Добавить ротацию фраз с AnimatePresence |
-| `src/pages/ToolPage.tsx` | Staggered появление useCases |
+| Файл | Изменение |
+|------|-----------|
+| `src/pages/GeoAudit.tsx` | Emoji → Lucide icons (BarChart3, BrainCircuit, Rocket) |
+| `src/components/landing/ReportValue.tsx` | Emoji → Lucide icons (FileDown, FileText) |
+| `src/components/ToolsShowcase.tsx` | 🏆 → Trophy icon |
+| `src/pages/Tools.tsx` | 🏆 → Trophy icon |
+| `src/pages/SiteCheckResult.tsx` | 🤖 → Bot icon |
 
