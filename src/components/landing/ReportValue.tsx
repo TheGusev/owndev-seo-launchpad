@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
+import { FileDown, FileText } from "lucide-react";
 
 const pdfItems = [
   "Титульный лист с оценками",
