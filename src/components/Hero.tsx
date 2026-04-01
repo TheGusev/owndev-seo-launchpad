@@ -1,13 +1,22 @@
-import { ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { ArrowRight, Search, Code2, Bot, BarChart3, FileText, Users } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { saveLastUrl } from "@/utils/lastUrl";
+
+const capabilities = [
+  { icon: Search, text: "SEO-аудит по 18 параметрам" },
+  { icon: Code2, text: "Schema.org разметка — 12 типов" },
+  { icon: Bot, text: "GEO-готовность к AI-выдаче" },
+  { icon: BarChart3, text: "Семантика 150+ ключей для Директа" },
+  { icon: FileText, text: "PDF и Word отчёт за 2 минуты" },
+  { icon: Users, text: "Анализ конкурентов из ТОП-10" },
+];
 
 const trustItems = [
   { icon: "✓", text: "50+ параметров анализа", color: "text-emerald-400" },
