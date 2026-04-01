@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
-import { FileCheck, Star, Code2, Brain, BookOpen, Sparkles, ArrowRight } from "lucide-react";
+import { FileCheck, Star, Code2, Brain, BookOpen, Sparkles, ArrowRight, BarChart3, BrainCircuit, Rocket, LucideIcon } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
