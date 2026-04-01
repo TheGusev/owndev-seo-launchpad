@@ -28,7 +28,15 @@ const trustItems = [
 
 const Hero = () => {
   const [url, setUrl] = useState("");
+  const [capIndex, setCapIndex] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCapIndex((prev) => (prev + 1) % capabilities.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleQuickCheck = (e: React.FormEvent) => {
     e.preventDefault();
