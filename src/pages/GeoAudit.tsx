@@ -53,9 +53,9 @@ const stats = [
 ];
 
 const evolution = [
-  { icon: "📊", title: "SEO (было)", desc: "Оптимизация для Яндекса и Google. Ключевые слова, ссылки, техническое SEO." },
-  { icon: "🤖", title: "AI-поиск (сейчас)", desc: "ChatGPT, Perplexity, Яндекс Нейро — пользователи получают готовые ответы. Цитируемые сайты выигрывают.", pulse: true },
-  { icon: "🚀", title: "GEO (ответ)", desc: "Generative Engine Optimization — оптимизация под AI-выдачу. Новая обязательная дисциплина." },
+  { icon: BarChart3, title: "SEO (было)", desc: "Оптимизация для Яндекса и Google. Ключевые слова, ссылки, техническое SEO." },
+  { icon: BrainCircuit, title: "AI-поиск (сейчас)", desc: "ChatGPT, Perplexity, Яндекс Нейро — пользователи получают готовые ответы. Цитируемые сайты выигрывают.", pulse: true },
+  { icon: Rocket, title: "GEO (ответ)", desc: "Generative Engine Optimization — оптимизация под AI-выдачу. Новая обязательная дисциплина." },
 ];
 
 const auditCards = [
