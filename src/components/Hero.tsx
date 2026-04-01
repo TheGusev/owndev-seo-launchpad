@@ -1,13 +1,22 @@
-import { ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { ArrowRight, Search, Code2, Bot, BarChart3, FileText, Users } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { saveLastUrl } from "@/utils/lastUrl";
+
+const capabilities = [
+  { icon: Search, text: "SEO-аудит по 18 параметрам" },
+  { icon: Code2, text: "Schema.org разметка — 12 типов" },
+  { icon: Bot, text: "GEO-готовность к AI-выдаче" },
+  { icon: BarChart3, text: "Семантика 150+ ключей для Директа" },
+  { icon: FileText, text: "PDF и Word отчёт за 2 минуты" },
+  { icon: Users, text: "Анализ конкурентов из ТОП-10" },
+];
 
 const trustItems = [
   { icon: "✓", text: "50+ параметров анализа", color: "text-emerald-400" },
@@ -19,7 +28,15 @@ const trustItems = [
 
 const Hero = () => {
   const [url, setUrl] = useState("");
+  const [capIndex, setCapIndex] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCapIndex((prev) => (prev + 1) % capabilities.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleQuickCheck = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +105,28 @@ const Hero = () => {
                 {item.text}
               </span>
             ))}
+          </motion.div>
+
+          {/* Rotating capabilities */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="h-8 flex items-center justify-center"
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={capIndex}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.4 }}
+                className="flex items-center gap-2 text-primary font-medium text-sm md:text-base"
+              >
+                {(() => { const Icon = capabilities[capIndex].icon; return <Icon className="w-4 h-4 shrink-0" />; })()}
+                {capabilities[capIndex].text}
+              </motion.div>
+            </AnimatePresence>
           </motion.div>
 
           {/* Single CTA: URL input */}

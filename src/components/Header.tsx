@@ -12,7 +12,6 @@ const Header = () => {
     { href: "/tools", label: "Инструменты", isRoute: true },
     { href: "/geo-audit", label: "GEO‑аудит", isRoute: true, isNew: true },
     { href: "/blog", label: "Блог", isRoute: true },
-    { href: "/blog", label: "Блог", isRoute: true },
     { href: "/contacts", label: "Контакты", isRoute: true },
   ];
 
