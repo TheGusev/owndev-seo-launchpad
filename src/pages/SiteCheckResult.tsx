@@ -12,7 +12,7 @@ import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import { getFullScan } from "@/lib/site-check-api";
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, ExternalLink, Loader2, History, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, History, AlertTriangle, Bot } from "lucide-react";
 import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
 
