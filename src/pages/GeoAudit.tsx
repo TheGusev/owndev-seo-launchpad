@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
-import { FileCheck, Star, Code2, Brain, BookOpen, Sparkles, ArrowRight } from "lucide-react";
+import { FileCheck, Star, Code2, Brain, BookOpen, Sparkles, ArrowRight, BarChart3, BrainCircuit, Rocket, LucideIcon } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -53,9 +53,9 @@ const stats = [
 ];
 
 const evolution = [
-  { icon: "📊", title: "SEO (было)", desc: "Оптимизация для Яндекса и Google. Ключевые слова, ссылки, техническое SEO." },
-  { icon: "🤖", title: "AI-поиск (сейчас)", desc: "ChatGPT, Perplexity, Яндекс Нейро — пользователи получают готовые ответы. Цитируемые сайты выигрывают.", pulse: true },
-  { icon: "🚀", title: "GEO (ответ)", desc: "Generative Engine Optimization — оптимизация под AI-выдачу. Новая обязательная дисциплина." },
+  { icon: BarChart3, title: "SEO (было)", desc: "Оптимизация для Яндекса и Google. Ключевые слова, ссылки, техническое SEO." },
+  { icon: BrainCircuit, title: "AI-поиск (сейчас)", desc: "ChatGPT, Perplexity, Яндекс Нейро — пользователи получают готовые ответы. Цитируемые сайты выигрывают.", pulse: true },
+  { icon: Rocket, title: "GEO (ответ)", desc: "Generative Engine Optimization — оптимизация под AI-выдачу. Новая обязательная дисциплина." },
 ];
 
 const auditCards = [
@@ -152,7 +152,7 @@ const GeoAudit = () => {
 
               {evolution.map((e, i) => (
                 <div key={i} className="glass rounded-xl p-6 text-center">
-                  <div className="text-3xl mb-3">{e.icon}</div>
+                  <div className="mb-3 flex justify-center"><e.icon className="w-7 h-7 text-primary" /></div>
                   <h3 className="font-semibold text-foreground mb-2 flex items-center justify-center gap-2">
                     {e.title}
                     {e.pulse && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}

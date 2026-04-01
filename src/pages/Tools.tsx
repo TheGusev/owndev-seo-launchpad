@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { tools } from "@/data/tools-registry";
-import { ArrowRight, ChevronDown, ChevronUp, Shield } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Shield, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
@@ -109,7 +109,7 @@ const Tools = () => {
                       </h2>
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                         <Shield className="w-3 h-3" />
-                        🏆 GEO‑аудит
+                        <Trophy className="w-3 h-3" /> GEO‑аудит
                       </span>
                     </div>
                     <p className="text-muted-foreground text-lg">

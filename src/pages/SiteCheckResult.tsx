@@ -12,7 +12,7 @@ import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import { getFullScan } from "@/lib/site-check-api";
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, ExternalLink, Loader2, History, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, History, AlertTriangle, Bot } from "lucide-react";
 import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
 
@@ -168,7 +168,7 @@ const SiteCheckResult = () => {
               }}
               className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-4"
             >
-              🤖 Скачать llms.txt для вашего сайта
+              <Bot className="w-4 h-4" /> Скачать llms.txt для вашего сайта
             </button>
           </div>
 
