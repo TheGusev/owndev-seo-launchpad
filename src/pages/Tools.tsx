@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { tools } from "@/data/tools-registry";
-import { ArrowRight, ChevronDown, ChevronUp, Shield } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Shield, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
