@@ -217,6 +217,15 @@ const SiteCheckResult = () => {
             </button>
           </div>
 
+          {/* LLM Judge Section */}
+          {llmJudge && <LlmJudgeSection data={llmJudge} />}
+          {llmJudgeLoading && !llmJudge && (
+            <div className="glass rounded-xl p-6 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">Опрашиваем нейросети о вашем сайте...</p>
+            </div>
+          )}
+
           {issues.length > 0 && <FullReportView issues={issues} url={data.url} />}
 
           {competitors.length > 0 && (
