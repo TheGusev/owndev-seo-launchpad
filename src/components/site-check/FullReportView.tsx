@@ -177,6 +177,7 @@ const FullReportView = ({ issues, url }: FullReportViewProps) => {
             issue={issue}
             resolved={isResolved(issue.id || issue.title)}
             onToggle={() => toggleIssue(issue.id || issue.title)}
+            siteUrl={url}
           />
         ))}
       </div>

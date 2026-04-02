@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, CheckCircle2, Copy, ExternalLink } from "lucide
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import AutoFixGenerator from "@/components/site-check/AutoFixGenerator";
 import type { IssueCard as IssueCardType } from "@/lib/site-check-types";
 
 const severityConfig = {
@@ -25,6 +26,9 @@ interface IssueCardProps {
   issue: IssueCardType;
   resolved?: boolean;
   onToggle?: () => void;
+  siteUrl?: string;
+  pageTitle?: string;
+  pageDescription?: string;
 }
 
 function renderHowToFix(text: string) {
@@ -39,7 +43,7 @@ function renderHowToFix(text: string) {
   );
 }
 
-const IssueCardComponent = ({ issue, resolved = false, onToggle }: IssueCardProps) => {
+const IssueCardComponent = ({ issue, resolved = false, onToggle, siteUrl, pageTitle, pageDescription }: IssueCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
   const sev = severityConfig[issue.severity];
@@ -134,6 +138,16 @@ const IssueCardComponent = ({ issue, resolved = false, onToggle }: IssueCardProp
                 {issue.example_fix}
               </pre>
             </div>
+          )}
+
+          {/* Auto-fix generator */}
+          {siteUrl && (
+            <AutoFixGenerator
+              issueTitle={issue.title}
+              url={siteUrl}
+              pageTitle={pageTitle}
+              pageDescription={pageDescription}
+            />
           )}
 
           {/* Footer: docs link */}
