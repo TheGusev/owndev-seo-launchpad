@@ -2188,7 +2188,6 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       spaRenderFailed = true;
       console.log(`[OWNDEV] Jina Reader failed — using raw SPA HTML with degraded analysis`);
     }
-    }
   }
   if (isSpa) {
     await updateScan(scanId, { is_spa: true });
