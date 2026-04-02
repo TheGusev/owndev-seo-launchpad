@@ -87,6 +87,7 @@ const SiteCheckResult = () => {
   const scores = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
     ? { ...defaultScores, ...(rawScores as any) }
     : null;
+  const breakdown = rawScores?.breakdown || undefined;
 
   const issues = Array.isArray(data.issues) ? data.issues : [];
   const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
@@ -150,7 +151,7 @@ const SiteCheckResult = () => {
             )}
           </div>
 
-          {scores && <ScoreCards scores={scores} previousScores={previousScores} />}
+          {scores && <ScoreCards scores={scores} previousScores={previousScores} breakdown={breakdown} />}
 
           <DownloadButtons
             url={data.url}
