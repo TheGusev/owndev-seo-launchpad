@@ -1,6 +1,7 @@
 import type { ScanScores } from "@/lib/site-check-types";
 import ScoreBreakdown from "./ScoreBreakdown";
 import type { CriterionResult } from "@/utils/scoreCalculation";
+import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 
 const scoreLabels: Record<keyof ScanScores, string> = {
   total: "Общий",
@@ -11,9 +12,9 @@ const scoreLabels: Record<keyof ScanScores, string> = {
 };
 
 function getScoreColor(score: number) {
-  if (score <= 40) return "text-red-500 border-red-500/30 bg-red-500/5";
-  if (score <= 70) return "text-yellow-500 border-yellow-500/30 bg-yellow-500/5";
-  return "text-green-500 border-green-500/30 bg-green-500/5";
+  if (score <= 40) return "text-destructive border-destructive/30 bg-destructive/5";
+  if (score <= 70) return "text-warning border-warning/30 bg-warning/5";
+  return "text-success border-success/30 bg-success/5";
 }
 
 function getScoreStatus(score: number) {
@@ -24,14 +25,15 @@ function getScoreStatus(score: number) {
 }
 
 function getScoreRing(score: number) {
-  if (score <= 40) return "stroke-red-500";
-  if (score <= 70) return "stroke-yellow-500";
-  return "stroke-green-500";
+  if (score <= 40) return "stroke-destructive";
+  if (score <= 70) return "stroke-warning";
+  return "stroke-success";
 }
 
 const CircleScore = ({ score }: { score: number }) => {
+  const display = useAnimatedCounter(score, 1000);
   const circumference = 2 * Math.PI * 36;
-  const offset = circumference - (score / 100) * circumference;
+  const offset = circumference - (display / 100) * circumference;
 
   return (
     <div className="relative w-12 h-12 md:w-16 md:h-16 mx-auto">
@@ -45,10 +47,10 @@ const CircleScore = ({ score }: { score: number }) => {
           className={`${getScoreRing(score)} transition-all duration-1000`}
         />
       </svg>
-      <span className={`absolute inset-0 flex items-center justify-center text-sm md:text-lg font-bold ${
-        score <= 40 ? "text-red-500" : score <= 70 ? "text-yellow-500" : "text-green-500"
+      <span className={`absolute inset-0 flex items-center justify-center text-sm md:text-lg font-bold font-mono score-num ${
+        score <= 40 ? "text-destructive" : score <= 70 ? "text-warning" : "text-success"
       }`}>
-        {score}
+        {display}
       </span>
     </div>
   );

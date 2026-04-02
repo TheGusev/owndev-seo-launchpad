@@ -733,6 +733,25 @@
 
 /* Scroll-snap removed — natural flow works better with varied section heights */
 
+/* ============================================
+   GLOBAL FOCUS STATES
+   ============================================ */
+
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.5);
+  border-radius: var(--radius);
+}
+
+/* ============================================
+   TABULAR NUMS FOR SCORES
+   ============================================ */
+
+.score-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
 /* ─── Print styles for PDF export ─────────────────────── */
 @media print {
   header, footer, nav, .no-print {
