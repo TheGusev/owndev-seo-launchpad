@@ -273,54 +273,141 @@ async function incrementTriggerCounts(ruleIds: string[]) {
   }
 }
 
-// ─── Weight-based score calculator ───
+// ─── SEO & LLM weights (mirrors frontend src/utils/scoreCalculation.ts) ───
+const SEO_WEIGHTS: Record<string, number> = {
+  titleTag: 8, metaDescription: 8, h1Tag: 8, headingStructure: 5,
+  canonical: 4, ogTags: 5, robots: 3, contentLength: 8, images: 5,
+  internalLinks: 5, externalLinks: 3, https: 5, mobileViewport: 5,
+  performance: 8, sitemap: 5, robotsTxt: 5, noMixedContent: 5, favicon: 3, langAttr: 2,
+};
+const LLM_WEIGHTS: Record<string, number> = {
+  schemaOrg: 15, faqPresent: 10, llmsTxt: 10, contentStructure: 10,
+  contentClarity: 10, directAnswers: 10, entityMentions: 8, citationReady: 7,
+  freshness: 5, authorEeat: 5, semanticHtml: 5, multimodal: 5,
+};
+
+// Map issue titles/patterns to criteria keys
+const ISSUE_TO_SEO_CRITERION: [RegExp, string][] = [
+  [/title.*длин|title.*корот|title.*отсут|нет title/i, 'titleTag'],
+  [/meta description.*длин|meta description.*корот|meta description.*отсут|нет meta desc/i, 'metaDescription'],
+  [/h1.*отсут|нет h1|h1.*дубл|несколько h1/i, 'h1Tag'],
+  [/иерарх|heading.*структур|пропуск.*уров|h[2-6].*пропу/i, 'headingStructure'],
+  [/canonical/i, 'canonical'],
+  [/og:|open graph|og title|og desc|og image/i, 'ogTags'],
+  [/meta robots|x-robots/i, 'robots'],
+  [/контент.*корот|мало.*слов|0 слов|слов.*менее|объём/i, 'contentLength'],
+  [/alt.*текст|без alt|img.*alt|изображен.*без/i, 'images'],
+  [/внутренн.*ссылк/i, 'internalLinks'],
+  [/внешн.*ссылк/i, 'externalLinks'],
+  [/https|http.*mixed|ssl|сертификат/i, 'https'],
+  [/viewport/i, 'mobileViewport'],
+  [/загрузк|lcp|cls|inp|core web|скорост|время ответ/i, 'performance'],
+  [/sitemap/i, 'sitemap'],
+  [/robots\.txt/i, 'robotsTxt'],
+  [/mixed content/i, 'noMixedContent'],
+  [/favicon/i, 'favicon'],
+  [/lang.*атрибут|html lang|lang="/i, 'langAttr'],
+];
+
+const ISSUE_TO_LLM_CRITERION: [RegExp, string][] = [
+  [/schema\.org|json-ld|json_ld|schema org|нет schema/i, 'schemaOrg'],
+  [/faq|faqpage|howto.*schema/i, 'faqPresent'],
+  [/llms\.txt|llms-full/i, 'llmsTxt'],
+  [/структур.*контент|абзац|спис[ок]|таблиц/i, 'contentStructure'],
+  [/keyword stuff|читаем|водность/i, 'contentClarity'],
+  [/прямой ответ|direct answer/i, 'directAnswers'],
+  [/сущност|entity|бренд/i, 'entityMentions'],
+  [/цитир|citation/i, 'citationReady'],
+  [/дата публикац|freshness|актуальн|datePublished/i, 'freshness'],
+  [/e-e-a-t|eeat|автор.*стат|author/i, 'authorEeat'],
+  [/семантич|<article|<section|<nav|<main/i, 'semanticHtml'],
+  [/мультимод|подпис.*изображ|alt.*изображ/i, 'multimodal'],
+];
+
+interface CriterionResult { key: string; weight: number; earned: number; status: 'pass' | 'fail' | 'partial'; }
+
 function calcScoresWeighted(issues: Issue[], rules: DbRule[]) {
+  // Build per-criterion breakdown
+  const failedSeo = new Set<string>();
+  const failedLlm = new Set<string>();
+
+  for (const issue of issues) {
+    const text = `${issue.title} ${(issue as any).found || ''}`;
+    const sev = issue.severity;
+
+    if (issue.module === 'technical' || issue.module === 'content') {
+      for (const [rx, key] of ISSUE_TO_SEO_CRITERION) {
+        if (rx.test(text)) { failedSeo.add(key); break; }
+      }
+    }
+    if (issue.module === 'ai' || issue.module === 'schema') {
+      for (const [rx, key] of ISSUE_TO_LLM_CRITERION) {
+        if (rx.test(text)) { failedLlm.add(key); break; }
+      }
+    }
+  }
+
+  // Build SEO breakdown
+  const seoBreakdown: CriterionResult[] = Object.entries(SEO_WEIGHTS).map(([key, weight]) => {
+    const failed = failedSeo.has(key);
+    return { key, weight, earned: failed ? 0 : weight, status: failed ? 'fail' as const : 'pass' as const };
+  });
+
+  // Build LLM breakdown
+  const llmBreakdown: CriterionResult[] = Object.entries(LLM_WEIGHTS).map(([key, weight]) => {
+    const failed = failedLlm.has(key);
+    return { key, weight, earned: failed ? 0 : weight, status: failed ? 'fail' as const : 'pass' as const };
+  });
+
+  const seoMax = Object.values(SEO_WEIGHTS).reduce((a, b) => a + b, 0);
+  const llmMax = Object.values(LLM_WEIGHTS).reduce((a, b) => a + b, 0);
+  const seoEarned = seoBreakdown.reduce((s, c) => s + c.earned, 0);
+  const llmEarned = llmBreakdown.reduce((s, c) => s + c.earned, 0);
+
+  let seo = Math.round((seoEarned / seoMax) * 100);
+  let ai = Math.round((llmEarned / llmMax) * 100);
+
+  // Direct and Schema scores from old module-based approach
   const moduleScores: Record<string, { totalWeight: number; passedWeight: number }> = {};
   const scoreModuleMap: Record<string, string> = {
     'technical': 'seo', 'content': 'seo',
     'direct': 'direct', 'schema': 'schema', 'ai': 'ai',
   };
 
-  // Initialize with all rules' weights
   for (const rule of rules) {
     const scoreKey = scoreModuleMap[rule.module] || rule.module;
+    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
     if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 0, passedWeight: 0 };
     moduleScores[scoreKey].totalWeight += rule.score_weight;
-    moduleScores[scoreKey].passedWeight += rule.score_weight; // assume pass, subtract on fail
+    moduleScores[scoreKey].passedWeight += rule.score_weight;
   }
-
-  // Subtract weight for each failed rule (issue found)
   const issueRuleIds = new Set(issues.map(i => (i as any).rule_id).filter(Boolean));
   for (const rule of rules) {
-    if (issueRuleIds.has(rule.rule_id)) {
-      const scoreKey = scoreModuleMap[rule.module] || rule.module;
-      if (moduleScores[scoreKey]) {
-        moduleScores[scoreKey].passedWeight -= rule.score_weight;
-      }
+    const scoreKey = scoreModuleMap[rule.module] || rule.module;
+    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
+    if (issueRuleIds.has(rule.rule_id) && moduleScores[scoreKey]) {
+      moduleScores[scoreKey].passedWeight -= rule.score_weight;
     }
   }
-
-  // Also handle issues without rule_id (legacy hardcoded) via severity fallback
   for (const issue of issues) {
-    if ((issue as any).rule_id) continue; // already handled
+    if ((issue as any).rule_id) continue;
     const scoreKey = scoreModuleMap[issue.module] || issue.module;
+    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
     if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 100, passedWeight: 100 };
     const w = issue.severity === 'critical' ? 15 : issue.severity === 'high' ? 8 : issue.severity === 'medium' ? 4 : 2;
     moduleScores[scoreKey].passedWeight -= w;
   }
 
-  const getScore = (key: string) => {
+  const getModScore = (key: string) => {
     const m = moduleScores[key];
     if (!m || m.totalWeight === 0) return 100;
     return Math.max(0, Math.min(100, Math.round((m.passedWeight / m.totalWeight) * 100)));
   };
 
-  let seo = getScore('seo');
-  let direct = getScore('direct');
-  let schema = getScore('schema');
-  let ai = getScore('ai');
+  let direct = getModScore('direct');
+  let schema = getModScore('schema');
 
-  // FIX #1: Schema Score cap — if "no JSON-LD" issue exists, cap schema score
+  // Schema cap
   const hasNoJsonLd = issues.some(i => i.module === 'schema' && /JSON-LD не найден/i.test((i as any).found || (i as any).title || ''));
   const hasMicrodata = issues.some(i => i.module === 'schema' && /microdata|rdfa/i.test((i as any).found || ''));
   if (hasNoJsonLd) {
@@ -328,7 +415,10 @@ function calcScoresWeighted(issues: Issue[], rules: DbRule[]) {
   }
 
   const total = Math.round(seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25);
-  return { total, seo, direct, schema, ai };
+  return {
+    total, seo, direct, schema, ai,
+    breakdown: { seo: seoBreakdown, ai: llmBreakdown },
+  };
 }
 
 // ═══ STEP 0: Theme detection ═══
