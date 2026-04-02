@@ -140,6 +140,16 @@ const IssueCardComponent = ({ issue, resolved = false, onToggle, siteUrl, pageTi
             </div>
           )}
 
+          {/* Auto-fix generator */}
+          {siteUrl && (
+            <AutoFixGenerator
+              issueTitle={issue.title}
+              url={siteUrl}
+              pageTitle={pageTitle}
+              pageDescription={pageDescription}
+            />
+          )}
+
           {/* Footer: docs link */}
           {issue.docs_url && (
             <div className="pt-2 border-t border-border/20">
