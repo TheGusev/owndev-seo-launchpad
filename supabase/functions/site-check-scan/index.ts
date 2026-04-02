@@ -1166,12 +1166,24 @@ function schemaAudit(html: string): Issue[] {
 async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: boolean, spaRenderFailed?: boolean): Promise<Issue[]> {
   const issues: Issue[] = [];
   
-  // --- 1. Check /llms.txt ---
+  // FIX #5: SPA render warning
+  if (isSpa && spaRenderFailed) {
+    issues.push(makeIssue({ module: 'ai', severity: 'medium',
+      title: 'Не удалось отрендерить SPA',
+      found: 'SPA-сайт обнаружен, но рендеринг JavaScript не удался',
+      location: 'Весь сайт',
+      why_it_matters: 'LLM Score рассчитан по серверному HTML и может быть занижен. AI-краулеры и поисковики также видят пустую страницу',
+      how_to_fix: '1. Настройте Server-Side Rendering (SSR) или Static Site Generation (SSG)\n2. Добавьте пререндеринг для основных страниц\n3. Используйте мета-теги в серверном HTML',
+      example_fix: 'Для React: используйте Next.js или Remix. Для Vue: Nuxt.js. Для Angular: Angular Universal',
+      visible_in_preview: true }));
+  }
+
+  // --- 1. Check /llms.txt (FIX #4: show found status) ---
   try {
-    const llmsResp = await fetchWithTimeout(`${origin}/llms.txt`, 5000, { method: 'HEAD' });
+    const llmsResp = await fetchWithTimeout(`${origin}/llms.txt`, 5000);
     if (!llmsResp.ok) {
       issues.push(makeIssue({ module: 'ai', severity: 'high',
-        title: '🤖 Нет файла /llms.txt',
+        title: 'Нет файла /llms.txt',
         found: `${origin}/llms.txt → ${llmsResp.status}`,
         location: '/llms.txt',
         why_it_matters: 'llms.txt — стандарт для AI-краулеров (ChatGPT, Perplexity, Claude). Файл говорит нейросетям как читать ваш сайт. Без llms.txt сайт теряет 20 баллов LLM Score',
@@ -1180,6 +1192,7 @@ async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: b
         impact_score: 20, docs_url: 'https://llmstxt.org',
         visible_in_preview: true }));
     }
+    // If found — no issue pushed, score stays high
   } catch { /* timeout — skip */ }
 
   // --- 2. Check /llms-full.txt ---
@@ -1187,13 +1200,32 @@ async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: b
     const llmsFullResp = await fetchWithTimeout(`${origin}/llms-full.txt`, 5000, { method: 'HEAD' });
     if (!llmsFullResp.ok) {
       issues.push(makeIssue({ module: 'ai', severity: 'medium',
-        title: '🤖 Нет файла /llms-full.txt',
+        title: 'Нет файла /llms-full.txt',
         found: `${origin}/llms-full.txt → ${llmsFullResp.status}`,
         location: '/llms-full.txt',
         why_it_matters: 'llms-full.txt — расширенная версия для AI-систем с подробным описанием всех страниц и контента',
         how_to_fix: 'Создайте /llms-full.txt с детальным описанием каждого раздела сайта',
         example_fix: `# ${origin}\n> Полное описание сайта\n\n## Pages\n- ${origin}/about: О компании — описание\n- ${origin}/services: Услуги — список`,
         visible_in_preview: false }));
+    }
+  } catch { /* timeout — skip */ }
+
+  // --- 2b. Check robots.txt for AI directives ---
+  try {
+    const robotsResp = await fetchWithTimeout(`${origin}/robots.txt`, 5000);
+    if (robotsResp.ok) {
+      const robotsTxt = await robotsResp.text();
+      const hasLlmsTxtDirective = /llms-txt/i.test(robotsTxt);
+      if (!hasLlmsTxtDirective) {
+        issues.push(makeIssue({ module: 'ai', severity: 'low',
+          title: 'Нет LLMs-Txt директивы в robots.txt',
+          found: 'robots.txt не содержит ссылку на llms.txt',
+          location: '/robots.txt',
+          why_it_matters: 'Директива LLMs-Txt в robots.txt помогает AI-краулерам быстрее найти ваш манифест',
+          how_to_fix: 'Добавьте строку в robots.txt: LLMs-Txt: /llms.txt',
+          example_fix: 'LLMs-Txt: /llms.txt',
+          visible_in_preview: false }));
+      }
     }
   } catch { /* timeout — skip */ }
 
