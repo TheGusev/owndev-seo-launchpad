@@ -1273,8 +1273,11 @@ async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: b
       visible_in_preview: false }));
   }
 
-  // --- 5. E-E-A-T signals ---
+  // --- 5. E-E-A-T signals (FIX #2: skip author requirement for non-article pages) ---
   const htmlLower = html.toLowerCase();
+  const isArticlePage = !!pageUrl && /\/(blog|article|post|news|stati|statya)\//i.test(pageUrl)
+    || /<article[\s>]/i.test(html);
+  
   const hasAuthor = /об\s*автор|author|автор\s*стать|написал|эксперт/i.test(html) 
     || schemaTypes.some(t => t === 'Person')
     || /"author"/i.test(html);
@@ -1282,34 +1285,49 @@ async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: b
     || /<time[^>]*datetime/i.test(html) 
     || /дата\s*публикац|опубликован/i.test(htmlLower);
   
-  if (!hasAuthor && !hasDatePublished) {
-    issues.push(makeIssue({ module: 'ai', severity: 'high',
-      title: '🤖 Нет E-E-A-T сигналов',
-      found: 'Не найдены: блок об авторе, дата публикации',
-      location: 'Контент страницы',
-      why_it_matters: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trust) — ключевой фактор для AI-систем при выборе источника для цитирования. Без автора и даты контент выглядит анонимным и ненадёжным',
-      how_to_fix: '1. Добавьте блок об авторе с именем и экспертизой\n2. Укажите дату публикации через <time datetime="...">\n3. Добавьте Schema Person для автора\n4. Добавьте страницу автора на сайте',
-      example_fix: '<div class="author">\n  <img src="author.jpg" alt="Имя Автора">\n  <p>Автор: <strong>Имя Автора</strong>, SEO-эксперт с 10-летним опытом</p>\n</div>\n<time datetime="2025-01-01">1 января 2025</time>',
-      impact_score: 8, docs_url: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
-      visible_in_preview: true }));
-  } else if (!hasAuthor) {
-    issues.push(makeIssue({ module: 'ai', severity: 'medium',
-      title: '🤖 Нет блока об авторе',
-      found: 'Дата публикации найдена, но автор не указан',
-      location: 'Контент страницы',
-      why_it_matters: 'Контент без указания автора теряет в авторитетности для AI-систем',
-      how_to_fix: 'Добавьте информацию об авторе с его экспертизой',
-      example_fix: '<p>Автор: <strong>Имя</strong>, специалист в области...</p>',
-      visible_in_preview: false }));
-  } else if (!hasDatePublished) {
-    issues.push(makeIssue({ module: 'ai', severity: 'medium',
-      title: '🤖 Нет даты публикации',
-      found: 'Автор найден, но дата публикации не указана',
-      location: 'Контент страницы',
-      why_it_matters: 'Без даты AI-системы не могут оценить актуальность контента',
-      how_to_fix: 'Добавьте дату публикации через тег <time> с атрибутом datetime',
-      example_fix: '<time datetime="2025-01-01">1 января 2025</time>',
-      visible_in_preview: false }));
+  if (isArticlePage) {
+    // Article/blog page — author and date are important
+    if (!hasAuthor && !hasDatePublished) {
+      issues.push(makeIssue({ module: 'ai', severity: 'high',
+        title: 'Нет E-E-A-T сигналов (статья)',
+        found: 'Не найдены: блок об авторе, дата публикации',
+        location: 'Контент страницы',
+        why_it_matters: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trust) — ключевой фактор для AI-систем при выборе источника для цитирования. Без автора и даты контент выглядит анонимным и ненадёжным',
+        how_to_fix: '1. Добавьте блок об авторе с именем и экспертизой\n2. Укажите дату публикации через <time datetime="...">\n3. Добавьте Schema Person для автора\n4. Добавьте страницу автора на сайте',
+        example_fix: '<div class="author">\n  <img src="author.jpg" alt="Имя Автора">\n  <p>Автор: <strong>Имя Автора</strong>, SEO-эксперт с 10-летним опытом</p>\n</div>\n<time datetime="2025-01-01">1 января 2025</time>',
+        impact_score: 8, docs_url: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
+        visible_in_preview: true }));
+    } else if (!hasAuthor) {
+      issues.push(makeIssue({ module: 'ai', severity: 'medium',
+        title: 'Нет блока об авторе (статья)',
+        found: 'Дата публикации найдена, но автор не указан',
+        location: 'Контент страницы',
+        why_it_matters: 'Контент без указания автора теряет в авторитетности для AI-систем',
+        how_to_fix: 'Добавьте информацию об авторе с его экспертизой',
+        example_fix: '<p>Автор: <strong>Имя</strong>, специалист в области...</p>',
+        visible_in_preview: false }));
+    } else if (!hasDatePublished) {
+      issues.push(makeIssue({ module: 'ai', severity: 'medium',
+        title: 'Нет даты публикации (статья)',
+        found: 'Автор найден, но дата публикации не указана',
+        location: 'Контент страницы',
+        why_it_matters: 'Без даты AI-системы не могут оценить актуальность контента',
+        how_to_fix: 'Добавьте дату публикации через тег <time> с атрибутом datetime',
+        example_fix: '<time datetime="2025-01-01">1 января 2025</time>',
+        visible_in_preview: false }));
+    }
+  } else {
+    // Landing/product/tool page — author not required, only recommend
+    if (!hasAuthor && !hasDatePublished) {
+      issues.push(makeIssue({ module: 'ai', severity: 'low',
+        title: 'Рекомендация: добавить авторство (актуально для статей блога)',
+        found: 'Страница не содержит E-E-A-T сигналов (автор, дата)',
+        location: 'Контент страницы',
+        why_it_matters: 'Для лендингов и страниц продуктов E-E-A-T менее критичен, но для статей блога — обязателен',
+        how_to_fix: 'Если это статья — добавьте автора и дату. Для лендингов это необязательно',
+        example_fix: '<p>Автор: <strong>Имя</strong>, специалист в области...</p>',
+        visible_in_preview: false }));
+    }
   }
 
   // --- Original checks ---
