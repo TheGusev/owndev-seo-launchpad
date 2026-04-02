@@ -56,8 +56,10 @@ const SiteCheckResult = () => {
     return (
       <>
         <Header />
-        <main className="min-h-screen pt-24 pb-16 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <main className="min-h-screen pt-24 pb-16">
+          <div className="container max-w-5xl mx-auto px-4">
+            <SkeletonResultsGrid />
+          </div>
         </main>
         <Footer />
       </>
