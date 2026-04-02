@@ -199,13 +199,13 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     head: [['Параметр', 'Значение', 'Статус', 'Норма']],
     body: passportRows,
     margin: { left: MARGIN, right: MARGIN },
-    styles: {
+    styles: { font: 'Roboto',
       fontSize: 7.5, cellPadding: 2.5,
       fillColor: hexToRgb(COLORS.bg_card),
       textColor: hexToRgb(COLORS.text_white),
       lineColor: hexToRgb(COLORS.bg_card2), lineWidth: 0.3,
     },
-    headStyles: {
+    headStyles: { font: 'Roboto',
       fillColor: hexToRgb(COLORS.purple_dark),
       textColor: hexToRgb(COLORS.text_white),
       fontSize: 8, fontStyle: 'bold',
@@ -423,14 +423,14 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       head: [['Сайт', 'Слов', 'H2', 'FAQ', 'Цены', 'Отзывы', 'Schema', 'Видео', 'Фразы']],
       body: compRows,
       margin: { left: MARGIN, right: MARGIN },
-      styles: {
+      styles: { font: 'Roboto',
         fontSize: 6.5, cellPadding: 2,
         fillColor: hexToRgb(COLORS.bg_card),
         textColor: hexToRgb(COLORS.text_white),
         lineColor: hexToRgb(COLORS.bg_card2), lineWidth: 0.2,
         overflow: 'ellipsize' as any,
       },
-      headStyles: {
+      headStyles: { font: 'Roboto',
         fillColor: hexToRgb(COLORS.purple_dark), fontSize: 7, fontStyle: 'bold',
         textColor: hexToRgb(COLORS.text_white),
       },
@@ -509,13 +509,13 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       head: [['Запрос', 'Кластер', 'Интент', 'Частота', 'Лендинг']],
       body: kwRows,
       margin: { left: MARGIN, right: MARGIN },
-      styles: {
+      styles: { font: 'Roboto',
         fontSize: 7, cellPadding: 2,
         fillColor: hexToRgb(COLORS.bg_card),
         textColor: hexToRgb(COLORS.text_white),
         lineColor: hexToRgb(COLORS.bg_card2), lineWidth: 0.2,
       },
-      headStyles: { fillColor: hexToRgb(COLORS.purple_dark), fontSize: 7.5, fontStyle: 'bold', textColor: hexToRgb(COLORS.text_white) },
+      headStyles: { font: 'Roboto', fillColor: hexToRgb(COLORS.purple_dark), fontSize: 7.5, fontStyle: 'bold', textColor: hexToRgb(COLORS.text_white) },
       columnStyles: {
         0: { cellWidth: 75 }, 1: { cellWidth: 45 },
         2: { cellWidth: 20, halign: 'center' }, 3: { cellWidth: 22, halign: 'right' },
