@@ -133,11 +133,18 @@ const SiteCheckResult = () => {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold text-foreground">Полный GEO‑отчёт</h1>
+              {data.is_spa && <Badge variant="outline" className="text-xs border-primary/50 text-primary">SPA</Badge>}
               <a href={data.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors">
                 {data.url}
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
+            {data.is_spa && (
+              <div className="flex items-start gap-2 mt-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">Обнаружен SPA-сайт. Контент проанализирован после рендеринга JavaScript.</p>
+              </div>
+            )}
             {data.theme && (
               <p className="text-sm text-muted-foreground mt-1">Тематика: {data.theme}</p>
             )}
