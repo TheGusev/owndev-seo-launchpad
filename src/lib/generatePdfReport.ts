@@ -7,8 +7,19 @@ import {
   ReportData,
 } from './reportHelpers';
 
-export async function generatePdfReport(data: ReportData): Promise<void> {
+async function initDoc(): Promise<jsPDF> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } = await import('@/fonts/roboto-base64');
+  doc.addFileToVFS('Roboto-Regular.ttf', ROBOTO_REGULAR_BASE64);
+  doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+  doc.addFileToVFS('Roboto-Bold.ttf', ROBOTO_BOLD_BASE64);
+  doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+  doc.setFont('Roboto', 'normal');
+  return doc;
+}
+
+export async function generatePdfReport(data: ReportData): Promise<void> {
+  const doc = await initDoc();
 
   const PAGE_W = 210;
   const PAGE_H = 297;
