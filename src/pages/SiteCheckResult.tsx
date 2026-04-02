@@ -90,6 +90,26 @@ const SiteCheckResult = () => {
     }
   };
 
+  const triggerTechPassport = async (url: string) => {
+    setTechPassportLoading(true);
+    try {
+      const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/tech-passport`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        body: JSON.stringify({ url }),
+      });
+      if (resp.ok) {
+        const result = await resp.json();
+        if (result.tech) setTechPassport(result);
+      }
+    } catch (e) {
+      console.error('Tech passport error:', e);
+    } finally {
+      setTechPassportLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <>
