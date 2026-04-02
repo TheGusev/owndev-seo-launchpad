@@ -873,14 +873,22 @@ function contentAudit(html: string, theme: string): Issue[] {
     }
   }
 
-  // ── Images without alt ──
+  // ── Images without alt (FIX #3: exclude tracking pixels) ──
   const imgTags = html.match(/<img[^>]*>/gi) || [];
-  const noAlt = imgTags.filter(img => !img.match(/alt=["'][^"']+["']/i));
+  const isTrackingPixel = (img: string): boolean => {
+    const src = (img.match(/src=["']([^"']+)["']/i) || [])[1] || '';
+    if (/mc\.yandex\.ru|pixel|beacon|facebook\.com\/tr|google-analytics\.com|analytics/i.test(src)) return true;
+    if (/width=["']?1["']?/i.test(img) && /height=["']?1["']?/i.test(img)) return true;
+    if (/display\s*:\s*none/i.test(img)) return true;
+    return false;
+  };
+  const visibleImgs = imgTags.filter(img => !isTrackingPixel(img));
+  const noAlt = visibleImgs.filter(img => !img.match(/alt=["'][^"']+["']/i));
   if (noAlt.length > 0) {
     const examples = noAlt.slice(0, 2).map(t => { const s = t.match(/src=["']([^"']+)["']/i); return s ? s[1] : '?'; });
     issues.push(makeIssue({ module: 'content', severity: noAlt.length > 5 ? 'high' : 'medium',
       title: `${noAlt.length} изображений без alt-текста`,
-      found: `${noAlt.length} из ${imgTags.length} без alt. Примеры: ${examples.join(', ')}`,
+      found: `${noAlt.length} из ${visibleImgs.length} без alt. Примеры: ${examples.join(', ')}`,
       location: '<img> теги',
       why_it_matters: 'Alt помогает поисковикам понять изображения и улучшает доступность',
       how_to_fix: 'Добавьте описательный alt к каждому <img>',
