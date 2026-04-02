@@ -214,6 +214,14 @@ const SiteCheckResult = () => {
 
           {scores && <ScoreCards scores={scores} previousScores={previousScores} breakdown={breakdown} />}
 
+          {techPassport && <TechPassport data={techPassport} />}
+          {techPassportLoading && !techPassport && (
+            <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">Определяем технический стек сайта...</p>
+            </div>
+          )}
+
           <DownloadButtons
             url={data.url}
             theme={data.theme}
