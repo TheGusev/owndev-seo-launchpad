@@ -43,6 +43,121 @@ async function checkUrl(url: string): Promise<{ ok: boolean; status: number }> {
   } catch { return { ok: false, status: 0 }; }
 }
 
+// ─── SPA Detection ───
+function isSpaPage(html: string): boolean {
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  if (!bodyMatch) return false;
+  const bodyContent = bodyMatch[1]
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const wordCount = bodyContent.split(/\s+/).filter((w: string) => w.length > 1).length;
+  const hasAppRoot = /<div[^>]*id=["'](root|app|__next|__nuxt|___gatsby|__svelte)["']/i.test(html);
+  const hasFrameworkBundle = /(\/assets\/index[\w.-]+\.js|\/static\/js\/|\/chunks\/|_next\/static)/i.test(html);
+  console.log(`[OWNDEV] SPA check: wordCount=${wordCount}, hasAppRoot=${hasAppRoot}, hasFrameworkBundle=${hasFrameworkBundle}`);
+  return wordCount < 150 && (hasAppRoot || hasFrameworkBundle);
+}
+
+// ─── Fetch rendered content via Jina Reader for SPA pages ───
+async function fetchRenderedContent(url: string): Promise<string | null> {
+  try {
+    console.log(`[OWNDEV] SPA detected — fetching rendered content via Jina Reader: ${url}`);
+    const resp = await fetchWithTimeout(`https://r.jina.ai/${url}`, 20000, {
+      headers: {
+        'Accept': 'text/plain',
+        'X-Timeout': '15',
+        'X-Wait-For-Selector': 'h1',
+      } as any,
+    });
+    if (!resp.ok) {
+      console.log(`[OWNDEV] Jina Reader response: ${resp.status}`);
+      return null;
+    }
+    const markdown = await resp.text();
+    console.log(`[OWNDEV] Jina Reader returned ${markdown.length} bytes`);
+    return markdown.length > 200 ? markdown : null;
+  } catch (e) {
+    console.error('[OWNDEV] Jina Reader failed:', e.message);
+    return null;
+  }
+}
+
+// ─── Build enriched HTML from Jina markdown + original <head> ───
+function buildEnrichedHtml(markdown: string, originalHtml: string): string {
+  // Extract metadata from Jina markdown header
+  const titleMatch = markdown.match(/^Title:\s*(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : '';
+
+  const descMatch = markdown.match(/^Description:\s*(.+)$/m);
+  const description = descMatch ? descMatch[1].trim() : '';
+
+  // Find where actual content starts (after Jina metadata lines)
+  const lines = markdown.split('\n');
+  let contentStartIdx = 0;
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    if (/^(Title|URL Source|Description|Published Time|Image):/.test(lines[i])) {
+      contentStartIdx = i + 1;
+    } else if (lines[i].trim() === '' && contentStartIdx > 0) {
+      contentStartIdx = i + 1;
+      break;
+    }
+  }
+  const contentMd = lines.slice(contentStartIdx).join('\n').trim();
+
+  // Parse headings from markdown
+  const h1Match = contentMd.match(/^#\s+(.+)$/m);
+  const h1 = h1Match ? h1Match[1].trim() : (title || '');
+  const h2Matches = [...contentMd.matchAll(/^##\s+(.+)$/gm)];
+  const h3Matches = [...contentMd.matchAll(/^###\s+(.+)$/gm)];
+
+  // Convert markdown content to simple HTML for analysis
+  let bodyHtml = '';
+  if (h1) bodyHtml += `<h1>${h1}</h1>\n`;
+  
+  for (const line of contentMd.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('### ')) {
+      bodyHtml += `<h3>${trimmed.slice(4)}</h3>\n`;
+    } else if (trimmed.startsWith('## ')) {
+      bodyHtml += `<h2>${trimmed.slice(3)}</h2>\n`;
+    } else if (trimmed.startsWith('# ')) {
+      // already handled as h1
+    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      bodyHtml += `<li>${trimmed.slice(2)}</li>\n`;
+    } else if (trimmed.length > 0) {
+      bodyHtml += `<p>${trimmed}</p>\n`;
+    }
+  }
+
+  // Wrap list items in <ul>
+  bodyHtml = bodyHtml.replace(/(<li>[\s\S]*?<\/li>\n)+/g, (match) => `<ul>${match}</ul>\n`);
+
+  // Preserve original <head> but enrich with rendered metadata
+  let headContent = '';
+  const headMatch = originalHtml.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+  if (headMatch) {
+    headContent = headMatch[1];
+  }
+
+  // Add/override title if not present
+  if (title && !/<title[^>]*>[^<]+<\/title>/i.test(headContent)) {
+    headContent += `\n<title>${title}</title>`;
+  }
+  // Add description if not present
+  if (description && !/name=["']description["']/i.test(headContent)) {
+    headContent += `\n<meta name="description" content="${description.replace(/"/g, '&quot;')}">`;
+  }
+
+  // Extract schema.org blocks from original HTML (they're usually inline scripts)
+  const schemaBlocks = originalHtml.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || [];
+
+  // Build enriched HTML
+  const htmlLang = (originalHtml.match(/<html[^>]*lang=["']([^"']*)["']/i) || [])[0] || '<html>';
+  return `<!DOCTYPE html>\n${htmlLang}\n<head>${headContent}</head>\n<body>\n${bodyHtml}\n${schemaBlocks.join('\n')}\n</body>\n</html>`;
+}
+
 // ─── Robust JSON parser (handles truncated LLM output) ───
 function safeParseJson<T>(raw: string, fallback: T): T {
   if (!raw || typeof raw !== 'string') return fallback;
@@ -1960,6 +2075,21 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   }
   
   await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000) });
+
+  // ─── SPA Detection & Rendered Fetch ───
+  let isSpa = false;
+  if (isSpaPage(html)) {
+    isSpa = true;
+    console.log(`[OWNDEV] SPA detected for ${url} — attempting Jina Reader rendered fetch`);
+    const renderedMd = await fetchRenderedContent(parsedUrl.toString());
+    if (renderedMd) {
+      const enrichedHtml = buildEnrichedHtml(renderedMd, html);
+      console.log(`[OWNDEV] Using enriched HTML (${enrichedHtml.length} bytes) instead of raw SPA HTML (${html.length} bytes)`);
+      html = enrichedHtml;
+    } else {
+      console.log(`[OWNDEV] Jina Reader failed — using raw SPA HTML with degraded analysis`);
+    }
+  }
   
   // STEP 0: Theme Detection
   const theme = await detectTheme(html, parsedUrl.toString());
