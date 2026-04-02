@@ -61,6 +61,7 @@ const SiteCheck = () => {
   const handleSubmit = async (url: string, mode: ScanMode) => {
     setScanning(true);
     setLimitScanId(null);
+    setScanError(null);
     try {
       const result = await startScan(url, mode);
       setScanId(result.scan_id);
