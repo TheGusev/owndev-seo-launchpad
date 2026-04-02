@@ -26,6 +26,8 @@ import Offer from "./pages/Offer";
 import Refund from "./pages/Refund";
 import Contacts from "./pages/Contacts";
 import GeoAudit from "./pages/GeoAudit";
+import Academy from "./pages/Academy";
+import AcademyLesson from "./pages/AcademyLesson";
 import BorderBot from "@/components/mascot/BorderBot";
 
 const queryClient = new QueryClient();
