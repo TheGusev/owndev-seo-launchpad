@@ -12,8 +12,9 @@ import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import { getFullScan } from "@/lib/site-check-api";
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, ExternalLink, Loader2, History, AlertTriangle, Bot, Info } from "lucide-react";
+import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SkeletonResultsGrid } from "@/components/ui/skeleton-card";
 import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
 
@@ -55,8 +56,10 @@ const SiteCheckResult = () => {
     return (
       <>
         <Header />
-        <main className="min-h-screen pt-24 pb-16 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <main className="min-h-screen pt-24 pb-16">
+          <div className="container max-w-5xl mx-auto px-4">
+            <SkeletonResultsGrid />
+          </div>
         </main>
         <Footer />
       </>
