@@ -47,7 +47,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 snap-section">
+    <section className="relative min-h-[85vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-20">
       <CornerDecorations size="lg" />
       <FloatingParticles count={10} className="absolute inset-0 z-[3] pointer-events-none" />
 
