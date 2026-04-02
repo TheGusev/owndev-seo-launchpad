@@ -12,9 +12,6 @@ import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
 import DefaultBlogCover from "@/components/blog/DefaultBlogCover";
-import { AnimatedGrid } from "@/components/ui/animated-grid";
-import { MouseGradient } from "@/components/ui/mouse-gradient";
-import { ClickRipple } from "@/components/ui/click-ripple";
 
 const Blog = () => {
   const [search, setSearch] = useState("");
