@@ -10,7 +10,8 @@ const Header = () => {
 
   const navLinks: { href: string; label: string; isRoute?: boolean; isNew?: boolean }[] = [
     { href: "/tools", label: "Инструменты", isRoute: true },
-    { href: "/geo-audit", label: "GEO‑аудит", isRoute: true, isNew: true },
+    { href: "/geo-audit", label: "GEO‑аудит", isRoute: true },
+    { href: "/academy", label: "Academy", isRoute: true, isNew: true },
     { href: "/blog", label: "Блог", isRoute: true },
     { href: "/contacts", label: "Контакты", isRoute: true },
   ];
