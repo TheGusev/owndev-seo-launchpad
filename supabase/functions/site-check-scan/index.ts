@@ -2090,6 +2090,9 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       console.log(`[OWNDEV] Jina Reader failed — using raw SPA HTML with degraded analysis`);
     }
   }
+  if (isSpa) {
+    await updateScan(scanId, { is_spa: true });
+  }
   
   // STEP 0: Theme Detection
   const theme = await detectTheme(html, parsedUrl.toString());
