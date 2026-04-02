@@ -2050,9 +2050,17 @@ function extractSeoData(html: string, parsedUrl: URL, httpStatus: number, loadTi
   const lang = langMatch ? langMatch[1] : '';
 
   const allImages = html.match(/<img[^>]*>/gi) || [];
-  const imagesTotal = allImages.length;
-  const imagesWithoutAlt = allImages.filter((img: string) => !img.match(/alt=["'][^"']+["']/i)).length;
-  const imagesWithoutDimensions = allImages.filter((img: string) => !img.match(/width=/i) || !img.match(/height=/i)).length;
+  const isTrackingPx = (img: string): boolean => {
+    const src = (img.match(/src=["']([^"']+)["']/i) || [])[1] || '';
+    if (/mc\.yandex\.ru|pixel|beacon|facebook\.com\/tr|google-analytics\.com|analytics/i.test(src)) return true;
+    if (/width=["']?1["']?/i.test(img) && /height=["']?1["']?/i.test(img)) return true;
+    if (/display\s*:\s*none/i.test(img)) return true;
+    return false;
+  };
+  const visibleImages = allImages.filter((img: string) => !isTrackingPx(img));
+  const imagesTotal = visibleImages.length;
+  const imagesWithoutAlt = visibleImages.filter((img: string) => !img.match(/alt=["'][^"']+["']/i)).length;
+  const imagesWithoutDimensions = visibleImages.filter((img: string) => !img.match(/width=/i) || !img.match(/height=/i)).length;
 
   const jsonLdBlocks = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
   const schemaTypes: string[] = [];
