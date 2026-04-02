@@ -29,6 +29,7 @@ const SiteCheck = () => {
   const [scanning, setScanning] = useState(false);
   const [scanId, setScanId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [limitScanId, setLimitScanId] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const mountedRef = useRef(true);
