@@ -1,43 +1,34 @@
 
 
-## Замена emoji-иконок на Lucide-иконки
+## Сохранение флага SPA и отображение в UI
 
-### Проблема
-На сайте в нескольких местах используются emoji (📊, 🤖, 🚀, 📄, 📝, 🏆) вместо современных Lucide-иконок. Это выглядит непрофессионально и не вписывается в тёмную tech-эстетику сайта.
+### Текущее состояние
+SPA-детекция и двухэтапное сканирование через Jina Reader **уже полностью реализованы** в Edge Function:
+- `isSpaPage()` определяет SPA (строка 47)
+- `fetchRenderedContent()` получает рендеренный контент через Jina Reader (строка 64)
+- `buildEnrichedHtml()` объединяет серверный `<head>` с рендеренным контентом (строка 88)
+- Переменная `isSpa` устанавливается (строка 2080), но **не сохраняется** в БД
 
-### Замены по файлам
+### Что нужно доделать
 
-#### 1. `src/pages/GeoAudit.tsx` — секция "SEO → AI → GEO"
-| Было | Станет |
-|------|--------|
-| `📊` SEO (было) | `<BarChart3>` из lucide-react |
-| `🤖` AI-поиск | `<BrainCircuit>` из lucide-react |
-| `🚀` GEO (ответ) | `<Rocket>` из lucide-react |
+#### 1. Миграция: колонка `is_spa` в таблице `scans`
+```sql
+ALTER TABLE public.scans ADD COLUMN IF NOT EXISTS is_spa boolean DEFAULT false;
+```
 
-Заменить `icon: "📊"` (string) на `icon: BarChart3` (компонент). Обновить рендер: вместо `<div>{e.icon}</div>` → `<e.icon className="w-7 h-7 text-primary" />`.
+#### 2. `supabase/functions/site-check-scan/index.ts` — сохранить флаг
+В финальном `updateScan` (строка 2211) добавить `is_spa: isSpa`. Также в промежуточный `updateScan` после SPA-детекции (строка 2077) добавить `is_spa: isSpa`.
 
-#### 2. `src/components/landing/ReportValue.tsx` — заголовки отчётов
-| Было | Станет |
-|------|--------|
-| `📄 PDF-отчёт` | `<FileDown className="w-5 h-5 text-primary inline" /> PDF-отчёт` |
-| `📝 Word-отчёт` | `<FileText className="w-5 h-5 text-primary inline" /> Word-отчёт` |
+#### 3. `src/pages/SiteCheckResult.tsx` — бейдж SPA + уведомление
+Рядом с URL (строка 133-139) показать бейдж если `data.is_spa === true`:
+- Бейдж: `<Badge variant="outline">SPA</Badge>` рядом со ссылкой на сайт
+- Информационное уведомление под заголовком: «Обнаружен SPA-сайт. Контент проанализирован после рендеринга JavaScript.»
 
-#### 3. `src/components/ToolsShowcase.tsx` — badge "🏆 GEO-аудит"
-Заменить `🏆` на `<Trophy className="w-3 h-3" />` (уже в flex с gap, просто заменить символ).
+### Файлы
 
-#### 4. `src/pages/Tools.tsx` — badge "🏆 GEO-аудит"
-Аналогично: `🏆` → `<Trophy className="w-3 h-3" />`.
-
-#### 5. `src/pages/SiteCheckResult.tsx` — ссылка "🤖 Скачать llms.txt"
-Заменить `🤖` → `<Bot className="w-4 h-4" />`.
-
-### Файлы (5)
-
-| Файл | Изменение |
-|------|-----------|
-| `src/pages/GeoAudit.tsx` | Emoji → Lucide icons (BarChart3, BrainCircuit, Rocket) |
-| `src/components/landing/ReportValue.tsx` | Emoji → Lucide icons (FileDown, FileText) |
-| `src/components/ToolsShowcase.tsx` | 🏆 → Trophy icon |
-| `src/pages/Tools.tsx` | 🏆 → Trophy icon |
-| `src/pages/SiteCheckResult.tsx` | 🤖 → Bot icon |
+| Файл | Действие |
+|------|----------|
+| Миграция SQL | Колонка `is_spa boolean` |
+| `supabase/functions/site-check-scan/index.ts` | Сохранить `is_spa` в updateScan |
+| `src/pages/SiteCheckResult.tsx` | Бейдж SPA + уведомление |
 
