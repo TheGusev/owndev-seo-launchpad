@@ -2074,7 +2074,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     return;
   }
   
-  await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000) });
+  await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000), is_spa: false });
 
   // ─── SPA Detection & Rendered Fetch ───
   let isSpa = false;
@@ -2089,6 +2089,9 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     } else {
       console.log(`[OWNDEV] Jina Reader failed — using raw SPA HTML with degraded analysis`);
     }
+  }
+  if (isSpa) {
+    await updateScan(scanId, { is_spa: true });
   }
   
   // STEP 0: Theme Detection
@@ -2212,7 +2215,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     status: 'done', progress_pct: 100,
     minus_words: minusWords,
     issues: allIssues, scores: finalScores,
-    seo_data: seoData,
+    seo_data: seoData, is_spa: isSpa,
     competitors: [
       compResult.directMeta,
       ...compResult.competitors,
