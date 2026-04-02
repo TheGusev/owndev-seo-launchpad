@@ -21,7 +21,7 @@ const UTILITY_SLUGS = ["pseo-generator", "ai-text-generator", "webmaster-files",
 const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);
 
 const Tools = () => {
-  const [showUtils, setShowUtils] = useState(false);
+  const [showUtils, setShowUtils] = useState(true);
   const flagship = getToolBySlug(FLAGSHIP_SLUG);
   const technicalTools = TECHNICAL_SLUGS.map(getToolBySlug).filter(Boolean) as typeof tools;
   const utilityTools = UTILITY_SLUGS.map(getToolBySlug).filter(Boolean) as typeof tools;
