@@ -1,4 +1,6 @@
 import type { ScanScores } from "@/lib/site-check-types";
+import ScoreBreakdown from "./ScoreBreakdown";
+import type { CriterionResult } from "@/utils/scoreCalculation";
 
 const scoreLabels: Record<keyof ScanScores, string> = {
   total: "Общий",
@@ -74,15 +76,22 @@ const DiffBadge = ({ diff }: { diff: number }) => {
   );
 };
 
+interface ScoreBreakdownData {
+  seo?: CriterionResult[];
+  ai?: CriterionResult[];
+}
+
 interface ScoreCardsProps {
   scores: ScanScores;
   previousScores?: ScanScores;
+  breakdown?: ScoreBreakdownData;
 }
 
-const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
+const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => (
   <div className="grid grid-cols-5 gap-2 md:gap-3">
     {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => {
       const val = scores?.[key] ?? 0;
+      const hasBreakdown = (key === 'seo' && breakdown?.seo?.length) || (key === 'ai' && breakdown?.ai?.length);
       return (
       <div
         key={key}
@@ -95,6 +104,13 @@ const ScoreCards = ({ scores, previousScores }: ScoreCardsProps) => (
           <div className="mt-1">
             <DiffBadge diff={val - previousScores[key]} />
           </div>
+        )}
+        {hasBreakdown && (
+          <ScoreBreakdown
+            type={key as 'seo' | 'ai'}
+            currentScore={val}
+            breakdown={key === 'seo' ? breakdown?.seo : breakdown?.ai}
+          />
         )}
       </div>
       );
