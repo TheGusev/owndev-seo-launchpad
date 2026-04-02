@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      academy_lessons: {
+        Row: {
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          lesson_number: number
+          lesson_slug: string
+          module_number: number
+          module_slug: string
+          module_title: string
+          reading_time_minutes: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          lesson_number: number
+          lesson_slug: string
+          module_number: number
+          module_slug: string
+          module_title: string
+          reading_time_minutes?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          lesson_number?: number
+          lesson_slug?: string
+          module_number?: number
+          module_slug?: string
+          module_title?: string
+          reading_time_minutes?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
