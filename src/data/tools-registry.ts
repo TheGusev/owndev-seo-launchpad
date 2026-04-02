@@ -1,4 +1,4 @@
-import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star } from "lucide-react";
+import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye } from "lucide-react";
 import { lazy, type ComponentType } from "react";
 
 export type ToolStatus = "active" | "coming_soon";
@@ -112,6 +112,19 @@ export const tools: ToolDef[] = [
     geoEnabled: true, status: "active",
   },
   // ===== CONTENT & LLM =====
+  {
+    id: "brand-tracker", slug: "brand-tracker",
+    name: "AI Brand Tracker",
+    shortDesc: "Проверьте, упоминают ли ChatGPT, Perplexity и Яндекс ваш бренд в ответах",
+    category: "content", icon: Eye,
+    component: lazy(() => import("@/components/tools/BrandTracker")),
+    gradient: "bg-gradient-to-br from-cyan-950/40 to-teal-950/40",
+    useCases: ["Мониторинг AI-видимости бренда", "Анализ конкурентов в AI-ответах", "Проверка тональности упоминаний"],
+    geoEnabled: false, status: "active",
+    seoTitle: "AI Brand Tracker — проверка упоминаний бренда в AI | OWNDEV",
+    seoDescription: "Проверьте, упоминают ли ChatGPT, Perplexity и Яндекс Нейро ваш бренд. Тональность, позиция, конкуренты — бесплатно.",
+    seoH1: "AI Brand Tracker — видит ли AI ваш бренд?",
+  },
   {
     id: "ai-text-generator", slug: "ai-text-generator",
     name: "AI Генератор текстов",
