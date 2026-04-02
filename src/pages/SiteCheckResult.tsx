@@ -27,6 +27,8 @@ const SiteCheckResult = () => {
   const [error, setError] = useState<string | null>(null);
   const [llmJudge, setLlmJudge] = useState<any>(null);
   const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
+  const [techPassport, setTechPassport] = useState<any>(null);
+  const [techPassportLoading, setTechPassportLoading] = useState(false);
 
   const previousScores = useMemo(() => {
     if (!data?.url || !scanId) return undefined;
