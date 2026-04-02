@@ -2074,7 +2074,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
     return;
   }
   
-  await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000) });
+  await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000), is_spa: false });
 
   // ─── SPA Detection & Rendered Fetch ───
   let isSpa = false;
