@@ -276,7 +276,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     if (issue.where || issue.location) {
       setTextColor(COLORS.text_dark);
       doc.setFontSize(7);
-      doc.setFont('Roboto', 'italic');
+      doc.setFont('Roboto', 'normal');
       doc.text(`Где: ${issue.where || issue.location}`, MARGIN, y);
       y += 4;
     }
