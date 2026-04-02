@@ -151,7 +151,7 @@ const SiteCheckResult = () => {
             )}
           </div>
 
-          {scores && <ScoreCards scores={scores} previousScores={previousScores} />}
+          {scores && <ScoreCards scores={scores} previousScores={previousScores} breakdown={breakdown} />}
 
           <DownloadButtons
             url={data.url}
