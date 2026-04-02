@@ -47,6 +47,13 @@ const SiteCheckResult = () => {
         if (d && scanId) {
           addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
         }
+        // Check if llm_judge already exists in data
+        if (d?.llm_judge) {
+          setLlmJudge(d.llm_judge);
+        } else if (d?.url && d?.status === 'done') {
+          // Trigger LLM Judge in background
+          triggerLlmJudge(scanId, d.url, d.theme);
+        }
       })
       .catch((e) => {
         setError(e.message || "Не удалось загрузить отчёт");
@@ -54,6 +61,29 @@ const SiteCheckResult = () => {
       })
       .finally(() => setLoading(false));
   }, [scanId, toast]);
+
+  const triggerLlmJudge = async (id: string, url: string, theme?: string) => {
+    setLlmJudgeLoading(true);
+    try {
+      const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/llm-judge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ scan_id: id, url, theme }),
+      });
+      if (resp.ok) {
+        const result = await resp.json();
+        setLlmJudge(result);
+      }
+    } catch (e) {
+      console.error('LLM Judge error:', e);
+    } finally {
+      setLlmJudgeLoading(false);
+    }
+  };
 
   if (loading) {
     return (
