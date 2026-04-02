@@ -2167,6 +2167,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
 
   // ─── SPA Detection & Rendered Fetch ───
   let isSpa = false;
+  let spaRenderFailed = false;
   if (isSpaPage(html)) {
     isSpa = true;
     console.log(`[OWNDEV] SPA detected for ${url} — attempting Jina Reader rendered fetch`);
@@ -2176,7 +2177,9 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       console.log(`[OWNDEV] Using enriched HTML (${enrichedHtml.length} bytes) instead of raw SPA HTML (${html.length} bytes)`);
       html = enrichedHtml;
     } else {
+      spaRenderFailed = true;
       console.log(`[OWNDEV] Jina Reader failed — using raw SPA HTML with degraded analysis`);
+    }
     }
   }
   if (isSpa) {
