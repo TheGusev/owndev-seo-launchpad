@@ -232,6 +232,27 @@ export type Database = {
         }
         Relationships: []
       }
+      tech_stack_cache: {
+        Row: {
+          data_json: Json
+          domain: string
+          id: string
+          scanned_at: string
+        }
+        Insert: {
+          data_json?: Json
+          domain: string
+          id?: string
+          scanned_at?: string
+        }
+        Update: {
+          data_json?: Json
+          domain?: string
+          id?: string
+          scanned_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
