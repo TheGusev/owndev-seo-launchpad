@@ -120,7 +120,7 @@ const SiteCheck = () => {
 
           <div className="glass rounded-2xl p-5 md:p-8">
             {scanning ? (
-              <ScanProgress onComplete={() => {}} realProgress={progress} />
+              <ScanProgress onComplete={() => {}} realProgress={progress} error={scanError} />
             ) : (
               <ScanForm onSubmit={handleSubmit} />
             )}
