@@ -11,6 +11,7 @@ import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import LlmJudgeSection from "@/components/site-check/LlmJudgeSection";
+import TechPassport from "@/components/site-check/TechPassport";
 import { getFullScan } from "@/lib/site-check-api";
 import { useEffect, useState, useMemo } from "react";
 import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2 } from "lucide-react";
@@ -18,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { SkeletonResultsGrid } from "@/components/ui/skeleton-card";
 import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
-
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
@@ -27,6 +27,8 @@ const SiteCheckResult = () => {
   const [error, setError] = useState<string | null>(null);
   const [llmJudge, setLlmJudge] = useState<any>(null);
   const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
+  const [techPassport, setTechPassport] = useState<any>(null);
+  const [techPassportLoading, setTechPassportLoading] = useState(false);
 
   const previousScores = useMemo(() => {
     if (!data?.url || !scanId) return undefined;
@@ -51,8 +53,11 @@ const SiteCheckResult = () => {
         if (d?.llm_judge) {
           setLlmJudge(d.llm_judge);
         } else if (d?.url && d?.status === 'done') {
-          // Trigger LLM Judge in background
           triggerLlmJudge(scanId, d.url, d.theme);
+        }
+        // Trigger tech passport
+        if (d?.url) {
+          triggerTechPassport(d.url);
         }
       })
       .catch((e) => {
@@ -82,6 +87,26 @@ const SiteCheckResult = () => {
       console.error('LLM Judge error:', e);
     } finally {
       setLlmJudgeLoading(false);
+    }
+  };
+
+  const triggerTechPassport = async (url: string) => {
+    setTechPassportLoading(true);
+    try {
+      const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/tech-passport`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        body: JSON.stringify({ url }),
+      });
+      if (resp.ok) {
+        const result = await resp.json();
+        if (result.tech) setTechPassport(result);
+      }
+    } catch (e) {
+      console.error('Tech passport error:', e);
+    } finally {
+      setTechPassportLoading(false);
     }
   };
 
@@ -188,6 +213,14 @@ const SiteCheckResult = () => {
           </div>
 
           {scores && <ScoreCards scores={scores} previousScores={previousScores} breakdown={breakdown} />}
+
+          {techPassport && <TechPassport data={techPassport} />}
+          {techPassportLoading && !techPassport && (
+            <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">Определяем технический стек сайта...</p>
+            </div>
+          )}
 
           <DownloadButtons
             url={data.url}
