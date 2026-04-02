@@ -26,6 +26,9 @@ interface IssueCardProps {
   issue: IssueCardType;
   resolved?: boolean;
   onToggle?: () => void;
+  siteUrl?: string;
+  pageTitle?: string;
+  pageDescription?: string;
 }
 
 function renderHowToFix(text: string) {
