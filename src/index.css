@@ -731,17 +731,7 @@
   display: none;
 }
 
-/* Desktop scroll-snap */
-@media (min-width: 768px) {
-  .snap-container {
-    scroll-snap-type: y proximity;
-    overflow-y: scroll;
-    height: 100vh;
-  }
-  .snap-section {
-    scroll-snap-align: start;
-  }
-}
+/* Scroll-snap removed — natural flow works better with varied section heights */
 
 /* ─── Print styles for PDF export ─────────────────────── */
 @media print {

@@ -53,7 +53,7 @@ const softwareAppLd = {
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background scroll-smooth snap-container">
+    <div className="min-h-screen bg-background scroll-smooth">
       <Helmet>
         <title>OWNDEV — Первый GEO и AI-ready аудит сайта в Рунете</title>
         <meta name="description" content="Проверяем сайт по двум слоям: классическое SEO и готовность к AI-выдаче в ChatGPT, Яндекс Нейро и Perplexity. SEO Score + LLM Score в одном отчёте. Бесплатно." />
