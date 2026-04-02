@@ -53,8 +53,11 @@ const SiteCheckResult = () => {
         if (d?.llm_judge) {
           setLlmJudge(d.llm_judge);
         } else if (d?.url && d?.status === 'done') {
-          // Trigger LLM Judge in background
           triggerLlmJudge(scanId, d.url, d.theme);
+        }
+        // Trigger tech passport
+        if (d?.url) {
+          triggerTechPassport(d.url);
         }
       })
       .catch((e) => {
