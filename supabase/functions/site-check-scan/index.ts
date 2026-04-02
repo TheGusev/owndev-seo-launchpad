@@ -315,10 +315,18 @@ function calcScoresWeighted(issues: Issue[], rules: DbRule[]) {
     return Math.max(0, Math.min(100, Math.round((m.passedWeight / m.totalWeight) * 100)));
   };
 
-  const seo = getScore('seo');
-  const direct = getScore('direct');
-  const schema = getScore('schema');
-  const ai = getScore('ai');
+  let seo = getScore('seo');
+  let direct = getScore('direct');
+  let schema = getScore('schema');
+  let ai = getScore('ai');
+
+  // FIX #1: Schema Score cap — if "no JSON-LD" issue exists, cap schema score
+  const hasNoJsonLd = issues.some(i => i.module === 'schema' && /JSON-LD не найден/i.test((i as any).found || (i as any).title || ''));
+  const hasMicrodata = issues.some(i => i.module === 'schema' && /microdata|rdfa/i.test((i as any).found || ''));
+  if (hasNoJsonLd) {
+    schema = hasMicrodata ? Math.min(schema, 30) : 0;
+  }
+
   const total = Math.round(seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25);
   return { total, seo, direct, schema, ai };
 }
