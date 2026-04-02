@@ -129,6 +129,7 @@ export type Database = {
           error_message: string | null
           expires_at: string
           id: string
+          is_spa: boolean | null
           issues: Json | null
           keywords: Json | null
           minus_words: Json | null
@@ -148,6 +149,7 @@ export type Database = {
           error_message?: string | null
           expires_at?: string
           id?: string
+          is_spa?: boolean | null
           issues?: Json | null
           keywords?: Json | null
           minus_words?: Json | null
@@ -167,6 +169,7 @@ export type Database = {
           error_message?: string | null
           expires_at?: string
           id?: string
+          is_spa?: boolean | null
           issues?: Json | null
           keywords?: Json | null
           minus_words?: Json | null
