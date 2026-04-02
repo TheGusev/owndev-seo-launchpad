@@ -10,9 +10,10 @@ import DirectMeta from "@/components/site-check/DirectMeta";
 import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
+import LlmJudgeSection from "@/components/site-check/LlmJudgeSection";
 import { getFullScan } from "@/lib/site-check-api";
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info } from "lucide-react";
+import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonResultsGrid } from "@/components/ui/skeleton-card";
 import { addToHistory, getHistory } from "@/utils/scanHistory";
@@ -24,6 +25,8 @@ const SiteCheckResult = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [llmJudge, setLlmJudge] = useState<any>(null);
+  const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
 
   const previousScores = useMemo(() => {
     if (!data?.url || !scanId) return undefined;
@@ -44,6 +47,13 @@ const SiteCheckResult = () => {
         if (d && scanId) {
           addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
         }
+        // Check if llm_judge already exists in data
+        if (d?.llm_judge) {
+          setLlmJudge(d.llm_judge);
+        } else if (d?.url && d?.status === 'done') {
+          // Trigger LLM Judge in background
+          triggerLlmJudge(scanId, d.url, d.theme);
+        }
       })
       .catch((e) => {
         setError(e.message || "Не удалось загрузить отчёт");
@@ -51,6 +61,29 @@ const SiteCheckResult = () => {
       })
       .finally(() => setLoading(false));
   }, [scanId, toast]);
+
+  const triggerLlmJudge = async (id: string, url: string, theme?: string) => {
+    setLlmJudgeLoading(true);
+    try {
+      const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/llm-judge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ scan_id: id, url, theme }),
+      });
+      if (resp.ok) {
+        const result = await resp.json();
+        setLlmJudge(result);
+      }
+    } catch (e) {
+      console.error('LLM Judge error:', e);
+    } finally {
+      setLlmJudgeLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -183,6 +216,15 @@ const SiteCheckResult = () => {
               <Bot className="w-4 h-4" /> Скачать llms.txt для вашего сайта
             </button>
           </div>
+
+          {/* LLM Judge Section */}
+          {llmJudge && <LlmJudgeSection data={llmJudge} />}
+          {llmJudgeLoading && !llmJudge && (
+            <div className="glass rounded-xl p-6 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">Опрашиваем нейросети о вашем сайте...</p>
+            </div>
+          )}
 
           {issues.length > 0 && <FullReportView issues={issues} url={data.url} />}
 

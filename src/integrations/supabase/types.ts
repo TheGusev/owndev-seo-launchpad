@@ -132,6 +132,7 @@ export type Database = {
           is_spa: boolean | null
           issues: Json | null
           keywords: Json | null
+          llm_judge: Json | null
           minus_words: Json | null
           mode: string
           progress_pct: number
@@ -152,6 +153,7 @@ export type Database = {
           is_spa?: boolean | null
           issues?: Json | null
           keywords?: Json | null
+          llm_judge?: Json | null
           minus_words?: Json | null
           mode?: string
           progress_pct?: number
@@ -172,6 +174,7 @@ export type Database = {
           is_spa?: boolean | null
           issues?: Json | null
           keywords?: Json | null
+          llm_judge?: Json | null
           minus_words?: Json | null
           mode?: string
           progress_pct?: number
