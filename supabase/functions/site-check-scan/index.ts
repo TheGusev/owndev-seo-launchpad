@@ -315,10 +315,18 @@ function calcScoresWeighted(issues: Issue[], rules: DbRule[]) {
     return Math.max(0, Math.min(100, Math.round((m.passedWeight / m.totalWeight) * 100)));
   };
 
-  const seo = getScore('seo');
-  const direct = getScore('direct');
-  const schema = getScore('schema');
-  const ai = getScore('ai');
+  let seo = getScore('seo');
+  let direct = getScore('direct');
+  let schema = getScore('schema');
+  let ai = getScore('ai');
+
+  // FIX #1: Schema Score cap — if "no JSON-LD" issue exists, cap schema score
+  const hasNoJsonLd = issues.some(i => i.module === 'schema' && /JSON-LD не найден/i.test((i as any).found || (i as any).title || ''));
+  const hasMicrodata = issues.some(i => i.module === 'schema' && /microdata|rdfa/i.test((i as any).found || ''));
+  if (hasNoJsonLd) {
+    schema = hasMicrodata ? Math.min(schema, 30) : 0;
+  }
+
   const total = Math.round(seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25);
   return { total, seo, direct, schema, ai };
 }
@@ -865,14 +873,22 @@ function contentAudit(html: string, theme: string): Issue[] {
     }
   }
 
-  // ── Images without alt ──
+  // ── Images without alt (FIX #3: exclude tracking pixels) ──
   const imgTags = html.match(/<img[^>]*>/gi) || [];
-  const noAlt = imgTags.filter(img => !img.match(/alt=["'][^"']+["']/i));
+  const isTrackingPixel = (img: string): boolean => {
+    const src = (img.match(/src=["']([^"']+)["']/i) || [])[1] || '';
+    if (/mc\.yandex\.ru|pixel|beacon|facebook\.com\/tr|google-analytics\.com|analytics/i.test(src)) return true;
+    if (/width=["']?1["']?/i.test(img) && /height=["']?1["']?/i.test(img)) return true;
+    if (/display\s*:\s*none/i.test(img)) return true;
+    return false;
+  };
+  const visibleImgs = imgTags.filter(img => !isTrackingPixel(img));
+  const noAlt = visibleImgs.filter(img => !img.match(/alt=["'][^"']+["']/i));
   if (noAlt.length > 0) {
     const examples = noAlt.slice(0, 2).map(t => { const s = t.match(/src=["']([^"']+)["']/i); return s ? s[1] : '?'; });
     issues.push(makeIssue({ module: 'content', severity: noAlt.length > 5 ? 'high' : 'medium',
       title: `${noAlt.length} изображений без alt-текста`,
-      found: `${noAlt.length} из ${imgTags.length} без alt. Примеры: ${examples.join(', ')}`,
+      found: `${noAlt.length} из ${visibleImgs.length} без alt. Примеры: ${examples.join(', ')}`,
       location: '<img> теги',
       why_it_matters: 'Alt помогает поисковикам понять изображения и улучшает доступность',
       how_to_fix: 'Добавьте описательный alt к каждому <img>',
@@ -1083,10 +1099,18 @@ function directAudit(html: string, theme: string): DirectAuditResult {
 function schemaAudit(html: string): Issue[] {
   const issues: Issue[] = [];
   
+  // Check for microdata/RDFa as fallback
+  const hasMicrodata = /itemscope|itemtype=/i.test(html);
+  const hasRdfa = /typeof=["'].*schema\.org/i.test(html) || /property=["']og:/i.test(html);
+  
   const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
   if (jsonLdMatches.length === 0) {
-    issues.push(makeIssue({ module: 'schema', severity: 'high', title: 'Нет Schema.org разметки',
-      found: 'JSON-LD не найден на странице', location: 'Вся страница',
+    const foundText = hasMicrodata ? 'JSON-LD не найден, но обнаружена Microdata разметка' 
+      : hasRdfa ? 'JSON-LD не найден, но обнаружена RDFa разметка'
+      : 'JSON-LD не найден на странице';
+    issues.push(makeIssue({ module: 'schema', severity: hasMicrodata || hasRdfa ? 'medium' : 'high', 
+      title: 'Нет Schema.org разметки (JSON-LD)',
+      found: foundText, location: 'Вся страница',
       why_it_matters: 'Schema.org — структурированные данные помогающие поисковикам и нейросетям понять контент. Сайты с Schema получают расширенные сниппеты и лучше попадают в AI-ответы',
       how_to_fix: '1. Добавьте JSON-LD разметку Organization для компании\n2. Добавьте WebSite для главной\n3. Проверьте: search.google.com/test/rich-results',
       example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"...","url":"..."}</script>',
@@ -1094,12 +1118,27 @@ function schemaAudit(html: string): Issue[] {
       visible_in_preview: true }));
   } else {
     const types: string[] = [];
+    let hasParseError = false;
     for (const m of jsonLdMatches) {
       try {
         const content = m.replace(/<\/?script[^>]*>/gi, '');
         const parsed = JSON.parse(content);
         if (parsed['@type']) types.push(parsed['@type']);
-      } catch {}
+        if (parsed['@graph'] && Array.isArray(parsed['@graph'])) {
+          for (const item of parsed['@graph']) {
+            if (item['@type']) types.push(item['@type']);
+          }
+        }
+      } catch { hasParseError = true; }
+    }
+    
+    if (hasParseError) {
+      issues.push(makeIssue({ module: 'schema', severity: 'high', title: 'JSON-LD содержит ошибки парсинга',
+        found: 'Один или несколько блоков JSON-LD невалидны', location: 'JSON-LD',
+        why_it_matters: 'Невалидный JSON-LD игнорируется поисковиками полностью',
+        how_to_fix: 'Проверьте синтаксис JSON-LD на search.google.com/test/rich-results',
+        example_fix: 'Убедитесь что JSON валиден (нет лишних запятых, все кавычки закрыты)',
+        visible_in_preview: true }));
     }
     
     if (!types.includes('Organization') && !types.includes('LocalBusiness')) {
@@ -1124,15 +1163,27 @@ function schemaAudit(html: string): Issue[] {
 }
 
 // ═══ STEP 8: AI Visibility Audit ═══
-async function aiAudit(html: string, origin: string): Promise<Issue[]> {
+async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: boolean, spaRenderFailed?: boolean): Promise<Issue[]> {
   const issues: Issue[] = [];
   
-  // --- 1. Check /llms.txt ---
+  // FIX #5: SPA render warning
+  if (isSpa && spaRenderFailed) {
+    issues.push(makeIssue({ module: 'ai', severity: 'medium',
+      title: 'Не удалось отрендерить SPA',
+      found: 'SPA-сайт обнаружен, но рендеринг JavaScript не удался',
+      location: 'Весь сайт',
+      why_it_matters: 'LLM Score рассчитан по серверному HTML и может быть занижен. AI-краулеры и поисковики также видят пустую страницу',
+      how_to_fix: '1. Настройте Server-Side Rendering (SSR) или Static Site Generation (SSG)\n2. Добавьте пререндеринг для основных страниц\n3. Используйте мета-теги в серверном HTML',
+      example_fix: 'Для React: используйте Next.js или Remix. Для Vue: Nuxt.js. Для Angular: Angular Universal',
+      visible_in_preview: true }));
+  }
+
+  // --- 1. Check /llms.txt (FIX #4: show found status) ---
   try {
-    const llmsResp = await fetchWithTimeout(`${origin}/llms.txt`, 5000, { method: 'HEAD' });
+    const llmsResp = await fetchWithTimeout(`${origin}/llms.txt`, 5000);
     if (!llmsResp.ok) {
       issues.push(makeIssue({ module: 'ai', severity: 'high',
-        title: '🤖 Нет файла /llms.txt',
+        title: 'Нет файла /llms.txt',
         found: `${origin}/llms.txt → ${llmsResp.status}`,
         location: '/llms.txt',
         why_it_matters: 'llms.txt — стандарт для AI-краулеров (ChatGPT, Perplexity, Claude). Файл говорит нейросетям как читать ваш сайт. Без llms.txt сайт теряет 20 баллов LLM Score',
@@ -1141,6 +1192,7 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
         impact_score: 20, docs_url: 'https://llmstxt.org',
         visible_in_preview: true }));
     }
+    // If found — no issue pushed, score stays high
   } catch { /* timeout — skip */ }
 
   // --- 2. Check /llms-full.txt ---
@@ -1148,13 +1200,32 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
     const llmsFullResp = await fetchWithTimeout(`${origin}/llms-full.txt`, 5000, { method: 'HEAD' });
     if (!llmsFullResp.ok) {
       issues.push(makeIssue({ module: 'ai', severity: 'medium',
-        title: '🤖 Нет файла /llms-full.txt',
+        title: 'Нет файла /llms-full.txt',
         found: `${origin}/llms-full.txt → ${llmsFullResp.status}`,
         location: '/llms-full.txt',
         why_it_matters: 'llms-full.txt — расширенная версия для AI-систем с подробным описанием всех страниц и контента',
         how_to_fix: 'Создайте /llms-full.txt с детальным описанием каждого раздела сайта',
         example_fix: `# ${origin}\n> Полное описание сайта\n\n## Pages\n- ${origin}/about: О компании — описание\n- ${origin}/services: Услуги — список`,
         visible_in_preview: false }));
+    }
+  } catch { /* timeout — skip */ }
+
+  // --- 2b. Check robots.txt for AI directives ---
+  try {
+    const robotsResp = await fetchWithTimeout(`${origin}/robots.txt`, 5000);
+    if (robotsResp.ok) {
+      const robotsTxt = await robotsResp.text();
+      const hasLlmsTxtDirective = /llms-txt/i.test(robotsTxt);
+      if (!hasLlmsTxtDirective) {
+        issues.push(makeIssue({ module: 'ai', severity: 'low',
+          title: 'Нет LLMs-Txt директивы в robots.txt',
+          found: 'robots.txt не содержит ссылку на llms.txt',
+          location: '/robots.txt',
+          why_it_matters: 'Директива LLMs-Txt в robots.txt помогает AI-краулерам быстрее найти ваш манифест',
+          how_to_fix: 'Добавьте строку в robots.txt: LLMs-Txt: /llms.txt',
+          example_fix: 'LLMs-Txt: /llms.txt',
+          visible_in_preview: false }));
+      }
     }
   } catch { /* timeout — skip */ }
 
@@ -1202,8 +1273,11 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
       visible_in_preview: false }));
   }
 
-  // --- 5. E-E-A-T signals ---
+  // --- 5. E-E-A-T signals (FIX #2: skip author requirement for non-article pages) ---
   const htmlLower = html.toLowerCase();
+  const isArticlePage = !!pageUrl && /\/(blog|article|post|news|stati|statya)\//i.test(pageUrl)
+    || /<article[\s>]/i.test(html);
+  
   const hasAuthor = /об\s*автор|author|автор\s*стать|написал|эксперт/i.test(html) 
     || schemaTypes.some(t => t === 'Person')
     || /"author"/i.test(html);
@@ -1211,34 +1285,49 @@ async function aiAudit(html: string, origin: string): Promise<Issue[]> {
     || /<time[^>]*datetime/i.test(html) 
     || /дата\s*публикац|опубликован/i.test(htmlLower);
   
-  if (!hasAuthor && !hasDatePublished) {
-    issues.push(makeIssue({ module: 'ai', severity: 'high',
-      title: '🤖 Нет E-E-A-T сигналов',
-      found: 'Не найдены: блок об авторе, дата публикации',
-      location: 'Контент страницы',
-      why_it_matters: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trust) — ключевой фактор для AI-систем при выборе источника для цитирования. Без автора и даты контент выглядит анонимным и ненадёжным',
-      how_to_fix: '1. Добавьте блок об авторе с именем и экспертизой\n2. Укажите дату публикации через <time datetime="...">\n3. Добавьте Schema Person для автора\n4. Добавьте страницу автора на сайте',
-      example_fix: '<div class="author">\n  <img src="author.jpg" alt="Имя Автора">\n  <p>Автор: <strong>Имя Автора</strong>, SEO-эксперт с 10-летним опытом</p>\n</div>\n<time datetime="2025-01-01">1 января 2025</time>',
-      impact_score: 8, docs_url: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
-      visible_in_preview: true }));
-  } else if (!hasAuthor) {
-    issues.push(makeIssue({ module: 'ai', severity: 'medium',
-      title: '🤖 Нет блока об авторе',
-      found: 'Дата публикации найдена, но автор не указан',
-      location: 'Контент страницы',
-      why_it_matters: 'Контент без указания автора теряет в авторитетности для AI-систем',
-      how_to_fix: 'Добавьте информацию об авторе с его экспертизой',
-      example_fix: '<p>Автор: <strong>Имя</strong>, специалист в области...</p>',
-      visible_in_preview: false }));
-  } else if (!hasDatePublished) {
-    issues.push(makeIssue({ module: 'ai', severity: 'medium',
-      title: '🤖 Нет даты публикации',
-      found: 'Автор найден, но дата публикации не указана',
-      location: 'Контент страницы',
-      why_it_matters: 'Без даты AI-системы не могут оценить актуальность контента',
-      how_to_fix: 'Добавьте дату публикации через тег <time> с атрибутом datetime',
-      example_fix: '<time datetime="2025-01-01">1 января 2025</time>',
-      visible_in_preview: false }));
+  if (isArticlePage) {
+    // Article/blog page — author and date are important
+    if (!hasAuthor && !hasDatePublished) {
+      issues.push(makeIssue({ module: 'ai', severity: 'high',
+        title: 'Нет E-E-A-T сигналов (статья)',
+        found: 'Не найдены: блок об авторе, дата публикации',
+        location: 'Контент страницы',
+        why_it_matters: 'E-E-A-T (Experience, Expertise, Authoritativeness, Trust) — ключевой фактор для AI-систем при выборе источника для цитирования. Без автора и даты контент выглядит анонимным и ненадёжным',
+        how_to_fix: '1. Добавьте блок об авторе с именем и экспертизой\n2. Укажите дату публикации через <time datetime="...">\n3. Добавьте Schema Person для автора\n4. Добавьте страницу автора на сайте',
+        example_fix: '<div class="author">\n  <img src="author.jpg" alt="Имя Автора">\n  <p>Автор: <strong>Имя Автора</strong>, SEO-эксперт с 10-летним опытом</p>\n</div>\n<time datetime="2025-01-01">1 января 2025</time>',
+        impact_score: 8, docs_url: 'https://developers.google.com/search/docs/fundamentals/creating-helpful-content',
+        visible_in_preview: true }));
+    } else if (!hasAuthor) {
+      issues.push(makeIssue({ module: 'ai', severity: 'medium',
+        title: 'Нет блока об авторе (статья)',
+        found: 'Дата публикации найдена, но автор не указан',
+        location: 'Контент страницы',
+        why_it_matters: 'Контент без указания автора теряет в авторитетности для AI-систем',
+        how_to_fix: 'Добавьте информацию об авторе с его экспертизой',
+        example_fix: '<p>Автор: <strong>Имя</strong>, специалист в области...</p>',
+        visible_in_preview: false }));
+    } else if (!hasDatePublished) {
+      issues.push(makeIssue({ module: 'ai', severity: 'medium',
+        title: 'Нет даты публикации (статья)',
+        found: 'Автор найден, но дата публикации не указана',
+        location: 'Контент страницы',
+        why_it_matters: 'Без даты AI-системы не могут оценить актуальность контента',
+        how_to_fix: 'Добавьте дату публикации через тег <time> с атрибутом datetime',
+        example_fix: '<time datetime="2025-01-01">1 января 2025</time>',
+        visible_in_preview: false }));
+    }
+  } else {
+    // Landing/product/tool page — author not required, only recommend
+    if (!hasAuthor && !hasDatePublished) {
+      issues.push(makeIssue({ module: 'ai', severity: 'low',
+        title: 'Рекомендация: добавить авторство (актуально для статей блога)',
+        found: 'Страница не содержит E-E-A-T сигналов (автор, дата)',
+        location: 'Контент страницы',
+        why_it_matters: 'Для лендингов и страниц продуктов E-E-A-T менее критичен, но для статей блога — обязателен',
+        how_to_fix: 'Если это статья — добавьте автора и дату. Для лендингов это необязательно',
+        example_fix: '<p>Автор: <strong>Имя</strong>, специалист в области...</p>',
+        visible_in_preview: false }));
+    }
   }
 
   // --- Original checks ---
@@ -1961,9 +2050,17 @@ function extractSeoData(html: string, parsedUrl: URL, httpStatus: number, loadTi
   const lang = langMatch ? langMatch[1] : '';
 
   const allImages = html.match(/<img[^>]*>/gi) || [];
-  const imagesTotal = allImages.length;
-  const imagesWithoutAlt = allImages.filter((img: string) => !img.match(/alt=["'][^"']+["']/i)).length;
-  const imagesWithoutDimensions = allImages.filter((img: string) => !img.match(/width=/i) || !img.match(/height=/i)).length;
+  const isTrackingPx = (img: string): boolean => {
+    const src = (img.match(/src=["']([^"']+)["']/i) || [])[1] || '';
+    if (/mc\.yandex\.ru|pixel|beacon|facebook\.com\/tr|google-analytics\.com|analytics/i.test(src)) return true;
+    if (/width=["']?1["']?/i.test(img) && /height=["']?1["']?/i.test(img)) return true;
+    if (/display\s*:\s*none/i.test(img)) return true;
+    return false;
+  };
+  const visibleImages = allImages.filter((img: string) => !isTrackingPx(img));
+  const imagesTotal = visibleImages.length;
+  const imagesWithoutAlt = visibleImages.filter((img: string) => !img.match(/alt=["'][^"']+["']/i)).length;
+  const imagesWithoutDimensions = visibleImages.filter((img: string) => !img.match(/width=/i) || !img.match(/height=/i)).length;
 
   const jsonLdBlocks = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
   const schemaTypes: string[] = [];
@@ -2078,6 +2175,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
 
   // ─── SPA Detection & Rendered Fetch ───
   let isSpa = false;
+  let spaRenderFailed = false;
   if (isSpaPage(html)) {
     isSpa = true;
     console.log(`[OWNDEV] SPA detected for ${url} — attempting Jina Reader rendered fetch`);
@@ -2087,6 +2185,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       console.log(`[OWNDEV] Using enriched HTML (${enrichedHtml.length} bytes) instead of raw SPA HTML (${html.length} bytes)`);
       html = enrichedHtml;
     } else {
+      spaRenderFailed = true;
       console.log(`[OWNDEV] Jina Reader failed — using raw SPA HTML with degraded analysis`);
     }
   }
@@ -2144,7 +2243,7 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   
   // Steps 7 & 8
   const schemaIssues = schemaAudit(html);
-  const aiIssues = await aiAudit(html, parsedUrl.origin);
+  const aiIssues = await aiAudit(html, parsedUrl.origin, parsedUrl.toString(), isSpa, spaRenderFailed);
   
   const allHardcodedIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
   
