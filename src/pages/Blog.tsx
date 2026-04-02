@@ -110,7 +110,7 @@ const Blog = () => {
                 </div>
               </motion.div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filtered.slice(0, visibleCount).map((post, idx) => (
                   <motion.div
                     key={post.slug}
@@ -120,33 +120,34 @@ const Blog = () => {
                     transition={{ duration: 0.4, delay: idx * 0.06 }}
                   >
                     <Link to={`/blog/${post.slug}`}>
-                      <Card className="group hover:border-primary/50 transition-all duration-300 bg-card h-full flex flex-col">
-                        <CardHeader className="flex-1">
+                      <article className="glass rounded-xl overflow-hidden hover:border-primary/40 transition-all duration-300 group h-full flex flex-col">
+                        <DefaultBlogCover title={post.title} category={post.tags[0]} />
+                        <div className="p-5 flex-1 flex flex-col">
                           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
                             <span>{new Date(post.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span>
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {post.readTime} мин</span>
                           </div>
-                          <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                          <h2 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
                             {post.title}
-                          </CardTitle>
-                          <CardDescription className="text-sm mt-2">{post.description}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between">
-                            <div className="flex gap-2 flex-wrap">
-                              {post.tags.map(tag => (
+                          </h2>
+                          <p className="text-sm text-muted-foreground line-clamp-3 flex-1">{post.description}</p>
+                          <div className="mt-4 flex items-center justify-between">
+                            <div className="flex gap-1.5 flex-wrap">
+                              {post.tags.slice(0, 2).map(tag => (
                                 <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
                               ))}
                             </div>
-                            <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                            <span className="flex items-center gap-1 text-sm text-primary font-medium">
+                              Читать <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </span>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </article>
                     </Link>
                   </motion.div>
                 ))}
                 {filtered.length === 0 && (
-                  <p className="text-muted-foreground text-center py-12 md:col-span-2">Ничего не найдено</p>
+                  <p className="text-muted-foreground text-center py-12 md:col-span-2 lg:col-span-3">Ничего не найдено</p>
                 )}
               </div>
               {filtered.length > visibleCount && (
