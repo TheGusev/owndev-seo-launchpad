@@ -29,6 +29,7 @@ const SiteCheck = () => {
   const [scanning, setScanning] = useState(false);
   const [scanId, setScanId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [limitScanId, setLimitScanId] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const mountedRef = useRef(true);
@@ -60,6 +61,7 @@ const SiteCheck = () => {
   const handleSubmit = async (url: string, mode: ScanMode) => {
     setScanning(true);
     setLimitScanId(null);
+    setScanError(null);
     try {
       const result = await startScan(url, mode);
       setScanId(result.scan_id);
@@ -85,6 +87,7 @@ const SiteCheck = () => {
           navigate(`/tools/site-check/result/${id}`);
         } else if (status.status === 'error') {
           toast({ title: "Ошибка проверки", description: "Не удалось проанализировать сайт", variant: "destructive" });
+          setScanError("Не удалось проанализировать сайт. Попробуйте ещё раз.");
           setScanning(false);
         } else {
           setTimeout(poll, 2000);
@@ -117,7 +120,7 @@ const SiteCheck = () => {
 
           <div className="glass rounded-2xl p-5 md:p-8">
             {scanning ? (
-              <ScanProgress onComplete={() => {}} realProgress={progress} />
+              <ScanProgress onComplete={() => {}} realProgress={progress} error={scanError} />
             ) : (
               <ScanForm onSubmit={handleSubmit} />
             )}
