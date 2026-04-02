@@ -42,10 +42,10 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     doc.rect(0, 0, PAGE_W, 10, 'F');
     setTextColor(COLORS.purple);
     doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Roboto', 'bold');
     doc.text('OWNDEV', MARGIN, 7);
     setTextColor(COLORS.text_gray);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('Roboto', 'normal');
     doc.text(`GEO и AI-ready аудит · ${data.domain}`, MARGIN + 18, 7);
     doc.text(`стр. ${(doc as any).internal.getCurrentPageInfo().pageNumber}`, PAGE_W - MARGIN, 7, { align: 'right' });
     y = 14;
@@ -74,7 +74,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     doc.roundedRect(MARGIN, y, CONTENT_W, 9, 2, 2, 'F');
     setTextColor(COLORS.purple_light);
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Roboto', 'bold');
     doc.text(title, MARGIN + 4, y + 6);
     y += 13;
   };
@@ -88,13 +88,13 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   y = 35;
   setTextColor(COLORS.purple);
   doc.setFontSize(28);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('Roboto', 'bold');
   doc.text('OWNDEV', MARGIN, y);
 
   y += 8;
   setTextColor(COLORS.text_gray);
   doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('Roboto', 'normal');
   doc.text('GEO и AI-ready аудит сайта', MARGIN, y);
 
   y += 6;
@@ -104,7 +104,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   y += 16;
   setTextColor(COLORS.text_white);
   doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('Roboto', 'bold');
   doc.text('Отчёт аудита сайта', MARGIN, y);
 
   y += 10;
@@ -139,10 +139,10 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     doc.roundedRect(x + 1, y, cardW - 2, 1.5, 1, 1, 'F');
     doc.setTextColor(...hexToRgb(status.color));
     doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Roboto', 'bold');
     doc.text(String(card.value), x + cardW / 2, y + 12, { align: 'center' });
     doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('Roboto', 'normal');
     setTextColor(COLORS.text_gray);
     doc.text(card.label, x + cardW / 2, y + 18, { align: 'center' });
     doc.setFontSize(6);
@@ -158,7 +158,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   doc.roundedRect(MARGIN, y, CONTENT_W, 12, 2, 2, 'F');
   setTextColor(COLORS.text_gray);
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('Roboto', 'normal');
   doc.text(
     `Найдено ${data.issues.length} проблем · ${critCount} критических · Устраните критические → оценка вырастет на ~+${gain} баллов`,
     MARGIN + 4, y + 7.5,
@@ -255,11 +255,11 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     doc.rect(MARGIN, y, 2, 6, 'F');
 
     doc.setFontSize(6);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Roboto', 'bold');
     doc.setTextColor(...hexToRgb(severityColor));
     doc.text(`${idx + 1}. [${getSeverityLabel(issue.severity).toUpperCase()}]`, MARGIN + 4, y + 4);
     setTextColor(COLORS.text_gray);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('Roboto', 'normal');
     doc.text(getCategoryLabel(issue.category || issue.module || ''), MARGIN + 32, y + 4);
     setTextColor(COLORS.success);
     doc.text(`+${issue.impact_score || 0} балл.`, PAGE_W - MARGIN - 2, y + 4, { align: 'right' });
@@ -268,7 +268,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     // Title
     setTextColor(COLORS.text_white);
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Roboto', 'bold');
     const titleLines = doc.splitTextToSize(issue.title || 'Ошибка', CONTENT_W);
     doc.text(titleLines, MARGIN, y);
     y += titleLines.length * 4 + 2;
@@ -276,7 +276,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     if (issue.where || issue.location) {
       setTextColor(COLORS.text_dark);
       doc.setFontSize(7);
-      doc.setFont('helvetica', 'italic');
+      doc.setFont('Roboto', 'italic');
       doc.text(`Где: ${issue.where || issue.location}`, MARGIN, y);
       y += 4;
     }
@@ -284,7 +284,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     if (issue.description) {
       setTextColor(COLORS.text_gray);
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('Roboto', 'normal');
       const descLines = doc.splitTextToSize(issue.description, CONTENT_W);
       doc.text(descLines, MARGIN, y);
       y += descLines.length * 3.5 + 3;
@@ -295,12 +295,12 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       setFill(COLORS.bg_card2);
       doc.roundedRect(MARGIN, y, CONTENT_W, 5, 1, 1, 'F');
       doc.setFontSize(7);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('Roboto', 'bold');
       doc.setTextColor(...hexToRgb(COLORS.medium));
       doc.text('ПОЧЕМУ ЭТО ВАЖНО:', MARGIN + 2, y + 3.5);
       y += 7;
       setTextColor(COLORS.text_gray);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('Roboto', 'normal');
       doc.setFontSize(7.5);
       const whyLines = doc.splitTextToSize(issue.why_important || issue.why_it_matters, CONTENT_W - 4);
       checkPageBreak(whyLines.length * 3.5 + 4);
@@ -313,7 +313,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       setFill(COLORS.bg_card2);
       doc.roundedRect(MARGIN, y, CONTENT_W, 5, 1, 1, 'F');
       doc.setFontSize(7);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('Roboto', 'bold');
       doc.setTextColor(...hexToRgb(COLORS.success));
       doc.text('КАК ИСПРАВИТЬ:', MARGIN + 2, y + 3.5);
       y += 7;
@@ -322,7 +322,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
         const stepLines = doc.splitTextToSize(step.trim(), CONTENT_W - 6);
         checkPageBreak(stepLines.length * 3.5 + 2);
         setTextColor(COLORS.text_white);
-        doc.setFont('helvetica', 'normal');
+        doc.setFont('Roboto', 'normal');
         doc.setFontSize(7.5);
         doc.text(stepLines, MARGIN + 4, y);
         y += stepLines.length * 3.5 + 1.5;
@@ -342,7 +342,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       doc.setLineWidth(0.3);
       doc.roundedRect(MARGIN, y, CONTENT_W, exHeight, 2, 2, 'S');
       doc.setFontSize(6.5);
-      doc.setFont('courier', 'normal');
+      doc.setFont('Roboto', 'normal');
       doc.setTextColor(...hexToRgb(COLORS.success));
       doc.text(exLines, MARGIN + 4, y + 4);
       y += exHeight + 4;
@@ -374,7 +374,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
         doc.text(item[0], x + 4, y + 5);
         setTextColor(i === 0 ? COLORS.purple_light : COLORS.text_white);
         doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
+        doc.setFont('Roboto', 'bold');
         doc.text(item[1], x + 4, y + 11);
       });
       y += 18;
@@ -468,7 +468,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
         doc.roundedRect(MARGIN, y, CONTENT_W, h, 2, 2, 'F');
         doc.setFontSize(7.5);
         setTextColor(COLORS.text_white);
-        doc.setFont('helvetica', 'normal');
+        doc.setFont('Roboto', 'normal');
         doc.text(insightLines, MARGIN + 3, y + 4.5);
         y += h + 3;
       });
@@ -573,13 +573,13 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       doc.roundedRect(MARGIN, y, CONTENT_W, 7, 1, 1, 'F');
       setTextColor(COLORS.purple_light);
       doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('Roboto', 'bold');
       doc.text(`${catNames[cat] || cat} (${words.length})`, MARGIN + 3, y + 5);
       y += 10;
       const wordsText = words.map((w: any) => `-${w.word}`).join('  ');
       setTextColor(COLORS.text_white);
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('Roboto', 'normal');
       const wordLines = doc.splitTextToSize(wordsText, CONTENT_W);
       checkPageBreak(wordLines.length * 3.5 + 4);
       doc.text(wordLines, MARGIN, y);
@@ -609,7 +609,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     doc.rect(MARGIN, y, 2, 12, 'F');
     setTextColor(COLORS.text_gray);
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Roboto', 'bold');
     doc.text(`${idx + 1}.`, MARGIN + 4, y + 8);
     setTextColor(COLORS.text_white);
     const titleText = doc.splitTextToSize(issue.title || '', CONTENT_W - 40);
@@ -628,9 +628,9 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   doc.roundedRect(MARGIN, y, CONTENT_W, 22, 3, 3, 'F');
   setTextColor(COLORS.text_white);
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('Roboto', 'bold');
   doc.text('Следующий шаг:', MARGIN + 6, y + 8);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('Roboto', 'normal');
   doc.setFontSize(8);
   doc.text('Запустите повторный аудит через 30 дней на OWNDEV.ru', MARGIN + 6, y + 14);
   setTextColor(COLORS.purple_light);
