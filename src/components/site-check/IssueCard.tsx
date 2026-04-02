@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, CheckCircle2, Copy, ExternalLink } from "lucide
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import AutoFixGenerator from "@/components/site-check/AutoFixGenerator";
 import type { IssueCard as IssueCardType } from "@/lib/site-check-types";
 
 const severityConfig = {
