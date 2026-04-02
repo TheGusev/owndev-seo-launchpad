@@ -1163,7 +1163,7 @@ function schemaAudit(html: string): Issue[] {
 }
 
 // ═══ STEP 8: AI Visibility Audit ═══
-async function aiAudit(html: string, origin: string): Promise<Issue[]> {
+async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: boolean, spaRenderFailed?: boolean): Promise<Issue[]> {
   const issues: Issue[] = [];
   
   // --- 1. Check /llms.txt ---
