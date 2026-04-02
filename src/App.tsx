@@ -59,6 +59,8 @@ const App = () => (
             <Route path="/geo-audit" element={<GeoAudit />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/site-check" element={<SiteCheck />} />
+            <Route path="/academy" element={<Academy />} />
+            <Route path="/academy/:moduleSlug/:lessonSlug" element={<AcademyLesson />} />
             <Route path="/tools/site-check/result/:scanId" element={<ErrorBoundary><SiteCheckResult /></ErrorBoundary>} />
             <Route path="/tools/site-check/report/:reportId" element={<ErrorBoundary><SiteCheckReport /></ErrorBoundary>} />
             <Route path="/tools/:toolSlug" element={<ToolPage />} />
