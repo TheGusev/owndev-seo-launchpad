@@ -2075,6 +2075,21 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   }
   
   await updateScan(scanId, { progress_pct: 10, raw_html: html.slice(0, 50000) });
+
+  // ─── SPA Detection & Rendered Fetch ───
+  let isSpa = false;
+  if (isSpaPage(html)) {
+    isSpa = true;
+    console.log(`[OWNDEV] SPA detected for ${url} — attempting Jina Reader rendered fetch`);
+    const renderedMd = await fetchRenderedContent(parsedUrl.toString());
+    if (renderedMd) {
+      const enrichedHtml = buildEnrichedHtml(renderedMd, html);
+      console.log(`[OWNDEV] Using enriched HTML (${enrichedHtml.length} bytes) instead of raw SPA HTML (${html.length} bytes)`);
+      html = enrichedHtml;
+    } else {
+      console.log(`[OWNDEV] Jina Reader failed — using raw SPA HTML with degraded analysis`);
+    }
+  }
   
   // STEP 0: Theme Detection
   const theme = await detectTheme(html, parsedUrl.toString());
