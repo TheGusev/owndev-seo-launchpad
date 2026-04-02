@@ -87,6 +87,7 @@ const SiteCheck = () => {
           navigate(`/tools/site-check/result/${id}`);
         } else if (status.status === 'error') {
           toast({ title: "Ошибка проверки", description: "Не удалось проанализировать сайт", variant: "destructive" });
+          setScanError("Не удалось проанализировать сайт. Попробуйте ещё раз.");
           setScanning(false);
         } else {
           setTimeout(poll, 2000);
