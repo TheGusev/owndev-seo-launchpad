@@ -1099,10 +1099,18 @@ function directAudit(html: string, theme: string): DirectAuditResult {
 function schemaAudit(html: string): Issue[] {
   const issues: Issue[] = [];
   
+  // Check for microdata/RDFa as fallback
+  const hasMicrodata = /itemscope|itemtype=/i.test(html);
+  const hasRdfa = /typeof=["'].*schema\.org/i.test(html) || /property=["']og:/i.test(html);
+  
   const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
   if (jsonLdMatches.length === 0) {
-    issues.push(makeIssue({ module: 'schema', severity: 'high', title: 'Нет Schema.org разметки',
-      found: 'JSON-LD не найден на странице', location: 'Вся страница',
+    const foundText = hasMicrodata ? 'JSON-LD не найден, но обнаружена Microdata разметка' 
+      : hasRdfa ? 'JSON-LD не найден, но обнаружена RDFa разметка'
+      : 'JSON-LD не найден на странице';
+    issues.push(makeIssue({ module: 'schema', severity: hasMicrodata || hasRdfa ? 'medium' : 'high', 
+      title: 'Нет Schema.org разметки (JSON-LD)',
+      found: foundText, location: 'Вся страница',
       why_it_matters: 'Schema.org — структурированные данные помогающие поисковикам и нейросетям понять контент. Сайты с Schema получают расширенные сниппеты и лучше попадают в AI-ответы',
       how_to_fix: '1. Добавьте JSON-LD разметку Organization для компании\n2. Добавьте WebSite для главной\n3. Проверьте: search.google.com/test/rich-results',
       example_fix: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"...","url":"..."}</script>',
@@ -1110,12 +1118,27 @@ function schemaAudit(html: string): Issue[] {
       visible_in_preview: true }));
   } else {
     const types: string[] = [];
+    let hasParseError = false;
     for (const m of jsonLdMatches) {
       try {
         const content = m.replace(/<\/?script[^>]*>/gi, '');
         const parsed = JSON.parse(content);
         if (parsed['@type']) types.push(parsed['@type']);
-      } catch {}
+        if (parsed['@graph'] && Array.isArray(parsed['@graph'])) {
+          for (const item of parsed['@graph']) {
+            if (item['@type']) types.push(item['@type']);
+          }
+        }
+      } catch { hasParseError = true; }
+    }
+    
+    if (hasParseError) {
+      issues.push(makeIssue({ module: 'schema', severity: 'high', title: 'JSON-LD содержит ошибки парсинга',
+        found: 'Один или несколько блоков JSON-LD невалидны', location: 'JSON-LD',
+        why_it_matters: 'Невалидный JSON-LD игнорируется поисковиками полностью',
+        how_to_fix: 'Проверьте синтаксис JSON-LD на search.google.com/test/rich-results',
+        example_fix: 'Убедитесь что JSON валиден (нет лишних запятых, все кавычки закрыты)',
+        visible_in_preview: true }));
     }
     
     if (!types.includes('Organization') && !types.includes('LocalBusiness')) {
