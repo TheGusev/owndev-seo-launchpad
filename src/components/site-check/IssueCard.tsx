@@ -43,7 +43,7 @@ function renderHowToFix(text: string) {
   );
 }
 
-const IssueCardComponent = ({ issue, resolved = false, onToggle }: IssueCardProps) => {
+const IssueCardComponent = ({ issue, resolved = false, onToggle, siteUrl, pageTitle, pageDescription }: IssueCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
   const sev = severityConfig[issue.severity];
