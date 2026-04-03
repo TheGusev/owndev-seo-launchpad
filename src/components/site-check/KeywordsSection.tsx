@@ -1,12 +1,5 @@
 import { useState, useMemo } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Keyword {
@@ -22,10 +15,10 @@ interface KeywordsSectionProps {
 }
 
 const intentLabels: Record<string, string> = {
-  transactional: "Транзакционный",
-  informational: "Информационный",
-  navigational: "Навигационный",
-  commercial: "Коммерческий",
+  transactional: "Транзакц.",
+  informational: "Информац.",
+  navigational: "Навигац.",
+  commercial: "Коммерч.",
 };
 
 const intentColors: Record<string, string> = {
@@ -40,132 +33,102 @@ const ALL_INTENTS = ["transactional", "informational", "navigational", "commerci
 const KeywordsSection = ({ keywords }: KeywordsSectionProps) => {
   const [activeCluster, setActiveCluster] = useState<string | null>(null);
   const [activeIntent, setActiveIntent] = useState<string | null>(null);
+  const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
 
-  const allClusters = useMemo(
-    () => [...new Set(keywords.map((k) => k.cluster))],
-    [keywords]
-  );
+  const allClusters = useMemo(() => [...new Set(keywords.map(k => k.cluster))], [keywords]);
 
   const filtered = useMemo(() => {
-    if (!keywords || keywords.length === 0) return [];
     let result = keywords;
-    if (activeCluster) result = result.filter((k) => k.cluster === activeCluster);
-    if (activeIntent) result = result.filter((k) => k.intent === activeIntent);
+    if (activeCluster) result = result.filter(k => k.cluster === activeCluster);
+    if (activeIntent) result = result.filter(k => k.intent === activeIntent);
     return result;
   }, [keywords, activeCluster, activeIntent]);
 
-  const clusters = useMemo(
-    () => [...new Set(filtered.map((k) => k.cluster))],
-    [filtered]
-  );
+  const clusters = useMemo(() => [...new Set(filtered.map(k => k.cluster))], [filtered]);
 
-  if (!keywords || keywords.length === 0) return null;
+  if (!keywords?.length) return null;
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold text-foreground">
-        Ключевые запросы{" "}
-        <span className="text-muted-foreground font-normal text-base">
-          {filtered.length === keywords.length
-            ? `(${keywords.length})`
-            : `(${filtered.length} из ${keywords.length})`}
-        </span>
-      </h2>
-
-      {/* Filters */}
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          <Badge
-            variant={activeCluster === null ? "default" : "outline"}
-            className="cursor-pointer"
-            onClick={() => setActiveCluster(null)}
-          >
-            Все кластеры
+    <div className="space-y-3">
+      {/* Filters — horizontal scroll */}
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+        <Badge variant={activeCluster === null ? "default" : "outline"} className="cursor-pointer shrink-0 text-xs" onClick={() => setActiveCluster(null)}>
+          Все
+        </Badge>
+        {allClusters.map(c => (
+          <Badge key={c} variant={activeCluster === c ? "default" : "outline"} className="cursor-pointer shrink-0 text-xs" onClick={() => setActiveCluster(activeCluster === c ? null : c)}>
+            {c}
           </Badge>
-          {allClusters.map((c) => (
-            <Badge
-              key={c}
-              variant={activeCluster === c ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => setActiveCluster(activeCluster === c ? null : c)}
-            >
-              {c}
-            </Badge>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
+        ))}
+      </div>
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+        <Badge variant={activeIntent === null ? "default" : "outline"} className="cursor-pointer shrink-0 text-xs" onClick={() => setActiveIntent(null)}>
+          Все
+        </Badge>
+        {ALL_INTENTS.map(intent => (
           <Badge
-            variant={activeIntent === null ? "default" : "outline"}
-            className="cursor-pointer"
-            onClick={() => setActiveIntent(null)}
+            key={intent}
+            variant={activeIntent === intent ? "default" : "outline"}
+            className={`cursor-pointer shrink-0 text-xs ${activeIntent === intent ? "" : intentColors[intent] || ""}`}
+            onClick={() => setActiveIntent(activeIntent === intent ? null : intent)}
           >
-            Все интенты
+            {intentLabels[intent]}
           </Badge>
-          {ALL_INTENTS.map((intent) => (
-            <Badge
-              key={intent}
-              variant={activeIntent === intent ? "default" : "outline"}
-              className={`cursor-pointer ${activeIntent === intent ? "" : intentColors[intent] || ""}`}
-              onClick={() => setActiveIntent(activeIntent === intent ? null : intent)}
-            >
-              {intentLabels[intent]}
-            </Badge>
-          ))}
-        </div>
+        ))}
       </div>
 
-      {/* Tables grouped by cluster */}
-      {clusters.map((cluster) => {
-        const clusterKeywords = filtered.filter((k) => k.cluster === cluster);
+      {/* Cluster sub-accordions */}
+      {clusters.map(cluster => {
+        const clusterKw = filtered.filter(k => k.cluster === cluster);
+        const isOpen = expandedCluster === cluster;
+        const shown = isOpen ? clusterKw : clusterKw.slice(0, 10);
+        const hasMore = clusterKw.length > 10 && !isOpen;
+
         return (
-          <div key={cluster} className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground/80">
-              {cluster}{" "}
-              <span className="text-muted-foreground font-normal">
-                ({clusterKeywords.length})
-              </span>
-            </h3>
-            <div className="border rounded-xl overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Запрос</TableHead>
-                    <TableHead className="w-24 text-right">Частота</TableHead>
-                    <TableHead className="w-32">Интент</TableHead>
-                    <TableHead className="w-20 text-center">Страница</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clusterKeywords.map((kw, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="font-medium text-foreground">
-                        {kw.keyword}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {kw.volume?.toLocaleString("ru-RU") ?? "—"}
-                      </TableCell>
-                      <TableCell>
+          <div key={cluster} className="space-y-1">
+            <button
+              onClick={() => setExpandedCluster(expandedCluster === cluster ? null : cluster)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-foreground/80 w-full text-left"
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              {cluster} <span className="text-muted-foreground font-normal text-xs">({clusterKw.length})</span>
+            </button>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-border/20">
+                    <th className="text-left py-1.5 font-medium text-muted-foreground">Запрос</th>
+                    <th className="text-right py-1.5 px-2 font-medium text-muted-foreground w-16">Частота</th>
+                    <th className="text-left py-1.5 font-medium text-muted-foreground w-24">Интент</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((kw, i) => (
+                    <tr key={i} className="border-b border-border/10">
+                      <td className="py-1 text-foreground">{kw.keyword}</td>
+                      <td className="py-1 px-2 text-right text-muted-foreground">{kw.volume?.toLocaleString("ru-RU") ?? "—"}</td>
+                      <td className="py-1">
                         {kw.intent && (
-                          <Badge
-                            variant="outline"
-                            className={intentColors[kw.intent] || ""}
-                          >
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${intentColors[kw.intent] || "bg-muted text-muted-foreground"}`}>
                             {intentLabels[kw.intent] || kw.intent}
-                          </Badge>
+                          </span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {kw.landing_needed && (
-                          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-xs">
-                            Нужна
-                          </Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
+
+            {hasMore && (
+              <button
+                onClick={() => setExpandedCluster(cluster)}
+                className="text-xs text-primary hover:text-primary/80 transition-colors"
+              >
+                Ещё +{clusterKw.length - 10}
+              </button>
+            )}
           </div>
         );
       })}

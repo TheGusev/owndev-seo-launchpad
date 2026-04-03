@@ -752,6 +752,50 @@
   font-feature-settings: "tnum";
 }
 
+/* ============================================
+   HEADING HIGHLIGHT
+   ============================================ */
+
+.heading-highlight {
+  color: hsl(var(--primary));
+  display: inline;
+}
+
+.heading-highlight-gradient {
+  background: linear-gradient(90deg, hsl(174 72% 56%) 0%, hsl(160 80% 70%) 50%, hsl(174 72% 56%) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ============================================
+   ACCORDION ANIMATIONS
+   ============================================ */
+
+.accordion-content-animate {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+/* ============================================
+   MOBILE RESULT STYLES
+   ============================================ */
+
+@media (max-width: 768px) {
+  .scores-scroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scores-scroll::-webkit-scrollbar { display: none; }
+  .scores-scroll > * { min-width: 64px; max-width: 72px; flex-shrink: 0; }
+}
+
 /* ─── Print styles for PDF export ─────────────────────── */
 @media print {
   header, footer, nav, .no-print {
