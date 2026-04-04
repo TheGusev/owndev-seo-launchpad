@@ -12,6 +12,14 @@ const scoreLabels: Record<keyof ScanScores, string> = {
   ai: "AI",
 };
 
+// Overall score weights for the breakdown modal
+const OVERALL_WEIGHTS = [
+  { key: 'seo', label: 'SEO Score', weight: 35 },
+  { key: 'direct', label: 'Директ Score', weight: 20 },
+  { key: 'schema', label: 'Schema Score', weight: 20 },
+  { key: 'ai', label: 'AI Score', weight: 25 },
+] as const;
+
 function getScoreColor(score: number) {
   if (score <= 40) return "text-destructive border-destructive/30 bg-destructive/5";
   if (score <= 70) return "text-warning border-warning/30 bg-warning/5";
@@ -67,44 +75,84 @@ interface ScoreCardsProps {
   breakdown?: ScoreBreakdownData;
 }
 
+function buildOverallBreakdown(scores: ScanScores): CriterionResult[] {
+  return OVERALL_WEIGHTS.map(w => {
+    const val = scores[w.key as keyof ScanScores] ?? 0;
+    const earned = Math.round((val / 100) * w.weight);
+    return {
+      key: w.key,
+      weight: w.weight,
+      earned,
+      status: (val >= 70 ? 'pass' : val >= 40 ? 'partial' : 'fail') as CriterionResult['status'],
+    };
+  });
+}
+
 const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
-  const [activeModal, setActiveModal] = useState<'seo' | 'ai' | null>(null);
+  const [activeModal, setActiveModal] = useState<keyof ScanScores | null>(null);
+
+  const getBreakdownForType = (type: keyof ScanScores): CriterionResult[] | undefined => {
+    if (type === 'total') return buildOverallBreakdown(scores);
+    if (type === 'seo') return breakdown?.seo;
+    if (type === 'ai') return breakdown?.ai;
+    return undefined;
+  };
+
+  const activeBreakdown = activeModal ? getBreakdownForType(activeModal) : undefined;
 
   return (
     <>
-      <div className="flex gap-2 md:grid md:grid-cols-5 md:gap-3 overflow-x-auto scrollbar-hide pb-2 md:pb-0">
-        {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => {
+      {/* Mobile: 3+2 grid, Desktop: 5 columns */}
+      <div className="grid grid-cols-3 gap-2 md:grid-cols-5 md:gap-3">
+        {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key, idx) => {
           const val = scores?.[key] ?? 0;
-          const hasBreakdown = (key === 'seo' && breakdown?.seo?.length) || (key === 'ai' && breakdown?.ai?.length);
+          const hasBreakdown = key === 'total' || key === 'seo' || key === 'ai' ||
+            (key === 'direct' && breakdown?.seo?.length) ||
+            (key === 'schema' && breakdown?.seo?.length);
           return (
             <div
               key={key}
-              className={`rounded-xl border p-3 text-center min-w-[68px] flex-shrink-0 md:flex-shrink md:min-w-0 ${getScoreColor(val)}`}
+              className={`rounded-xl border p-3 text-center ${getScoreColor(val)} ${
+                idx >= 3 ? 'col-span-1' : ''
+              }`}
+              style={idx === 3 ? { gridColumn: undefined } : undefined}
             >
               <CircleScore score={val} />
               <p className="mt-1 text-[10px] font-medium text-muted-foreground">{scoreLabels[key]}</p>
               {previousScores && typeof previousScores[key] === "number" && (
                 <DiffBadge diff={val - previousScores[key]} />
               )}
-              {hasBreakdown && (
-                <button
-                  onClick={() => setActiveModal(key as 'seo' | 'ai')}
-                  className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors underline decoration-dotted mt-1 block mx-auto"
-                >
-                  Как рассчитан?
-                </button>
-              )}
+              <button
+                onClick={() => setActiveModal(key)}
+                className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors underline decoration-dotted mt-1 block mx-auto"
+              >
+                Как рассчитан?
+              </button>
             </div>
           );
         })}
       </div>
 
-      {activeModal && breakdown?.[activeModal] && (
+      {/* Center last 2 items on mobile */}
+      <style>{`
+        @media (max-width: 767px) {
+          .grid-cols-3 > :nth-child(4) { grid-column: 1 / 2; margin-left: auto; margin-right: 0; }
+          .grid-cols-3 > :nth-child(5) { grid-column: 2 / 4; max-width: calc(50% - 4px); }
+          .grid-cols-3 > :nth-child(4),
+          .grid-cols-3 > :nth-child(5) {
+            justify-self: center;
+            width: 100%;
+          }
+        }
+      `}</style>
+
+      {activeModal && activeBreakdown && (
         <ScoreDetailsModal
-          type={activeModal}
+          type={activeModal === 'total' ? 'overall' : activeModal as 'seo' | 'ai'}
           score={scores[activeModal] ?? 0}
-          breakdown={breakdown[activeModal]!}
+          breakdown={activeBreakdown}
           onClose={() => setActiveModal(null)}
+          overallScores={activeModal === 'total' ? scores : undefined}
         />
       )}
     </>

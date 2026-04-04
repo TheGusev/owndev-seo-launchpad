@@ -10,7 +10,7 @@ const directions = [
     desc: "Title, Description, H1-H6, canonical, robots, скорость, изображения, внутренние ссылки — 18 технических параметров.",
     badge: "18 проверок",
     accent: "text-blue-400 border-blue-500/20 hover:border-blue-500/30 hover:bg-blue-500/5",
-    link: "/tools/site-check",
+    link: "/tools/seo-auditor",
   },
   {
     icon: Code2,
