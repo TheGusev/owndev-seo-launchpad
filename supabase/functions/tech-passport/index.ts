@@ -182,7 +182,8 @@ Deno.serve(async (req) => {
 
     const domain = new URL(url).hostname;
 
-    // Check cache
+    // Check cache (versioned)
+    const CACHE_VERSION = 2;
     const { data: cached } = await supabase
       .from("tech_stack_cache")
       .select("data_json")
@@ -190,7 +191,7 @@ Deno.serve(async (req) => {
       .gte("scanned_at", new Date(Date.now() - 86400000).toISOString())
       .maybeSingle();
 
-    if (cached?.data_json) {
+    if (cached?.data_json && (cached.data_json as any)?._v === CACHE_VERSION) {
       return new Response(JSON.stringify(cached.data_json), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
