@@ -770,6 +770,13 @@
   animation: shimmer 3s linear infinite;
 }
 
+.brand-highlight {
+  background: linear-gradient(90deg, #7fffd4 0%, #39d7ff 50%, #7a7cff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ============================================
    ACCORDION ANIMATIONS
    ============================================ */
