@@ -101,6 +101,17 @@ function detectTechStack(html: string, headers: Headers) {
   return result;
 }
 
+/* ─── Retry wrapper ─── */
+async function withRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T | null> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const result = await fn();
+      if (result !== null) return result;
+    } catch { /* continue */ }
+  }
+  return null;
+}
+
 /* ─── WHOIS ─── */
 async function fetchWhois(domain: string) {
   if (!whoisKey) return null;
@@ -132,7 +143,6 @@ async function fetchWhois(domain: string) {
 /* ─── IP / Geo ─── */
 async function fetchGeoIp(domain: string) {
   try {
-    // Resolve IP via DNS-over-HTTPS
     const dnsR = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
     const dnsD = await dnsR.json();
     const ip = dnsD?.Answer?.find((a: any) => a.type === 1)?.data;
