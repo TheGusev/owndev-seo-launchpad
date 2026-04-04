@@ -101,6 +101,17 @@ function detectTechStack(html: string, headers: Headers) {
   return result;
 }
 
+/* ─── Retry wrapper ─── */
+async function withRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T | null> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const result = await fn();
+      if (result !== null) return result;
+    } catch { /* continue */ }
+  }
+  return null;
+}
+
 /* ─── WHOIS ─── */
 async function fetchWhois(domain: string) {
   if (!whoisKey) return null;
@@ -132,7 +143,6 @@ async function fetchWhois(domain: string) {
 /* ─── IP / Geo ─── */
 async function fetchGeoIp(domain: string) {
   try {
-    // Resolve IP via DNS-over-HTTPS
     const dnsR = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
     const dnsD = await dnsR.json();
     const ip = dnsD?.Answer?.find((a: any) => a.type === 1)?.data;
@@ -172,7 +182,8 @@ Deno.serve(async (req) => {
 
     const domain = new URL(url).hostname;
 
-    // Check cache
+    // Check cache (versioned)
+    const CACHE_VERSION = 2;
     const { data: cached } = await supabase
       .from("tech_stack_cache")
       .select("data_json")
@@ -180,15 +191,15 @@ Deno.serve(async (req) => {
       .gte("scanned_at", new Date(Date.now() - 86400000).toISOString())
       .maybeSingle();
 
-    if (cached?.data_json) {
+    if (cached?.data_json && (cached.data_json as any)?._v === CACHE_VERSION) {
       return new Response(JSON.stringify(cached.data_json), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Fetch HTML + WHOIS + GeoIP in parallel
+    // Fetch HTML + WHOIS + GeoIP in parallel (with retry for WHOIS/Geo)
     const [htmlRes, whoisRes, geoRes] = await Promise.allSettled([
       fetch(url, { headers: { "User-Agent": "OwnDev-Bot/1.0" }, redirect: "follow", signal: AbortSignal.timeout(8000) }),
-      fetchWhois(domain),
-      fetchGeoIp(domain),
+      withRetry(() => fetchWhois(domain)),
+      withRetry(() => fetchGeoIp(domain)),
     ]);
 
     let tech: Record<string, any> = {};
@@ -200,7 +211,8 @@ Deno.serve(async (req) => {
     const whois = whoisRes.status === "fulfilled" ? whoisRes.value : null;
     const geoip = geoRes.status === "fulfilled" ? geoRes.value : null;
 
-    const result = { tech, whois, geoip };
+    const CACHE_VERSION = 2;
+    const result = { tech, whois, geoip, _v: CACHE_VERSION };
 
     // Cache
     await supabase.from("tech_stack_cache").upsert(

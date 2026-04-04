@@ -770,6 +770,58 @@
   animation: shimmer 3s linear infinite;
 }
 
+.brand-highlight {
+  background: linear-gradient(90deg, #7fffd4 0%, #39d7ff 50%, #7a7cff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   SCORE CARDS GRID
+   ============================================ */
+
+.score-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.score-cards-grid > :nth-child(4),
+.score-cards-grid > :nth-child(5) {
+  justify-self: center;
+  width: 100%;
+  max-width: calc(33.33% - 4px);
+}
+
+/* Center the last 2 items */
+.score-cards-grid > :nth-child(4) {
+  grid-column: 1 / 2;
+  margin-left: auto;
+}
+.score-cards-grid > :nth-child(5) {
+  grid-column: 2 / 3;
+  margin-right: auto;
+}
+
+@media (min-width: 768px) {
+  .score-cards-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .score-cards-grid > :nth-child(4),
+  .score-cards-grid > :nth-child(5) {
+    max-width: none;
+    margin: 0;
+  }
+  .score-cards-grid > :nth-child(4) {
+    grid-column: auto;
+  }
+  .score-cards-grid > :nth-child(5) {
+    grid-column: auto;
+  }
+}
+
 /* ============================================
    ACCORDION ANIMATIONS
    ============================================ */

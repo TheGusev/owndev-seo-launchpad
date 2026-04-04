@@ -89,9 +89,11 @@ Deno.serve(async (req) => {
     ]);
 
     // ===== HTTPS CHECK =====
-    const isHttps = parsedUrl.protocol === 'https:';
+    // Use the final URL after redirects, not the input URL
+    const finalUrl = response.url || parsedUrl.toString();
+    const isHttps = finalUrl.startsWith('https://') || parsedUrl.protocol === 'https:';
     if (!isHttps) {
-      issues.push({ type: 'https', severity: 'critical', message: 'Сайт не использует HTTPS', recommendation: 'Переведите сайт на HTTPS — установите SSL-сертификат', category: 'seo', details: [`Протокол: ${parsedUrl.protocol}`], context: 'HTTPS — обязательный фактор ранжирования Google с 2014 года. Без него браузеры показывают предупреждение «Не защищено».' });
+      issues.push({ type: 'https', severity: 'critical', message: 'Сайт не использует HTTPS', recommendation: 'Переведите сайт на HTTPS — установите SSL-сертификат', category: 'seo', details: [`Протокол: ${new URL(finalUrl).protocol}`], context: 'HTTPS — обязательный фактор ранжирования Google с 2014 года. Без него браузеры показывают предупреждение «Не защищено».' });
       seoScore -= 15;
     }
 

@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BrandHeroTitle from "@/components/BrandHeroTitle";
 import { getToolBySlug, tools } from "@/data/tools-registry";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
@@ -93,14 +94,11 @@ const ToolPage = () => {
               <tool.icon className="w-4 h-4 text-primary" />
               <span className="text-xs font-mono text-muted-foreground">{tool.name}</span>
             </motion.div>
-            <motion.h1
-              className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif mb-3"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              {h1}
-            </motion.h1>
+            <BrandHeroTitle
+              prefix=""
+              highlight={h1}
+              suffix=""
+            />
             <motion.p
               className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto"
               initial={{ opacity: 0, y: 10 }}
