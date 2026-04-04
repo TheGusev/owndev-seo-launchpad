@@ -195,11 +195,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(cached.data_json), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Fetch HTML + WHOIS + GeoIP in parallel
+    // Fetch HTML + WHOIS + GeoIP in parallel (with retry for WHOIS/Geo)
     const [htmlRes, whoisRes, geoRes] = await Promise.allSettled([
       fetch(url, { headers: { "User-Agent": "OwnDev-Bot/1.0" }, redirect: "follow", signal: AbortSignal.timeout(8000) }),
-      fetchWhois(domain),
-      fetchGeoIp(domain),
+      withRetry(() => fetchWhois(domain)),
+      withRetry(() => fetchGeoIp(domain)),
     ]);
 
     let tech: Record<string, any> = {};
@@ -211,7 +211,8 @@ Deno.serve(async (req) => {
     const whois = whoisRes.status === "fulfilled" ? whoisRes.value : null;
     const geoip = geoRes.status === "fulfilled" ? geoRes.value : null;
 
-    const result = { tech, whois, geoip };
+    const CACHE_VERSION = 2;
+    const result = { tech, whois, geoip, _v: CACHE_VERSION };
 
     // Cache
     await supabase.from("tech_stack_cache").upsert(
