@@ -102,20 +102,14 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
 
   return (
     <>
-      {/* Mobile: 3+2 grid, Desktop: 5 columns */}
-      <div className="grid grid-cols-3 gap-2 md:grid-cols-5 md:gap-3">
-        {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key, idx) => {
+      {/* Mobile: 3+2 centered grid, Desktop: 5 columns */}
+      <div className="score-cards-grid">
+        {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => {
           const val = scores?.[key] ?? 0;
-          const hasBreakdown = key === 'total' || key === 'seo' || key === 'ai' ||
-            (key === 'direct' && breakdown?.seo?.length) ||
-            (key === 'schema' && breakdown?.seo?.length);
           return (
             <div
               key={key}
-              className={`rounded-xl border p-3 text-center ${getScoreColor(val)} ${
-                idx >= 3 ? 'col-span-1' : ''
-              }`}
-              style={idx === 3 ? { gridColumn: undefined } : undefined}
+              className={`rounded-xl border p-3 text-center ${getScoreColor(val)}`}
             >
               <CircleScore score={val} />
               <p className="mt-1 text-[10px] font-medium text-muted-foreground">{scoreLabels[key]}</p>
@@ -132,19 +126,6 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
           );
         })}
       </div>
-
-      {/* Center last 2 items on mobile */}
-      <style>{`
-        @media (max-width: 767px) {
-          .grid-cols-3 > :nth-child(4) { grid-column: 1 / 2; margin-left: auto; margin-right: 0; }
-          .grid-cols-3 > :nth-child(5) { grid-column: 2 / 4; max-width: calc(50% - 4px); }
-          .grid-cols-3 > :nth-child(4),
-          .grid-cols-3 > :nth-child(5) {
-            justify-self: center;
-            width: 100%;
-          }
-        }
-      `}</style>
 
       {activeModal && activeBreakdown && (
         <ScoreDetailsModal
