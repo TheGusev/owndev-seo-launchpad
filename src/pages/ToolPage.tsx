@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BrandHeroTitle from "@/components/BrandHeroTitle";
 import { getToolBySlug, tools } from "@/data/tools-registry";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
