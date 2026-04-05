@@ -1,106 +1,61 @@
 
 
-## AI-генерация уникального контента для GEO-страниц
-
-### Обзор
-
-Сейчас PSEOGenerator создаёт шаблонные тексты (одинаковые паттерны "Услуга в Городе" для всех страниц). Нужно добавить опциональную AI-генерацию уникального контента через существующую Edge Function `generate-text`, которая уже подключена к Lovable AI.
-
-### Архитектура
-
-Страниц может быть до 500, поэтому генерировать контент для каждой по отдельности — слишком дорого и медленно. Решение: **батчевая генерация** — отправляем один запрос на группу из 5-10 страниц, просим LLM вернуть уникальные тексты для каждой.
+## Новый инструмент: AI Content Brief Generator (`/tools/content-brief`)
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `supabase/functions/generate-geo-content/index.ts` | Новая Edge Function для батчевой генерации |
-| `src/components/tools/PSEOGenerator.tsx` | Добавить AI-режим, прогресс, обновлённый UI |
+| `src/data/tools-registry.ts` | Добавить запись `content-brief` в массив tools + в TECHNICAL_SLUGS на странице Tools |
+| `src/components/tools/ContentBriefGenerator.tsx` | Новый компонент — форма + отображение результата |
+| `supabase/functions/generate-content-brief/index.ts` | Новая Edge Function — генерация брифа через Lovable AI |
+| `src/pages/Tools.tsx` | Добавить `content-brief` в `TECHNICAL_SLUGS` |
 
-### 1. Новая Edge Function `generate-geo-content`
+### 1. tools-registry.ts — новая запись
 
-Принимает массив страниц (до 10 за запрос), нишу, тональность и блоки контента. Возвращает уникальные тексты для каждой:
-
-```typescript
-// Input:
-{ 
-  pages: [{city, service, slug}], // до 10 штук
-  niche: string,
-  tone: "commercial" | "strict" | "expert",
-  blocks: string[] // ["intro","faq","cta"]
-}
-
-// Output (structured via tool calling):
-{
-  results: [{
-    slug: string,
-    title: string,       // уникальный, до 60 символов
-    metaDescription: string, // уникальный, до 160 символов
-    h1: string,
-    h2_1: string,
-    h2_2: string,
-    intro?: string,      // 2-3 предложения
-    faq?: [{q, a}, {q, a}],
-    cta?: string
-  }]
-}
+```
+id: "content-brief", slug: "content-brief",
+name: "AI Content Brief Generator",
+shortDesc: "ТЗ для копирайтера на основе AI-анализа: структура, ключи, GEO-рекомендации",
+category: "content", icon: PenTool,
+component: lazy(() => import("@/components/tools/ContentBriefGenerator")),
+useCases: ["Создание ТЗ для копирайтера", "Структура статьи под AI-выдачу", "GEO-оптимизация контента"],
+geoEnabled: false, status: "active",
+seoTitle: "AI Content Brief Generator — ТЗ для копирайтера | OWNDEV",
+seoDescription: "Генератор контент-брифа на основе AI: структура, ключи, GEO-рекомендации. Бесплатно.",
+seoH1: "AI Content Brief Generator"
 ```
 
-Используем `tool_choice` для структурированного вывода (как в документации Lovable AI). Модель: `google/gemini-3-flash-preview` (быстрая, дешёвая).
+### 2. Edge Function `generate-content-brief`
 
-### 2. Изменения в PSEOGenerator.tsx
+- Принимает `{ query, url?, contentType }` 
+- Валидация: query обязателен, contentType из whitelist
+- Системный промт: эксперт по GEO/SEO-копирайтингу
+- Tool calling для структурированного JSON-вывода (title_variants, meta_title, meta_description, target_word_count, structure, must_include, keywords_primary, keywords_secondary, questions_to_answer, geo_recommendations, schema_suggestion, tone, competitor_angles)
+- Модель: `google/gemini-3-flash-preview`, temperature: 0.3
+- Обработка 429/402 ошибок
 
-**Step 2 — новый переключатель:**
-- Добавить toggle "AI-контент" (по умолчанию выключен)
-- Когда включён: генерация идёт через Edge Function батчами
-- Когда выключен: всё работает как раньше (шаблоны)
+### 3. ContentBriefGenerator.tsx (~350 строк)
 
-**Step 3 — предупреждение:**
-- Если AI включён, показать: "AI сгенерирует уникальные тексты для каждой страницы. Это займёт ~{estimate} секунд."
-- Оценка: `Math.ceil(totalPages / 8) * 3` секунд
+**Форма:**
+- Input: "Целевой запрос" (обязательное)
+- Input: "URL вашего сайта" (опциональное)
+- Select: "Тип контента" — Статья / Лендинг / Карточка товара / FAQ-страница
+- GradientButton: "Сгенерировать бриф"
 
-**Кнопка генерации:**
-- Шаблон: "Создать GEO-страницы" (мгновенно)
-- AI: "Создать с AI-контентом" (с прогрессом)
+**Отображение результата (после генерации):**
 
-**Прогресс AI-генерации:**
-- Progress bar: "Генерация контента: {done}/{total} страниц..."
-- Батчи по 8 страниц, последовательно (чтобы не превысить rate limit)
-- Задержка 1.5с между батчами
-- Если батч упал — fallback на шаблон для этих страниц
+1. **Верхняя панель** — 3 бейджа: объём слов, schema type, тон
+2. **Заголовки** — 3 варианта H1 в glass-карточках с кнопкой "Копировать", Meta Title + Description с индикатором длины
+3. **Структура статьи** — аккордеоны H2-секций с описанием и min_words
+4. **Ключевые слова** — основные (крупные теги) + вторичные (мелкие), кнопка "Копировать все"
+5. **Вопросы для AI-цитирования** — нумерованный список + подсказка
+6. **GEO-рекомендации** — чек-лист с Lucide-иконками (CheckCircle2 / AlertTriangle)
+7. **Экспорт** — "Скачать бриф (TXT)" + "Копировать бриф"
 
-**Step 4 — маркер AI:**
-- В таблице результатов добавить колонку/бейдж "AI" для страниц с AI-контентом
-- В PreviewCard показывать intro-текст если он есть
-- Экспорт CSV/JSON включает все AI-поля (intro, уникальные FAQ)
+**Стиль:** dark glassmorphism, бирюзовые акценты, hover border-glow на карточках заголовков.
 
-### Детали реализации
+### 4. Tools.tsx
 
-**Батчевая обработка (фронтенд):**
-```typescript
-const generateWithAI = async (templateRows: PageRow[]) => {
-  const batches = chunk(templateRows, 8);
-  const results: PageRow[] = [];
-  
-  for (const batch of batches) {
-    try {
-      const { data } = await supabase.functions.invoke('generate-geo-content', {
-        body: { pages: batch.map(r => ({city: r.city, service: r.service, slug: r.slug})), niche, tone, blocks }
-      });
-      // Merge AI data into template rows
-      results.push(...mergeAIResults(batch, data.results));
-    } catch {
-      // Fallback: use template rows as-is
-      results.push(...batch);
-    }
-    setProgress(results.length);
-    if (batches.indexOf(batch) < batches.length - 1) await delay(1500);
-  }
-  return results;
-};
-```
-
-**Ограничения:**
-- Максимум 50 страниц с AI-контентом (свыше — предупреждение о времени и стоимости)
-- Rate limit handling: 429 → pause 5s, retry once
+Добавить `"content-brief"` в массив `TECHNICAL_SLUGS`.
 
