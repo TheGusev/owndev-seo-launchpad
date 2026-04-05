@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Clock } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { motion } from "framer-motion";
+import DefaultBlogCover from "@/components/blog/DefaultBlogCover";
 
 const BlogPreview = () => {
   const latestPosts = blogPosts.slice(0, 3);
@@ -40,7 +41,12 @@ const BlogPreview = () => {
               transition={{ duration: 0.4, delay: idx * 0.1 }}
             >
               <Link to={`/blog/${post.slug}`}>
-                <Card className="group hover:border-primary/50 transition-all duration-300 bg-card h-full">
+              <Card className="group hover:border-primary/50 transition-all duration-300 bg-card h-full overflow-hidden">
+                    {post.coverImage ? (
+                      <img src={post.coverImage} alt={post.title} className="w-full h-36 object-cover" loading="lazy" />
+                    ) : (
+                      <DefaultBlogCover title={post.title} category={post.tags[0]} />
+                    )}
                   <CardHeader>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                       <span>{new Date(post.date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</span>

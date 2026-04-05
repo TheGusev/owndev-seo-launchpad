@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock } from "lucide-react";
 import { motion } from "framer-motion";
+import DefaultBlogCover from "@/components/blog/DefaultBlogCover";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
@@ -188,11 +189,19 @@ const BlogPost = () => {
                   </div>
                 )}
 
-                <div className="flex gap-2 flex-wrap mb-8">
+                <div className="flex gap-2 flex-wrap mb-6">
                   {post.tags.map(tag => (
                     <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
                   ))}
                 </div>
+
+                {post.coverImage ? (
+                  <img src={post.coverImage} alt={post.title} className="w-full h-64 md:h-80 object-cover rounded-xl mb-8" loading="lazy" />
+                ) : (
+                  <div className="mb-8">
+                    <DefaultBlogCover title={post.title} category={post.tags[0]} />
+                  </div>
+                )}
               </motion.div>
 
               <motion.div
