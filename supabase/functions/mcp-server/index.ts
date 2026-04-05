@@ -126,6 +126,46 @@ mcp.tool("generate_schema", {
   },
 });
 
+mcp.tool("tech_passport", {
+  description: "Определяет технический стек сайта: CMS, фреймворк, сервер, CDN, аналитику, CRM-виджеты, WHOIS и хостинг.",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      url: { type: "string" as const, description: "URL сайта для анализа" },
+    },
+    required: ["url"] as const,
+  },
+  handler: async (args: { url: string }) => {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/tech-passport`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+        body: JSON.stringify({ url: args.url }),
+      });
+      if (!resp.ok) { const e = await resp.text(); return { content: [{ type: "text" as const, text: `Ошибка: ${e}` }] }; }
+      const d = await resp.json();
+      const t = d.tech || {};
+      const w = d.whois || {};
+      const g = d.geoip || {};
+      const lines = [
+        `# Технический паспорт: ${args.url}`, "",
+        `## Стек`, `- CMS: ${t.cms || "—"} ${t.cms_version ? `v${t.cms_version}` : ""}`.trim(),
+        `- Фреймворк: ${t.framework || "—"}`, `- Рендеринг: ${t.rendering || "—"}`,
+        `- Сервер: ${t.server || "—"} ${t.server_version ? `v${t.server_version}` : ""}`.trim(),
+        `- CDN: ${t.cdn || "—"}`,
+        "", `## Аналитика`, ...(t.analytics?.length ? t.analytics.map((a: string) => `- ${a}${t.analytics_ids?.[a] ? ` (${t.analytics_ids[a]})` : ""}`) : ["— не обнаружена"]),
+        "", `## CRM / Виджеты`, ...(t.crm_widgets?.length ? t.crm_widgets.map((w: string) => `- ${w}`) : ["— не обнаружены"]),
+        "", `## Хостинг`, `- IP: ${g.ip_address || "—"}`,
+        `- Страна: ${g.country_flag || ""} ${g.country || "—"} (${g.country_code || "—"})`,
+        `- Провайдер: ${g.hosting_provider || "—"}`,
+        "", `## WHOIS`, `- Регистратор: ${w.registrar || "—"}`,
+        `- Создан: ${w.created_date || "—"}`, `- Истекает: ${w.expiry_date || "—"}${w.days_until_expiry != null ? ` (${w.days_until_expiry} дн.)` : ""}`,
+      ];
+      return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+    } catch (e) { return { content: [{ type: "text" as const, text: `Ошибка: ${(e as Error).message}` }] }; }
+  },
+});
+
 // ─── Transport ───
 const transport = new StreamableHttpTransport();
 const httpHandler = transport.bind(mcp);
