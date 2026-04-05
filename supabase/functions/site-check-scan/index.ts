@@ -299,7 +299,7 @@ const ISSUE_TO_SEO_CRITERION: [RegExp, string][] = [
   [/alt.*текст|без alt|img.*alt|изображен.*без/i, 'images'],
   [/внутренн.*ссылк/i, 'internalLinks'],
   [/внешн.*ссылк/i, 'externalLinks'],
-  [/https|http.*mixed|ssl|сертификат/i, 'https'],
+  [/не использует https|сайт не.*https|протокол.*http[^s]/i, 'https'],
   [/viewport/i, 'mobileViewport'],
   [/загрузк|lcp|cls|inp|core web|скорост|время ответ/i, 'performance'],
   [/sitemap/i, 'sitemap'],

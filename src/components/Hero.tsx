@@ -81,10 +81,10 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="space-y-4"
           >
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight font-serif leading-tight">
+            <h1 className="text-[clamp(2rem,7vw,4.5rem)] font-bold tracking-tight font-serif leading-[1.1]">
               Ваш сайт не попадает{" "}
               <br className="hidden sm:block" />
-              в ответы <span className="text-gradient">нейросетей</span>?
+              в ответы <span className="brand-highlight">нейросетей</span>?
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               OWNDEV анализирует сайт по 50+ параметрам SEO, Schema.org, Яндекс.Директ и AI-готовности.

@@ -56,10 +56,15 @@ const DiffBadge = ({ diff }: { diff: number }) => {
   return null;
 };
 
-interface ScoreBreakdownData {
+export interface ScoreBreakdownData {
   seo?: CriterionResult[];
   ai?: CriterionResult[];
+  direct?: CriterionResult[];
+  schema?: CriterionResult[];
+  total?: CriterionResult[];
 }
+
+type ScoreType = 'seo' | 'ai' | 'direct' | 'schema' | 'total';
 
 interface ScoreCardsProps {
   scores: ScanScores;
@@ -68,42 +73,52 @@ interface ScoreCardsProps {
 }
 
 const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
-  const [activeModal, setActiveModal] = useState<'seo' | 'ai' | null>(null);
+  const [activeModal, setActiveModal] = useState<ScoreType | null>(null);
+
+  const keys = Object.keys(scoreLabels) as (keyof ScanScores)[];
 
   return (
     <>
-      <div className="flex gap-2 md:grid md:grid-cols-5 md:gap-3 overflow-x-auto scrollbar-hide pb-2 md:pb-0">
-        {(Object.keys(scoreLabels) as (keyof ScanScores)[]).map((key) => {
+      {/* Mobile: 3+2 grid, Desktop: 5 columns */}
+      <div className="grid grid-cols-3 gap-2 md:grid-cols-5 md:gap-3">
+        {keys.map((key, i) => {
           const val = scores?.[key] ?? 0;
-          const hasBreakdown = (key === 'seo' && breakdown?.seo?.length) || (key === 'ai' && breakdown?.ai?.length);
           return (
             <div
               key={key}
-              className={`rounded-xl border p-3 text-center min-w-[68px] flex-shrink-0 md:flex-shrink md:min-w-0 ${getScoreColor(val)}`}
+              className={`rounded-xl border p-3 text-center ${getScoreColor(val)} ${
+                i >= 3 ? "col-span-1" : ""
+              }`}
             >
               <CircleScore score={val} />
               <p className="mt-1 text-[10px] font-medium text-muted-foreground">{scoreLabels[key]}</p>
               {previousScores && typeof previousScores[key] === "number" && (
                 <DiffBadge diff={val - previousScores[key]} />
               )}
-              {hasBreakdown && (
-                <button
-                  onClick={() => setActiveModal(key as 'seo' | 'ai')}
-                  className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors underline decoration-dotted mt-1 block mx-auto"
-                >
-                  Как рассчитан?
-                </button>
-              )}
+              <button
+                onClick={() => setActiveModal(key as ScoreType)}
+                className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors underline decoration-dotted mt-1 block mx-auto"
+              >
+                Как рассчитан?
+              </button>
             </div>
           );
         })}
       </div>
+      {/* Center last 2 items on mobile via CSS: on 3-col grid, items 4-5 naturally flow to row 2 */}
+      <style>{`
+        @media (max-width: 767px) {
+          .grid.grid-cols-3 > :nth-child(4) { grid-column-start: 1; }
+          .grid.grid-cols-3 > :nth-child(5) { grid-column-start: 2; }
+        }
+      `}</style>
 
-      {activeModal && breakdown?.[activeModal] && (
+      {activeModal && (
         <ScoreDetailsModal
           type={activeModal}
           score={scores[activeModal] ?? 0}
-          breakdown={breakdown[activeModal]!}
+          scores={scores}
+          breakdown={breakdown?.[activeModal]}
           onClose={() => setActiveModal(null)}
         />
       )}
