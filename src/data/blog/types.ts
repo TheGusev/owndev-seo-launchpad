@@ -8,4 +8,5 @@ export interface BlogPost {
   content: string;
   author: string;
   authorRole?: string;
+  coverImage?: string;
 }

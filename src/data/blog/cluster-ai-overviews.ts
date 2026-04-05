@@ -10,6 +10,7 @@ export const clusterAIOverviews: BlogPost[] = [
     readTime: 6,
     author: "OWNDEV Team",
     authorRole: "SEO & AI эксперты",
+    coverImage: "https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?w=800&q=80",
     content: `## Что такое AI Overviews
 
 AI Overviews — это блок с AI-генерированным ответом в верхней части выдачи Google. Он цитирует 2-5 источников и забирает до 40% кликов с первой страницы.

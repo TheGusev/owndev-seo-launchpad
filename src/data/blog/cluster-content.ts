@@ -10,6 +10,7 @@ export const clusterContent: BlogPost[] = [
     readTime: 9,
     author: "OWNDEV Team",
     authorRole: "SEO & AI эксперты",
+    coverImage: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&q=80",
     content: `## Почему промты решают
 
 Качество контента от LLM на 80% зависит от промта. Плохой промт → generic текст, который Google проигнорирует. Хороший промт → уникальный, структурированный контент.

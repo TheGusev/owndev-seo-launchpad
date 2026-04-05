@@ -10,6 +10,7 @@ export const clusterTechnical: BlogPost[] = [
     readTime: 11,
     author: "OWNDEV Team",
     authorRole: "SEO & AI эксперты",
+    coverImage: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80",
     content: `## Зачем нужен SEO-аудит в 2025
 
 SEO-аудит в 2025 — это не только проверка title и мета-тегов. С приходом AI Overviews и LLM-поисковиков нужно оценивать сайт по двум осям: классическое SEO и LLM-пригодность.

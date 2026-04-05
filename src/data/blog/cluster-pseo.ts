@@ -10,6 +10,7 @@ export const clusterPSEO: BlogPost[] = [
     readTime: 10,
     author: "OWNDEV Team",
     authorRole: "SEO & AI эксперты",
+    coverImage: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80",
     content: `## Что такое pSEO
 
 Programmatic SEO (pSEO) — это подход, при котором вы создаёте сотни или тысячи страниц по шаблону, каждая оптимизирована под конкретный запрос. Примеры:

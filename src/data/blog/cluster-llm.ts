@@ -10,6 +10,7 @@ export const clusterLLM: BlogPost[] = [
     readTime: 8,
     author: "OWNDEV Team",
     authorRole: "SEO & AI эксперты",
+    coverImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80",
     content: `## Что изменилось в поиске
 
 Поисковые системы больше не просто показывают ссылки. Google AI Overviews, Perplexity, ChatGPT с поиском — все они **генерируют ответы**, цитируя источники. Если ваш сайт не оптимизирован для LLM, вы теряете трафик.

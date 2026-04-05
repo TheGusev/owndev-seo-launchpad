@@ -10,6 +10,7 @@ export const clusterSchema: BlogPost[] = [
     readTime: 7,
     author: "OWNDEV Team",
     authorRole: "SEO & AI эксперты",
+    coverImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&q=80",
     content: `## Зачем Schema.org для LLM
 
 JSON-LD разметка Schema.org — это структурированные данные, которые помогают поисковикам и LLM понять, что на вашей странице. Для AI-цитирования это критично:
