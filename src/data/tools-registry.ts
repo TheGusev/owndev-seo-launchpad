@@ -245,6 +245,19 @@ export const tools: ToolDef[] = [
     seoDescription: "Проверяем E-E-A-T сигналы: экспертность, авторитетность, надёжность. Бесплатно онлайн.",
     seoH1: "E-E-A-T аудит сайта онлайн",
   },
+  {
+    id: "content-brief", slug: "content-brief",
+    name: "AI Content Brief Generator",
+    shortDesc: "ТЗ для копирайтера на основе AI-анализа: структура, ключи, GEO-рекомендации",
+    category: "content", icon: ClipboardList,
+    component: lazy(() => import("@/components/tools/ContentBriefGenerator")),
+    gradient: "bg-gradient-to-br from-teal-950/40 to-cyan-950/40",
+    useCases: ["Создание ТЗ для копирайтера", "Структура статьи под AI-выдачу", "GEO-оптимизация контента"],
+    geoEnabled: false, status: "active",
+    seoTitle: "AI Content Brief Generator — ТЗ для копирайтера | OWNDEV",
+    seoDescription: "Генератор контент-брифа на основе AI: структура, ключи, GEO-рекомендации. Бесплатно.",
+    seoH1: "AI Content Brief Generator",
+  },
 ];
 
 export const getToolBySlug = (slug: string) => tools.find((t) => t.slug === slug);
