@@ -112,7 +112,7 @@ const SiteCheckResult = () => {
   const rawScores = data.scores;
   const scores = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
     ? { ...defaultScores, ...(rawScores as any) } : null;
-  const breakdown = rawScores?.breakdown || undefined;
+  const breakdown = rawScores?.breakdown || rawScores?.seoBreakdown ? { seo: rawScores.seoBreakdown || rawScores.breakdown?.seo, ai: rawScores.breakdown?.ai, direct: rawScores.breakdown?.direct, schema: rawScores.breakdown?.schema } : undefined;
 
   const issues = Array.isArray(data.issues) ? data.issues : [];
   const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];

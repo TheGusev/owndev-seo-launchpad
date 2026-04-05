@@ -94,16 +94,16 @@ const ToolPage = () => {
               <span className="text-xs font-mono text-muted-foreground">{tool.name}</span>
             </motion.div>
             <motion.h1
-              className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif mb-3"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-[clamp(2rem,7vw,4.5rem)] font-bold font-serif leading-[1.1] tracking-tight hero-title-animate mb-3"
+              initial={{ opacity: 0, y: 14, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
             >
               {(() => {
                 const words = h1.split(' ');
                 if (words.length >= 2) {
                   const last = words.pop()!;
-                  return <>{words.join(' ')} <span className="heading-highlight-gradient">{last}</span></>;
+                  return <>{words.join(' ')} <span className="brand-highlight">{last}</span></>;
                 }
                 return h1;
               })()}
