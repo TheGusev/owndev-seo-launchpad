@@ -59,6 +59,60 @@ export type Database = {
         }
         Relationships: []
       }
+      geo_rating: {
+        Row: {
+          category: string
+          created_at: string | null
+          direct_score: number
+          display_name: string
+          domain: string
+          errors_count: number
+          has_faqpage: boolean
+          has_llms_txt: boolean
+          has_schema: boolean
+          id: string
+          last_checked_at: string | null
+          llm_score: number
+          schema_score: number
+          seo_score: number
+          top_errors: Json | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          direct_score?: number
+          display_name: string
+          domain: string
+          errors_count?: number
+          has_faqpage?: boolean
+          has_llms_txt?: boolean
+          has_schema?: boolean
+          id?: string
+          last_checked_at?: string | null
+          llm_score?: number
+          schema_score?: number
+          seo_score?: number
+          top_errors?: Json | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          direct_score?: number
+          display_name?: string
+          domain?: string
+          errors_count?: number
+          has_faqpage?: boolean
+          has_llms_txt?: boolean
+          has_schema?: boolean
+          id?: string
+          last_checked_at?: string | null
+          llm_score?: number
+          schema_score?: number
+          seo_score?: number
+          top_errors?: Json | null
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
