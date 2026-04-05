@@ -761,13 +761,12 @@
   display: inline;
 }
 
-.heading-highlight-gradient {
-  background: linear-gradient(90deg, hsl(174 72% 56%) 0%, hsl(160 80% 70%) 50%, hsl(174 72% 56%) 100%);
-  background-size: 200% auto;
+.heading-highlight-gradient,
+.brand-highlight {
+  background: linear-gradient(90deg, #7fffd4 0%, #39d7ff 50%, #7a7cff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: shimmer 3s linear infinite;
 }
 
 /* ============================================
