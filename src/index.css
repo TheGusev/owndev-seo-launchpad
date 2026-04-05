@@ -794,6 +794,21 @@
   }
   .scores-scroll::-webkit-scrollbar { display: none; }
   .scores-scroll > * { min-width: 64px; max-width: 72px; flex-shrink: 0; }
+
+  .site-check-result table td,
+  .site-check-result table th {
+    font-size: 12px;
+    padding: 6px 4px;
+  }
+  .site-check-result .section-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .site-check-result .section-card {
+    border-radius: 12px;
+    margin-bottom: 8px;
+    padding: 12px;
+  }
 }
 
 /* ─── Print styles for PDF export ─────────────────────── */

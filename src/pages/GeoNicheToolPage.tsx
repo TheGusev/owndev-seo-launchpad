@@ -139,10 +139,10 @@ const GeoNicheToolPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              {tool.name} для <span className="text-gradient">{niche.nameCase}</span> в {region.nameCase}
+              {tool.name} для <span className="heading-highlight-gradient">{niche.nameCase}</span> в {region.nameCase}
             </motion.h1>
             <motion.p
-              className="text-muted-foreground text-lg max-w-2xl mx-auto"
+              className="text-muted-foreground text-[clamp(0.9rem,2.5vw,1.1rem)] leading-relaxed max-w-lg mx-auto"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
