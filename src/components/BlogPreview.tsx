@@ -6,8 +6,6 @@ import { ArrowRight, Clock } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { motion } from "framer-motion";
 import DefaultBlogCover from "@/components/blog/DefaultBlogCover";
-import { GradientButton } from "@/components/ui/gradient-button";
-import { motion } from "framer-motion";
 
 const BlogPreview = () => {
   const latestPosts = blogPosts.slice(0, 3);
