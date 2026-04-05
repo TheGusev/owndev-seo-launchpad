@@ -1,0 +1,1 @@
+CREATE POLICY "Service role can update geo_rating" ON public.geo_rating FOR UPDATE TO service_role USING (true) WITH CHECK (true);
