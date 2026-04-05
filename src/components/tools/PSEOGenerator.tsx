@@ -1,8 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -11,10 +13,11 @@ import { Button } from "@/components/ui/button";
 import {
   Sparkles, Download, ChevronRight, ChevronLeft, Copy, FileJson,
   Check, AlertTriangle, ChevronDown, ChevronUp, ExternalLink,
-  FileText, Layers, BarChart3, ShieldCheck,
+  FileText, Layers, BarChart3, ShieldCheck, Brain, Loader2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 /* ─── Constants ─── */
 const NICHES = [
@@ -53,6 +56,10 @@ const CONTENT_BLOCKS = [
   { id: "cta", label: "CTA-блок" },
 ];
 
+const AI_MAX_PAGES = 50;
+const AI_BATCH_SIZE = 8;
+const AI_BATCH_DELAY = 1500;
+
 /* ─── Transliteration ─── */
 const TRANSLIT: Record<string, string> = {
   а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"zh",з:"z",и:"i",й:"y",к:"k",
@@ -75,10 +82,12 @@ interface PageRow {
   metaDescription: string;
   h2_1: string;
   h2_2: string;
+  intro?: string;
   faq: Array<{ q: string; a: string }>;
   schemaType: string;
   cta: string;
   duplicateRisk: "low" | "medium" | "high";
+  aiGenerated?: boolean;
 }
 
 /* ─── Generation logic ─── */
@@ -134,13 +143,25 @@ function generateRows(
   return rows;
 }
 
+/* ─── AI batch helpers ─── */
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 /* ─── Export helpers ─── */
 function toCSV(rows: PageRow[]): string {
-  const header = "city,service,slug,title,meta_description,h1,h2_1,h2_2,faq_1_q,faq_1_a,faq_2_q,faq_2_a,schema_type,cta,duplicate_risk";
+  const header = "city,service,slug,title,meta_description,h1,h2_1,h2_2,intro,faq_1_q,faq_1_a,faq_2_q,faq_2_a,schema_type,cta,duplicate_risk,ai_generated";
   const lines = rows.map(r => [
     r.city, r.service, r.slug, r.title, r.metaDescription, r.h1, r.h2_1, r.h2_2,
+    r.intro || "",
     r.faq[0]?.q || "", r.faq[0]?.a || "", r.faq[1]?.q || "", r.faq[1]?.a || "",
-    r.schemaType, r.cta, r.duplicateRisk,
+    r.schemaType, r.cta, r.duplicateRisk, r.aiGenerated ? "yes" : "no",
   ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
   return [header, ...lines].join("\n");
 }
@@ -182,12 +203,14 @@ function QualityBlock({ rows }: { rows: PageRow[] }) {
   const h1Uniq = Math.round((h1Set.size / rows.length) * 100);
   const highRisk = rows.filter(r => r.duplicateRisk === "high").length;
   const medRisk = rows.filter(r => r.duplicateRisk === "medium").length;
+  const aiCount = rows.filter(r => r.aiGenerated).length;
 
   const metrics = [
     { label: "Уникальность Title", value: `${titleUniq}%`, status: titleUniq >= 90 ? "green" : titleUniq >= 70 ? "yellow" : "red" },
     { label: "Уникальность H1", value: `${h1Uniq}%`, status: h1Uniq >= 90 ? "green" : h1Uniq >= 70 ? "yellow" : "red" },
     { label: "Высокий риск дублей", value: `${highRisk} стр.`, status: highRisk === 0 ? "green" : "red" },
     { label: "Средний риск дублей", value: `${medRisk} стр.`, status: medRisk === 0 ? "green" : "yellow" },
+    ...(aiCount > 0 ? [{ label: "AI-контент", value: `${aiCount} стр.`, status: "green" as const }] : []),
   ];
 
   const colors = { green: "text-emerald-400", yellow: "text-yellow-400", red: "text-red-400" };
@@ -213,17 +236,33 @@ function QualityBlock({ rows }: { rows: PageRow[] }) {
 function PreviewCard({ row }: { row: PageRow }) {
   return (
     <div className="rounded-xl border border-primary/20 bg-card/60 p-4 space-y-3">
-      <p className="text-xs text-muted-foreground">Предпросмотр страницы</p>
+      <div className="flex items-center gap-2">
+        <p className="text-xs text-muted-foreground">Предпросмотр страницы</p>
+        {row.aiGenerated && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium flex items-center gap-1">
+            <Brain className="w-3 h-3" /> AI
+          </span>
+        )}
+      </div>
       <div className="space-y-2 text-sm">
         <div><span className="text-muted-foreground">URL:</span> <span className="font-mono text-primary">{row.slug}</span></div>
         <div><span className="text-muted-foreground">Title:</span> <span className="text-foreground">{row.title}</span></div>
         <div><span className="text-muted-foreground">H1:</span> <span className="text-foreground font-semibold">{row.h1}</span></div>
         <div><span className="text-muted-foreground">Description:</span> <span className="text-foreground/70">{row.metaDescription}</span></div>
+        {row.intro && (
+          <div className="pt-1 border-t border-border/30">
+            <span className="text-muted-foreground text-xs">Intro:</span>
+            <p className="text-xs text-foreground/70 mt-1">{row.intro}</p>
+          </div>
+        )}
         {row.faq.length > 0 && (
           <div className="pt-1 border-t border-border/30">
             <span className="text-muted-foreground text-xs">FAQ ({row.faq.length}):</span>
             {row.faq.map((f, i) => (
-              <p key={i} className="text-xs text-foreground/60 mt-1">Q: {f.q}</p>
+              <div key={i} className="mt-1">
+                <p className="text-xs text-foreground/80 font-medium">Q: {f.q}</p>
+                <p className="text-xs text-foreground/60">A: {f.a}</p>
+              </div>
             ))}
           </div>
         )}
@@ -246,16 +285,27 @@ const PSEOGenerator = () => {
   const [tone, setTone] = useState("commercial");
   const [blocks, setBlocks] = useState(["intro", "faq", "schema", "cta"]);
   const [urlFormat, setUrlFormat] = useState("service/city");
+  const [aiEnabled, setAiEnabled] = useState(false);
   // Step 4
   const [rows, setRows] = useState<PageRow[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  // AI progress
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiProgress, setAiProgress] = useState(0);
+  const [aiTotal, setAiTotal] = useState(0);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const effectiveNiche = niche === "__custom" ? customNiche : niche;
   const cities = useMemo(() => citiesInput.split("\n").map(c => c.trim()).filter(Boolean), [citiesInput]);
   const services = useMemo(() => servicesInput.split("\n").map(s => s.trim()).filter(Boolean), [servicesInput]);
   const totalPages = Math.max(1, services.length || 1) * Math.max(cities.length, 0);
+
+  const aiEstimateSeconds = useMemo(() => {
+    const pagesToProcess = Math.min(totalPages, AI_MAX_PAGES);
+    return Math.ceil(pagesToProcess / AI_BATCH_SIZE) * 3;
+  }, [totalPages]);
 
   const toggleBlock = (id: string) => {
     setBlocks(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]);
@@ -268,13 +318,123 @@ const PSEOGenerator = () => {
     return false;
   };
 
-  const handleGenerate = () => {
-    const result = generateRows(effectiveNiche, services, cities, pageType, urlFormat, blocks, tone);
-    setRows(result);
+  const generateWithAI = useCallback(async (templateRows: PageRow[]): Promise<PageRow[]> => {
+    const pagesToProcess = templateRows.slice(0, AI_MAX_PAGES);
+    const batches = chunk(pagesToProcess, AI_BATCH_SIZE);
+    const results: PageRow[] = [];
+
+    setAiTotal(pagesToProcess.length);
+    setAiProgress(0);
+    setAiError(null);
+
+    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+      const batch = batches[batchIdx];
+      let retried = false;
+
+      const tryBatch = async (): Promise<void> => {
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-geo-content', {
+            body: {
+              pages: batch.map(r => ({ city: r.city, service: r.service, slug: r.slug })),
+              niche: effectiveNiche,
+              tone,
+              blocks,
+            },
+          });
+
+          if (error) throw error;
+
+          const aiResults = data?.results || [];
+          for (const row of batch) {
+            const aiData = aiResults.find((r: any) => r.slug === row.slug);
+            if (aiData) {
+              results.push({
+                ...row,
+                title: aiData.title || row.title,
+                metaDescription: aiData.metaDescription || row.metaDescription,
+                h1: aiData.h1 || row.h1,
+                h2_1: aiData.h2_1 || row.h2_1,
+                h2_2: aiData.h2_2 || row.h2_2,
+                intro: aiData.intro || undefined,
+                faq: aiData.faq?.length ? aiData.faq : row.faq,
+                cta: aiData.cta || row.cta,
+                aiGenerated: true,
+              });
+            } else {
+              results.push(row);
+            }
+          }
+        } catch (err: any) {
+          const status = err?.status || err?.context?.status;
+          if (status === 429 && !retried) {
+            retried = true;
+            await delay(5000);
+            return tryBatch();
+          }
+          // Fallback to template
+          console.warn('AI batch failed, using template:', err);
+          results.push(...batch);
+        }
+      };
+
+      await tryBatch();
+      setAiProgress(results.length);
+
+      if (batchIdx < batches.length - 1) {
+        await delay(AI_BATCH_DELAY);
+      }
+    }
+
+    // Add remaining rows beyond AI_MAX_PAGES
+    if (templateRows.length > AI_MAX_PAGES) {
+      results.push(...templateRows.slice(AI_MAX_PAGES));
+    }
+
+    return results;
+  }, [effectiveNiche, tone, blocks]);
+
+  const handleGenerate = useCallback(async () => {
+    const templateRows = generateRows(effectiveNiche, services, cities, pageType, urlFormat, blocks, tone);
+
+    if (!aiEnabled) {
+      setRows(templateRows);
+      setStep(4);
+      setShowAll(false);
+      setPreviewIdx(null);
+      return;
+    }
+
+    setIsGenerating(true);
     setStep(4);
     setShowAll(false);
     setPreviewIdx(null);
-  };
+
+    try {
+      const aiRows = await generateWithAI(templateRows);
+      // Recalculate duplicate risk for AI rows
+      const titleCounts = new Map<string, number>();
+      aiRows.forEach(r => {
+        const base = r.title.replace(/в .+? —/, "в _ —").replace(/в .+? ·/, "в _ ·");
+        titleCounts.set(base, (titleCounts.get(base) || 0) + 1);
+      });
+      aiRows.forEach(r => {
+        const base = r.title.replace(/в .+? —/, "в _ —").replace(/в .+? ·/, "в _ ·");
+        const count = titleCounts.get(base) || 0;
+        if (count > 10) r.duplicateRisk = "high";
+        else if (count > 5) r.duplicateRisk = "medium";
+        else r.duplicateRisk = "low";
+      });
+
+      setRows(aiRows);
+      const aiCount = aiRows.filter(r => r.aiGenerated).length;
+      toast({ title: `Готово! ${aiCount} страниц с AI-контентом` });
+    } catch {
+      setAiError("Ошибка AI-генерации. Используются шаблонные тексты.");
+      setRows(templateRows);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [effectiveNiche, services, cities, pageType, urlFormat, blocks, tone, aiEnabled, generateWithAI]);
 
   const handleExportCSV = () => {
     downloadBlob(toCSV(rows), "geo-pages.csv", "text/csv;charset=utf-8;");
@@ -300,7 +460,7 @@ const PSEOGenerator = () => {
     <div className="space-y-6">
       {/* Hero pills */}
       <div className="flex flex-wrap justify-center gap-2 mb-2">
-        {["До 500 страниц", "Антидубли и проверка качества", "Экспорт CSV / JSON"].map(pill => (
+        {["До 500 страниц", "AI-контент", "Антидубли", "Экспорт CSV / JSON"].map(pill => (
           <span key={pill} className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
             {pill}
           </span>
@@ -402,6 +562,33 @@ const PSEOGenerator = () => {
               </div>
             </div>
 
+            {/* AI Toggle */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Brain className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">AI-контент</p>
+                    <p className="text-xs text-muted-foreground">Уникальные тексты вместо шаблонов</p>
+                  </div>
+                </div>
+                <Switch checked={aiEnabled} onCheckedChange={setAiEnabled} />
+              </div>
+              {aiEnabled && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    AI сгенерирует уникальные Title, Description, H1, FAQ и вступление для каждой страницы.
+                  </p>
+                  {totalPages > AI_MAX_PAGES && (
+                    <p className="text-xs text-yellow-400 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      AI-контент будет создан для первых {AI_MAX_PAGES} страниц. Остальные — шаблонные.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(1)}><ChevronLeft className="w-4 h-4 mr-1" /> Назад</Button>
               <GradientButton size="lg" onClick={() => setStep(3)}>Далее <ChevronRight className="w-4 h-4 ml-1" /></GradientButton>
@@ -433,6 +620,15 @@ const PSEOGenerator = () => {
               <p className="text-xs text-muted-foreground mt-3">
                 Для каждой страницы: slug, title, meta description, H1, H2, FAQ, Schema, CTA
               </p>
+
+              {aiEnabled && (
+                <div className="mt-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <p className="text-xs text-primary flex items-center gap-1.5">
+                    <Brain className="w-3.5 h-3.5" />
+                    AI сгенерирует уникальные тексты. Примерное время: ~{aiEstimateSeconds} сек.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Sample preview */}
@@ -442,102 +638,147 @@ const PSEOGenerator = () => {
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(2)}><ChevronLeft className="w-4 h-4 mr-1" /> Назад</Button>
-              <GradientButton size="lg" onClick={handleGenerate}>
-                <Sparkles className="w-5 h-5 mr-2" /> Создать GEO-страницы
+              <GradientButton size="lg" onClick={handleGenerate} disabled={isGenerating}>
+                {aiEnabled ? (
+                  <><Brain className="w-5 h-5 mr-2" /> Создать с AI-контентом</>
+                ) : (
+                  <><Sparkles className="w-5 h-5 mr-2" /> Создать GEO-страницы</>
+                )}
               </GradientButton>
             </div>
           </div>
         )}
 
         {/* ── STEP 4: Результат ── */}
-        {step === 4 && rows.length > 0 && (
+        {step === 4 && (
           <div className="space-y-5 mt-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">
-                Сгенерировано {rows.length} страниц
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                <Button variant="outline" size="sm" onClick={handleExportCSV} className="text-xs">
-                  <Download className="w-3 h-3" /> CSV
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportJSON} className="text-xs">
-                  <FileJson className="w-3 h-3" /> JSON
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleCopyTable} className="text-xs">
-                  {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  {copied ? "OK" : "Copy"}
-                </Button>
+            {/* AI generation progress */}
+            {isGenerating && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Генерация AI-контента...</p>
+                    <p className="text-xs text-muted-foreground">
+                      {aiProgress} из {aiTotal} страниц
+                    </p>
+                  </div>
+                </div>
+                <Progress value={aiTotal > 0 ? (aiProgress / aiTotal) * 100 : 0} className="h-2" />
+                <p className="text-xs text-muted-foreground">
+                  Каждая страница получает уникальные тексты. Это может занять некоторое время.
+                </p>
               </div>
-            </div>
-
-            {/* Results table */}
-            <div className="overflow-x-auto rounded-lg border border-border/50">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">Slug</th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">Title</th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium hidden md:table-cell">H1</th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium hidden lg:table-cell">Риск</th>
-                    <th className="py-2 px-2 w-8"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedRows.map((row, i) => (
-                    <tr key={row.slug + i} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer" onClick={() => setPreviewIdx(previewIdx === i ? null : i)}>
-                      <td className="py-2 px-3 font-mono text-primary text-xs max-w-[150px] truncate">{row.slug}</td>
-                      <td className="py-2 px-3 text-foreground max-w-[200px] truncate">{row.title}</td>
-                      <td className="py-2 px-3 text-foreground hidden md:table-cell max-w-[180px] truncate">{row.h1}</td>
-                      <td className="py-2 px-3 hidden lg:table-cell">
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          row.duplicateRisk === "high" ? "bg-red-500/10 text-red-400"
-                          : row.duplicateRisk === "medium" ? "bg-yellow-500/10 text-yellow-400"
-                          : "bg-emerald-500/10 text-emerald-400"
-                        }`}>
-                          {row.duplicateRisk === "high" ? "Высокий" : row.duplicateRisk === "medium" ? "Средний" : "Низкий"}
-                        </span>
-                      </td>
-                      <td className="py-2 px-2">
-                        {previewIdx === i ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {rows.length > 10 && !showAll && (
-              <button onClick={() => setShowAll(true)} className="text-xs text-primary hover:underline">
-                Показать все +{rows.length - 10}
-              </button>
             )}
 
-            {previewIdx !== null && displayedRows[previewIdx] && (
-              <PreviewCard row={displayedRows[previewIdx]} />
+            {aiError && (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 flex items-center gap-2 text-sm text-yellow-400">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                {aiError}
+              </div>
             )}
 
-            {/* Quality */}
-            <QualityBlock rows={rows} />
+            {!isGenerating && rows.length > 0 && (
+              <>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      Сгенерировано {rows.length} страниц
+                    </p>
+                    {rows.some(r => r.aiGenerated) && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium flex items-center gap-1">
+                        <Brain className="w-3 h-3" /> {rows.filter(r => r.aiGenerated).length} AI
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button variant="outline" size="sm" onClick={handleExportCSV} className="text-xs">
+                      <Download className="w-3 h-3" /> CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleExportJSON} className="text-xs">
+                      <FileJson className="w-3 h-3" /> JSON
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleCopyTable} className="text-xs">
+                      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {copied ? "OK" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
 
-            {/* Cross-tool CTAs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Link to="/tools/anti-duplicate" className="flex items-center gap-2 p-3 rounded-xl border border-border/50 bg-card/30 hover:border-primary/30 transition-colors text-sm text-foreground">
-                <ShieldCheck className="w-4 h-4 text-primary flex-shrink-0" />
-                <span>Проверить дубли в Anti-Duplicate Checker</span>
-                <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
-              </Link>
-              <Link to="/tools/semantic-core" className="flex items-center gap-2 p-3 rounded-xl border border-border/50 bg-card/30 hover:border-primary/30 transition-colors text-sm text-foreground">
-                <BarChart3 className="w-4 h-4 text-primary flex-shrink-0" />
-                <span>Собрать семантику для этих страниц</span>
-                <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
-              </Link>
-            </div>
+                {/* Results table */}
+                <div className="overflow-x-auto rounded-lg border border-border/50">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className="text-left py-2 px-3 text-muted-foreground font-medium">Slug</th>
+                        <th className="text-left py-2 px-3 text-muted-foreground font-medium">Title</th>
+                        <th className="text-left py-2 px-3 text-muted-foreground font-medium hidden md:table-cell">H1</th>
+                        <th className="text-left py-2 px-3 text-muted-foreground font-medium hidden lg:table-cell">Риск</th>
+                        <th className="py-2 px-2 w-8 text-muted-foreground font-medium hidden sm:table-cell">AI</th>
+                        <th className="py-2 px-2 w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedRows.map((row, i) => (
+                        <tr key={row.slug + i} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer" onClick={() => setPreviewIdx(previewIdx === i ? null : i)}>
+                          <td className="py-2 px-3 font-mono text-primary text-xs max-w-[150px] truncate">{row.slug}</td>
+                          <td className="py-2 px-3 text-foreground max-w-[200px] truncate">{row.title}</td>
+                          <td className="py-2 px-3 text-foreground hidden md:table-cell max-w-[180px] truncate">{row.h1}</td>
+                          <td className="py-2 px-3 hidden lg:table-cell">
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              row.duplicateRisk === "high" ? "bg-red-500/10 text-red-400"
+                              : row.duplicateRisk === "medium" ? "bg-yellow-500/10 text-yellow-400"
+                              : "bg-emerald-500/10 text-emerald-400"
+                            }`}>
+                              {row.duplicateRisk === "high" ? "Высокий" : row.duplicateRisk === "medium" ? "Средний" : "Низкий"}
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 hidden sm:table-cell">
+                            {row.aiGenerated && <Brain className="w-3 h-3 text-primary" />}
+                          </td>
+                          <td className="py-2 px-2">
+                            {previewIdx === i ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-            <div className="flex justify-start">
-              <Button variant="outline" onClick={() => { setStep(1); setRows([]); }}>
-                <ChevronLeft className="w-4 h-4 mr-1" /> Новая генерация
-              </Button>
-            </div>
+                {rows.length > 10 && !showAll && (
+                  <button onClick={() => setShowAll(true)} className="text-xs text-primary hover:underline">
+                    Показать все +{rows.length - 10}
+                  </button>
+                )}
+
+                {previewIdx !== null && displayedRows[previewIdx] && (
+                  <PreviewCard row={displayedRows[previewIdx]} />
+                )}
+
+                {/* Quality */}
+                <QualityBlock rows={rows} />
+
+                {/* Cross-tool CTAs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Link to="/tools/anti-duplicate" className="flex items-center gap-2 p-3 rounded-xl border border-border/50 bg-card/30 hover:border-primary/30 transition-colors text-sm text-foreground">
+                    <ShieldCheck className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span>Проверить дубли в Anti-Duplicate Checker</span>
+                    <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
+                  </Link>
+                  <Link to="/tools/semantic-core" className="flex items-center gap-2 p-3 rounded-xl border border-border/50 bg-card/30 hover:border-primary/30 transition-colors text-sm text-foreground">
+                    <BarChart3 className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span>Собрать семантику для этих страниц</span>
+                    <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
+                  </Link>
+                </div>
+
+                <div className="flex justify-start">
+                  <Button variant="outline" onClick={() => { setStep(1); setRows([]); setAiError(null); }}>
+                    <ChevronLeft className="w-4 h-4 mr-1" /> Новая генерация
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
