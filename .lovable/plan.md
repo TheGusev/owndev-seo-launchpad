@@ -1,80 +1,106 @@
 
 
-## МЕГАФИКС: Полное восстановление и рефакторинг фронтенда
+## Полный редизайн pSEO Generator → «Генератор GEO-страниц»
 
-### Текущее состояние
+### Обзор
 
-Большая часть работы **уже выполнена** в предыдущей итерации:
-- ✅ Аккордеоны (`ResultAccordion`) — работают, правильный порядок секций
-- ✅ Модалка `ScoreDetailsModal` — реализована, bottom-sheet на мобильном
-- ✅ Горизонтальный скролл скоров на мобильном — CSS готов
-- ✅ `TechPassport` — компактная таблица, бейджи в заголовке
-- ✅ `KeywordsSection` — фильтры кластеров/интентов, sub-аккордеоны
-- ✅ `MinusWordsSection` — теги flex-wrap, кнопка копирования
-- ✅ `CompetitorsTable` — EXCLUDE_DOMAINS фильтр, чипы
-- ✅ `FullReportView` — компактные строки 44px, фильтры, прогресс
-- ✅ Playfair Display подключён в `index.html` и `index.css`
-- ✅ `.heading-highlight` и `.heading-highlight-gradient` CSS классы в `index.css`
-- ✅ Нет `font-family` переопределений в компонентах результатов
-- ✅ Нет эмодзи в заголовках секций (SiteCheckResult, LlmJudge, TechPassport, ScoreCards)
+Текущий PSEOGenerator — простая форма (ниша + города → таблица slug/title/h1/meta). Нужно превратить его в полноценный 4-шаговый мастер с hero-блоком, preview, проверкой качества и множественным экспортом.
 
-### Что нужно доработать
+### Файлы
 
-| # | Задача | Файл |
-|---|--------|------|
-| 1 | **Heading-highlight на ToolPage** — H1 рендерит `{h1}` как plain text. Нужно парсить и оборачивать ключевое слово (niche/city) в `<span className="heading-highlight-gradient">` | `src/pages/ToolPage.tsx` |
-| 2 | **Heading-highlight на GeoToolPage и GeoNicheToolPage** — аналогично, выделять город/нишу | `src/pages/GeoToolPage.tsx`, `src/pages/GeoNicheToolPage.tsx` |
-| 3 | **IssueCard.tsx — эмодзи severity** — файл `IssueCard.tsx` использует `emoji: "🔴"/"🟠"/"🟡"/"⚪"`. Заменить на Lucide иконки (Circle с цветом) | `src/components/site-check/IssueCard.tsx` |
-| 4 | **Мобильные стили результатов** — добавить responsive классы для таблиц и секций (`.section-title`, мобильные font-size) | `src/index.css` |
-| 5 | **Подзаголовок ToolPage** — ограничить `max-w-[480px]` вместо `max-w-2xl`, уменьшить шрифт через clamp | `src/pages/ToolPage.tsx` |
+| Файл | Действие |
+|------|----------|
+| `src/data/tools-registry.ts` | Переименовать name/shortDesc/useCases |
+| `src/components/tools/PSEOGenerator.tsx` | Полная перезапись — 4-шаговый мастер |
 
-### Детали реализации
+### 1. Переименование в tools-registry
 
-**1–2. Heading highlight на страницах инструментов**
+```
+name: "Генератор GEO-страниц"
+shortDesc: "Создаёт структуру сотен SEO-страниц под города, услуги и кластеры спроса"
+seoH1: "Генератор GEO-страниц для роста трафика"
+useCases: ["Масштабирование локального SEO", "Создание страниц под города и услуги", "Экспорт в CSV / JSON / WordPress"]
+```
 
-В `ToolPage.tsx` строка 96-103: вместо `{h1}` plain text, создать функцию-хелпер:
+### 2. Полная перезапись PSEOGenerator.tsx
 
+**Структура компонента:**
+
+```
+Hero (serif заголовок + gradient highlight + 3 value-pills)
+↓
+Sticky Step Indicator (1/2/3/4)
+↓
+Step 1: "Что генерируем" — ниша, услуги, города, тип страниц
+Step 2: "Структура" — тональность, блоки (FAQ, Schema, CTA...), формат URL
+Step 3: "Предпросмотр" — счётчик страниц + preview одной страницы + кнопка генерации
+Step 4: "Результат" — таблица, preview карточка, качество, экспорт, CTA на другие инструменты
+```
+
+**Hero-блок:**
+- Serif заголовок: `Генератор <span class="heading-highlight-gradient">GEO-страниц</span> для роста трафика`
+- Подзаголовок о результате
+- 3 pill-бейджа: "До 500 страниц", "Антидубли", "Экспорт CSV/JSON"
+
+**Step 1 — Что генерируем:**
+- Ниша (select + custom input)
+- Основные услуги (textarea, по одной на строку)
+- Города/локации (textarea)
+- Тип страниц (radio-group): услуга+город, категория+город, район, филиал
+
+**Step 2 — Структура:**
+- Тональность (select: строгая / коммерческая / экспертная)
+- Чекбоксы блоков: intro, преимущества, цены, FAQ, отзывы, schema, CTA
+- Формат URL (radio: /service/city, /city/service, /service-in-city)
+
+**Step 3 — Предпросмотр:**
+- Блок "Что будет создано": N страниц, N titles, N FAQ, 1 CSV
+- Preview-карточка одной страницы (slug, title, h1, description, FAQ, schema type)
+- Кнопка "Создать GEO-страницы"
+
+**Step 4 — Результат:**
+- Таблица результатов (первые 10 + "Ещё +N")
+- Красивый preview одной страницы по клику
+- Блок "Проверка качества": уникальность title/h1, риск дублей (цветные статусы)
+- Экспорт: CSV, JSON, Copy as table (grid кнопок)
+- CTA-ссылки на GEO-аудит, Anti-Duplicate, Семантику
+
+**Генерация данных (расширенная):**
+Расширить `PageRow` до:
 ```typescript
-function renderHighlightedH1(h1: string, tool: Tool) {
-  // Для geo-страниц выделяем город/нишу
-  // Для обычных — берём последнее слово или niche из seoH1
-  // Оборачиваем в <span className="heading-highlight-gradient">
+interface PageRow {
+  slug: string;
+  title: string;
+  h1: string;
+  metaDescription: string;
+  h2_1: string;
+  h2_2: string;
+  faq: Array<{q: string, a: string}>;
+  schemaType: string;
+  cta: string;
+  duplicateRisk: 'low' | 'medium' | 'high';
 }
 ```
 
-Логика: если `seoH1` содержит город или нишу (из params), оборачиваем этот фрагмент. Fallback — без выделения.
+Генерация FAQ (2-3 вопроса на страницу из шаблонов), schema type (Service/FAQPage), CTA текст. Оценка риска дублей — сравнение title uniqueness (если >80% совпадение → high risk).
 
-Аналогично для `GeoToolPage` (строка ~85) и `GeoNicheToolPage`.
+**Экспорт:**
+- CSV с колонками: city, service, slug, title, meta_description, h1, h2_1, h2_2, faq_1_q, faq_1_a, faq_2_q, faq_2_a, schema_json, cta, duplicate_risk
+- JSON (массив объектов)
+- Copy table (clipboard API)
 
-**3. IssueCard.tsx — убрать эмодзи**
+**Мобильный UX:**
+- Sticky progress bar наверху
+- Каждый шаг в отдельной glass-карточке
+- "Далее" кнопка переключает шаги
+- Валидация: следующий шаг недоступен без заполнения предыдущего
 
-Заменить `emoji` поле в `severityConfig` на Lucide-компонент:
-- critical → `<Circle className="w-3 h-3 fill-red-500 text-red-500" />`
-- high → `<Circle className="w-3 h-3 fill-orange-500 text-orange-500" />`
-- medium → `<Circle className="w-3 h-3 fill-yellow-500 text-yellow-500" />`
-- low → `<Circle className="w-3 h-3 fill-muted text-muted-foreground" />`
+**Информационные блоки (аккордеоны внизу):**
+- "Зачем нужен инструмент" — для сетей, агентств, франшиз
+- "Когда особенно полезен" — 10+ городов, 5+ услуг
+- "Что создаёт" — список полей
 
-**4. Мобильные стили**
+### Объём
 
-В `src/index.css` добавить блок:
-```css
-@media (max-width: 768px) {
-  .site-check-result table td,
-  .site-check-result table th { font-size: 12px; padding: 6px 4px; }
-}
-```
-
-**5. Подзаголовок ToolPage**
-
-Строка 104-111: изменить `max-w-2xl` → `max-w-lg`, добавить `text-[clamp(0.9rem,2.5vw,1.1rem)]`.
-
-### Файлы (5)
-
-| Файл | Изменение |
-|------|-----------|
-| `src/pages/ToolPage.tsx` | H1 highlight + подзаголовок стили |
-| `src/pages/GeoToolPage.tsx` | H1 highlight города |
-| `src/pages/GeoNicheToolPage.tsx` | H1 highlight ниши/города |
-| `src/components/site-check/IssueCard.tsx` | Эмодзи → Lucide иконки |
-| `src/index.css` | Мобильные стили для результатов |
+Один файл `PSEOGenerator.tsx` — полная перезапись (~400-500 строк). Плюс обновление записи в `tools-registry.ts`. Всё клиентское, без backend-изменений.
 
