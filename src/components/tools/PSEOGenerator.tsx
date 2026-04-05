@@ -299,6 +299,8 @@ const PSEOGenerator = () => {
   const [aiProgress, setAiProgress] = useState(0);
   const [aiTotal, setAiTotal] = useState(0);
   const [aiError, setAiError] = useState<string | null>(null);
+  // Inline editing
+  const [editingCell, setEditingCell] = useState<{ rowIdx: number; field: string } | null>(null);
 
   const effectiveNiche = niche === "__custom" ? customNiche : niche;
   const cities = useMemo(() => citiesInput.split("\n").map(c => c.trim()).filter(Boolean), [citiesInput]);
