@@ -90,6 +90,7 @@ interface PageRow {
   cta: string;
   duplicateRisk: "low" | "medium" | "high";
   aiGenerated?: boolean;
+  edited?: boolean;
 }
 
 /* ─── Generation logic ─── */
