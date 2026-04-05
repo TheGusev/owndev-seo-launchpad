@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 const FLAGSHIP_SLUG = "site-check";
-const TECHNICAL_SLUGS = ["seo-auditor", "indexation-checker", "internal-links", "competitor-analysis", "semantic-core", "schema-generator", "brand-tracker", "content-brief"];
+const TECHNICAL_SLUGS = ["seo-auditor", "indexation-checker", "internal-links", "competitor-analysis", "semantic-core", "schema-generator", "brand-tracker", "content-brief", "mcp-server"];
 const UTILITY_SLUGS = ["pseo-generator", "ai-text-generator", "webmaster-files", "anti-duplicate", "position-monitor", "llm-prompt-helper"];
 
 const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);
