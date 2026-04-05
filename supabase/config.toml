@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.mcp-server]
 verify_jwt = false
+
+[functions.geo-rating-cron]
+verify_jwt = false
