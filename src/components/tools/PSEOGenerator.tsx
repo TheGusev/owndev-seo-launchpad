@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,8 +14,10 @@ import {
   Sparkles, Download, ChevronRight, ChevronLeft, Copy, FileJson,
   Check, AlertTriangle, ChevronDown, ChevronUp, ExternalLink,
   FileText, Layers, BarChart3, ShieldCheck, Brain, Loader2,
+  FileSpreadsheet, Pencil,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -88,6 +90,7 @@ interface PageRow {
   cta: string;
   duplicateRisk: "low" | "medium" | "high";
   aiGenerated?: boolean;
+  edited?: boolean;
 }
 
 /* ─── Generation logic ─── */
@@ -296,6 +299,8 @@ const PSEOGenerator = () => {
   const [aiProgress, setAiProgress] = useState(0);
   const [aiTotal, setAiTotal] = useState(0);
   const [aiError, setAiError] = useState<string | null>(null);
+  // Inline editing
+  const [editingCell, setEditingCell] = useState<{ rowIdx: number; field: string } | null>(null);
 
   const effectiveNiche = niche === "__custom" ? customNiche : niche;
   const cities = useMemo(() => citiesInput.split("\n").map(c => c.trim()).filter(Boolean), [citiesInput]);
@@ -446,12 +451,32 @@ const PSEOGenerator = () => {
     toast({ title: "JSON скачан" });
   };
 
+  const handleExportXLSX = () => {
+    const data = rows.map(r => ({
+      city: r.city, service: r.service, slug: r.slug, title: r.title,
+      meta_description: r.metaDescription, h1: r.h1, h2_1: r.h2_1, h2_2: r.h2_2,
+      intro: r.intro || "", faq_1_q: r.faq[0]?.q || "", faq_1_a: r.faq[0]?.a || "",
+      faq_2_q: r.faq[1]?.q || "", faq_2_a: r.faq[1]?.a || "",
+      schema_type: r.schemaType, cta: r.cta, duplicate_risk: r.duplicateRisk,
+      ai_generated: r.aiGenerated ? "yes" : "no", edited: r.edited ? "yes" : "no",
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "GEO Pages");
+    XLSX.writeFile(wb, "geo-pages.xlsx");
+    toast({ title: "XLSX скачан" });
+  };
+
   const handleCopyTable = async () => {
     const text = rows.map(r => `${r.slug}\t${r.title}\t${r.h1}\t${r.metaDescription}`).join("\n");
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({ title: "Скопировано в буфер" });
+  };
+
+  const updateRow = (idx: number, field: string, value: string) => {
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value, edited: true } : r));
   };
 
   const displayedRows = showAll ? rows : rows.slice(0, 10);
@@ -691,12 +716,15 @@ const PSEOGenerator = () => {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <Button variant="outline" size="sm" onClick={handleExportCSV} className="text-xs">
                       <Download className="w-3 h-3" /> CSV
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleExportJSON} className="text-xs">
                       <FileJson className="w-3 h-3" /> JSON
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleExportXLSX} className="text-xs">
+                      <FileSpreadsheet className="w-3 h-3" /> XLSX
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleCopyTable} className="text-xs">
                       {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -719,31 +747,62 @@ const PSEOGenerator = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {displayedRows.map((row, i) => (
-                        <tr key={row.slug + i} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer" onClick={() => setPreviewIdx(previewIdx === i ? null : i)}>
-                          <td className="py-2 px-3 font-mono text-primary text-xs max-w-[150px] truncate">{row.slug}</td>
-                          <td className="py-2 px-3 text-foreground max-w-[200px] truncate">{row.title}</td>
-                          <td className="py-2 px-3 text-foreground hidden md:table-cell max-w-[180px] truncate">{row.h1}</td>
-                          <td className="py-2 px-3 hidden lg:table-cell">
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${
-                              row.duplicateRisk === "high" ? "bg-red-500/10 text-red-400"
-                              : row.duplicateRisk === "medium" ? "bg-yellow-500/10 text-yellow-400"
-                              : "bg-emerald-500/10 text-emerald-400"
-                            }`}>
-                              {row.duplicateRisk === "high" ? "Высокий" : row.duplicateRisk === "medium" ? "Средний" : "Низкий"}
-                            </span>
-                          </td>
-                          <td className="py-2 px-2 hidden sm:table-cell">
-                            {row.aiGenerated && <Brain className="w-3 h-3 text-primary" />}
-                          </td>
-                          <td className="py-2 px-2">
-                            {previewIdx === i ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
-                          </td>
-                        </tr>
-                      ))}
+                      {displayedRows.map((row, i) => {
+                        const realIdx = showAll ? i : i;
+                        return (
+                          <tr key={row.slug + i} className={`border-b border-border/30 hover:bg-muted/20 cursor-pointer ${row.edited ? "border-l-2 border-l-primary" : ""}`} onClick={() => setPreviewIdx(previewIdx === i ? null : i)}>
+                            <td className="py-2 px-3 font-mono text-primary text-xs max-w-[150px] truncate">{row.slug}</td>
+                            <td className="py-2 px-3 text-foreground max-w-[200px]" onDoubleClick={(e) => { e.stopPropagation(); setEditingCell({ rowIdx: realIdx, field: "title" }); }}>
+                              {editingCell?.rowIdx === realIdx && editingCell.field === "title" ? (
+                                <input
+                                  autoFocus
+                                  className="w-full bg-card border border-primary/40 rounded px-1 py-0.5 text-xs text-foreground outline-none"
+                                  defaultValue={row.title}
+                                  onBlur={(e) => { updateRow(realIdx, "title", e.target.value); setEditingCell(null); }}
+                                  onKeyDown={(e) => { if (e.key === "Enter") { updateRow(realIdx, "title", (e.target as HTMLInputElement).value); setEditingCell(null); } if (e.key === "Escape") setEditingCell(null); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              ) : (
+                                <span className="truncate block">{row.title}{row.edited && <Pencil className="w-2.5 h-2.5 inline ml-1 text-primary/50" />}</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-foreground hidden md:table-cell max-w-[180px]" onDoubleClick={(e) => { e.stopPropagation(); setEditingCell({ rowIdx: realIdx, field: "h1" }); }}>
+                              {editingCell?.rowIdx === realIdx && editingCell.field === "h1" ? (
+                                <input
+                                  autoFocus
+                                  className="w-full bg-card border border-primary/40 rounded px-1 py-0.5 text-xs text-foreground outline-none"
+                                  defaultValue={row.h1}
+                                  onBlur={(e) => { updateRow(realIdx, "h1", e.target.value); setEditingCell(null); }}
+                                  onKeyDown={(e) => { if (e.key === "Enter") { updateRow(realIdx, "h1", (e.target as HTMLInputElement).value); setEditingCell(null); } if (e.key === "Escape") setEditingCell(null); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              ) : (
+                                <span className="truncate block">{row.h1}</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 hidden lg:table-cell">
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                row.duplicateRisk === "high" ? "bg-red-500/10 text-red-400"
+                                : row.duplicateRisk === "medium" ? "bg-yellow-500/10 text-yellow-400"
+                                : "bg-emerald-500/10 text-emerald-400"
+                              }`}>
+                                {row.duplicateRisk === "high" ? "Высокий" : row.duplicateRisk === "medium" ? "Средний" : "Низкий"}
+                              </span>
+                            </td>
+                            <td className="py-2 px-2 hidden sm:table-cell">
+                              {row.aiGenerated && <Brain className="w-3 h-3 text-primary" />}
+                            </td>
+                            <td className="py-2 px-2">
+                              {previewIdx === i ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+
+                <p className="text-[10px] text-muted-foreground">Дважды кликните по Title или H1 для редактирования</p>
 
                 {rows.length > 10 && !showAll && (
                   <button onClick={() => setShowAll(true)} className="text-xs text-primary hover:underline">
