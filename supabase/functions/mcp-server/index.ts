@@ -1,6 +1,7 @@
-import { Hono } from "npm:hono@4.4.0";
+import { Hono } from "npm:hono@4.6.14";
 import { McpServer, StreamableHttpTransport } from "npm:mcp-lite@^0.10.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { createClient } from "npm:@supabase/supabase-js@2.89.0";
+import { z } from "npm:zod@3.25.76";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -21,7 +22,7 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-function headers() {
+function apiHeaders() {
   return {
     "Content-Type": "application/json",
     apikey: SUPABASE_ANON_KEY,
@@ -29,28 +30,21 @@ function headers() {
 }
 
 // ─── MCP Server ───────────────────────────────────────
-const mcpServer = new McpServer({ name: "owndev", version: "1.0.0" });
+const mcp = new McpServer({ name: "owndev", version: "1.0.0" });
 
 // Tool 1: geo_audit
-mcpServer.tool({
-  name: "geo_audit",
+mcp.tool("geo_audit", {
   description:
     "Запускает полный GEO и AI-ready аудит сайта. Возвращает SEO Score, LLM Score, Schema Score, список ошибок и рекомендации.",
-  inputSchema: {
-    type: "object" as const,
-    properties: {
-      url: { type: "string" as const, description: "URL сайта для проверки" },
-      theme: { type: "string" as const, description: "Тематика сайта (опционально)" },
-    },
-    required: ["url"],
-  },
-  handler: async (args: Record<string, unknown>) => {
-    const url = args.url as string;
+  inputSchema: z.object({
+    url: z.string().describe("URL сайта для проверки"),
+    theme: z.string().optional().describe("Тематика сайта (опционально)"),
+  }),
+  handler: async ({ url }) => {
     try {
-      // Start scan
       const startResp = await fetch(`${SUPABASE_URL}/functions/v1/site-check-scan/start`, {
         method: "POST",
-        headers: headers(),
+        headers: apiHeaders(),
         body: JSON.stringify({ url, mode: "page" }),
       });
       if (!startResp.ok) {
@@ -70,11 +64,13 @@ mcpServer.tool({
         elapsed += interval;
         const statusResp = await fetch(
           `${SUPABASE_URL}/functions/v1/site-check-scan/status/${scan_id}`,
-          { headers: headers() }
+          { headers: apiHeaders() }
         );
         if (statusResp.ok) {
           const data = await statusResp.json();
           status = data.status;
+        } else {
+          await statusResp.text();
         }
       }
 
@@ -84,7 +80,6 @@ mcpServer.tool({
         };
       }
 
-      // Fetch full results
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       const { data: scan, error } = await supabase.from("scans").select("*").eq("id", scan_id).maybeSingle();
       if (error || !scan) {
@@ -126,18 +121,12 @@ mcpServer.tool({
 });
 
 // Tool 2: check_llms_txt
-mcpServer.tool({
-  name: "check_llms_txt",
+mcp.tool("check_llms_txt", {
   description: "Проверяет наличие и валидность файла llms.txt на сайте",
-  inputSchema: {
-    type: "object" as const,
-    properties: {
-      url: { type: "string" as const, description: "Домен для проверки (например https://example.com)" },
-    },
-    required: ["url"],
-  },
-  handler: async (args: Record<string, unknown>) => {
-    const rawUrl = args.url as string;
+  inputSchema: z.object({
+    url: z.string().describe("Домен для проверки (например https://example.com)"),
+  }),
+  handler: async ({ url: rawUrl }) => {
     let domain: string;
     try {
       const u = new URL(rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`);
@@ -167,7 +156,7 @@ mcpServer.tool({
           results.push("");
         } else {
           results.push(`## ❌ ${file} — не найден (HTTP ${resp.status})`);
-          await resp.text(); // consume body
+          await resp.text();
           results.push("");
         }
       } catch (e) {
@@ -177,8 +166,7 @@ mcpServer.tool({
     }
 
     results.push("## Рекомендации");
-    results.push("- Создайте файл llms.txt в корне сайта для AI-краулеров (ChatGPT, Claude, Perplexity).");
-    results.push("- Используйте формат: заголовок, описание, ссылки на ключевые страницы.");
+    results.push("- Создайте файл llms.txt в корне сайта для AI-краулеров.");
     results.push("- Подробнее: https://llmstxt.org/");
 
     return { content: [{ type: "text" as const, text: results.join("\n") }] };
@@ -186,109 +174,63 @@ mcpServer.tool({
 });
 
 // Tool 3: generate_schema
-mcpServer.tool({
-  name: "generate_schema",
+mcp.tool("generate_schema", {
   description: "Генерирует JSON-LD Schema.org разметку для сайта",
-  inputSchema: {
-    type: "object" as const,
-    properties: {
-      url: { type: "string" as const, description: "URL страницы" },
-      type: {
-        type: "string" as const,
-        enum: ["Organization", "LocalBusiness", "FAQPage", "Article", "Product", "SoftwareApplication"],
-        description: "Тип схемы",
-      },
-    },
-    required: ["url", "type"],
-  },
-  handler: async (args: Record<string, unknown>) => {
-    const url = args.url as string;
-    const type = args.type as string;
-
+  inputSchema: z.object({
+    url: z.string().describe("URL страницы"),
+    type: z.enum(["Organization", "LocalBusiness", "FAQPage", "Article", "Product", "SoftwareApplication"]).describe("Тип схемы"),
+  }),
+  handler: async ({ url, type }) => {
     const templates: Record<string, object> = {
       Organization: {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        name: "Название компании",
-        url,
-        logo: `${url}/logo.png`,
-        description: "Описание компании",
+        "@context": "https://schema.org", "@type": "Organization",
+        name: "Название компании", url,
+        logo: `${url}/logo.png`, description: "Описание компании",
         sameAs: ["https://vk.com/company", "https://t.me/company"],
         contactPoint: { "@type": "ContactPoint", telephone: "+7-XXX-XXX-XX-XX", contactType: "customer service" },
       },
       LocalBusiness: {
-        "@context": "https://schema.org",
-        "@type": "LocalBusiness",
-        name: "Название бизнеса",
-        url,
-        image: `${url}/photo.jpg`,
-        telephone: "+7-XXX-XXX-XX-XX",
+        "@context": "https://schema.org", "@type": "LocalBusiness",
+        name: "Название бизнеса", url, telephone: "+7-XXX-XXX-XX-XX",
         address: { "@type": "PostalAddress", streetAddress: "ул. Примерная, 1", addressLocality: "Москва", postalCode: "101000", addressCountry: "RU" },
-        openingHoursSpecification: { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "09:00", closes: "18:00" },
       },
       FAQPage: {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
+        "@context": "https://schema.org", "@type": "FAQPage",
         mainEntity: [
-          { "@type": "Question", name: "Вопрос 1?", acceptedAnswer: { "@type": "Answer", text: "Ответ на вопрос 1." } },
-          { "@type": "Question", name: "Вопрос 2?", acceptedAnswer: { "@type": "Answer", text: "Ответ на вопрос 2." } },
+          { "@type": "Question", name: "Вопрос 1?", acceptedAnswer: { "@type": "Answer", text: "Ответ 1." } },
+          { "@type": "Question", name: "Вопрос 2?", acceptedAnswer: { "@type": "Answer", text: "Ответ 2." } },
         ],
       },
       Article: {
-        "@context": "https://schema.org",
-        "@type": "Article",
-        headline: "Заголовок статьи",
-        url,
-        image: `${url}/article-image.jpg`,
+        "@context": "https://schema.org", "@type": "Article",
+        headline: "Заголовок статьи", url,
         author: { "@type": "Person", name: "Имя автора" },
-        publisher: { "@type": "Organization", name: "Издатель", logo: { "@type": "ImageObject", url: `${url}/logo.png` } },
         datePublished: new Date().toISOString().split("T")[0],
-        dateModified: new Date().toISOString().split("T")[0],
-        description: "Краткое описание статьи",
       },
       Product: {
-        "@context": "https://schema.org",
-        "@type": "Product",
-        name: "Название продукта",
-        url,
-        image: `${url}/product.jpg`,
-        description: "Описание продукта",
-        brand: { "@type": "Brand", name: "Бренд" },
+        "@context": "https://schema.org", "@type": "Product",
+        name: "Название продукта", url, description: "Описание",
         offers: { "@type": "Offer", price: "1000", priceCurrency: "RUB", availability: "https://schema.org/InStock" },
       },
       SoftwareApplication: {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        name: "Название приложения",
-        url,
-        applicationCategory: "BusinessApplication",
-        operatingSystem: "Web",
+        "@context": "https://schema.org", "@type": "SoftwareApplication",
+        name: "Название приложения", url, applicationCategory: "BusinessApplication",
         offers: { "@type": "Offer", price: "0", priceCurrency: "RUB" },
-        aggregateRating: { "@type": "AggregateRating", ratingValue: "4.8", ratingCount: "150" },
       },
     };
 
     const schema = templates[type];
     if (!schema) {
-      return { content: [{ type: "text" as const, text: `Неизвестный тип схемы: ${type}` }] };
+      return { content: [{ type: "text" as const, text: `Неизвестный тип: ${type}` }] };
     }
 
     const jsonLd = JSON.stringify(schema, null, 2);
     const text = [
-      `# JSON-LD разметка: ${type}`,
-      "",
-      "Вставьте этот код в `<head>` вашей страницы:",
-      "",
-      "```html",
-      `<script type="application/ld+json">`,
-      jsonLd,
-      `</script>`,
-      "```",
-      "",
-      "## Рекомендации",
-      "- Замените placeholder-значения на реальные данные",
-      "- Проверьте разметку: https://search.google.com/test/rich-results",
-      "- JSON-LD помогает поисковикам и AI-системам лучше понимать ваш контент",
+      `# JSON-LD: ${type}`,
+      "", "Вставьте в `<head>`:", "",
+      "```html", `<script type="application/ld+json">`, jsonLd, `</script>`, "```",
+      "", "Замените placeholder-значения на реальные данные.",
+      "Проверка: https://search.google.com/test/rich-results",
     ].join("\n");
 
     return { content: [{ type: "text" as const, text }] };
@@ -318,18 +260,13 @@ app.all("/*", async (c) => {
     });
   }
 
-  const response = await transport.handleRequest(c.req.raw, mcpServer);
-
-  // Add CORS headers to response
+  const response = await transport.handleRequest(c.req.raw, mcp);
   const newHeaders = new Headers(response.headers);
   for (const [k, v] of Object.entries(corsHeaders)) {
     newHeaders.set(k, v);
   }
 
-  return new Response(response.body, {
-    status: response.status,
-    headers: newHeaders,
-  });
+  return new Response(response.body, { status: response.status, headers: newHeaders });
 });
 
 Deno.serve(app.fetch);
