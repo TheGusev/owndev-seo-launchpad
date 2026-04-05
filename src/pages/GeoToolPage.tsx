@@ -117,7 +117,7 @@ const GeoToolPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              {tool.name} в <span className="text-gradient">{region.nameCase}</span>
+              {tool.name} в <span className="heading-highlight-gradient">{region.nameCase}</span>
             </motion.h1>
             <motion.p
               className="text-muted-foreground text-lg max-w-2xl mx-auto"

@@ -99,10 +99,17 @@ const ToolPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              {h1}
+              {(() => {
+                const words = h1.split(' ');
+                if (words.length >= 2) {
+                  const last = words.pop()!;
+                  return <>{words.join(' ')} <span className="heading-highlight-gradient">{last}</span></>;
+                }
+                return h1;
+              })()}
             </motion.h1>
             <motion.p
-              className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto"
+              className="text-muted-foreground text-[clamp(0.9rem,2.5vw,1.1rem)] leading-relaxed max-w-lg mx-auto"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}

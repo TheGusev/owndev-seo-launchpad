@@ -1,15 +1,15 @@
-import { ChevronDown, ChevronUp, CheckCircle2, Copy, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, ChevronUp, CheckCircle2, Copy, ExternalLink, Circle } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import AutoFixGenerator from "@/components/site-check/AutoFixGenerator";
 import type { IssueCard as IssueCardType } from "@/lib/site-check-types";
 
-const severityConfig = {
-  critical: { emoji: "🔴", label: "Критично", badgeClass: "bg-red-500/20 text-red-400", borderClass: "border-red-500/30" },
-  high: { emoji: "🟠", label: "Важно", badgeClass: "bg-orange-500/20 text-orange-400", borderClass: "border-orange-500/30" },
-  medium: { emoji: "🟡", label: "Средне", badgeClass: "bg-yellow-500/20 text-yellow-400", borderClass: "border-yellow-500/30" },
-  low: { emoji: "⚪", label: "Мелко", badgeClass: "bg-gray-500/20 text-gray-400", borderClass: "border-border/30" },
+const severityConfig: Record<string, { icon: ReactNode; label: string; badgeClass: string; borderClass: string }> = {
+  critical: { icon: <Circle className="w-3 h-3 fill-red-500 text-red-500" />, label: "Критично", badgeClass: "bg-red-500/20 text-red-400", borderClass: "border-red-500/30" },
+  high: { icon: <Circle className="w-3 h-3 fill-orange-500 text-orange-500" />, label: "Важно", badgeClass: "bg-orange-500/20 text-orange-400", borderClass: "border-orange-500/30" },
+  medium: { icon: <Circle className="w-3 h-3 fill-yellow-500 text-yellow-500" />, label: "Средне", badgeClass: "bg-yellow-500/20 text-yellow-400", borderClass: "border-yellow-500/30" },
+  low: { icon: <Circle className="w-3 h-3 fill-muted text-muted-foreground" />, label: "Мелко", badgeClass: "bg-gray-500/20 text-gray-400", borderClass: "border-border/30" },
 };
 
 const categoryConfig: Record<string, { label: string; className: string }> = {
@@ -69,7 +69,7 @@ const IssueCardComponent = ({ issue, resolved = false, onToggle, siteUrl, pageTi
         {resolved ? (
           <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
         ) : (
-          <span className="text-lg mt-0.5">{sev.emoji}</span>
+          <span className="mt-1 shrink-0">{sev.icon}</span>
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
