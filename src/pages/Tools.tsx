@@ -149,7 +149,12 @@ const Tools = () => {
                         <tool.icon className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{tool.name}</h3>
+                        <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
+                          {tool.name}
+                          {tool.slug === "mcp-server" && (
+                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-primary/20 text-primary align-middle">NEW</span>
+                          )}
+                        </h3>
                         <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
                       </div>
                     </div>
