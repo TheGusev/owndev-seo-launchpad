@@ -83,13 +83,16 @@ export const tools: ToolDef[] = [
   // ===== GENERATION =====
   {
     id: "pseo-generator", slug: "pseo-generator",
-    name: "pSEO Generator",
-    shortDesc: "Генерация структуры GEO‑страниц: slug, title, h1, meta, шаблон текста",
+    name: "Генератор GEO-страниц",
+    shortDesc: "Создаёт структуру сотен SEO-страниц под города, услуги и кластеры спроса",
     category: "generation", icon: Sparkles,
     component: lazy(() => import("@/components/tools/PSEOGenerator")),
     gradient: "bg-gradient-to-br from-violet-950/40 to-purple-950/40",
-    useCases: ["Старт нового pSEO‑проекта", "Разработка структуры для копирайтеров", "Подготовка импорта в CMS"],
+    useCases: ["Масштабирование локального SEO", "Создание страниц под города и услуги", "Экспорт в CSV / JSON"],
     geoEnabled: false, status: "active",
+    seoTitle: "Генератор GEO-страниц — массовое создание посадочных | OWNDEV",
+    seoDescription: "Создайте сотни уникальных SEO-страниц под города и услуги: slug, title, H1, FAQ, Schema — готово к публикации.",
+    seoH1: "Генератор GEO-страниц для роста трафика",
   },
   {
     id: "schema-generator", slug: "schema-generator",
