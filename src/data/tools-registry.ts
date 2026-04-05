@@ -1,4 +1,4 @@
-import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye, ClipboardList } from "lucide-react";
+import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye, ClipboardList, Plug } from "lucide-react";
 import { lazy, type ComponentType } from "react";
 
 export type ToolStatus = "active" | "coming_soon";
@@ -257,6 +257,19 @@ export const tools: ToolDef[] = [
     seoTitle: "AI Content Brief Generator — ТЗ для копирайтера | OWNDEV",
     seoDescription: "Генератор контент-брифа на основе AI: структура, ключи, GEO-рекомендации. Бесплатно.",
     seoH1: "AI Content Brief Generator",
+  },
+  {
+    id: "mcp-server", slug: "mcp-server",
+    name: "MCP Server",
+    shortDesc: "Подключите OWNDEV к Claude, ChatGPT и другим AI-агентам через Model Context Protocol",
+    category: "webmaster", icon: Plug,
+    component: lazy(() => import("@/components/tools/MCPServerDocs")),
+    gradient: "bg-gradient-to-br from-indigo-950/40 to-violet-950/40",
+    useCases: ["Интеграция с Claude Desktop", "Программный запуск аудита", "API для AI-агентов"],
+    geoEnabled: false, status: "active",
+    seoTitle: "MCP Server — подключите OWNDEV к AI-агентам | OWNDEV",
+    seoDescription: "Запускайте GEO-аудит прямо из Claude, ChatGPT или любого MCP-совместимого клиента. Model Context Protocol для OWNDEV.",
+    seoH1: "MCP Server — подключите OWNDEV к AI-агентам",
   },
 ];
 
