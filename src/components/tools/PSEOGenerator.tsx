@@ -451,12 +451,32 @@ const PSEOGenerator = () => {
     toast({ title: "JSON скачан" });
   };
 
+  const handleExportXLSX = () => {
+    const data = rows.map(r => ({
+      city: r.city, service: r.service, slug: r.slug, title: r.title,
+      meta_description: r.metaDescription, h1: r.h1, h2_1: r.h2_1, h2_2: r.h2_2,
+      intro: r.intro || "", faq_1_q: r.faq[0]?.q || "", faq_1_a: r.faq[0]?.a || "",
+      faq_2_q: r.faq[1]?.q || "", faq_2_a: r.faq[1]?.a || "",
+      schema_type: r.schemaType, cta: r.cta, duplicate_risk: r.duplicateRisk,
+      ai_generated: r.aiGenerated ? "yes" : "no", edited: r.edited ? "yes" : "no",
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "GEO Pages");
+    XLSX.writeFile(wb, "geo-pages.xlsx");
+    toast({ title: "XLSX скачан" });
+  };
+
   const handleCopyTable = async () => {
     const text = rows.map(r => `${r.slug}\t${r.title}\t${r.h1}\t${r.metaDescription}`).join("\n");
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({ title: "Скопировано в буфер" });
+  };
+
+  const updateRow = (idx: number, field: string, value: string) => {
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value, edited: true } : r));
   };
 
   const displayedRows = showAll ? rows : rows.slice(0, 10);
