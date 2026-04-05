@@ -26,6 +26,7 @@ import Offer from "./pages/Offer";
 import Refund from "./pages/Refund";
 import Contacts from "./pages/Contacts";
 import GeoAudit from "./pages/GeoAudit";
+import GeoRating from "./pages/GeoRating";
 import Academy from "./pages/Academy";
 import AcademyLesson from "./pages/AcademyLesson";
 import BorderBot from "@/components/mascot/BorderBot";
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/geo-audit" element={<GeoAudit />} />
+            <Route path="/geo-rating" element={<GeoRating />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/site-check" element={<SiteCheck />} />
             <Route path="/academy" element={<Academy />} />
