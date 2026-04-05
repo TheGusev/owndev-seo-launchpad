@@ -1,106 +1,106 @@
 
 
-## Полный редизайн pSEO Generator → «Генератор GEO-страниц»
+## AI-генерация уникального контента для GEO-страниц
 
 ### Обзор
 
-Текущий PSEOGenerator — простая форма (ниша + города → таблица slug/title/h1/meta). Нужно превратить его в полноценный 4-шаговый мастер с hero-блоком, preview, проверкой качества и множественным экспортом.
+Сейчас PSEOGenerator создаёт шаблонные тексты (одинаковые паттерны "Услуга в Городе" для всех страниц). Нужно добавить опциональную AI-генерацию уникального контента через существующую Edge Function `generate-text`, которая уже подключена к Lovable AI.
+
+### Архитектура
+
+Страниц может быть до 500, поэтому генерировать контент для каждой по отдельности — слишком дорого и медленно. Решение: **батчевая генерация** — отправляем один запрос на группу из 5-10 страниц, просим LLM вернуть уникальные тексты для каждой.
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/data/tools-registry.ts` | Переименовать name/shortDesc/useCases |
-| `src/components/tools/PSEOGenerator.tsx` | Полная перезапись — 4-шаговый мастер |
+| `supabase/functions/generate-geo-content/index.ts` | Новая Edge Function для батчевой генерации |
+| `src/components/tools/PSEOGenerator.tsx` | Добавить AI-режим, прогресс, обновлённый UI |
 
-### 1. Переименование в tools-registry
+### 1. Новая Edge Function `generate-geo-content`
 
-```
-name: "Генератор GEO-страниц"
-shortDesc: "Создаёт структуру сотен SEO-страниц под города, услуги и кластеры спроса"
-seoH1: "Генератор GEO-страниц для роста трафика"
-useCases: ["Масштабирование локального SEO", "Создание страниц под города и услуги", "Экспорт в CSV / JSON / WordPress"]
-```
+Принимает массив страниц (до 10 за запрос), нишу, тональность и блоки контента. Возвращает уникальные тексты для каждой:
 
-### 2. Полная перезапись PSEOGenerator.tsx
-
-**Структура компонента:**
-
-```
-Hero (serif заголовок + gradient highlight + 3 value-pills)
-↓
-Sticky Step Indicator (1/2/3/4)
-↓
-Step 1: "Что генерируем" — ниша, услуги, города, тип страниц
-Step 2: "Структура" — тональность, блоки (FAQ, Schema, CTA...), формат URL
-Step 3: "Предпросмотр" — счётчик страниц + preview одной страницы + кнопка генерации
-Step 4: "Результат" — таблица, preview карточка, качество, экспорт, CTA на другие инструменты
-```
-
-**Hero-блок:**
-- Serif заголовок: `Генератор <span class="heading-highlight-gradient">GEO-страниц</span> для роста трафика`
-- Подзаголовок о результате
-- 3 pill-бейджа: "До 500 страниц", "Антидубли", "Экспорт CSV/JSON"
-
-**Step 1 — Что генерируем:**
-- Ниша (select + custom input)
-- Основные услуги (textarea, по одной на строку)
-- Города/локации (textarea)
-- Тип страниц (radio-group): услуга+город, категория+город, район, филиал
-
-**Step 2 — Структура:**
-- Тональность (select: строгая / коммерческая / экспертная)
-- Чекбоксы блоков: intro, преимущества, цены, FAQ, отзывы, schema, CTA
-- Формат URL (radio: /service/city, /city/service, /service-in-city)
-
-**Step 3 — Предпросмотр:**
-- Блок "Что будет создано": N страниц, N titles, N FAQ, 1 CSV
-- Preview-карточка одной страницы (slug, title, h1, description, FAQ, schema type)
-- Кнопка "Создать GEO-страницы"
-
-**Step 4 — Результат:**
-- Таблица результатов (первые 10 + "Ещё +N")
-- Красивый preview одной страницы по клику
-- Блок "Проверка качества": уникальность title/h1, риск дублей (цветные статусы)
-- Экспорт: CSV, JSON, Copy as table (grid кнопок)
-- CTA-ссылки на GEO-аудит, Anti-Duplicate, Семантику
-
-**Генерация данных (расширенная):**
-Расширить `PageRow` до:
 ```typescript
-interface PageRow {
-  slug: string;
-  title: string;
-  h1: string;
-  metaDescription: string;
-  h2_1: string;
-  h2_2: string;
-  faq: Array<{q: string, a: string}>;
-  schemaType: string;
-  cta: string;
-  duplicateRisk: 'low' | 'medium' | 'high';
+// Input:
+{ 
+  pages: [{city, service, slug}], // до 10 штук
+  niche: string,
+  tone: "commercial" | "strict" | "expert",
+  blocks: string[] // ["intro","faq","cta"]
+}
+
+// Output (structured via tool calling):
+{
+  results: [{
+    slug: string,
+    title: string,       // уникальный, до 60 символов
+    metaDescription: string, // уникальный, до 160 символов
+    h1: string,
+    h2_1: string,
+    h2_2: string,
+    intro?: string,      // 2-3 предложения
+    faq?: [{q, a}, {q, a}],
+    cta?: string
+  }]
 }
 ```
 
-Генерация FAQ (2-3 вопроса на страницу из шаблонов), schema type (Service/FAQPage), CTA текст. Оценка риска дублей — сравнение title uniqueness (если >80% совпадение → high risk).
+Используем `tool_choice` для структурированного вывода (как в документации Lovable AI). Модель: `google/gemini-3-flash-preview` (быстрая, дешёвая).
 
-**Экспорт:**
-- CSV с колонками: city, service, slug, title, meta_description, h1, h2_1, h2_2, faq_1_q, faq_1_a, faq_2_q, faq_2_a, schema_json, cta, duplicate_risk
-- JSON (массив объектов)
-- Copy table (clipboard API)
+### 2. Изменения в PSEOGenerator.tsx
 
-**Мобильный UX:**
-- Sticky progress bar наверху
-- Каждый шаг в отдельной glass-карточке
-- "Далее" кнопка переключает шаги
-- Валидация: следующий шаг недоступен без заполнения предыдущего
+**Step 2 — новый переключатель:**
+- Добавить toggle "AI-контент" (по умолчанию выключен)
+- Когда включён: генерация идёт через Edge Function батчами
+- Когда выключен: всё работает как раньше (шаблоны)
 
-**Информационные блоки (аккордеоны внизу):**
-- "Зачем нужен инструмент" — для сетей, агентств, франшиз
-- "Когда особенно полезен" — 10+ городов, 5+ услуг
-- "Что создаёт" — список полей
+**Step 3 — предупреждение:**
+- Если AI включён, показать: "AI сгенерирует уникальные тексты для каждой страницы. Это займёт ~{estimate} секунд."
+- Оценка: `Math.ceil(totalPages / 8) * 3` секунд
 
-### Объём
+**Кнопка генерации:**
+- Шаблон: "Создать GEO-страницы" (мгновенно)
+- AI: "Создать с AI-контентом" (с прогрессом)
 
-Один файл `PSEOGenerator.tsx` — полная перезапись (~400-500 строк). Плюс обновление записи в `tools-registry.ts`. Всё клиентское, без backend-изменений.
+**Прогресс AI-генерации:**
+- Progress bar: "Генерация контента: {done}/{total} страниц..."
+- Батчи по 8 страниц, последовательно (чтобы не превысить rate limit)
+- Задержка 1.5с между батчами
+- Если батч упал — fallback на шаблон для этих страниц
+
+**Step 4 — маркер AI:**
+- В таблице результатов добавить колонку/бейдж "AI" для страниц с AI-контентом
+- В PreviewCard показывать intro-текст если он есть
+- Экспорт CSV/JSON включает все AI-поля (intro, уникальные FAQ)
+
+### Детали реализации
+
+**Батчевая обработка (фронтенд):**
+```typescript
+const generateWithAI = async (templateRows: PageRow[]) => {
+  const batches = chunk(templateRows, 8);
+  const results: PageRow[] = [];
+  
+  for (const batch of batches) {
+    try {
+      const { data } = await supabase.functions.invoke('generate-geo-content', {
+        body: { pages: batch.map(r => ({city: r.city, service: r.service, slug: r.slug})), niche, tone, blocks }
+      });
+      // Merge AI data into template rows
+      results.push(...mergeAIResults(batch, data.results));
+    } catch {
+      // Fallback: use template rows as-is
+      results.push(...batch);
+    }
+    setProgress(results.length);
+    if (batches.indexOf(batch) < batches.length - 1) await delay(1500);
+  }
+  return results;
+};
+```
+
+**Ограничения:**
+- Максимум 50 страниц с AI-контентом (свыше — предупреждение о времени и стоимости)
+- Rate limit handling: 429 → pause 5s, retry once
 
