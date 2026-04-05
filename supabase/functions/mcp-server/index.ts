@@ -1,4 +1,4 @@
-import { Hono } from "https://deno.land/x/hono@v4.4.0/mod.ts";
+import { Hono } from "npm:hono@4.4.0";
 import { McpServer, StreamableHttpTransport } from "npm:mcp-lite@^0.10.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
