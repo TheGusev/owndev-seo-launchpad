@@ -1,61 +1,40 @@
 
 
-## Новый инструмент: AI Content Brief Generator (`/tools/content-brief`)
+## Inline-редактирование + XLSX-экспорт для Генератора GEO-страниц
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/data/tools-registry.ts` | Добавить запись `content-brief` в массив tools + в TECHNICAL_SLUGS на странице Tools |
-| `src/components/tools/ContentBriefGenerator.tsx` | Новый компонент — форма + отображение результата |
-| `supabase/functions/generate-content-brief/index.ts` | Новая Edge Function — генерация брифа через Lovable AI |
-| `src/pages/Tools.tsx` | Добавить `content-brief` в `TECHNICAL_SLUGS` |
+| `src/components/tools/PSEOGenerator.tsx` | Добавить inline editing в таблицу + XLSX export кнопку |
 
-### 1. tools-registry.ts — новая запись
+### 1. Inline-редактирование
 
-```
-id: "content-brief", slug: "content-brief",
-name: "AI Content Brief Generator",
-shortDesc: "ТЗ для копирайтера на основе AI-анализа: структура, ключи, GEO-рекомендации",
-category: "content", icon: PenTool,
-component: lazy(() => import("@/components/tools/ContentBriefGenerator")),
-useCases: ["Создание ТЗ для копирайтера", "Структура статьи под AI-выдачу", "GEO-оптимизация контента"],
-geoEnabled: false, status: "active",
-seoTitle: "AI Content Brief Generator — ТЗ для копирайтера | OWNDEV",
-seoDescription: "Генератор контент-брифа на основе AI: структура, ключи, GEO-рекомендации. Бесплатно.",
-seoH1: "AI Content Brief Generator"
-```
+**Механика:** двойной клик по ячейке Title/H1/Description → ячейка превращается в `<input>` / `<textarea>`. При blur или Enter — сохраняет значение в `rows` state. Escape — отмена.
 
-### 2. Edge Function `generate-content-brief`
+- Новый state: `editingCell: {rowIdx: number, field: string} | null`
+- При двойном клике на ячейку Title/H1 в таблице — показать input вместо текста
+- При клике на строку (для preview) — оставить одинарный клик, двойной — для редактирования
+- Отредактированные ячейки получают визуальный маркер (мелкая иконка Pencil или border-left цветной)
+- Новое поле в `PageRow`: `edited?: boolean` — чтобы отмечать изменённые строки
+- Функция `updateRow(idx, field, value)` — обновляет `rows` через `setRows`
+- В PreviewCard тоже сделать поля кликабельными для редактирования (inline inputs)
 
-- Принимает `{ query, url?, contentType }` 
-- Валидация: query обязателен, contentType из whitelist
-- Системный промт: эксперт по GEO/SEO-копирайтингу
-- Tool calling для структурированного JSON-вывода (title_variants, meta_title, meta_description, target_word_count, structure, must_include, keywords_primary, keywords_secondary, questions_to_answer, geo_recommendations, schema_suggestion, tone, competitor_angles)
-- Модель: `google/gemini-3-flash-preview`, temperature: 0.3
-- Обработка 429/402 ошибок
+### 2. XLSX-экспорт
 
-### 3. ContentBriefGenerator.tsx (~350 строк)
+**Подход:** генерация XLSX на клиенте через библиотеку `xlsx` (SheetJS).
 
-**Форма:**
-- Input: "Целевой запрос" (обязательное)
-- Input: "URL вашего сайта" (опциональное)
-- Select: "Тип контента" — Статья / Лендинг / Карточка товара / FAQ-страница
-- GradientButton: "Сгенерировать бриф"
+- Установить `xlsx` npm пакет
+- Новая функция `handleExportXLSX()`:
+  - Создать worksheet из массива `rows` с теми же колонками что в CSV
+  - Добавить заголовки колонок
+  - Скачать как `geo-pages.xlsx`
+- Новая кнопка в grid экспорта (рядом с CSV/JSON/Copy): `XLSX` с иконкой `FileSpreadsheet`
 
-**Отображение результата (после генерации):**
+### 3. UI изменения в Step 4
 
-1. **Верхняя панель** — 3 бейджа: объём слов, schema type, тон
-2. **Заголовки** — 3 варианта H1 в glass-карточках с кнопкой "Копировать", Meta Title + Description с индикатором длины
-3. **Структура статьи** — аккордеоны H2-секций с описанием и min_words
-4. **Ключевые слова** — основные (крупные теги) + вторичные (мелкие), кнопка "Копировать все"
-5. **Вопросы для AI-цитирования** — нумерованный список + подсказка
-6. **GEO-рекомендации** — чек-лист с Lucide-иконками (CheckCircle2 / AlertTriangle)
-7. **Экспорт** — "Скачать бриф (TXT)" + "Копировать бриф"
-
-**Стиль:** dark glassmorphism, бирюзовые акценты, hover border-glow на карточках заголовков.
-
-### 4. Tools.tsx
-
-Добавить `"content-brief"` в массив `TECHNICAL_SLUGS`.
+- Таблица: ячейки Title и H1 получают `onDoubleClick` → переключение в edit mode
+- Подсказка под таблицей: "Дважды кликните для редактирования"
+- Grid кнопок экспорта: 4 кнопки вместо 3 (+ XLSX)
+- Import `FileSpreadsheet` из lucide-react
 
