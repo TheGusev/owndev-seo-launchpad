@@ -121,7 +121,11 @@ const Blog = () => {
                   >
                     <Link to={`/blog/${post.slug}`}>
                       <article className="glass rounded-xl overflow-hidden hover:border-primary/40 transition-all duration-300 group h-full flex flex-col">
-                        <DefaultBlogCover title={post.title} category={post.tags[0]} />
+                        {post.coverImage ? (
+                          <img src={post.coverImage} alt={post.title} className="w-full h-44 object-cover" loading="lazy" />
+                        ) : (
+                          <DefaultBlogCover title={post.title} category={post.tags[0]} />
+                        )}
                         <div className="p-5 flex-1 flex flex-col">
                           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
                             <span>{new Date(post.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span>
