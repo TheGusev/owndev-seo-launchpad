@@ -716,12 +716,15 @@ const PSEOGenerator = () => {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <Button variant="outline" size="sm" onClick={handleExportCSV} className="text-xs">
                       <Download className="w-3 h-3" /> CSV
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleExportJSON} className="text-xs">
                       <FileJson className="w-3 h-3" /> JSON
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleExportXLSX} className="text-xs">
+                      <FileSpreadsheet className="w-3 h-3" /> XLSX
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleCopyTable} className="text-xs">
                       {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
