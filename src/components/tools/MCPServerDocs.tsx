@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-const MCP_URL = `https://${PROJECT_ID}.supabase.co/functions/v1/mcp-server`;
+const MCP_URL = `https://${PROJECT_ID}.supabase.co/functions/v1/mcp-server/mcp`;
 
 const configJson = `{
   "mcpServers": {
