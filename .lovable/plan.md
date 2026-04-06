@@ -1,62 +1,74 @@
 
 
-## AI-генерация обложек для 28 статей блога
+## Безопасный рефакторинг OWNDEV — 3 блока без касания навигации
 
-### Подход
+### Что НЕ трогаем (железное правило)
+- Header.tsx — 0 изменений
+- Мобильный drawer/overlay меню — 0 изменений
+- Кнопка "Проверить сайт" — 0 изменений
+- Блок "Последние проверки" — 0 изменений
+- Порядок и состав пунктов меню — 0 изменений
 
-Использовать AI-модель генерации изображений (Nano banana — `google/gemini-2.5-flash-image`) через скрипт `lovable_ai.py` для создания 28 уникальных обложек. Сгенерированные PNG загрузить в Supabase Storage bucket, затем обновить `coverImage` в каждом кластере на публичные URL.
+---
 
-### Шаги
+### Блок 1: Добавить 4 GEO-сценария на главную
 
-**1. Создать Storage bucket `blog-covers` (SQL миграция)**
-```sql
-INSERT INTO storage.buckets (id, name, public) VALUES ('blog-covers', 'blog-covers', true);
-CREATE POLICY "Public read blog covers" ON storage.objects FOR SELECT USING (bucket_id = 'blog-covers');
-CREATE POLICY "Service upload blog covers" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'blog-covers');
-```
+**Новый компонент:** `src/components/landing/GeoScenarios.tsx`
 
-**2. Сгенерировать 28 изображений через AI Gateway**
+4 карточки-сценария, вставленные в `Index.tsx` между `ServicesTeaser` и `HowItWorks`:
 
-Скрипт: для каждой статьи — промт на английском с описанием темы, стиль: dark tech/futuristic, 800x450, абстрактные формы без текста. Пример промта:
-- LLM-оптимизация → "Abstract dark futuristic illustration: neural network nodes glowing cyan and purple, data streams flowing through a digital brain, dark background, no text"
-- pSEO → "Abstract dark tech illustration: infinite grid of web pages scaling into horizon, city silhouettes, teal glow, no text"
+| Сценарий | Заголовок | Описание | Ссылка |
+|----------|-----------|----------|--------|
+| AI Visibility Audit | Аудит AI-видимости | Проверьте, видит ли ваш сайт ChatGPT, Perplexity и Яндекс Нейро | `/tools/site-check` |
+| AI-Ready Content | AI-ready контент | Создайте контент, который цитируют нейросети: структура, E-E-A-T, FAQ | `/tools/content-brief` |
+| Brand Presence | Присутствие бренда в AI | Узнайте, упоминают ли AI-ассистенты ваш бренд и в каком контексте | `/tools/brand-tracker` |
+| Monitoring | Мониторинг GEO-позиций | Отслеживайте динамику SEO Score и LLM Score еженедельно | `/geo-rating` |
 
-Генерация батчами по 4-5 изображений с паузами (rate limits). Сохранение в `/tmp/covers/`.
+**Стиль:** glass-карточки с иконками, бирюзово-фиолетовые акценты. Не часть меню — только контентные entry-points на главной.
 
-**3. Загрузить в Storage через Edge Function или напрямую**
+**Изменение в Index.tsx:** добавить `<GeoScenarios />` после `<ServicesTeaser />` (строка 77).
 
-Загрузить 28 PNG в bucket `blog-covers` через Supabase JS SDK.
+---
 
-**4. Обновить coverImage во всех 6 кластерных файлах**
+### Блок 2: Перегруппировка /tools по сценариям
 
-Заменить Unsplash URL на Storage URL:
-```
-https://chrsibijgyihualqlabm.supabase.co/storage/v1/object/public/blog-covers/{slug}.png
-```
+**Файл:** `src/pages/Tools.tsx`
+
+Заменить текущее деление "Технические / Вспомогательные" на 4 сценарные группы. Все существующие инструменты остаются доступными, меняется только визуальная группировка:
+
+| Группа | Инструменты (slugs) |
+|--------|---------------------|
+| 🔍 Аудит и анализ | `site-check` (flagship), `seo-auditor`, `competitor-analysis`, `indexation-checker`, `internal-links` |
+| 🧠 AI-видимость и GEO | `brand-tracker`, `content-brief`, `mcp-server` |
+| ⚙️ Генерация и контент | `pseo-generator`, `semantic-core`, `ai-text-generator`, `schema-generator`, `llm-prompt-helper` |
+| 🛠 Утилиты вебмастера | `webmaster-files`, `anti-duplicate`, `position-monitor` |
+
+Flagship-карточка `site-check` остаётся наверху отдельно. Каждая группа — `<h2>` + grid карточек. Collapsible логика сохраняется для утилит.
+
+---
+
+### Блок 3: Улучшение текстов и иерархии
+
+**ServicesTeaser.tsx:** Обновить описания 4 направлений — сделать более конкретными и action-oriented:
+- SEO-аудит → "18 технических проверок + LLM-готовность в одном отчёте"
+- Schema.org → "JSON-LD разметка для Rich Results и AI-цитирования"
+- GEO-готовность → "llms.txt, E-E-A-T, попадание в ответы нейросетей"
+- Яндекс.Директ → "150+ ключей, минус-слова, готовый семантический план"
+
+**ToolsShowcase.tsx (главная):** Обновить подзаголовок с "13 инструментов" на актуальное количество (сейчас в registry 20+ записей, но показываемых ~15). Синхронизировать счётчик.
+
+---
 
 ### Файлы
 
-| Файл | Изменение |
-|------|-----------|
-| SQL миграция | Создать bucket `blog-covers` + RLS |
-| Скрипт генерации (временный) | 28 AI-промтов → 28 PNG |
-| Скрипт загрузки (временный) | Upload в Storage |
-| `src/data/blog/cluster-llm.ts` | Обновить 4 coverImage |
-| `src/data/blog/cluster-ai-overviews.ts` | Обновить 5 coverImage |
-| `src/data/blog/cluster-pseo.ts` | Обновить 4 coverImage |
-| `src/data/blog/cluster-schema.ts` | Обновить 5 coverImage |
-| `src/data/blog/cluster-content.ts` | Обновить 5 coverImage |
-| `src/data/blog/cluster-technical.ts` | Обновить 5 coverImage |
-
-### Стиль обложек
-
-Единый визуальный язык OWNDEV:
-- Тёмный фон (#0a0a0f — #111827)
-- Бирюзово-фиолетовые акценты (cyan/teal + purple gradient)
-- Абстрактные технологичные формы (сети, потоки данных, геометрия)
-- Без текста на изображениях
-- Каждая обложка тематически уникальна под содержание статьи
+| Файл | Действие |
+|------|----------|
+| `src/components/landing/GeoScenarios.tsx` | Новый компонент — 4 карточки сценариев |
+| `src/pages/Index.tsx` | Импорт + вставка GeoScenarios |
+| `src/pages/Tools.tsx` | Перегруппировка по 4 сценариям |
+| `src/components/ServicesTeaser.tsx` | Обновление текстов описаний |
+| `src/components/ToolsShowcase.tsx` | Синхронизация счётчика инструментов |
 
 ### Объём
-1 миграция, ~28 AI-генераций (5-7 минут), обновление 6 файлов кластеров.
+~150 строк новый компонент, ~30 строк правок в Tools.tsx (пересборка массивов), ~10 строк текстовых правок. Header.tsx — 0 изменений.
 
