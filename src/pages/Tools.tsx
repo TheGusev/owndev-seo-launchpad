@@ -54,7 +54,7 @@ const Tools = () => {
     <div className="min-h-screen bg-background overflow-hidden">
       <Helmet>
         <title>Инструменты GEO и AI-ready аудита — бесплатно | OWNDEV</title>
-        <meta name="description" content="13 бесплатных инструментов для GEO-аудита, SEO, AI-видимости и конкурентного анализа. SEO Score + LLM Score. Без регистрации." />
+        <meta name="description" content="15+ бесплатных инструментов для GEO-аудита, SEO, AI-видимости и конкурентного анализа. SEO Score + LLM Score. Без регистрации." />
         <link rel="canonical" href="https://owndev.ru/tools" />
         <meta property="og:url" content="https://owndev.ru/tools" />
         <meta property="og:type" content="website" />
