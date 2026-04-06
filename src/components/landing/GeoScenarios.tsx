@@ -12,6 +12,7 @@ const scenarios = [
     accent: "from-cyan-500/20 to-cyan-500/5",
     iconColor: "text-cyan-400",
     borderColor: "border-cyan-500/20 hover:border-cyan-500/40",
+    glowColor: "group-hover:shadow-[0_0_24px_hsl(187_70%_50%/0.15)]",
   },
   {
     icon: FileText,
@@ -21,6 +22,7 @@ const scenarios = [
     accent: "from-violet-500/20 to-violet-500/5",
     iconColor: "text-violet-400",
     borderColor: "border-violet-500/20 hover:border-violet-500/40",
+    glowColor: "group-hover:shadow-[0_0_24px_hsl(263_70%_50%/0.15)]",
   },
   {
     icon: Megaphone,
@@ -30,6 +32,7 @@ const scenarios = [
     accent: "from-emerald-500/20 to-emerald-500/5",
     iconColor: "text-emerald-400",
     borderColor: "border-emerald-500/20 hover:border-emerald-500/40",
+    glowColor: "group-hover:shadow-[0_0_24px_hsl(160_70%_45%/0.15)]",
   },
   {
     icon: BarChart3,
@@ -39,8 +42,24 @@ const scenarios = [
     accent: "from-amber-500/20 to-amber-500/5",
     iconColor: "text-amber-400",
     borderColor: "border-amber-500/20 hover:border-amber-500/40",
+    glowColor: "group-hover:shadow-[0_0_24px_hsl(38_90%_50%/0.15)]",
   },
 ];
+
+const iconVariants = {
+  rest: { scale: 1, rotate: 0 },
+  hover: { scale: 1.15, rotate: [0, -8, 8, -4, 0], transition: { rotate: { duration: 0.5, ease: "easeInOut" }, scale: { duration: 0.2 } } },
+};
+
+const cardVariants = {
+  rest: { y: 0 },
+  hover: { y: -4, transition: { duration: 0.25, ease: "easeOut" } },
+};
+
+const arrowVariants = {
+  rest: { x: 0, opacity: 0.7 },
+  hover: { x: 4, opacity: 1, transition: { duration: 0.2 } },
+};
 
 const GeoScenarios = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
@@ -75,17 +94,31 @@ const GeoScenarios = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.4, delay: 0.1 * i }}
+              variants={cardVariants}
+              whileHover="hover"
+              initial-state="rest"
               onClick={() => navigate(s.link)}
-              className={`relative p-6 rounded-2xl bg-gradient-to-br ${s.accent} backdrop-blur-sm border ${s.borderColor} transition-all duration-300 group cursor-pointer hover:shadow-lg`}
+              className={`relative p-6 rounded-2xl bg-gradient-to-br ${s.accent} backdrop-blur-sm border ${s.borderColor} transition-shadow duration-300 group cursor-pointer ${s.glowColor}`}
             >
-              <div className={`w-10 h-10 rounded-xl bg-card/60 flex items-center justify-center mb-4 ${s.iconColor}`}>
+              {/* Animated icon */}
+              <motion.div
+                variants={iconVariants}
+                className={`w-10 h-10 rounded-xl bg-card/60 flex items-center justify-center mb-4 ${s.iconColor} relative`}
+              >
                 <s.icon className="w-5 h-5" />
-              </div>
+                {/* Ping ring on hover */}
+                <span className="absolute inset-0 rounded-xl border border-current opacity-0 group-hover:opacity-40 group-hover:animate-ping pointer-events-none" />
+              </motion.div>
+
               <h3 className="font-semibold text-foreground mb-2">{s.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">{s.desc}</p>
-              <span className="inline-flex items-center gap-1 text-sm font-medium text-primary opacity-70 group-hover:opacity-100 transition-opacity duration-300">
-                Перейти <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </span>
+
+              <motion.span
+                variants={arrowVariants}
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary"
+              >
+                Перейти <ArrowRight className="w-3.5 h-3.5" />
+              </motion.span>
             </motion.div>
           ))}
         </div>
