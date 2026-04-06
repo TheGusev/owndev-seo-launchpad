@@ -15,8 +15,30 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 const FLAGSHIP_SLUG = "site-check";
-const TECHNICAL_SLUGS = ["seo-auditor", "indexation-checker", "internal-links", "competitor-analysis", "semantic-core", "schema-generator", "brand-tracker", "content-brief", "mcp-server"];
-const UTILITY_SLUGS = ["pseo-generator", "ai-text-generator", "webmaster-files", "anti-duplicate", "position-monitor", "llm-prompt-helper"];
+
+const TOOL_GROUPS = [
+  {
+    title: "Аудит и анализ",
+    emoji: "🔍",
+    slugs: ["seo-auditor", "competitor-analysis", "indexation-checker", "internal-links"],
+  },
+  {
+    title: "AI-видимость и GEO",
+    emoji: "🧠",
+    slugs: ["brand-tracker", "content-brief", "mcp-server"],
+  },
+  {
+    title: "Генерация и контент",
+    emoji: "⚙️",
+    slugs: ["pseo-generator", "semantic-core", "ai-text-generator", "schema-generator", "llm-prompt-helper"],
+  },
+  {
+    title: "Утилиты вебмастера",
+    emoji: "🛠",
+    slugs: ["webmaster-files", "anti-duplicate", "position-monitor"],
+    collapsible: true,
+  },
+];
 
 const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);
 
