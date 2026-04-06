@@ -7,6 +7,7 @@ import ToolsShowcase from "@/components/ToolsShowcase";
 import Footer from "@/components/Footer";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
+import GeoScenarios from "@/components/landing/GeoScenarios";
 import HowItWorks from "@/components/landing/HowItWorks";
 import ReportValue from "@/components/landing/ReportValue";
 import ComparisonSection from "@/components/landing/ComparisonSection";
@@ -74,6 +75,7 @@ const Index = () => {
       <main>
         <Hero />
         <ServicesTeaser />
+        <GeoScenarios />
         <HowItWorks />
         <Testimonials />
         <ReportValue />

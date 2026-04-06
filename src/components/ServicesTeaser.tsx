@@ -7,7 +7,7 @@ const directions = [
   {
     icon: Search,
     title: "SEO-аудит",
-    desc: "Title, Description, H1-H6, canonical, robots, скорость, изображения, внутренние ссылки — 18 технических параметров.",
+    desc: "18 технических проверок + LLM-готовность в одном отчёте. Title, H1-H6, canonical, скорость, ссылки.",
     badge: "18 проверок",
     accent: "text-blue-400 border-blue-500/20 hover:border-blue-500/30 hover:bg-blue-500/5",
     link: "/tools/seo-auditor",
@@ -15,7 +15,7 @@ const directions = [
   {
     icon: Code2,
     title: "Schema.org разметка",
-    desc: "Organization, LocalBusiness, FAQPage, Product, BreadcrumbList — расширенные сниппеты и AI-индексация.",
+    desc: "JSON-LD разметка для Rich Results и AI-цитирования. Organization, FAQ, Product, BreadcrumbList.",
     badge: "12 типов схем",
     accent: "text-indigo-400 border-indigo-500/20 hover:border-indigo-500/30 hover:bg-indigo-500/5",
     link: "/tools/schema-generator",
@@ -23,7 +23,7 @@ const directions = [
   {
     icon: Bot,
     title: "GEO-готовность",
-    desc: "llms.txt, E-E-A-T, структура контента, AI-видимость — попадание в ответы ChatGPT, Perplexity, Яндекс Нейро.",
+    desc: "llms.txt, E-E-A-T, попадание в ответы нейросетей. Готовность к ChatGPT, Perplexity, Яндекс Нейро.",
     badge: "NEW 2025",
     pulse: true,
     accent: "text-emerald-400 border-emerald-500/20 hover:border-emerald-500/30 hover:bg-emerald-500/5",
@@ -32,7 +32,7 @@ const directions = [
   {
     icon: Target,
     title: "Яндекс.Директ",
-    desc: "Семантическое ядро 150+ запросов, минус-слова по категориям, анализ конкурентов — готово к запуску рекламы.",
+    desc: "150+ ключей, минус-слова, готовый семантический план. Конкуренты и бюджет — готово к запуску.",
     badge: "150 ключей",
     accent: "text-pink-400 border-pink-500/20 hover:border-pink-500/30 hover:bg-pink-500/5",
     link: "/tools/site-check",

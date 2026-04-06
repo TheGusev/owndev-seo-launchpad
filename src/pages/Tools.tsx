@@ -15,22 +15,46 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 const FLAGSHIP_SLUG = "site-check";
-const TECHNICAL_SLUGS = ["seo-auditor", "indexation-checker", "internal-links", "competitor-analysis", "semantic-core", "schema-generator", "brand-tracker", "content-brief", "mcp-server"];
-const UTILITY_SLUGS = ["pseo-generator", "ai-text-generator", "webmaster-files", "anti-duplicate", "position-monitor", "llm-prompt-helper"];
+
+const TOOL_GROUPS = [
+  {
+    title: "Аудит и анализ",
+    emoji: "🔍",
+    slugs: ["seo-auditor", "competitor-analysis", "indexation-checker", "internal-links"],
+  },
+  {
+    title: "AI-видимость и GEO",
+    emoji: "🧠",
+    slugs: ["brand-tracker", "content-brief", "mcp-server"],
+  },
+  {
+    title: "Генерация и контент",
+    emoji: "⚙️",
+    slugs: ["pseo-generator", "semantic-core", "ai-text-generator", "schema-generator", "llm-prompt-helper"],
+  },
+  {
+    title: "Утилиты вебмастера",
+    emoji: "🛠",
+    slugs: ["webmaster-files", "anti-duplicate", "position-monitor"],
+    collapsible: true,
+  },
+];
 
 const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);
 
 const Tools = () => {
-  const [showUtils, setShowUtils] = useState(true);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const flagship = getToolBySlug(FLAGSHIP_SLUG);
-  const technicalTools = TECHNICAL_SLUGS.map(getToolBySlug).filter(Boolean) as typeof tools;
-  const utilityTools = UTILITY_SLUGS.map(getToolBySlug).filter(Boolean) as typeof tools;
+
+  const toggleGroup = (title: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [title]: !prev[title] }));
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       <Helmet>
         <title>Инструменты GEO и AI-ready аудита — бесплатно | OWNDEV</title>
-        <meta name="description" content="13 бесплатных инструментов для GEO-аудита, SEO, AI-видимости и конкурентного анализа. SEO Score + LLM Score. Без регистрации." />
+        <meta name="description" content="15+ бесплатных инструментов для GEO-аудита, SEO, AI-видимости и конкурентного анализа. SEO Score + LLM Score. Без регистрации." />
         <link rel="canonical" href="https://owndev.ru/tools" />
         <meta property="og:url" content="https://owndev.ru/tools" />
         <meta property="og:type" content="website" />
@@ -76,7 +100,7 @@ const Tools = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <span className="text-gradient">13 инструментов</span> GEO и AI‑ready аудита
+              <span className="text-gradient">15+ инструментов</span> GEO и AI‑ready аудита
             </motion.h1>
             <motion.p
               className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto"
@@ -125,97 +149,74 @@ const Tools = () => {
             </motion.section>
           )}
 
-          {/* Section 2 — Technical tools */}
-          <motion.section
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.5 }}
-            className="mb-12"
-          >
-            <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground mb-5">Технические инструменты</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {technicalTools.map((tool, i) => (
-                <motion.div
-                  key={tool.slug}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.06 }}
-                >
-                  <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group block h-full">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <tool.icon className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-                          {tool.name}
-                          {tool.slug === "mcp-server" && (
-                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-primary/20 text-primary align-middle">NEW</span>
-                          )}
-                        </h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
-                      Открыть
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-          </motion.section>
+          {/* Grouped sections */}
+          {TOOL_GROUPS.map((group) => {
+            const groupTools = group.slugs.map(getToolBySlug).filter(Boolean) as typeof tools;
+            const isCollapsed = group.collapsible && collapsedGroups[group.title];
 
-          {/* Section 3 — Utility tools (collapsible) */}
-          <motion.section
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.5 }}
-            className="mb-10"
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground">
-                Вспомогательные утилиты ({utilityTools.length})
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowUtils(!showUtils)}
-                className="gap-1"
+            return (
+              <motion.section
+                key={group.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5 }}
+                className="mb-12"
               >
-                {showUtils ? "Скрыть" : "Показать все"}
-                {showUtils ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </Button>
-            </div>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground">
+                    {group.emoji} {group.title} ({groupTools.length})
+                  </h2>
+                  {group.collapsible && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleGroup(group.title)}
+                      className="gap-1"
+                    >
+                      {isCollapsed ? "Показать все" : "Скрыть"}
+                      {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                    </Button>
+                  )}
+                </div>
 
-            {showUtils && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {utilityTools.map((tool, i) => (
-                  <motion.div
-                    key={tool.slug}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.04 }}
-                  >
-                    <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-4 hover:border-primary/40 transition-all group block h-full">
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <tool.icon className="w-4 h-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground text-sm mb-1 group-hover:text-primary transition-colors">{tool.name}</h3>
-                          <p className="text-xs text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
-                        </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </motion.section>
+                {!isCollapsed && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupTools.map((tool, i) => (
+                      <motion.div
+                        key={tool.slug}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.4, delay: i * 0.06 }}
+                      >
+                        <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group block h-full">
+                          <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <tool.icon className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
+                                {tool.name}
+                                {tool.slug === "mcp-server" && (
+                                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-primary/20 text-primary align-middle">NEW</span>
+                                )}
+                              </h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
+                            </div>
+                          </div>
+                          <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
+                            Открыть
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </motion.section>
+            );
+          })}
         </div>
 
         <CornerDecorations size="lg" />
