@@ -43,10 +43,12 @@ const TOOL_GROUPS = [
 const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);
 
 const Tools = () => {
-  const [showUtils, setShowUtils] = useState(true);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const flagship = getToolBySlug(FLAGSHIP_SLUG);
-  const technicalTools = TECHNICAL_SLUGS.map(getToolBySlug).filter(Boolean) as typeof tools;
-  const utilityTools = UTILITY_SLUGS.map(getToolBySlug).filter(Boolean) as typeof tools;
+
+  const toggleGroup = (title: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [title]: !prev[title] }));
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
