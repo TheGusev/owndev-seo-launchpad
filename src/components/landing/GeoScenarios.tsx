@@ -48,12 +48,12 @@ const scenarios = [
 
 const iconVariants = {
   rest: { scale: 1, rotate: 0 },
-  hover: { scale: 1.15, rotate: [0, -8, 8, -4, 0], transition: { rotate: { duration: 0.5, ease: "easeInOut" }, scale: { duration: 0.2 } } },
+  hover: { scale: 1.15, rotate: [0, -8, 8, -4, 0], transition: { rotate: { duration: 0.5, ease: "easeInOut" as const }, scale: { duration: 0.2 } } },
 };
 
 const cardVariants = {
   rest: { y: 0 },
-  hover: { y: -4, transition: { duration: 0.25, ease: "easeOut" } },
+  hover: { y: -4, transition: { duration: 0.25, ease: "easeOut" as const } },
 };
 
 const arrowVariants = {
