@@ -21,6 +21,8 @@ export function useAudit<T = any>(toolId: ToolId) {
         result: null,
       });
       setCurrent(sessionId);
+      // TODO: проверить лимиты тарифа — getCurrentUser()?.plan
+      // if (!canAccess('audit')) throw new Error('Upgrade required');
       logEvent('audit_start', { url, toolId, timestamp: new Date().toISOString() });
       try {
         const result = await apiFn();

@@ -7,6 +7,15 @@
  */
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+export const API_VERSION = 'v1';
+
+/**
+ * Build a versioned REST API path (for future own backend).
+ * Example: apiUrl('/audits') → '/api/v1/audits'
+ */
+export function apiUrl(path: string) {
+  return `${API_BASE_URL}/${API_VERSION}${path}`;
+}
 
 // Supabase project constants (used for raw fetch to Edge Functions with path-based routing)
 export const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
