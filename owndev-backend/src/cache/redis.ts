@@ -10,6 +10,10 @@ redis.on('error', (err) => {
   logger.error('REDIS', err.message);
 });
 
+redis.on('reconnecting', (delay: number) => {
+  logger.warn('REDIS', `Reconnecting in ${delay}ms`);
+});
+
 export async function testRedis(): Promise<boolean> {
   try {
     await redis.ping();
