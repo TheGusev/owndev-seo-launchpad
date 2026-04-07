@@ -93,7 +93,7 @@ const SemanticCoreGenerator = () => {
                   {checkedAt.toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
                 </span>
               )}
-              <button onClick={() => { setClusters([]); setCheckedAt(null); }} className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[28px]">
+              <button onClick={() => { setCheckedAt(null); }} className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[28px]">
                 <RefreshCw className="w-3 h-3" /> Заново
               </button>
               <button onClick={handleDownloadCSV} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
