@@ -1,92 +1,109 @@
 
 
-## Обогащение результатов аудита мета-данными (priority, confidence, source)
+## Создание 4 страниц GEO-сценариев
 
-### Что делаем
+### Подход
 
-Добавляем в каждый issue три поля — `priority`, `confidence`, `source` — и общий `confidence` в результат. Бизнес-логику проверок не трогаем.
+Создать 4 статичные страницы-лендинга в стиле существующей `GeoAudit.tsx` (Header + Hero + блоки + Footer). Обновить ссылки в `GeoScenarios.tsx` и добавить маршруты в `App.tsx`.
 
 ### Файлы
 
-| Файл | Изменение |
-|------|-----------|
-| `supabase/functions/seo-audit/index.ts` | Добавить `priority`, `confidence`, `source` к каждому issue; добавить общий `confidence` в ответ |
-| `supabase/functions/check-indexation/index.ts` | Добавить `priority`, `confidence`, `source` к каждому issue |
-| `supabase/functions/site-check-scan/index.ts` | Добавить `priority`, `confidence`, `source` к issues (точечно, ~20 мест) |
-| `src/components/tools/SEOAuditor.tsx` | Упростить `normalizeResult` — использовать `priority`/`confidence` из backend если есть |
+| Файл | Действие |
+|------|----------|
+| `src/pages/scenarios/AiVisibility.tsx` | Новый — страница сценария AI Visibility Audit |
+| `src/pages/scenarios/AiReadyContent.tsx` | Новый — страница сценария AI-Ready Content |
+| `src/pages/scenarios/BrandPresence.tsx` | Новый — страница сценария Brand Presence |
+| `src/pages/scenarios/Monitoring.tsx` | Новый — страница сценария Monitoring |
+| `src/App.tsx` | 4 новых Route для `/scenario/*` |
+| `src/components/landing/GeoScenarios.tsx` | Обновить ссылки карточек на `/scenario/...` |
 
-### Маппинг priority
+### Структура каждой страницы
 
-Каждый issue.push в `seo-audit/index.ts` получает `priority` по правилу:
-- **P1**: noindex, нет title, нет H1, нет HTTPS, нет robots.txt, нет JSON-LD, HTTP ≠ 200 — блокирует видимость
-- **P2**: короткий title/description, мало H2, нет FAQ, нет viewport, битые ссылки, CWV проблемы
-- **P3**: нет canonical, нет OG, нет lang, нет таблиц, info-уровень
-
-### Маппинг confidence
-
-- **85-95**: прямые проверки HTML-тегов (title, h1, meta robots, canonical) и HTTP-заголовков (status, x-robots-tag, HTTPS)
-- **70-80**: проверки структуры (JSON-LD парсинг, FAQ-детекция, H2-вопросы)
-- **50-65**: эвристики (CWV оценки, content length как сигнал, blocking resources)
-
-### Маппинг source
-
-- `"html"`: title, description, h1, images alt, canonical, OG, JSON-LD, H2, lists, tables, lang, FAQ block, viewport
-- `"headers"`: HTTPS, x-robots-tag, meta robots (headers-based)
-- `"external"`: robots.txt, sitemap.xml, broken links (отдельные HTTP-запросы)
-- `"heuristic"`: CWV scores, page size, load time, content length, blocking resources
-
-### Реализация в seo-audit/index.ts
-
-1. Расширить интерфейс `AuditIssue`:
-```typescript
-interface AuditIssue {
-  type: string;
-  severity: 'critical' | 'warning' | 'info';
-  message: string;
-  recommendation: string;
-  category: 'seo' | 'llm';
-  details?: string[];
-  context?: string;
-  priority: 'P1' | 'P2' | 'P3';
-  confidence: number;
-  source: 'html' | 'headers' | 'dom' | 'heuristic' | 'external';
-}
+```text
+┌────────────────────────────────────────┐
+│ Header (без изменений)                 │
+├────────────────────────────────────────┤
+│ Hero: badge + h1 + описание + CTA     │
+├────────────────────────────────────────┤
+│ "Как работает" — 3-4 шага             │
+├────────────────────────────────────────┤
+│ "Инструменты" — карточки с ссылками   │
+├────────────────────────────────────────┤
+│ "Результат" — что получит пользователь│
+├────────────────────────────────────────┤
+│ Footer (без изменений)                 │
+└────────────────────────────────────────┘
 ```
 
-2. Каждый `issues.push(...)` — добавить 3 поля. Примеры:
-   - HTTPS: `priority: 'P1', confidence: 95, source: 'headers'`
-   - Title отсутствует: `priority: 'P1', confidence: 95, source: 'html'`
-   - Title короткий: `priority: 'P2', confidence: 90, source: 'html'`
-   - CWV LCP preload: `priority: 'P2', confidence: 55, source: 'heuristic'`
-   - Нет OG: `priority: 'P3', confidence: 90, source: 'html'`
-   - robots.txt: `priority: 'P1', confidence: 90, source: 'external'`
+### Контент по сценариям
 
-3. Добавить общий `confidence` в JSON-ответ (средневзвешенный по issues или фиксированный 75 для эвристического аудита).
+**1. AI Visibility Audit** (`/scenario/ai-visibility`)
+- Hero: "Узнайте, видит ли ваш сайт AI-поиск"
+- CTA → `/tools/site-check`
+- Шаги: Запустите аудит → Получите SEO + LLM Score → Изучите проблемы → Исправьте по приоритетам
+- Инструменты: Проверка сайта, SEO Auditor, GEO-аудит, GEO-рейтинг
+- Результат: Двойной скор, список P1-проблем, план действий
 
-### check-indexation/index.ts
+**2. AI-Ready Content** (`/scenario/ai-ready-content`)
+- Hero: "Создайте контент, который цитируют нейросети"
+- CTA → `/tools/content-brief`
+- Шаги: Соберите семантику → Сгенерируйте бриф → Создайте структуру → Добавьте Schema
+- Инструменты: Content Brief, Semantic Core, Schema Generator, AI Text Generator
+- Результат: Готовый контент-план с E-E-A-T, FAQ, JSON-LD
 
-Аналогично: каждый issue получает `priority`, `confidence`, `source`:
-- status ≠ 200: `P1, 95, headers`
-- x-robots-tag noindex: `P1, 95, headers`  
-- meta robots noindex: `P1, 90, html`
-- canonical отличается: `P2, 85, html`
-- title/description отсутствует: `P1/P2, 90, html`
+**3. Brand Presence** (`/scenario/brand-presence`)
+- Hero: "Узнайте, упоминают ли AI-ассистенты ваш бренд"
+- CTA → `/tools/brand-tracker`
+- Шаги: Введите бренд → Проверьте упоминания → Оцените контекст → Улучшите присутствие
+- Инструменты: Brand Tracker, Competitor Analysis
+- Пометка: частично "в разработке" — описать видение (мониторинг цитируемости)
+- Результат: Карта присутствия бренда в AI-ответах
 
-### SEOAuditor.tsx — упрощение normalizeResult
+**4. Monitoring** (`/scenario/monitoring`)
+- Hero: "Отслеживайте AI-видимость еженедельно"
+- CTA → `/geo-rating`
+- Шаги: Добавьте сайт → Получите базовый скор → Отслеживайте динамику → Реагируйте на изменения
+- Инструменты: GEO-рейтинг, Position Monitor
+- Пометка: история и автоматизация "в разработке"
+- Результат: Динамика SEO + LLM Score, уведомления об изменениях
 
-Использовать `priority` из backend напрямую, fallback на текущую severity-логику:
+### GeoScenarios.tsx — обновление ссылок
+
 ```typescript
-priority: i.priority || severityToPriority(i.severity)
+// Было:
+link: "/tools/site-check"
+link: "/tools/content-brief"
+link: "/tools/brand-tracker"
+link: "/geo-rating"
+
+// Стало:
+link: "/scenario/ai-visibility"
+link: "/scenario/ai-ready-content"
+link: "/scenario/brand-presence"
+link: "/scenario/monitoring"
 ```
 
-Аналогично для `confidence` — брать из issue если есть.
+### App.tsx — новые маршруты
+
+Добавить 4 Route перед catch-all `*`:
+```tsx
+<Route path="/scenario/ai-visibility" element={<AiVisibility />} />
+<Route path="/scenario/ai-ready-content" element={<AiReadyContent />} />
+<Route path="/scenario/brand-presence" element={<BrandPresence />} />
+<Route path="/scenario/monitoring" element={<Monitoring />} />
+```
+
+### Визуальный стиль
+
+Повторяет паттерн GeoAudit.tsx: тёмный фон, glass-карточки, бейджи с цветными акцентами (cyan/violet/emerald/amber — по цветам из GeoScenarios), JSON-LD BreadcrumbList для SEO. Helmet с уникальными title/description.
 
 ### Что НЕ трогаем
-- Header, Footer, роутинг — 0 изменений
-- Бизнес-логику проверок (какие правила, какие штрафы) — 0 изменений
-- AuditResultView UI — уже поддерживает эти поля
-- site-check-scan — отложить (2600 строк, отдельная итерация)
+
+- Header, Footer, мобильное меню — 0 изменений
+- Существующие страницы инструментов — 0 изменений
+- Блок "Последние проверки" — 0 изменений
 
 ### Объём
-~60 точечных добавлений по 3 поля в seo-audit, ~8 в check-indexation, ~5 строк в SEOAuditor.tsx.
+
+~200 строк на страницу (статичный контент + layout), ~10 строк правок в App.tsx + GeoScenarios.tsx.
 
