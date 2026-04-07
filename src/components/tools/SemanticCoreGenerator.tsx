@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Sparkles, Copy, CheckCircle, Loader2, Download, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { generateSemanticCore } from "@/lib/api";
 import EmptyState from "@/components/ui/empty-state";
 
 interface Cluster {

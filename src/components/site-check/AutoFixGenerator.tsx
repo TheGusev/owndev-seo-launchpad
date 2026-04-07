@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Wand2, Copy, Check, Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { generateAutofix } from "@/lib/api";
 import { autoFixTemplates, matchIssueToTemplate } from "@/utils/autoFixTemplates";
 import { useToast } from "@/hooks/use-toast";
 

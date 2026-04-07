@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Search, Globe, Zap, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash, RefreshCw, Clock, ChevronDown, ChevronUp, Shield, FileText, Link2, Gauge, Image, MousePointer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { supabase } from "@/integrations/supabase/client";
+import { auditSite } from "@/lib/api";
 import ToolCTA from "./ToolCTA";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";

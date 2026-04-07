@@ -5,7 +5,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { Swords, CheckCircle, XCircle, Loader2, Clock, RefreshCw, Trophy } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { analyzeCompetitors } from "@/lib/api";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
 
