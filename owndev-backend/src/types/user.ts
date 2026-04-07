@@ -5,5 +5,7 @@ export interface User {
   email: string;
   plan: Plan;
   api_key: string;
+  credits_used: number;
+  credits_limit: number;
   created_at: string;
 }

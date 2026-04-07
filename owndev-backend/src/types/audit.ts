@@ -1,6 +1,5 @@
-/** Совместимы с фронтовыми типами из src/lib/api/types.ts */
-
 export type IssuePriority = 'P1' | 'P2' | 'P3';
+export type AuditStatus = 'pending' | 'processing' | 'done' | 'error';
 
 export interface AuditIssue {
   type: string;
@@ -22,14 +21,17 @@ export interface AuditResult {
   meta: Record<string, unknown>;
 }
 
-export type AuditStatus = 'pending' | 'processing' | 'done' | 'error';
-
 export interface AuditRecord {
   id: string;
-  domain_id: string;
+  domain_id: string | null;
   user_id: string | null;
+  url: string;
+  tool_id: string | null;
   status: AuditStatus;
-  result: AuditResult | null;
+  score: number | null;
+  confidence: number | null;
+  duration_ms: number | null;
+  error_msg: string | null;
   created_at: string;
   finished_at: string | null;
 }

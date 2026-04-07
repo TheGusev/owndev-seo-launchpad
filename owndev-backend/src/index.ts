@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { startServer } from './api/server.js';
 import { redis } from './cache/redis.js';
-import { pool, testConnection } from './db/client.js';
+import { sql, testConnection } from './db/client.js';
 import { startAuditWorker } from './workers/AuditWorker.js';
 import { startMonitorWorker } from './workers/MonitorWorker.js';
 import { MonitorService } from './services/MonitorService.js';
@@ -38,7 +38,7 @@ async function main() {
     await auditWorker.close();
     await monitorWorker.close();
     await redis.quit();
-    await pool.end();
+    await sql.end();
     logger.info('BOOT', 'Shutdown complete');
     process.exit(0);
   };

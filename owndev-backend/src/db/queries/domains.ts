@@ -1,19 +1,21 @@
-import { pool } from '../client.js';
+import { sql } from '../client.js';
 import type { Domain } from '../../types/domain.js';
 
-export async function insertDomain(url: string): Promise<string> {
-  const { rows } = await pool.query(
-    `INSERT INTO domains (url) VALUES ($1) ON CONFLICT (url) DO UPDATE SET url = EXCLUDED.url RETURNING id`,
-    [url],
-  );
-  return rows[0].id;
+export async function getOrCreateDomain(userId: string, hostname: string): Promise<Domain> {
+  const [domain] = await sql<Domain[]>`
+    INSERT INTO domains (user_id, hostname)
+    VALUES (${userId}, ${hostname})
+    ON CONFLICT (user_id, hostname) DO UPDATE SET hostname = EXCLUDED.hostname
+    RETURNING *
+  `;
+  return domain;
 }
 
-export async function getDomainByUrl(url: string): Promise<Domain | null> {
-  const { rows } = await pool.query(`SELECT * FROM domains WHERE url = $1`, [url]);
-  return rows[0] ?? null;
+export async function getDomainsByUser(userId: string): Promise<Domain[]> {
+  return sql<Domain[]>`SELECT * FROM domains WHERE user_id = ${userId} ORDER BY created_at DESC`;
 }
 
-export async function updateLastAudit(domainId: string): Promise<void> {
-  await pool.query(`UPDATE domains SET last_audit_at = now() WHERE id = $1`, [domainId]);
+export async function getDomainById(id: string): Promise<Domain | null> {
+  const [domain] = await sql<Domain[]>`SELECT * FROM domains WHERE id = ${id}`;
+  return domain ?? null;
 }

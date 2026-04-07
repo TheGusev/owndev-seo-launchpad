@@ -1,21 +1,19 @@
-import pg from 'pg';
+import postgres from 'postgres';
 import { logger } from '../utils/logger.js';
 
-const { Pool } = pg;
-
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-pool.on('error', (err) => {
-  logger.error('DB', 'Unexpected pool error', err.message);
+export const sql = postgres(process.env.DATABASE_URL!, {
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
+  onnotice: () => {},
 });
 
 export async function testConnection(): Promise<boolean> {
   try {
-    await pool.query('SELECT 1');
+    await sql`SELECT 1`;
     return true;
-  } catch {
+  } catch (err: any) {
+    logger.error('DB', 'Connection test failed:', err.message);
     return false;
   }
 }
