@@ -1,86 +1,104 @@
 
 
-## Единый API-слой для OWNDEV
+## Хук useAudit() + session state layer
 
-### Текущее состояние
+### Подход
 
-Запросы идут двумя путями:
-1. **`supabase.functions.invoke()`** — 11 компонентов (SEOAuditor, BrandTracker, IndexationChecker, SemanticCoreGenerator, AITextGenerator, ContentBriefGenerator, InternalLinksChecker, CompetitorAnalysis, PSEOGenerator, ContactForm, AutoFixGenerator)
-2. **`fetch(fnUrl(...))`** — `src/lib/site-check-api.ts` (5 функций: startScan, getScanStatus, getScanPreview, createReport, getReport)
-3. **`supabase.from('scans').select()`** — прямой запрос к таблице в site-check-api.ts
+React Context + useReducer (без новых зависимостей). Лёгкий in-memory store с сессиями аудитов. Хук `useAudit()` инкапсулирует loading/error/result + автоматически сохраняет сессии.
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/lib/api/config.ts` | Новый — API_BASE_URL + Supabase URL constants |
-| `src/lib/api/client.ts` | Новый — `invokeFunction<T>()` wrapper над supabase.functions.invoke + `request<T>()` для raw fetch |
-| `src/lib/api/types.ts` | Новый — AuditResult, AuditIssue, ToolId и др. |
-| `src/lib/api/tools.ts` | Новый — функции для каждого инструмента |
-| `src/lib/api/scan.ts` | Новый — перенос логики из site-check-api.ts |
-| `src/lib/api/index.ts` | Новый — barrel export |
-| `src/lib/site-check-api.ts` | Рефакторинг — делегирует в api/scan.ts |
-| 11 компонентов | Заменить прямые вызовы supabase.functions.invoke на api/tools.ts |
+| `src/state/audit/types.ts` | Новый — AuditSession, AuditState, Action types |
+| `src/state/audit/store.tsx` | Новый — AuditContext, AuditProvider, reducer, useAuditState(), useAuditActions() |
+| `src/state/audit/useAudit.ts` | Новый — хук useAudit(toolId) с loading/error/result + run() |
+| `src/state/audit/index.ts` | Новый — barrel exports |
+| `src/App.tsx` | Обернуть в `<AuditProvider>` |
+| 8 компонентов tools | Заменить локальный useState на useAudit() |
 
-### Архитектура
+### 1. Типы (`types.ts`)
 
-```text
-src/lib/api/
-├── config.ts      — API_BASE_URL, SUPABASE_URL, headers
-├── client.ts      — invokeFunction<T>(name, body), request<T>(url, opts)
-├── types.ts       — AuditResult, AuditIssue, ToolId, ConfidenceMeta, etc.
-├── tools.ts       — auditSite, checkLlms, generateSchema, etc.
-├── scan.ts        — startScan, getScanStatus, getScanPreview, createReport, getReport, getFullScan
-└── index.ts       — re-exports
-```
-
-### Детали
-
-**1. `config.ts`**
 ```typescript
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
-// Future: backend endpoints will use API_BASE_URL
-// Current: all calls go through Supabase Edge Functions
+import { ToolId, AuditResult } from '@/lib/api/types';
+
+export interface AuditSession {
+  id: string;
+  url: string;
+  toolId: ToolId;
+  createdAt: string;
+  loading: boolean;
+  error: string | null;
+  result: any | null; // any, т.к. каждый инструмент возвращает свой формат
+}
+
+export interface AuditState {
+  currentSessionId: string | null;
+  sessions: Record<string, AuditSession>;
+}
+
+// Action union type for reducer
 ```
 
-**2. `client.ts`**
-- `invokeFunction<T>(functionName: string, body?: object): Promise<T>` — обёртка над `supabase.functions.invoke`, обрабатывает `error` и `data.error`, логирует `[OWNDEV API]`
-- `request<T>(path: string, options?: RequestInit): Promise<T>` — raw fetch для site-check-scan/report endpoints (которые используют custom routing через path)
-- Единая обработка ошибок с `[OWNDEV API]` префиксом
+### 2. Store (`store.tsx`)
 
-**3. `types.ts`**
+- `AuditProvider` с `useReducer`
+- Actions: `ADD_SESSION`, `SET_LOADING`, `SET_RESULT`, `SET_ERROR`, `SET_CURRENT`
+- `useAuditState()` — доступ к state
+- `useAuditActions()` — dispatch-обёртки: `addSession()`, `updateResult()`, `setError()`, `setCurrent()`
+- Геттер `getSessionsByTool(toolId)` для истории по инструменту
+
+### 3. Хук `useAudit(toolId)`
+
 ```typescript
-export type ToolId = 'seo-audit' | 'site-check' | 'brand-tracker' | 'indexation' | ...;
-export type IssuePriority = 'P1' | 'P2' | 'P3';
-export interface AuditIssue { type: string; severity: string; message: string; detail: string; ... }
-export interface AuditResult { score: number; confidence: number; summary: string; issues: AuditIssue[]; meta: Record<string, any>; }
-export interface ConfidenceMeta { model: string; timestamp: number; }
-export interface SourceMeta { tool: ToolId; version: string; }
+function useAudit<T>(toolId: ToolId) {
+  const { addSession, updateResult, setError, setCurrent } = useAuditActions();
+  const state = useAuditState();
+  
+  const run = async (url: string, apiFn: () => Promise<T>) => {
+    const sessionId = crypto.randomUUID();
+    addSession({ id: sessionId, url, toolId, createdAt: new Date().toISOString(), loading: true, error: null, result: null });
+    setCurrent(sessionId);
+    try {
+      const result = await apiFn();
+      updateResult(sessionId, result);
+      return result;
+    } catch (e) {
+      setError(sessionId, e.message);
+      throw e;
+    }
+  };
+
+  // Current session derived from state
+  const current = state.currentSessionId ? state.sessions[state.currentSessionId] : null;
+  const history = Object.values(state.sessions).filter(s => s.toolId === toolId);
+
+  return { run, current, history, sessions: state.sessions };
+}
 ```
 
-**4. `tools.ts`** — каждая функция вызывает `invokeFunction`:
-- `auditSite(url)` → `invokeFunction('seo-audit', { url })`
-- `checkIndexation(url)` → `invokeFunction('check-indexation', { url })`
-- `generateSemanticCore(topic)` → `invokeFunction('generate-semantic-core', { topic })`
-- `generateText(type, topic, keywords)` → `invokeFunction('generate-text', ...)`
-- `generateContentBrief(query, url?, contentType?)` → `invokeFunction('generate-content-brief', ...)`
-- `checkInternalLinks(url)` → `invokeFunction('check-internal-links', { url })`
-- `analyzeCompetitors(url1, url2)` → `invokeFunction('competitor-analysis', ...)`
-- `trackBrand(brand, prompts, aiSystems)` → `invokeFunction('brand-tracker', ...)`
-- `generateAutofix(issueType, url, title?, description?)` → `invokeFunction('generate-autofix', ...)`
-- `generateGeoContent(pages, niche, region)` → `invokeFunction('generate-geo-content', ...)`
-- `sendTelegram(body)` → `invokeFunction('send-telegram', body)`
+### 4. Интеграция в компоненты
 
-**5. `scan.ts`** — перенос из `site-check-api.ts` с использованием `request<T>()` для path-based endpoints и `supabase.from()` для getFullScan.
+Пример для SEOAuditor — вместо 3 отдельных useState (loading, error, result):
 
-**6. Рефакторинг компонентов** — замена `supabase.functions.invoke("X", { body })` на `import { funcName } from '@/lib/api'`:
-- Сохраняется вся существующая логика отображения, state management, error handling в toast
-- Только строка вызова меняется с `supabase.functions.invoke` на `api.funcName()`
+```typescript
+const { run, current } = useAudit<AuditResult>('seo-audit');
 
-**7. `site-check-api.ts`** — становится тонкой re-export обёрткой из `api/scan.ts` для обратной совместимости.
+const runAudit = async () => {
+  await run(url, () => auditSite(url));
+};
+
+// current?.loading, current?.error, current?.result
+```
+
+Аналогично для BrandTracker, IndexationChecker, InternalLinksChecker, CompetitorAnalysis, ContentBriefGenerator, SemanticCoreGenerator, AITextGenerator.
+
+### 5. App.tsx
+
+Добавить `<AuditProvider>` внутрь QueryClientProvider, снаружи BrowserRouter.
 
 ### Ограничения
-- Header.tsx, мобильное меню, "Последние проверки" — 0 изменений
-- Внешнее поведение всех инструментов идентично
-- Supabase client.ts и types.ts — не трогаем
+- Header, меню, "Последние проверки" — 0 изменений
+- UI рендеринг не меняется — только источник данных (из хука вместо локального state)
+- Каждый компонент сохраняет свои уникальные типы результата (BrandResult, CompetitorResult и т.д.) — хук generic
 
