@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { BarChart3, PlusCircle, Activity, Bell, ArrowRight, TrendingUp, Construction, LineChart } from "lucide-react";
+import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,15 @@ const Monitoring = () => (
             <Link to="/geo-rating">Открыть рейтинг <ArrowRight className="w-4 h-4" /></Link>
           </Button>
         </motion.div>
+
+        <ScenarioDemoForm
+          placeholder="https://ваш-сайт.ru"
+          buttonText="Добавить в мониторинг"
+          targetPath="/geo-rating"
+          queryParam="url"
+          accentColor="amber"
+          icon={PlusCircle}
+        />
 
         <section className="mb-16">
           <h2 className="text-xl font-bold font-serif text-center mb-8">Как работает сценарий</h2>

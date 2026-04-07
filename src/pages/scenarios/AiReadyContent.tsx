@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { FileText, Layers, BookOpen, Code2, ArrowRight, Sparkles, PenTool, Braces } from "lucide-react";
+import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,15 @@ const AiReadyContent = () => (
             <Link to="/tools/content-brief">Создать контент-бриф <ArrowRight className="w-4 h-4" /></Link>
           </Button>
         </motion.div>
+
+        <ScenarioDemoForm
+          placeholder="Тема или ключевое слово"
+          buttonText="Создать бриф"
+          targetPath="/tools/content-brief"
+          queryParam="topic"
+          accentColor="violet"
+          icon={FileText}
+        />
 
         <section className="mb-16">
           <h2 className="text-xl font-bold font-serif text-center mb-8">Как работает сценарий</h2>

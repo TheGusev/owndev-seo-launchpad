@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Megaphone, Search, MessageSquare, TrendingUp, ArrowRight, Radar, Users, Construction } from "lucide-react";
+import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,15 @@ const BrandPresence = () => (
             <Link to="/tools/brand-tracker">Проверить бренд <ArrowRight className="w-4 h-4" /></Link>
           </Button>
         </motion.div>
+
+        <ScenarioDemoForm
+          placeholder="Название бренда или компании"
+          buttonText="Проверить бренд"
+          targetPath="/tools/brand-tracker"
+          queryParam="brand"
+          accentColor="emerald"
+          icon={Megaphone}
+        />
 
         <section className="mb-16">
           <h2 className="text-xl font-bold font-serif text-center mb-8">Как работает сценарий</h2>
