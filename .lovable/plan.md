@@ -1,41 +1,72 @@
 
 
-## Доработка BullMQ очередей и воркеров
+## Доработка API роутов, rate limiting и подготовка к связи с фронтом
 
 ### Что уже есть
-Все файлы существуют и работают: `redis.ts`, `queues.ts`, `jobs.ts`, `AuditWorker.ts`, `MonitorWorker.ts`, `MonitorService.ts`, `index.ts`. Но есть расхождения с запрошенной архитектурой.
+- `auth.ts` — блокирует без API-ключа (нужно: пускать анонимных)
+- `rateLimit.ts` — единый лимит 30/мин для всех (нужно: по плану)
+- `health.ts` — `/health` без очередей (нужно: `/api/v1/health` + queue stats)
+- `audit.ts` — POST + GET по ID (нужно: + GET список по домену, единый формат ответа)
+- `monitor.ts` — использует несуществующие `getDomainByUrl`/`insertDomain`/`listAuditsByDomain` (нужно: переписать на реальные query-функции + DELETE)
+- `server.ts` — CORS `origin: true` (нужно: whitelist + error handler)
 
-### Что нужно доработать
+### Файлы
 
 | Файл | Изменение |
 |------|-----------|
-| `owndev-backend/src/cache/redis.ts` | Добавить обработчик `reconnecting` |
-| `owndev-backend/src/queue/queues.ts` | Добавить default job options: `attempts: 3`, `backoff`, `removeOnComplete: 100`, `removeOnFail: 50` |
-| `owndev-backend/src/queue/jobs.ts` | Расширить `AuditJobData` (+ `toolId?`), `MonitorJobData` (+ `monitorId`, `userId?`); функции `addAuditJob`/`addMonitorJob` используют defaults из очереди |
-| `owndev-backend/src/workers/MonitorWorker.ts` | Переписать: вместо прямого запуска аудита — создать audit через `createAudit()` + `addAuditJob()` + обновить `updateMonitorRun()` с расчётом `next_run_at` |
-| `owndev-backend/src/services/MonitorService.ts` | Переписать: убрать `node-cron` + `pool.query`, использовать `getDueMonitors()` + BullMQ delayed jobs. Методы `scheduleMonitor(id)` и `startAll()` |
-| `owndev-backend/src/index.ts` | Вызывать `MonitorService.startAll()` вместо `monitor.start()` |
+| `owndev-backend/src/api/middleware/auth.ts` | Анонимный доступ: без ключа — `req.user = { id: 'anon', plan: 'free', credits_limit: 5 }` |
+| `owndev-backend/src/api/middleware/rateLimit.ts` | Plan-based лимиты через Redis: anon 10/мин, free 20/мин, solo+ 200/мин |
+| `owndev-backend/src/api/routes/health.ts` | Перенести на `/api/v1/health`, добавить queue stats (waiting/active/completed) |
+| `owndev-backend/src/api/routes/audit.ts` | Добавить `GET /api/v1/audits` (по hostname), единый формат `{ success, data/error }`, event logging |
+| `owndev-backend/src/api/routes/monitor.ts` | Полная переработка: POST создаёт monitor через `createMonitor()`, GET список, DELETE отключает. Требует авторизацию (не анонимно) |
+| `owndev-backend/src/api/server.ts` | CORS whitelist, глобальный error handler, prefix `/api/v1` |
 
 ### Ключевые решения
 
-**MonitorService** — вместо cron каждые 6h переходим на BullMQ repeatable/delayed jobs:
-- `startAll()` читает все активные мониторы из БД через `getDueMonitors()`, планирует просроченные немедленно, остальные — с delay
-- `scheduleMonitor(id)` читает monitor, вычисляет delay до `next_run_at`, добавляет delayed job в `monitorQueue`
+**auth.ts** — не блокирует без ключа, а ставит анонимного пользователя:
+```
+if (!apiKey) → req.user = { id: 'anon', plan: 'free', ... }
+if (apiKey invalid) → 403
+if (apiKey valid) → req.user = dbUser
+```
 
-**MonitorWorker** — при обработке джоба:
-1. `createAudit({ domainId, userId, url })` → получает `auditId`
-2. `addAuditJob({ auditId, domainId, url, userId })` → аудит обрабатывается AuditWorker
-3. `updateMonitorRun(monitorId, nextRunAt)` — сдвигает следующий запуск
-4. `scheduleMonitor(monitorId)` — планирует следующий delayed job
+**rateLimit.ts** — читает `req.user.plan` (после auth middleware):
+```
+anon → 10/мин, free → 20/мин, solo/pro/agency → 200/мин
+```
+Redis ключ: `rl:{plan}:{ip}`.
 
-**AuditWorker** — без изменений (уже корректно делегирует в `service.run()`).
+**monitor.ts** — полная переработка:
+- `POST /api/v1/monitors` — body: `{ url, period }`, zod-валидация, требует не-анонимного пользователя, вызывает `createMonitor()` + `MonitorService.scheduleMonitor()`
+- `GET /api/v1/monitors` — список мониторов пользователя через `getMonitorsByUser()`
+- `DELETE /api/v1/monitors/:id` — `toggleMonitor(id, false)`
+
+**Единый формат ответа:**
+```typescript
+// Успех: { success: true, data: {...} }
+// Ошибка: { success: false, error: "message", code: "CREDIT_LIMIT" }
+```
+
+**server.ts** — глобальный error handler скрывает стеки:
+```typescript
+app.setErrorHandler((error, req, reply) => {
+  logger.error('SERVER', error.message);
+  reply.status(500).send({ success: false, error: 'Internal error' });
+});
+```
+
+CORS: `['https://owndev.ru', 'http://localhost:5173', 'http://localhost:3000']`
+
+**Event logging** — после каждого успешного действия вызов `logEvent()`:
+- `audit_created` в POST audit
+- `monitor_created` в POST monitors
 
 ### Что НЕ трогаем
-- AuditWorker.ts — уже работает правильно
-- AuditService.ts, CrawlerService.ts — без изменений
-- Фронтенд — 0 изменений
+- Фронтенд — 0 изменений (фронт уже готов через `apiUrl()`)
+- CrawlerService, AuditService, workers — без изменений
 - DB queries — используем существующие функции
+- Redis, BullMQ конфиг — без изменений
 
 ### Объём
-~6 файлов, ~80 строк изменений.
+~6 файлов, ~200 строк изменений.
 
