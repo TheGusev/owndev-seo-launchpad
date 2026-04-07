@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Eye, Search, AlertTriangle, CheckCircle, ArrowRight, BarChart3, FileCheck, BrainCircuit, Activity } from "lucide-react";
+import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,15 @@ const AiVisibility = () => (
             <Link to="/tools/site-check">Запустить аудит <ArrowRight className="w-4 h-4" /></Link>
           </Button>
         </motion.div>
+
+        <ScenarioDemoForm
+          placeholder="https://ваш-сайт.ru"
+          buttonText="Запустить аудит"
+          targetPath="/tools/site-check"
+          queryParam="url"
+          accentColor="cyan"
+          icon={Search}
+        />
 
         {/* Steps */}
         <section className="mb-16">
