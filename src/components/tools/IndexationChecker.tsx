@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { checkIndexation } from "@/lib/api";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
+import { useAudit } from "@/state/audit";
 
 interface Issue {
   type: string;
@@ -23,18 +24,17 @@ const SeverityIcon = ({ s }: { s: string }) => {
 
 const IndexationChecker = () => {
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ indexable: boolean; issues: Issue[]; meta: any; statusCode: number } | null>(null);
+  const { run, current } = useAudit<{ indexable: boolean; issues: Issue[]; meta: any; statusCode: number }>('indexation');
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
+
+  const loading = current?.loading ?? false;
+  const result = current?.result ?? null;
 
   const handleCheck = async () => {
     if (!url.trim()) { toast({ title: "Введите URL", variant: "destructive" }); return; }
-    setLoading(true);
-    setResult(null);
     setCheckedAt(null);
     try {
-      const data = await checkIndexation(url);
-      setResult(data);
+      await run(url.trim(), () => checkIndexation(url));
       setCheckedAt(new Date());
       saveLastUrl(url.trim());
     } catch (e: any) {
