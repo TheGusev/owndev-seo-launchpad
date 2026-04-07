@@ -10,6 +10,7 @@ import {
   Loader2, Copy, CheckCircle2, AlertTriangle, Download, FileText,
   Hash, BookOpen, Target, Brain, Search, ChevronRight,
 } from "lucide-react";
+import { useAudit } from "@/state/audit";
 
 interface BriefStructureItem {
   tag: string;
@@ -50,20 +51,17 @@ const ContentBriefGenerator = () => {
   const [query, setQuery] = useState("");
   const [url, setUrl] = useState("");
   const [contentType, setContentType] = useState("article");
-  const [loading, setLoading] = useState(false);
-  const [brief, setBrief] = useState<ContentBrief | null>(null);
+  const { run, current } = useAudit<{ brief: ContentBrief }>('content-brief');
+
+  const loading = current?.loading ?? false;
+  const brief = (current?.result as { brief: ContentBrief })?.brief ?? null;
 
   const generate = async () => {
     if (!query.trim()) { toast.error("Введите целевой запрос"); return; }
-    setLoading(true);
-    setBrief(null);
     try {
-      const data = await generateContentBrief(query.trim(), url.trim() || undefined, contentType);
-      setBrief(data.brief);
+      await run(query.trim(), () => generateContentBrief(query.trim(), url.trim() || undefined, contentType));
     } catch (e: any) {
       toast.error(e?.message || "Ошибка генерации");
-    } finally {
-      setLoading(false);
     }
   };
 

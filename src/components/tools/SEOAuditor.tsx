@@ -7,6 +7,7 @@ import { auditSite } from "@/lib/api";
 import ToolCTA from "./ToolCTA";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
+import { useAudit } from "@/state/audit";
 
 interface AuditIssue {
   type: string;
@@ -129,34 +130,27 @@ const StatusBadge = ({ ok, label }: { ok: boolean; label: string }) => (
 
 const SEOAuditor = () => {
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AuditResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { run, current } = useAudit<AuditResult>('seo-audit');
   const [activeTab, setActiveTab] = useState<"all" | "seo" | "llm">("all");
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
+  const loading = current?.loading ?? false;
+  const error = current?.error ?? null;
+  const result = (current?.result as AuditResult) ?? null;
+
   const runAudit = async () => {
     if (!url.trim()) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
     setCheckedAt(null);
-
     try {
-      const data = await auditSite(url.trim());
-      setResult(data as AuditResult);
+      await run(url.trim(), () => auditSite(url.trim()));
       setCheckedAt(new Date());
       saveLastUrl(url.trim());
-    } catch (e: any) {
-      setError(e.message || "Произошла ошибка");
-    } finally {
-      setLoading(false);
+    } catch {
+      // error is stored in audit state
     }
   };
 
   const handleReset = () => {
-    setResult(null);
-    setError(null);
     setCheckedAt(null);
   };
 

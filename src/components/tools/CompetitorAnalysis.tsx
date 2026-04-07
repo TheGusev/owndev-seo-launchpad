@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { analyzeCompetitors } from "@/lib/api";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
+import { useAudit } from "@/state/audit";
 
 interface PageMetrics {
   url: string;
@@ -95,29 +96,25 @@ const ScoreCompare = ({ s1, s2 }: { s1: number; s2: number }) => {
 const CompetitorAnalysis = () => {
   const [url1, setUrl1] = useState("");
   const [url2, setUrl2] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ page1: PageMetrics; page2: PageMetrics } | null>(null);
+  const { run, current } = useAudit<{ page1: PageMetrics; page2: PageMetrics }>('competitor-analysis');
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
+
+  const loading = current?.loading ?? false;
+  const result = current?.result ?? null;
 
   const handleAnalyze = async () => {
     if (!url1 || !url2) { toast({ title: "Введите оба URL", variant: "destructive" }); return; }
-    setLoading(true);
-    setResult(null);
     setCheckedAt(null);
     try {
-      const data = await analyzeCompetitors(url1, url2);
-      setResult(data);
+      await run(url1.trim(), () => analyzeCompetitors(url1, url2));
       setCheckedAt(new Date());
       saveLastUrl(url1.trim());
     } catch (e: any) {
       toast({ title: "Ошибка анализа", description: e.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setResult(null);
     setCheckedAt(null);
   };
 

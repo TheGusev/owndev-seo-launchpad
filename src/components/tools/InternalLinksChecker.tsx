@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { checkInternalLinks } from "@/lib/api";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
+import { useAudit } from "@/state/audit";
 
 interface LinkResult {
   href: string;
@@ -30,30 +31,26 @@ const statusExplanation: Record<number, string> = {
 
 const InternalLinksChecker = () => {
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ totalFound: number; checked: number; working: number; broken: number; links: LinkResult[]; unchecked: number } | null>(null);
+  const { run, current } = useAudit<{ totalFound: number; checked: number; working: number; broken: number; links: LinkResult[]; unchecked: number }>('internal-links');
   const [filter, setFilter] = useState<"all" | "broken" | "nofollow">("all");
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
+  const loading = current?.loading ?? false;
+  const result = current?.result ?? null;
+
   const handleCheck = async () => {
     if (!url.trim()) { toast({ title: "Введите URL", variant: "destructive" }); return; }
-    setLoading(true);
-    setResult(null);
     setCheckedAt(null);
     try {
-      const data = await checkInternalLinks(url);
-      setResult(data);
+      await run(url.trim(), () => checkInternalLinks(url));
       setCheckedAt(new Date());
       saveLastUrl(url.trim());
     } catch (e: any) {
       toast({ title: "Ошибка проверки", description: e.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setResult(null);
     setCheckedAt(null);
   };
 
