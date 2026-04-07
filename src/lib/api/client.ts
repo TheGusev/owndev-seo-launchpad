@@ -21,6 +21,10 @@ export async function invokeFunction<T = any>(
   });
 
   if (error) {
+    if (/unauthorized|forbidden/i.test(error.message)) {
+      console.error(`[OWNDEV API] ${functionName}: unauthorized`);
+      throw new Error('Требуется авторизация');
+    }
     console.error(`[OWNDEV API] ${functionName}:`, error.message);
     throw error;
   }
@@ -55,6 +59,11 @@ export async function request<T = any>(
 
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+
+    if (resp.status === 401 || resp.status === 403) {
+      console.error(`[OWNDEV API] ${functionName}${path}: unauthorized (${resp.status})`);
+      throw new Error('Требуется авторизация');
+    }
 
     if (resp.status === 429) {
       const err = new Error(body.error || 'Слишком много запросов. Подождите.') as any;
