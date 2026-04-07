@@ -1,107 +1,41 @@
 
 
-## Полноценные CrawlerService и AuditService
+## Доработка BullMQ очередей и воркеров
 
-### Подход
+### Что уже есть
+Все файлы существуют и работают: `redis.ts`, `queues.ts`, `jobs.ts`, `AuditWorker.ts`, `MonitorWorker.ts`, `MonitorService.ts`, `index.ts`. Но есть расхождения с запрошенной архитектурой.
 
-Переписать оба сервиса с нуля. CrawlerService возвращает расширенный `CrawlData` (links, scripts, llms.txt, robots-директивы). AuditService — чистая функция `analyze(crawlData)` без DB-зависимостей, плюс оркестрирующий `run()` для worker.
+### Что нужно доработать
 
-### Файлы
+| Файл | Изменение |
+|------|-----------|
+| `owndev-backend/src/cache/redis.ts` | Добавить обработчик `reconnecting` |
+| `owndev-backend/src/queue/queues.ts` | Добавить default job options: `attempts: 3`, `backoff`, `removeOnComplete: 100`, `removeOnFail: 50` |
+| `owndev-backend/src/queue/jobs.ts` | Расширить `AuditJobData` (+ `toolId?`), `MonitorJobData` (+ `monitorId`, `userId?`); функции `addAuditJob`/`addMonitorJob` используют defaults из очереди |
+| `owndev-backend/src/workers/MonitorWorker.ts` | Переписать: вместо прямого запуска аудита — создать audit через `createAudit()` + `addAuditJob()` + обновить `updateMonitorRun()` с расчётом `next_run_at` |
+| `owndev-backend/src/services/MonitorService.ts` | Переписать: убрать `node-cron` + `pool.query`, использовать `getDueMonitors()` + BullMQ delayed jobs. Методы `scheduleMonitor(id)` и `startAll()` |
+| `owndev-backend/src/index.ts` | Вызывать `MonitorService.startAll()` вместо `monitor.start()` |
 
-| Файл | Действие |
-|------|----------|
-| `owndev-backend/src/types/audit.ts` | Добавить `CrawlData`, `AuditBlock`, расширить `AuditResult` полем `blocks` |
-| `owndev-backend/src/services/CrawlerService.ts` | Полная переработка — расширенный crawl с links, scripts, llms.txt, robots-парсинг |
-| `owndev-backend/src/services/AuditService.ts` | Полная переработка — 6 блоков проверок, `analyze(crawlData)` + `run()` для оркестрации |
+### Ключевые решения
 
-### 1. types/audit.ts — новые типы
+**MonitorService** — вместо cron каждые 6h переходим на BullMQ repeatable/delayed jobs:
+- `startAll()` читает все активные мониторы из БД через `getDueMonitors()`, планирует просроченные немедленно, остальные — с delay
+- `scheduleMonitor(id)` читает monitor, вычисляет delay до `next_run_at`, добавляет delayed job в `monitorQueue`
 
-```typescript
-export interface CrawlData {
-  url: string;
-  finalUrl: string;
-  statusCode: number;
-  headers: Record<string, string>;
-  html: string;
-  renderedHtml: string;
-  title: string;
-  metaTags: Record<string, string>;
-  links: Array<{ href: string; rel?: string; text?: string }>;
-  scripts: string[];
-  schemas: object[];
-  robots: { index: boolean; follow: boolean; rawContent?: string };
-  llmsTxt: { found: boolean; content?: string; url?: string };
-  duration_ms: number;
-  error?: string;
-}
+**MonitorWorker** — при обработке джоба:
+1. `createAudit({ domainId, userId, url })` → получает `auditId`
+2. `addAuditJob({ auditId, domainId, url, userId })` → аудит обрабатывается AuditWorker
+3. `updateMonitorRun(monitorId, nextRunAt)` — сдвигает следующий запуск
+4. `scheduleMonitor(monitorId)` — планирует следующий delayed job
 
-export interface AuditBlock {
-  name: string;
-  score: number;
-  weight: number;
-  issues: AuditIssue[];
-}
-```
-
-`AuditResult.meta` заменяется на `blocks: AuditBlock[]` + сохраняется `meta` для произвольных данных.
-
-### 2. CrawlerService — расширенный краулер
-
-Метод `crawl(url): Promise<CrawlData>`:
-- Puppeteer `--no-sandbox`, User-Agent `OWNDEV-Crawler/1.0 (+https://owndev.ru)`
-- Замер `duration_ms` от старта до закрытия
-- Извлечение из DOM: title, meta-теги (name + property), все `<a>` (href, rel, text), src всех `<script>`, JSON-LD schemas
-- Fetch `/robots.txt` → парсинг `noindex`/`nofollow` для User-agent: *
-- Fetch `/llms.txt` → `{ found, content, url }`
-- Headers из response → плоский Record
-- `finalUrl` = `page.url()` после навигации (учёт редиректов)
-- Каждый внешний fetch обёрнут в try/catch — падение одного не ломает весь crawl
-
-### 3. AuditService — 6 блоков проверок
-
-Метод `analyze(data: CrawlData): AuditResult` (чистая функция, без DB):
-
-**Блок 1 — Indexability (вес 15)**
-- noindex в meta robots → P1, confidence 92, source: html
-- X-Robots-Tag: noindex → P1, confidence 95, source: headers
-- Блокировка в robots.txt → P1, confidence 90, source: external
-- canonical ≠ текущий URL → P2, confidence 85, source: html
-
-**Блок 2 — Content Structure (вес 20)**
-- Нет H1 или несколько H1 → P1/P2, confidence 90, source: dom
-- Нет H2/H3 → P2, confidence 85, source: dom
-- Контент < 300 слов → P2, confidence 80, source: dom
-
-**Блок 3 — AI Readiness (вес 20)**
-- Нет llms.txt → P2, confidence 90, source: external
-- Нет FAQ-секций (вопросительные H2/H3, details/summary) → P2, confidence 60, source: heuristic
-- Нет списков/таблиц → P3, confidence 55, source: heuristic
-
-**Блок 4 — Schema (вес 15)**
-- Нет JSON-LD → P1, confidence 95, source: html
-- Отсутствуют рекомендуемые типы → P2, confidence 85, source: heuristic
-- Schema без name/@type → P2, confidence 80, source: html
-
-**Блок 5 — E-E-A-T (вес 15)**
-- Нет ссылки на контакты → P3, confidence 55, source: heuristic
-- Нет соцсетей → P3, confidence 50, source: heuristic
-- Нет Author → P3, confidence 60, source: heuristic
-
-**Блок 6 — Technical (вес 15)**
-- statusCode !== 200 → P1/P2, confidence 98, source: headers
-- crawl > 3000ms → P2, confidence 88, source: dom
-- HTML > 200KB → P3, confidence 85, source: dom
-
-Каждый блок обёрнут в try/catch — если падает, блок получает score 50 и warning-issue. Итоговый score — средневзвешенное по блокам. Confidence — среднее по всем issues.
-
-Метод `run(auditId, domainId, url)` сохраняет оркестрацию: crawl → analyze → saveAuditResult → updateAuditStatus. SchemaService и LlmsService больше не нужны отдельно — логика поглощена блоками 3 и 4.
+**AuditWorker** — без изменений (уже корректно делегирует в `service.run()`).
 
 ### Что НЕ трогаем
+- AuditWorker.ts — уже работает правильно
+- AuditService.ts, CrawlerService.ts — без изменений
 - Фронтенд — 0 изменений
-- AuditWorker — вызывает `service.run()`, сигнатура не меняется
-- DB queries — сигнатуры сохраняются
-- SchemaService.ts, LlmsService.ts — оставляем как есть (не удаляем), но AuditService больше не импортирует их
+- DB queries — используем существующие функции
 
 ### Объём
-~180 строк CrawlerService, ~250 строк AuditService, ~30 строк types.
+~6 файлов, ~80 строк изменений.
 
