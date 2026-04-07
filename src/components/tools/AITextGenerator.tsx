@@ -7,6 +7,7 @@ import { Bot, Copy, CheckCircle, Loader2, Clock, RefreshCw } from "lucide-react"
 import { toast } from "@/hooks/use-toast";
 import { generateText } from "@/lib/api";
 import EmptyState from "@/components/ui/empty-state";
+import { useAudit } from "@/state/audit";
 
 const textTypes = [
   { value: "meta", label: "Meta Title + Description" },
@@ -20,23 +21,20 @@ const AITextGenerator = () => {
   const [type, setType] = useState("meta");
   const [topic, setTopic] = useState("");
   const [keywords, setKeywords] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState("");
+  const { run, current } = useAudit<{ text: string }>('text-generator');
   const [copied, setCopied] = useState(false);
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
 
+  const loading = current?.loading ?? false;
+  const result = (current?.result as { text: string })?.text ?? "";
+
   const handleGenerate = async () => {
     if (!topic.trim()) { toast({ title: "Введите тему", variant: "destructive" }); return; }
-    setLoading(true);
-    setResult("");
     try {
-      const data = await generateText(type, topic, keywords);
-      setResult(data.text || "");
+      await run(topic.trim(), () => generateText(type, topic, keywords));
       setGeneratedAt(new Date());
     } catch (e: any) {
       toast({ title: "Ошибка генерации", description: e.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
   };
 

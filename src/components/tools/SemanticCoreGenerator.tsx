@@ -6,6 +6,7 @@ import { Sparkles, Copy, CheckCircle, Loader2, Download, Clock, RefreshCw } from
 import { toast } from "@/hooks/use-toast";
 import { generateSemanticCore } from "@/lib/api";
 import EmptyState from "@/components/ui/empty-state";
+import { useAudit } from "@/state/audit";
 
 interface Cluster {
   name: string;
@@ -22,23 +23,21 @@ const intentLabels: Record<string, { label: string; color: string }> = {
 
 const SemanticCoreGenerator = () => {
   const [topic, setTopic] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [clusters, setClusters] = useState<Cluster[]>([]);
+  const { run, current } = useAudit<{ clusters: Cluster[] }>('semantic-core');
   const [copied, setCopied] = useState(false);
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
+  const loading = current?.loading ?? false;
+  const clusters = (current?.result as { clusters: Cluster[] })?.clusters ?? [];
+
   const handleGenerate = async () => {
     if (!topic.trim()) { toast({ title: "Введите тему", variant: "destructive" }); return; }
-    setLoading(true);
-    setClusters([]);
+    setCheckedAt(null);
     try {
-      const data = await generateSemanticCore(topic);
-      setClusters(data.clusters || []);
+      await run(topic.trim(), () => generateSemanticCore(topic));
       setCheckedAt(new Date());
     } catch (e: any) {
       toast({ title: "Ошибка генерации", description: e.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
   };
 

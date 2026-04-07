@@ -6,6 +6,7 @@ import { trackBrand } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Badge } from "@/components/ui/badge";
+import { useAudit } from "@/state/audit";
 
 interface BrandResult {
   prompt: string;
@@ -30,10 +31,12 @@ const BrandTracker = () => {
   const [brand, setBrand] = useState("");
   const [prompts, setPrompts] = useState("");
   const [selectedAIs, setSelectedAIs] = useState<string[]>(["ChatGPT", "Perplexity"]);
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<BrandResult[]>([]);
+  const { run, current } = useAudit<{ results: BrandResult[] }>('brand-tracker');
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const loading = current?.loading ?? false;
+  const results = (current?.result as { results: BrandResult[] })?.results ?? [];
 
   const toggleAI = (ai: string) => {
     setSelectedAIs((prev) =>
@@ -58,23 +61,14 @@ const BrandTracker = () => {
       return;
     }
 
-    setLoading(true);
-    setResults([]);
-
     try {
-      const data = await trackBrand(brand.trim(), promptList, selectedAIs);
-
-      if (data?.results) {
-        setResults(data.results);
-      }
+      await run(brand.trim(), () => trackBrand(brand.trim(), promptList, selectedAIs));
     } catch (e: any) {
       toast({
         title: "Ошибка",
         description: e.message || "Не удалось проверить бренд",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
