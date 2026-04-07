@@ -39,13 +39,10 @@ const IndexationChecker = () => {
       saveLastUrl(url.trim());
     } catch (e: any) {
       toast({ title: "Ошибка проверки", description: e.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setResult(null);
     setCheckedAt(null);
   };
 
