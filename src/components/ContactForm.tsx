@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
+import { sendTelegram } from "@/lib/api";
 import { useInView } from "react-intersection-observer";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -70,17 +70,13 @@ const ContactForm = () => {
     const serviceLabel = serviceLabels[data.service] || data.service;
 
     try {
-      const { data: result, error } = await supabase.functions.invoke('send-telegram', {
-        body: {
-          name: data.name,
-          phone: data.phone,
-          email: data.email,
-          service: serviceLabel,
-          message: data.message || '',
-        },
+      await sendTelegram({
+        name: data.name,
+        phone: data.phone,
+        email: data.email,
+        service: serviceLabel,
+        message: data.message || '',
       });
-
-      if (error) throw error;
 
       setIsSuccess(true);
       toast({

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { generateContentBrief } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,14 +58,7 @@ const ContentBriefGenerator = () => {
     setLoading(true);
     setBrief(null);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-content-brief", {
-        body: { query: query.trim(), url: url.trim() || undefined, contentType },
-      });
-      if (error) throw error;
-      if (data?.error) {
-        toast.error(data.error);
-        return;
-      }
+      const data = await generateContentBrief(query.trim(), url.trim() || undefined, contentType);
       setBrief(data.brief);
     } catch (e: any) {
       toast.error(e?.message || "Ошибка генерации");

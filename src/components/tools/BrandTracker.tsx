@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Eye, Loader2, CheckCircle2, XCircle, MinusCircle, Copy, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
+import { trackBrand } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Badge } from "@/components/ui/badge";
@@ -62,11 +62,8 @@ const BrandTracker = () => {
     setResults([]);
 
     try {
-      const { data, error } = await supabase.functions.invoke("brand-tracker", {
-        body: { brand: brand.trim(), prompts: promptList, aiSystems: selectedAIs },
-      });
+      const data = await trackBrand(brand.trim(), promptList, selectedAIs);
 
-      if (error) throw error;
       if (data?.results) {
         setResults(data.results);
       }

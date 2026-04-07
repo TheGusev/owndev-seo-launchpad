@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Sparkles, Copy, CheckCircle, Loader2, Download, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { generateSemanticCore } from "@/lib/api";
 import EmptyState from "@/components/ui/empty-state";
 
 interface Cluster {
@@ -32,9 +32,7 @@ const SemanticCoreGenerator = () => {
     setLoading(true);
     setClusters([]);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-semantic-core", { body: { topic } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await generateSemanticCore(topic);
       setClusters(data.clusters || []);
       setCheckedAt(new Date());
     } catch (e: any) {

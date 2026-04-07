@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Bot, Copy, CheckCircle, Loader2, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { generateText } from "@/lib/api";
 import EmptyState from "@/components/ui/empty-state";
 
 const textTypes = [
@@ -30,9 +30,7 @@ const AITextGenerator = () => {
     setLoading(true);
     setResult("");
     try {
-      const { data, error } = await supabase.functions.invoke("generate-text", { body: { type, topic, keywords } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await generateText(type, topic, keywords);
       setResult(data.text || "");
       setGeneratedAt(new Date());
     } catch (e: any) {

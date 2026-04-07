@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Wand2, Copy, Check, Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { generateAutofix } from "@/lib/api";
 import { autoFixTemplates, matchIssueToTemplate } from "@/utils/autoFixTemplates";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,11 +34,9 @@ const AutoFixGenerator = ({ issueTitle, url, pageTitle, pageDescription }: AutoF
 
     // Try AI generation first
     try {
-      const { data, error } = await supabase.functions.invoke("generate-autofix", {
-        body: { issueType: templateKey, url, title: pageTitle, description: pageDescription },
-      });
+      const data = await generateAutofix(templateKey, url, pageTitle, pageDescription);
 
-      if (!error && data?.code) {
+      if (data?.code) {
         setFixCode(data.code);
         setLoading(false);
         return;

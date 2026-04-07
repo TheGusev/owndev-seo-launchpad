@@ -1,0 +1,24 @@
+/**
+ * API Configuration
+ * 
+ * Currently all requests go through Supabase Edge Functions.
+ * When a dedicated backend is added, update API_BASE_URL via VITE_API_BASE_URL
+ * and migrate endpoints in tools.ts / scan.ts.
+ */
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+// Supabase project constants (used for raw fetch to Edge Functions with path-based routing)
+export const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+export function edgeFunctionUrl(name: string, path = '') {
+  return `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/${name}${path}`;
+}
+
+export function edgeFunctionHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON_KEY,
+  };
+}

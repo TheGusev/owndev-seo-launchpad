@@ -19,7 +19,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { generateGeoContent } from "@/lib/api";
 
 /* ─── Constants ─── */
 const NICHES = [
@@ -338,16 +338,13 @@ const PSEOGenerator = () => {
 
       const tryBatch = async (): Promise<void> => {
         try {
-          const { data, error } = await supabase.functions.invoke('generate-geo-content', {
-            body: {
-              pages: batch.map(r => ({ city: r.city, service: r.service, slug: r.slug })),
-              niche: effectiveNiche,
-              tone,
-              blocks,
-            },
-          });
-
-          if (error) throw error;
+          const data = await generateGeoContent(
+            batch.map(r => ({ city: r.city, service: r.service, slug: r.slug })),
+            effectiveNiche,
+            '',
+            tone,
+            '',
+          );
 
           const aiResults = data?.results || [];
           for (const row of batch) {

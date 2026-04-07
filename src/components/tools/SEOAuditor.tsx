@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Search, Globe, Zap, Loader2, AlertTriangle, CheckCircle, Info, Bot, Hash, RefreshCw, Clock, ChevronDown, ChevronUp, Shield, FileText, Link2, Gauge, Image, MousePointer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { supabase } from "@/integrations/supabase/client";
+import { auditSite } from "@/lib/api";
 import ToolCTA from "./ToolCTA";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
@@ -143,11 +143,7 @@ const SEOAuditor = () => {
     setCheckedAt(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("seo-audit", {
-        body: { url: url.trim() },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (data.error) throw new Error(data.error);
+      const data = await auditSite(url.trim());
       setResult(data as AuditResult);
       setCheckedAt(new Date());
       saveLastUrl(url.trim());

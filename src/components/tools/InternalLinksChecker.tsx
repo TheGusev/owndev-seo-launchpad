@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Link2, CheckCircle, XCircle, Loader2, ExternalLink, Globe, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { checkInternalLinks } from "@/lib/api";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
 
@@ -41,9 +41,7 @@ const InternalLinksChecker = () => {
     setResult(null);
     setCheckedAt(null);
     try {
-      const { data, error } = await supabase.functions.invoke("check-internal-links", { body: { url } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await checkInternalLinks(url);
       setResult(data);
       setCheckedAt(new Date());
       saveLastUrl(url.trim());

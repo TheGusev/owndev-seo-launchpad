@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { ScanSearch, CheckCircle, XCircle, AlertTriangle, Loader2, Globe, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { checkIndexation } from "@/lib/api";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
 
@@ -33,9 +33,7 @@ const IndexationChecker = () => {
     setResult(null);
     setCheckedAt(null);
     try {
-      const { data, error } = await supabase.functions.invoke("check-indexation", { body: { url } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await checkIndexation(url);
       setResult(data);
       setCheckedAt(new Date());
       saveLastUrl(url.trim());
