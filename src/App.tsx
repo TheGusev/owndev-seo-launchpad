@@ -29,6 +29,10 @@ import GeoAudit from "./pages/GeoAudit";
 import GeoRating from "./pages/GeoRating";
 import Academy from "./pages/Academy";
 import AcademyLesson from "./pages/AcademyLesson";
+import AiVisibility from "./pages/scenarios/AiVisibility";
+import AiReadyContent from "./pages/scenarios/AiReadyContent";
+import BrandPresence from "./pages/scenarios/BrandPresence";
+import Monitoring from "./pages/scenarios/Monitoring";
 import BorderBot from "@/components/mascot/BorderBot";
 import { AuditProvider } from "@/state/audit";
 
@@ -72,6 +76,10 @@ const App = () => (
             <Route path="/:citySlug/:nicheSlug/:toolSlug" element={<GeoNicheToolPage />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/scenario/ai-visibility" element={<AiVisibility />} />
+            <Route path="/scenario/ai-ready-content" element={<AiReadyContent />} />
+            <Route path="/scenario/brand-presence" element={<BrandPresence />} />
+            <Route path="/scenario/monitoring" element={<Monitoring />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
