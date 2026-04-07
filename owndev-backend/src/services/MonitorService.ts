@@ -1,31 +1,39 @@
-import cron from 'node-cron';
-import { pool } from '../db/client.js';
+import { getDueMonitors, getMonitorById } from '../db/queries/monitors.js';
 import { addMonitorJob } from '../queue/jobs.js';
 import { logger } from '../utils/logger.js';
 
 export class MonitorService {
-  /**
-   * Запускает cron-задачу: каждые 6 часов проверять все домены со статусом 'monitoring'.
-   */
-  start() {
-    cron.schedule('0 */6 * * *', async () => {
-      logger.info('MONITOR', 'Running scheduled domain check');
+  /** Schedule a single monitor as a delayed BullMQ job */
+  async scheduleMonitor(monitorId: string) {
+    const monitor = await getMonitorById(monitorId);
+    if (!monitor || !monitor.enabled) return;
 
-      try {
-        const { rows } = await pool.query(
-          `SELECT id, url FROM domains WHERE status = 'monitoring'`,
-        );
+    const delay = monitor.next_run_at
+      ? Math.max(0, new Date(monitor.next_run_at).getTime() - Date.now())
+      : 0;
 
-        for (const domain of rows) {
-          await addMonitorJob({ domainId: domain.id, url: domain.url });
-        }
+    await addMonitorJob(
+      {
+        monitorId: monitor.id,
+        domainId: monitor.domain_id,
+        url: '', // resolved by worker from domain
+        userId: monitor.user_id,
+      },
+      delay,
+    );
 
-        logger.info('MONITOR', `Queued ${rows.length} domains for check`);
-      } catch (err: any) {
-        logger.error('MONITOR', 'Cron error:', err.message);
-      }
-    });
+    logger.info('MONITOR', `Scheduled ${monitorId} with delay ${delay}ms`);
+  }
 
-    logger.info('MONITOR', 'Cron scheduler started (every 6h)');
+  /** Read all due monitors from DB and schedule them */
+  async startAll() {
+    const monitors = await getDueMonitors();
+    logger.info('MONITOR', `Found ${monitors.length} due monitors`);
+
+    for (const m of monitors) {
+      await this.scheduleMonitor(m.id);
+    }
+
+    logger.info('MONITOR', 'All due monitors scheduled');
   }
 }

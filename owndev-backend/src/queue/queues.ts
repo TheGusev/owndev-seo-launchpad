@@ -1,5 +1,19 @@
 import { Queue } from 'bullmq';
 import { redis } from '../cache/redis.js';
 
-export const auditQueue = new Queue('audit', { connection: redis });
-export const monitorQueue = new Queue('monitor', { connection: redis });
+const defaultJobOptions = {
+  attempts: 3,
+  backoff: { type: 'exponential' as const, delay: 5000 },
+  removeOnComplete: 100,
+  removeOnFail: 50,
+};
+
+export const auditQueue = new Queue('audit', {
+  connection: redis,
+  defaultJobOptions,
+});
+
+export const monitorQueue = new Queue('monitor', {
+  connection: redis,
+  defaultJobOptions,
+});

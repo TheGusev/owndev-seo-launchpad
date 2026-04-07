@@ -27,9 +27,9 @@ async function main() {
   const auditWorker = startAuditWorker();
   const monitorWorker = startMonitorWorker();
 
-  // Start cron scheduler
-  const monitor = new MonitorService();
-  monitor.start();
+  // Schedule all due monitors via BullMQ delayed jobs
+  const monitorService = new MonitorService();
+  await monitorService.startAll();
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
