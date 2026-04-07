@@ -21,13 +21,16 @@ export function useAudit<T = any>(toolId: ToolId) {
         result: null,
       });
       setCurrent(sessionId);
+      logEvent('audit_start', { url, toolId, timestamp: new Date().toISOString() });
       try {
         const result = await apiFn();
         updateResult(sessionId, result);
+        logEvent('audit_success', { url, toolId, score: (result as any)?.score, timestamp: new Date().toISOString() });
         return result;
       } catch (e: any) {
         const msg = e?.message || 'Unknown error';
         setError(sessionId, msg);
+        logEvent('audit_error', { url, toolId, errorMessage: msg, timestamp: new Date().toISOString() });
         throw e;
       }
     },
