@@ -11,6 +11,9 @@ interface AuditIssue {
   category: 'seo' | 'llm';
   details?: string[];
   context?: string;
+  priority: 'P1' | 'P2' | 'P3';
+  confidence: number;
+  source: 'html' | 'headers' | 'dom' | 'heuristic' | 'external';
 }
 
 async function checkUrl(url: string, timeout = 5000): Promise<{ ok: boolean; status: number; error?: string }> {
@@ -91,19 +94,19 @@ Deno.serve(async (req) => {
     // ===== HTTPS CHECK =====
     const isHttps = parsedUrl.protocol === 'https:';
     if (!isHttps) {
-      issues.push({ type: 'https', severity: 'critical', message: 'Сайт не использует HTTPS', recommendation: 'Переведите сайт на HTTPS — установите SSL-сертификат', category: 'seo', details: [`Протокол: ${parsedUrl.protocol}`], context: 'HTTPS — обязательный фактор ранжирования Google с 2014 года. Без него браузеры показывают предупреждение «Не защищено».' });
+      issues.push({ type: 'https', severity: 'critical', message: 'Сайт не использует HTTPS', recommendation: 'Переведите сайт на HTTPS — установите SSL-сертификат', category: 'seo', details: [`Протокол: ${parsedUrl.protocol}`], context: 'HTTPS — обязательный фактор ранжирования Google с 2014 года. Без него браузеры показывают предупреждение «Не защищено».', priority: 'P1', confidence: 95, source: 'headers' });
       seoScore -= 15;
     }
 
     // ===== ROBOTS.TXT =====
     if (!robotsResult.ok) {
-      issues.push({ type: 'robots_txt', severity: 'critical', message: `Файл robots.txt недоступен (${robotsResult.status || 'ошибка'})`, recommendation: 'Создайте robots.txt в корне сайта с правилами для краулеров', category: 'seo', details: [`URL: ${origin}/robots.txt`, `Статус: ${robotsResult.status || robotsResult.error}`], context: 'Без robots.txt поисковики не знают какие страницы индексировать, а какие пропустить.' });
+      issues.push({ type: 'robots_txt', severity: 'critical', message: `Файл robots.txt недоступен (${robotsResult.status || 'ошибка'})`, recommendation: 'Создайте robots.txt в корне сайта с правилами для краулеров', category: 'seo', details: [`URL: ${origin}/robots.txt`, `Статус: ${robotsResult.status || robotsResult.error}`], context: 'Без robots.txt поисковики не знают какие страницы индексировать, а какие пропустить.', priority: 'P1', confidence: 90, source: 'external' });
       seoScore -= 10;
     }
 
     // ===== SITEMAP.XML =====
     if (!sitemapResult.ok) {
-      issues.push({ type: 'sitemap_xml', severity: 'warning', message: `Файл sitemap.xml недоступен (${sitemapResult.status || 'ошибка'})`, recommendation: 'Создайте и разместите sitemap.xml — помогает краулерам находить все страницы', category: 'seo', details: [`URL: ${origin}/sitemap.xml`, `Статус: ${sitemapResult.status || sitemapResult.error}`], context: 'Sitemap ускоряет индексацию и помогает поисковикам обнаружить глубокие страницы.' });
+      issues.push({ type: 'sitemap_xml', severity: 'warning', message: `Файл sitemap.xml недоступен (${sitemapResult.status || 'ошибка'})`, recommendation: 'Создайте и разместите sitemap.xml — помогает краулерам находить все страницы', category: 'seo', details: [`URL: ${origin}/sitemap.xml`, `Статус: ${sitemapResult.status || sitemapResult.error}`], context: 'Sitemap ускоряет индексацию и помогает поисковикам обнаружить глубокие страницы.', priority: 'P2', confidence: 90, source: 'external' });
       seoScore -= 7;
     }
 
@@ -117,6 +120,7 @@ Deno.serve(async (req) => {
         category: 'seo',
         details: brokenLinks.slice(0, 5).map(l => `• ${l.href} → ${l.status}${l.anchor ? ` (текст: "${l.anchor}")` : ''}`),
         context: 'Битые ссылки ухудшают краулинг, пользовательский опыт и тратят краулинговый бюджет.',
+        priority: brokenLinks.length >= 3 ? 'P1' : 'P2', confidence: 90, source: 'external',
       });
       seoScore -= Math.min(15, brokenLinks.length * 3);
     }
@@ -126,11 +130,11 @@ Deno.serve(async (req) => {
     const xRobotsTag = responseHeaders['x-robots-tag'] || '';
     const robotsContent = metaRobotsMatch ? metaRobotsMatch[1] : '';
     if (robotsContent.includes('noindex') || xRobotsTag.includes('noindex')) {
-      issues.push({ type: 'meta_robots', severity: 'critical', message: 'Страница помечена как noindex', recommendation: 'Удалите noindex если страница должна индексироваться', category: 'seo', details: [robotsContent ? `• meta robots: "${robotsContent}"` : '', xRobotsTag ? `• X-Robots-Tag: "${xRobotsTag}"` : ''].filter(Boolean), context: 'Noindex полностью блокирует страницу от появления в поиске.' });
+      issues.push({ type: 'meta_robots', severity: 'critical', message: 'Страница помечена как noindex', recommendation: 'Удалите noindex если страница должна индексироваться', category: 'seo', details: [robotsContent ? `• meta robots: "${robotsContent}"` : '', xRobotsTag ? `• X-Robots-Tag: "${xRobotsTag}"` : ''].filter(Boolean), context: 'Noindex полностью блокирует страницу от появления в поиске.', priority: 'P1', confidence: 95, source: xRobotsTag.includes('noindex') ? 'headers' : 'html' });
       seoScore -= 20;
     }
     if (robotsContent.includes('nofollow') || xRobotsTag.includes('nofollow')) {
-      issues.push({ type: 'meta_nofollow', severity: 'warning', message: 'Страница помечена как nofollow', recommendation: 'Убедитесь что nofollow установлен намеренно', category: 'seo', details: [robotsContent ? `• meta robots: "${robotsContent}"` : '', xRobotsTag ? `• X-Robots-Tag: "${xRobotsTag}"` : ''].filter(Boolean), context: 'Nofollow запрещает передачу ссылочного веса с этой страницы.' });
+      issues.push({ type: 'meta_nofollow', severity: 'warning', message: 'Страница помечена как nofollow', recommendation: 'Убедитесь что nofollow установлен намеренно', category: 'seo', details: [robotsContent ? `• meta robots: "${robotsContent}"` : '', xRobotsTag ? `• X-Robots-Tag: "${xRobotsTag}"` : ''].filter(Boolean), context: 'Nofollow запрещает передачу ссылочного веса с этой страницы.', priority: 'P2', confidence: 95, source: xRobotsTag.includes('nofollow') ? 'headers' : 'html' });
       seoScore -= 5;
     }
 
@@ -138,13 +142,13 @@ Deno.serve(async (req) => {
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
     const title = titleMatch ? titleMatch[1].trim() : '';
     if (!title) {
-      issues.push({ type: 'title', severity: 'critical', message: 'Тег <title> отсутствует', recommendation: 'Добавьте уникальный title длиной 50-60 символов', category: 'seo', context: 'Title — один из главных факторов ранжирования. Без него страница плохо отображается в поиске.' });
+      issues.push({ type: 'title', severity: 'critical', message: 'Тег <title> отсутствует', recommendation: 'Добавьте уникальный title длиной 50-60 символов', category: 'seo', context: 'Title — один из главных факторов ранжирования. Без него страница плохо отображается в поиске.', priority: 'P1', confidence: 95, source: 'html' });
       seoScore -= 15;
     } else if (title.length < 30) {
-      issues.push({ type: 'title', severity: 'warning', message: `Title слишком короткий (${title.length} симв.)`, recommendation: 'Увеличьте длину title до 50-60 символов', category: 'seo', details: [`Текущий title: "${title}"`], context: 'Короткий title не раскрывает содержание страницы и теряет потенциальные клики.' });
+      issues.push({ type: 'title', severity: 'warning', message: `Title слишком короткий (${title.length} симв.)`, recommendation: 'Увеличьте длину title до 50-60 символов', category: 'seo', details: [`Текущий title: "${title}"`], context: 'Короткий title не раскрывает содержание страницы и теряет потенциальные клики.', priority: 'P2', confidence: 90, source: 'html' });
       seoScore -= 5;
     } else if (title.length > 70) {
-      issues.push({ type: 'title', severity: 'warning', message: `Title слишком длинный (${title.length} симв.)`, recommendation: 'Сократите title до 60 символов', category: 'seo', details: [`Текущий title: "${title.slice(0, 80)}…"`], context: 'Длинный title обрезается в поисковой выдаче.' });
+      issues.push({ type: 'title', severity: 'warning', message: `Title слишком длинный (${title.length} симв.)`, recommendation: 'Сократите title до 60 символов', category: 'seo', details: [`Текущий title: "${title.slice(0, 80)}…"`], context: 'Длинный title обрезается в поисковой выдаче.', priority: 'P2', confidence: 90, source: 'html' });
       seoScore -= 5;
     }
 
@@ -153,19 +157,19 @@ Deno.serve(async (req) => {
       || html.match(/<meta[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["']/i);
     const description = descMatch ? descMatch[1].trim() : '';
     if (!description) {
-      issues.push({ type: 'meta_description', severity: 'critical', message: 'Meta description отсутствует', recommendation: 'Добавьте meta description длиной 150-160 символов', category: 'seo', context: 'Description отображается в сниппете поиска и влияет на CTR.' });
+      issues.push({ type: 'meta_description', severity: 'critical', message: 'Meta description отсутствует', recommendation: 'Добавьте meta description длиной 150-160 символов', category: 'seo', context: 'Description отображается в сниппете поиска и влияет на CTR.', priority: 'P1', confidence: 95, source: 'html' });
       seoScore -= 15;
     } else if (description.length < 100) {
-      issues.push({ type: 'meta_description', severity: 'warning', message: `Meta description короткий (${description.length} симв.)`, recommendation: 'Увеличьте до 150-160 символов', category: 'seo', details: [`Текущий: "${description}"`], context: 'Короткий description не полностью использует место в поисковой выдаче.' });
+      issues.push({ type: 'meta_description', severity: 'warning', message: `Meta description короткий (${description.length} симв.)`, recommendation: 'Увеличьте до 150-160 символов', category: 'seo', details: [`Текущий: "${description}"`], context: 'Короткий description не полностью использует место в поисковой выдаче.', priority: 'P2', confidence: 90, source: 'html' });
       seoScore -= 5;
     } else if (description.length > 170) {
-      issues.push({ type: 'meta_description', severity: 'info', message: `Meta description длинный (${description.length} симв.)`, recommendation: 'Сократите до 160 символов', category: 'seo', details: [`Текущий: "${description.slice(0, 100)}…"`] });
+      issues.push({ type: 'meta_description', severity: 'info', message: `Meta description длинный (${description.length} симв.)`, recommendation: 'Сократите до 160 символов', category: 'seo', details: [`Текущий: "${description.slice(0, 100)}…"`], priority: 'P3', confidence: 90, source: 'html' });
       seoScore -= 3;
     }
 
     // ===== TITLE vs DESCRIPTION DUPLICATION =====
     if (title && description && title.toLowerCase().trim() === description.toLowerCase().trim()) {
-      issues.push({ type: 'title_desc_duplicate', severity: 'warning', message: 'Title и Description идентичны', recommendation: 'Сделайте Description расширенным описанием, отличным от Title', category: 'seo', details: [`Title: "${title.slice(0, 60)}"`, `Description: "${description.slice(0, 60)}"`], context: 'Дублирование title и description — упущенная возможность привлечь клики.' });
+      issues.push({ type: 'title_desc_duplicate', severity: 'warning', message: 'Title и Description идентичны', recommendation: 'Сделайте Description расширенным описанием, отличным от Title', category: 'seo', details: [`Title: "${title.slice(0, 60)}"`, `Description: "${description.slice(0, 60)}"`], context: 'Дублирование title и description — упущенная возможность привлечь клики.', priority: 'P2', confidence: 95, source: 'html' });
       seoScore -= 5;
     }
 
@@ -173,10 +177,10 @@ Deno.serve(async (req) => {
     const h1Matches = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi) || [];
     const h1Texts = h1Matches.map(m => m.replace(/<[^>]+>/g, '').trim());
     if (h1Matches.length === 0) {
-      issues.push({ type: 'h1', severity: 'critical', message: 'Тег H1 отсутствует', recommendation: 'Добавьте один H1 с основным ключевым словом', category: 'seo', context: 'H1 — главный заголовок страницы, сообщает поисковикам основную тему.' });
+      issues.push({ type: 'h1', severity: 'critical', message: 'Тег H1 отсутствует', recommendation: 'Добавьте один H1 с основным ключевым словом', category: 'seo', context: 'H1 — главный заголовок страницы, сообщает поисковикам основную тему.', priority: 'P1', confidence: 95, source: 'html' });
       seoScore -= 15;
     } else if (h1Matches.length > 1) {
-      issues.push({ type: 'h1', severity: 'warning', message: `Несколько H1 на странице (${h1Matches.length})`, recommendation: 'Оставьте только один H1', category: 'seo', details: h1Texts.slice(0, 3).map(t => `• "${t.slice(0, 60)}"`), context: 'Несколько H1 размывают главную тему страницы.' });
+      issues.push({ type: 'h1', severity: 'warning', message: `Несколько H1 на странице (${h1Matches.length})`, recommendation: 'Оставьте только один H1', category: 'seo', details: h1Texts.slice(0, 3).map(t => `• "${t.slice(0, 60)}"`), context: 'Несколько H1 размывают главную тему страницы.', priority: 'P2', confidence: 95, source: 'html' });
       seoScore -= 5;
     }
 
@@ -199,6 +203,7 @@ Deno.serve(async (req) => {
           ...(imgsWithoutAltCount > 5 ? [`…и ещё ${imgsWithoutAltCount - 5}`] : []),
         ],
         context: 'Alt-атрибуты помогают поисковикам и AI-системам понять содержимое изображений. Также важны для доступности.',
+        priority: imgsWithoutAltCount > 5 ? 'P1' : 'P2', confidence: 95, source: 'html',
       });
       seoScore -= Math.min(15, imgsWithoutAltCount * 2);
     }
@@ -206,44 +211,43 @@ Deno.serve(async (req) => {
     // ===== PAGE SIZE =====
     const sizeKB = Math.round(htmlSize / 1024);
     if (sizeKB > 500) {
-      issues.push({ type: 'page_size', severity: 'critical', message: `HTML слишком тяжёлый (${sizeKB} КБ)`, recommendation: 'Оптимизируйте HTML — удалите лишний код, инлайн-стили', category: 'seo', context: 'Тяжёлый HTML замедляет загрузку и индексацию.' });
+      issues.push({ type: 'page_size', severity: 'critical', message: `HTML слишком тяжёлый (${sizeKB} КБ)`, recommendation: 'Оптимизируйте HTML — удалите лишний код, инлайн-стили', category: 'seo', context: 'Тяжёлый HTML замедляет загрузку и индексацию.', priority: 'P2', confidence: 60, source: 'heuristic' });
       seoScore -= 10;
     } else if (sizeKB > 200) {
-      issues.push({ type: 'page_size', severity: 'warning', message: `HTML тяжеловат (${sizeKB} КБ)`, recommendation: 'Рассмотрите минификацию', category: 'seo' });
+      issues.push({ type: 'page_size', severity: 'warning', message: `HTML тяжеловат (${sizeKB} КБ)`, recommendation: 'Рассмотрите минификацию', category: 'seo', priority: 'P3', confidence: 55, source: 'heuristic' });
       seoScore -= 5;
     }
 
     // ===== LOAD TIME =====
     if (loadTime > 3000) {
-      issues.push({ type: 'speed', severity: 'critical', message: `Медленная загрузка (${(loadTime / 1000).toFixed(1)}с)`, recommendation: 'Оптимизируйте серверный ответ', category: 'seo', context: 'Скорость загрузки — фактор ранжирования Google.' });
+      issues.push({ type: 'speed', severity: 'critical', message: `Медленная загрузка (${(loadTime / 1000).toFixed(1)}с)`, recommendation: 'Оптимизируйте серверный ответ', category: 'seo', context: 'Скорость загрузки — фактор ранжирования Google.', priority: 'P2', confidence: 50, source: 'heuristic' });
       seoScore -= 10;
     } else if (loadTime > 1500) {
-      issues.push({ type: 'speed', severity: 'warning', message: `Загрузка ${(loadTime / 1000).toFixed(1)}с`, recommendation: 'Можно ускорить', category: 'seo' });
+      issues.push({ type: 'speed', severity: 'warning', message: `Загрузка ${(loadTime / 1000).toFixed(1)}с`, recommendation: 'Можно ускорить', category: 'seo', priority: 'P3', confidence: 50, source: 'heuristic' });
       seoScore -= 3;
     }
 
     // ===== VIEWPORT =====
     if (!html.match(/<meta[^>]*name=["']viewport["']/i)) {
-      issues.push({ type: 'viewport', severity: 'critical', message: 'Нет meta viewport', recommendation: 'Добавьте <meta name="viewport" content="width=device-width, initial-scale=1">', category: 'seo', context: 'Без viewport страница не адаптирована для мобильных устройств.' });
+      issues.push({ type: 'viewport', severity: 'critical', message: 'Нет meta viewport', recommendation: 'Добавьте <meta name="viewport" content="width=device-width, initial-scale=1">', category: 'seo', context: 'Без viewport страница не адаптирована для мобильных устройств.', priority: 'P2', confidence: 95, source: 'html' });
       seoScore -= 10;
     }
 
     // ===== CANONICAL =====
     const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i);
     if (!canonicalMatch) {
-      issues.push({ type: 'canonical', severity: 'info', message: 'Нет canonical-ссылки', recommendation: 'Добавьте <link rel="canonical"> для предотвращения дублей', category: 'seo', context: 'Canonical указывает поисковикам предпочтительную версию страницы.' });
+      issues.push({ type: 'canonical', severity: 'info', message: 'Нет canonical-ссылки', recommendation: 'Добавьте <link rel="canonical"> для предотвращения дублей', category: 'seo', context: 'Canonical указывает поисковикам предпочтительную версию страницы.', priority: 'P3', confidence: 90, source: 'html' });
       seoScore -= 3;
     }
 
     // ===== HREFLANG =====
     const hreflangMatches = html.match(/<link[^>]*hreflang=["']([^"']+)["']/gi) || [];
-    // Just info — not a penalty
     if (hreflangMatches.length > 0) {
       const langs = hreflangMatches.map(m => {
         const lm = m.match(/hreflang=["']([^"']+)["']/i);
         return lm ? lm[1] : '';
       }).filter(Boolean);
-      issues.push({ type: 'hreflang', severity: 'info', message: `Найдены hreflang теги (${langs.length})`, recommendation: 'Убедитесь что hreflang настроен корректно', category: 'seo', details: langs.slice(0, 5).map(l => `• ${l}`) });
+      issues.push({ type: 'hreflang', severity: 'info', message: `Найдены hreflang теги (${langs.length})`, recommendation: 'Убедитесь что hreflang настроен корректно', category: 'seo', details: langs.slice(0, 5).map(l => `• ${l}`), priority: 'P3', confidence: 85, source: 'html' });
     }
 
     // ===== OPEN GRAPH =====
@@ -252,7 +256,7 @@ Deno.serve(async (req) => {
     const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
     if (!ogTitleMatch) {
       const missingOg = ['og:title', !ogDescMatch && 'og:description', !ogImageMatch && 'og:image'].filter(Boolean);
-      issues.push({ type: 'og_tags', severity: 'info', message: 'Open Graph теги неполные', recommendation: 'Добавьте og:title, og:description, og:image для красивого превью в соцсетях', category: 'seo', details: missingOg.map(t => `• Отсутствует: ${t}`), context: 'OG-теги управляют превью при расшаривании ссылки в соцсетях и мессенджерах.' });
+      issues.push({ type: 'og_tags', severity: 'info', message: 'Open Graph теги неполные', recommendation: 'Добавьте og:title, og:description, og:image для красивого превью в соцсетях', category: 'seo', details: missingOg.map(t => `• Отсутствует: ${t}`), context: 'OG-теги управляют превью при расшаривании ссылки в соцсетях и мессенджерах.', priority: 'P3', confidence: 90, source: 'html' });
       seoScore -= 3;
     }
 
@@ -274,6 +278,7 @@ Deno.serve(async (req) => {
             ...blockingStyles.slice(0, 3).map(s => { const m = s.match(/href=["']([^"']+)["']/i); return m ? `• CSS: ${m[1].slice(0, 60)}` : ''; }).filter(Boolean),
           ],
           context: 'Блокирующие ресурсы замедляют рендеринг страницы и ухудшают Core Web Vitals.',
+          priority: 'P2', confidence: 65, source: 'heuristic',
         });
         seoScore -= 5;
       }
@@ -288,7 +293,7 @@ Deno.serve(async (req) => {
     if (!hasPreloadHero && !hasFetchPriority) {
       cwv.lcpScore -= 30;
       cwv.lcpDetails.push('Нет preload или fetchpriority="high" для hero-изображения');
-      issues.push({ type: 'cwv_lcp_preload', severity: 'warning', message: 'Нет preload/fetchpriority для hero-изображения', recommendation: 'Добавьте <link rel="preload" as="image" href="..."> или fetchpriority="high" на первый <img>', category: 'seo', context: 'Preload и fetchpriority ускоряют загрузку LCP-элемента — главного видимого контента.' });
+      issues.push({ type: 'cwv_lcp_preload', severity: 'warning', message: 'Нет preload/fetchpriority для hero-изображения', recommendation: 'Добавьте <link rel="preload" as="image" href="..."> или fetchpriority="high" на первый <img>', category: 'seo', context: 'Preload и fetchpriority ускоряют загрузку LCP-элемента — главного видимого контента.', priority: 'P2', confidence: 55, source: 'heuristic' });
       seoScore -= 5;
     }
     // LCP: font-display: swap
@@ -297,7 +302,7 @@ Deno.serve(async (req) => {
     if (hasExternalFonts && !hasFontDisplaySwap) {
       cwv.lcpScore -= 20;
       cwv.lcpDetails.push('Внешние шрифты без font-display: swap');
-      issues.push({ type: 'cwv_lcp_fonts', severity: 'info', message: 'Внешние шрифты без font-display: swap', recommendation: 'Добавьте font-display: swap к @font-face для предотвращения FOIT', category: 'seo', context: 'Без swap текст невидим до загрузки шрифта — это ухудшает LCP.' });
+      issues.push({ type: 'cwv_lcp_fonts', severity: 'info', message: 'Внешние шрифты без font-display: swap', recommendation: 'Добавьте font-display: swap к @font-face для предотвращения FOIT', category: 'seo', context: 'Без swap текст невидим до загрузки шрифта — это ухудшает LCP.', priority: 'P3', confidence: 60, source: 'heuristic' });
       seoScore -= 3;
     }
     // LCP: large HTML
@@ -313,7 +318,7 @@ Deno.serve(async (req) => {
         return src ? `• ${src[1].slice(0, 60)}` : '• (img без src)';
       });
       cwv.clsDetails.push(`${imgsWithoutDimensions.length} из ${imgTags.length} изображений без width/height`);
-      issues.push({ type: 'cwv_cls_dimensions', severity: imgsWithoutDimensions.length > 5 ? 'warning' : 'info', message: `${imgsWithoutDimensions.length} изображений без width/height атрибутов`, recommendation: 'Добавьте width и height к каждому <img> для предотвращения CLS', category: 'seo', details: examples, context: 'Без размеров браузер не может зарезервировать место — это вызывает сдвиг макета (CLS).' });
+      issues.push({ type: 'cwv_cls_dimensions', severity: imgsWithoutDimensions.length > 5 ? 'warning' : 'info', message: `${imgsWithoutDimensions.length} изображений без width/height атрибутов`, recommendation: 'Добавьте width и height к каждому <img> для предотвращения CLS', category: 'seo', details: examples, context: 'Без размеров браузер не может зарезервировать место — это вызывает сдвиг макета (CLS).', priority: 'P2', confidence: 60, source: 'heuristic' });
       seoScore -= Math.min(5, imgsWithoutDimensions.length);
     }
     // CLS: iframes without dimensions
@@ -331,7 +336,7 @@ Deno.serve(async (req) => {
       if (heavyInline.length > 0) {
         cwv.inpScore -= Math.min(30, heavyInline.length * 15);
         cwv.inpDetails.push(`${heavyInline.length} тяжёлых inline-скриптов в <head>`);
-        issues.push({ type: 'cwv_inp_inline', severity: 'info', message: `${heavyInline.length} тяжёлых inline-скриптов в <head>`, recommendation: 'Вынесите тяжёлые скрипты в отдельные файлы с async/defer', category: 'seo', context: 'Тяжёлые inline-скрипты блокируют главный поток и ухудшают INP.' });
+        issues.push({ type: 'cwv_inp_inline', severity: 'info', message: `${heavyInline.length} тяжёлых inline-скриптов в <head>`, recommendation: 'Вынесите тяжёлые скрипты в отдельные файлы с async/defer', category: 'seo', context: 'Тяжёлые inline-скрипты блокируют главный поток и ухудшают INP.', priority: 'P3', confidence: 55, source: 'heuristic' });
         seoScore -= 3;
       }
     }
@@ -348,7 +353,7 @@ Deno.serve(async (req) => {
     if (imgTags.length > 3 && !hasLazyImages) {
       cwv.lcpScore -= 10;
       cwv.lcpDetails.push('Нет lazy loading для изображений');
-      issues.push({ type: 'cwv_lazy', severity: 'info', message: 'Нет loading="lazy" на изображениях', recommendation: 'Добавьте loading="lazy" ко всем изображениям ниже первого экрана', category: 'seo', context: 'Lazy loading экономит ресурсы и ускоряет начальную загрузку.' });
+      issues.push({ type: 'cwv_lazy', severity: 'info', message: 'Нет loading="lazy" на изображениях', recommendation: 'Добавьте loading="lazy" ко всем изображениям ниже первого экрана', category: 'seo', context: 'Lazy loading экономит ресурсы и ускоряет начальную загрузку.', priority: 'P3', confidence: 60, source: 'heuristic' });
     }
 
     cwv.lcpScore = Math.max(0, Math.min(100, cwv.lcpScore));
@@ -372,14 +377,14 @@ Deno.serve(async (req) => {
     });
 
     if (jsonLdMatches.length === 0) {
-      issues.push({ type: 'json_ld', severity: 'critical', message: 'Нет JSON-LD структурированных данных', recommendation: 'Добавьте Schema.org разметку (Article, FAQPage, LocalBusiness)', category: 'llm', context: 'Структурированные данные — критически важны для AI-цитирования и rich snippets в поиске.' });
+      issues.push({ type: 'json_ld', severity: 'critical', message: 'Нет JSON-LD структурированных данных', recommendation: 'Добавьте Schema.org разметку (Article, FAQPage, LocalBusiness)', category: 'llm', context: 'Структурированные данные — критически важны для AI-цитирования и rich snippets в поиске.', priority: 'P1', confidence: 75, source: 'html' });
       llmScore -= 20;
     } else {
-      issues.push({ type: 'json_ld_found', severity: 'info', message: `Найдено ${jsonLdMatches.length} блоков JSON-LD`, recommendation: 'Проверьте полноту разметки', category: 'llm', details: jsonLdTypes.map(t => `• Тип: ${t}`) });
+      issues.push({ type: 'json_ld_found', severity: 'info', message: `Найдено ${jsonLdMatches.length} блоков JSON-LD`, recommendation: 'Проверьте полноту разметки', category: 'llm', details: jsonLdTypes.map(t => `• Тип: ${t}`), priority: 'P3', confidence: 80, source: 'html' });
 
       const jsonLdContent = jsonLdMatches.join(' ').toLowerCase();
       if (!jsonLdContent.includes('faqpage')) {
-        issues.push({ type: 'json_ld_faq', severity: 'warning', message: 'Нет FAQPage в структурированных данных', recommendation: 'Добавьте FAQPage Schema — FAQ-блоки часто цитируются AI-системами', category: 'llm', context: 'FAQ-разметка позволяет получить расширенный сниппет и увеличивает шансы на AI-цитирование.' });
+        issues.push({ type: 'json_ld_faq', severity: 'warning', message: 'Нет FAQPage в структурированных данных', recommendation: 'Добавьте FAQPage Schema — FAQ-блоки часто цитируются AI-системами', category: 'llm', context: 'FAQ-разметка позволяет получить расширенный сниппет и увеличивает шансы на AI-цитирование.', priority: 'P2', confidence: 75, source: 'html' });
         llmScore -= 10;
       }
     }
@@ -389,7 +394,7 @@ Deno.serve(async (req) => {
     const hasDetailsSummary = /<details[\s>]/i.test(html);
     const hasFaqHeading = /<h[2-3][^>]*>[^<]*(faq|чзв|вопрос|q&a)/i.test(html);
     if (!hasFaqSection && !hasDetailsSummary && !hasFaqHeading) {
-      issues.push({ type: 'faq_block', severity: 'warning', message: 'Нет FAQ-блока на странице', recommendation: 'Добавьте раздел «Вопросы и ответы» — LLM активно цитируют Q&A контент', category: 'llm', context: 'Вопросно-ответный формат — самый цитируемый AI-системами тип контента.' });
+      issues.push({ type: 'faq_block', severity: 'warning', message: 'Нет FAQ-блока на странице', recommendation: 'Добавьте раздел «Вопросы и ответы» — LLM активно цитируют Q&A контент', category: 'llm', context: 'Вопросно-ответный формат — самый цитируемый AI-системами тип контента.', priority: 'P2', confidence: 65, source: 'heuristic' });
       llmScore -= 10;
     }
 
@@ -405,6 +410,7 @@ Deno.serve(async (req) => {
         category: 'llm',
         details: h2Texts.slice(0, 4).map(t => `• "${t.slice(0, 50)}" — не вопрос`),
         context: 'LLM-системы чаще цитируют контент в формате вопрос-ответ. Переформулируйте заголовки.',
+        priority: 'P2', confidence: 70, source: 'html',
       });
       llmScore -= 10;
     } else if (h2Texts.length >= 3 && questionH2.length < h2Texts.length / 2) {
@@ -414,6 +420,7 @@ Deno.serve(async (req) => {
         recommendation: 'Больше H2-вопросов увеличивает шансы на AI-цитирование',
         category: 'llm',
         details: h2Texts.filter(t => !questionH2.includes(t)).slice(0, 3).map(t => `• "${t.slice(0, 50)}" — можно переформулировать`),
+        priority: 'P3', confidence: 65, source: 'html',
       });
       llmScore -= 5;
     }
@@ -421,7 +428,7 @@ Deno.serve(async (req) => {
     // Lists (ul/ol)
     const listCount = (html.match(/<(ul|ol)[\s>]/gi) || []).length;
     if (listCount === 0) {
-      issues.push({ type: 'lists', severity: 'info', message: 'Нет маркированных или нумерованных списков', recommendation: 'Используйте списки для структурирования контента', category: 'llm', context: 'AI-системы лучше извлекают и цитируют информацию из структурированных списков.' });
+      issues.push({ type: 'lists', severity: 'info', message: 'Нет маркированных или нумерованных списков', recommendation: 'Используйте списки для структурирования контента', category: 'llm', context: 'AI-системы лучше извлекают и цитируют информацию из структурированных списков.', priority: 'P3', confidence: 70, source: 'html' });
       llmScore -= 5;
     }
 
@@ -429,11 +436,11 @@ Deno.serve(async (req) => {
     const h2Count = (html.match(/<h2[\s>]/gi) || []).length;
     const h3Count = (html.match(/<h3[\s>]/gi) || []).length;
     if (h2Count < 2) {
-      issues.push({ type: 'subheadings', severity: 'warning', message: `Мало подзаголовков H2 (${h2Count})`, recommendation: 'Добавьте минимум 3-4 H2 для структурирования контента', category: 'llm', context: 'Подзаголовки помогают LLM разбить страницу на тематические секции.' });
+      issues.push({ type: 'subheadings', severity: 'warning', message: `Мало подзаголовков H2 (${h2Count})`, recommendation: 'Добавьте минимум 3-4 H2 для структурирования контента', category: 'llm', context: 'Подзаголовки помогают LLM разбить страницу на тематические секции.', priority: 'P2', confidence: 85, source: 'html' });
       llmScore -= 10;
     }
     if (h3Count === 0 && h2Count > 0) {
-      issues.push({ type: 'h3_missing', severity: 'info', message: 'Нет подзаголовков H3', recommendation: 'Используйте H3 для детализации разделов', category: 'llm' });
+      issues.push({ type: 'h3_missing', severity: 'info', message: 'Нет подзаголовков H3', recommendation: 'Используйте H3 для детализации разделов', category: 'llm', priority: 'P3', confidence: 80, source: 'html' });
       llmScore -= 3;
     }
 
@@ -442,24 +449,24 @@ Deno.serve(async (req) => {
     const bodyText = bodyMatch ? bodyMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
     const wordCount = bodyText.split(/\s+/).length;
     if (wordCount < 300) {
-      issues.push({ type: 'content_length', severity: 'warning', message: `Мало текстового контента (~${wordCount} слов)`, recommendation: 'Увеличьте объём контента до 800+ слов', category: 'llm', context: 'Короткие страницы редко цитируются AI — им не хватает контекста для генерации ответа.' });
+      issues.push({ type: 'content_length', severity: 'warning', message: `Мало текстового контента (~${wordCount} слов)`, recommendation: 'Увеличьте объём контента до 800+ слов', category: 'llm', context: 'Короткие страницы редко цитируются AI — им не хватает контекста для генерации ответа.', priority: 'P2', confidence: 60, source: 'heuristic' });
       llmScore -= 15;
     } else if (wordCount < 600) {
-      issues.push({ type: 'content_length', severity: 'info', message: `Текста маловато (~${wordCount} слов)`, recommendation: 'Рекомендуется 800-2000 слов для лучшего цитирования AI-системами', category: 'llm' });
+      issues.push({ type: 'content_length', severity: 'info', message: `Текста маловато (~${wordCount} слов)`, recommendation: 'Рекомендуется 800-2000 слов для лучшего цитирования AI-системами', category: 'llm', priority: 'P3', confidence: 55, source: 'heuristic' });
       llmScore -= 5;
     }
 
     // Tables
     const tableCount = (html.match(/<table[\s>]/gi) || []).length;
     if (tableCount === 0 && wordCount > 500) {
-      issues.push({ type: 'tables', severity: 'info', message: 'Нет таблиц на странице', recommendation: 'Таблицы помогают AI извлекать сравнительную информацию', category: 'llm' });
+      issues.push({ type: 'tables', severity: 'info', message: 'Нет таблиц на странице', recommendation: 'Таблицы помогают AI извлекать сравнительную информацию', category: 'llm', priority: 'P3', confidence: 60, source: 'heuristic' });
       llmScore -= 3;
     }
 
     // Lang attribute
     const langMatch = html.match(/<html[^>]*lang=["']([^"']+)["']/i);
     if (!langMatch) {
-      issues.push({ type: 'lang', severity: 'info', message: 'Нет атрибута lang у <html>', recommendation: 'Добавьте lang="ru" (или другой)', category: 'llm', context: 'Атрибут lang помогает AI определить язык контента и корректно его цитировать.' });
+      issues.push({ type: 'lang', severity: 'info', message: 'Нет атрибута lang у <html>', recommendation: 'Добавьте lang="ru" (или другой)', category: 'llm', context: 'Атрибут lang помогает AI определить язык контента и корректно его цитировать.', priority: 'P3', confidence: 90, source: 'html' });
       llmScore -= 3;
     }
 
@@ -484,10 +491,16 @@ Deno.serve(async (req) => {
     if (llmCritical) summary += `LLM: ${llmCritical} критических. `;
     summary += 'Исправьте критические проблемы в первую очередь.';
 
+    // Calculate overall confidence
+    const avgConfidence = issues.length > 0
+      ? Math.round(issues.reduce((sum, i) => sum + i.confidence, 0) / issues.length)
+      : 75;
+
     return new Response(
       JSON.stringify({
         seoScore,
         llmScore,
+        confidence: avgConfidence,
         issues,
         summary,
         meta: {

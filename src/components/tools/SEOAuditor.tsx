@@ -37,7 +37,7 @@ const severityToPriority = (s: string) =>
 
 const normalizeResult = (r: LocalAuditResult): UnifiedResult => ({
   score: Math.round((r.seoScore + r.llmScore) / 2),
-  confidence: 75,
+  confidence: (r as any).confidence ?? 75,
   summary: r.summary,
   issues: r.issues.map((i) => ({
     type: i.type,
@@ -46,7 +46,7 @@ const normalizeResult = (r: LocalAuditResult): UnifiedResult => ({
     detail: i.recommendation,
     category: categoryMap[i.category] ?? i.category,
     recommendation: i.recommendation,
-    priority: severityToPriority(i.severity),
+    priority: (i as any).priority || severityToPriority(i.severity),
   })),
   meta: r.meta,
 });
