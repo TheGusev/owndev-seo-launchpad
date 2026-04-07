@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useAuditState, useAuditActions, useSessionsByTool } from './store';
 import type { ToolId } from '@/lib/api/types';
+import { logEvent } from '@/lib/analytics/logger';
 
 export function useAudit<T = any>(toolId: ToolId) {
   const state = useAuditState();
