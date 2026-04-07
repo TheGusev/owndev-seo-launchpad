@@ -1,104 +1,133 @@
 
 
-## Хук useAudit() + session state layer
+## Единый компонент AuditResultView
+
+### Проблема
+
+Каждый инструмент рендерит результаты по-своему: SEOAuditor — скоры + issues, IndexationChecker — статусы ссылок, BrandTracker — таблица упоминаний. При этом данные сильно различаются по структуре. Универсальный компонент должен работать с общим форматом `AuditResult`, но не ломать специфичные инструменты.
 
 ### Подход
 
-React Context + useReducer (без новых зависимостей). Лёгкий in-memory store с сессиями аудитов. Хук `useAudit()` инкапсулирует loading/error/result + автоматически сохраняет сессии.
+Создать `AuditResultView` как модульный компонент с опциональными секциями. Каждая секция рендерится только если в `meta` или `issues` есть соответствующие данные. Компонент применяется в SEOAuditor (полный формат) и может постепенно внедряться в другие инструменты по мере унификации их backend-ответов. Инструменты с нестандартными данными (BrandTracker, InternalLinks) пока сохраняют свой рендеринг.
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/state/audit/types.ts` | Новый — AuditSession, AuditState, Action types |
-| `src/state/audit/store.tsx` | Новый — AuditContext, AuditProvider, reducer, useAuditState(), useAuditActions() |
-| `src/state/audit/useAudit.ts` | Новый — хук useAudit(toolId) с loading/error/result + run() |
-| `src/state/audit/index.ts` | Новый — barrel exports |
-| `src/App.tsx` | Обернуть в `<AuditProvider>` |
-| 8 компонентов tools | Заменить локальный useState на useAudit() |
+| `src/components/audit/AuditResultView.tsx` | Новый — главный компонент |
+| `src/components/audit/AuditSectionBlock.tsx` | Новый — блок секции (Indexability, Content, AI Readiness и т.д.) |
+| `src/components/audit/AuditIssueRow.tsx` | Новый — строка issue с priority, confidence, source |
+| `src/components/audit/AuditPriorityList.tsx` | Новый — блок P1/P2/P3 приоритетов внизу |
+| `src/components/audit/AuditActions.tsx` | Новый — кнопки «Сохранить», «Экспорт PDF», «Поделиться» |
+| `src/components/audit/index.ts` | Новый — barrel export |
+| `src/components/tools/SEOAuditor.tsx` | Рефакторинг — заменить результатный блок на `<AuditResultView>` |
 
-### 1. Типы (`types.ts`)
+### Структура AuditResultView
 
-```typescript
-import { ToolId, AuditResult } from '@/lib/api/types';
-
-export interface AuditSession {
-  id: string;
-  url: string;
-  toolId: ToolId;
-  createdAt: string;
-  loading: boolean;
-  error: string | null;
-  result: any | null; // any, т.к. каждый инструмент возвращает свой формат
-}
-
-export interface AuditState {
-  currentSessionId: string | null;
-  sessions: Record<string, AuditSession>;
-}
-
-// Action union type for reducer
+```text
+┌─────────────────────────────────────────┐
+│ Сводка: summary + score + confidence    │
+│ [3 критических P1] [3 быстрых улучш.]  │
+├─────────────────────────────────────────┤
+│ ▸ Indexability         OK / Warning     │
+│ ▸ Content Structure    Critical         │
+│ ▸ AI Readiness         Warning          │
+│ ▸ E-E-A-T              OK              │
+│ ▸ Schema / llms.txt    Critical         │
+│ ▸ Speed / Rendering    OK              │
+│ ▸ Brand Signals        — в разработке  │
+├─────────────────────────────────────────┤
+│ Приоритеты: P1 → P2 → P3              │
+├─────────────────────────────────────────┤
+│ [Сохранить] [Экспорт PDF] [Поделиться] │
+└─────────────────────────────────────────┘
 ```
 
-### 2. Store (`store.tsx`)
-
-- `AuditProvider` с `useReducer`
-- Actions: `ADD_SESSION`, `SET_LOADING`, `SET_RESULT`, `SET_ERROR`, `SET_CURRENT`
-- `useAuditState()` — доступ к state
-- `useAuditActions()` — dispatch-обёртки: `addSession()`, `updateResult()`, `setError()`, `setCurrent()`
-- Геттер `getSessionsByTool(toolId)` для истории по инструменту
-
-### 3. Хук `useAudit(toolId)`
+### Пропсы AuditResultView
 
 ```typescript
-function useAudit<T>(toolId: ToolId) {
-  const { addSession, updateResult, setError, setCurrent } = useAuditActions();
-  const state = useAuditState();
-  
-  const run = async (url: string, apiFn: () => Promise<T>) => {
-    const sessionId = crypto.randomUUID();
-    addSession({ id: sessionId, url, toolId, createdAt: new Date().toISOString(), loading: true, error: null, result: null });
-    setCurrent(sessionId);
-    try {
-      const result = await apiFn();
-      updateResult(sessionId, result);
-      return result;
-    } catch (e) {
-      setError(sessionId, e.message);
-      throw e;
-    }
-  };
-
-  // Current session derived from state
-  const current = state.currentSessionId ? state.sessions[state.currentSessionId] : null;
-  const history = Object.values(state.sessions).filter(s => s.toolId === toolId);
-
-  return { run, current, history, sessions: state.sessions };
+interface AuditResultViewProps {
+  result: AuditResult | null;
+  isLoading?: boolean;
+  error?: string | null;
+  toolId?: ToolId;
+  url?: string;
+  onRetry?: () => void;
 }
 ```
 
-### 4. Интеграция в компоненты
+### Маппинг данных
 
-Пример для SEOAuditor — вместо 3 отдельных useState (loading, error, result):
-
+**Секции** определяются через конфиг-массив:
 ```typescript
-const { run, current } = useAudit<AuditResult>('seo-audit');
-
-const runAudit = async () => {
-  await run(url, () => auditSite(url));
-};
-
-// current?.loading, current?.error, current?.result
+const SECTIONS = [
+  { id: 'indexability', label: 'Indexability', categories: ['technical'] },
+  { id: 'content', label: 'Content Structure', categories: ['content'] },
+  { id: 'ai-readiness', label: 'AI Readiness', categories: ['ai'] },
+  { id: 'eeat', label: 'E-E-A-T', categories: ['eeat'] },
+  { id: 'schema', label: 'Schema / llms.txt', categories: ['schema'] },
+  { id: 'speed', label: 'Speed / Rendering', categories: ['speed', 'performance'] },
+  { id: 'brand', label: 'Brand Signals', categories: ['brand'] },
+];
 ```
 
-Аналогично для BrandTracker, IndexationChecker, InternalLinksChecker, CompetitorAnalysis, ContentBriefGenerator, SemanticCoreGenerator, AITextGenerator.
+Issues группируются по `category` → секция. Если в секции 0 issues, показывается «OK» или «Недостаточно данных» (в зависимости от наличия данных в `meta`).
 
-### 5. App.tsx
+**P1/P2/P3**: issues сортируются по `priority`, выводятся в 3 группы: «Сделать сейчас», «В ближайший спринт», «По мере возможности». Issues без priority трактуются как P3.
 
-Добавить `<AuditProvider>` внутрь QueryClientProvider, снаружи BrowserRouter.
+**Confidence**: берётся из `issue.meta?.confidence` или из общего `result.confidence`. Отображается как бейдж `XX%` рядом с issue.
 
-### Ограничения
-- Header, меню, "Последние проверки" — 0 изменений
-- UI рендеринг не меняется — только источник данных (из хука вместо локального state)
-- Каждый компонент сохраняет свои уникальные типы результата (BrandResult, CompetitorResult и т.д.) — хук generic
+**Source**: `issue.meta?.source` (html / headers / dom / heuristic / external) — мелкий бейдж.
+
+### AuditSectionBlock
+
+Каждый блок:
+- Заголовок + статус-бейдж (OK зелёный / Warning жёлтый / Critical красный)
+- Аккордеон: раскрывается при клике
+- Внутри: пояснение «Почему важно» + список AuditIssueRow
+- Если нет данных: «Недостаточно данных для анализа»
+- Brand Signals: всегда «В разработке»
+
+### AuditIssueRow
+
+Компактная строка:
+- Иконка severity (цветной кружок)
+- Title + description
+- Priority бейдж (P1 красный, P2 жёлтый, P3 серый)
+- Confidence `XX%`
+- Source бейдж
+- Раскрывается → recommendation + action text
+
+### Кнопки (AuditActions)
+
+- «Сохранить результат» — заглушка с toast «Функция в разработке»
+- «Экспорт в PDF» — вызов существующего `generatePdfReport` если есть, иначе заглушка
+- «Поделиться» — заглушка с toast
+
+### Интеграция в SEOAuditor
+
+Заменить блок `{result && (<>...</>)}` (строки 189-313) на:
+```tsx
+<AuditResultView
+  result={normalizedResult}
+  isLoading={loading}
+  error={error}
+  toolId="seo-audit"
+  url={url}
+  onRetry={runAudit}
+/>
+```
+
+Нормализация: маппинг из локального `AuditResult` (seoScore/llmScore/issues с category seo/llm) → общий `AuditResult` (score, confidence, issues с priority/category).
+
+### Что НЕ трогаем
+
+- Header, Footer, роутинг — 0 изменений
+- BrandTracker, InternalLinksChecker, CompetitorAnalysis — сохраняют свой рендеринг (данные не в формате AuditResult)
+- IndexationChecker — пока сохраняет свой рендеринг (можно перевести позже)
+- Стилистика: тёмная тема, glass-эффекты, существующая палитра
+
+### Объём
+
+~250 строк AuditResultView + ~60 строк подкомпоненты + ~30 строк рефакторинг SEOAuditor. Итого ~340 строк нового кода.
 
