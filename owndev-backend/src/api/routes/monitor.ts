@@ -1,46 +1,71 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireAuth } from '../middleware/auth.js';
 import { normalizeUrl } from '../../utils/url.js';
-import { getDomainByUrl, insertDomain } from '../../db/queries/domains.js';
-import { listAuditsByDomain } from '../../db/queries/audits.js';
-import { addMonitorJob } from '../../queue/jobs.js';
+import { getOrCreateDomain } from '../../db/queries/domains.js';
+import { createMonitor, getMonitorsByUser, toggleMonitor } from '../../db/queries/monitors.js';
+import { MonitorService } from '../../services/MonitorService.js';
+import { logEvent } from '../../db/queries/events.js';
 import { logger } from '../../utils/logger.js';
 
 const monitorBodySchema = z.object({
   url: z.string().url(),
+  period: z.enum(['daily', 'weekly']).default('weekly'),
 });
 
 export async function monitorRoutes(app: FastifyInstance) {
-  app.post('/api/v1/monitor', { preHandler: [authMiddleware] }, async (req, reply) => {
+  const monitorService = new MonitorService();
+
+  app.post('/api/v1/monitors', { preHandler: [authMiddleware] }, async (req, reply) => {
+    const authErr = requireAuth(req, reply);
+    if (authErr) return authErr;
+
     const parsed = monitorBodySchema.safeParse(req.body);
     if (!parsed.success) {
-      return reply.status(400).send({ error: 'Invalid URL' });
+      return reply.status(400).send({ success: false, error: 'Invalid input', code: 'VALIDATION' });
     }
 
     const url = normalizeUrl(parsed.data.url);
+    const user = (req as any).user;
 
     try {
-      const domainId = await insertDomain(url);
-      await addMonitorJob({ domainId, url });
+      const hostname = new URL(url).hostname;
+      const domain = await getOrCreateDomain(user.id, hostname);
+      const monitorId = await createMonitor(domain.id, user.id, parsed.data.period);
 
-      logger.info('MONITOR', `Started monitoring ${url}`);
-      return reply.status(202).send({ domainId, status: 'monitoring' });
+      await monitorService.scheduleMonitor(monitorId);
+      await logEvent('monitor_created', { url, period: parsed.data.period, monitorId }, user.id);
+
+      logger.info('MONITOR', `Created monitor ${monitorId} for ${hostname}`);
+      return reply.status(201).send({ success: true, data: { monitorId, status: 'scheduled' } });
     } catch (err: any) {
       logger.error('MONITOR', err.message);
-      return reply.status(500).send({ error: 'Failed to start monitoring' });
+      return reply.status(500).send({ success: false, error: 'Failed to create monitor', code: 'INTERNAL' });
     }
   });
 
-  app.get('/api/v1/monitor/:domain', { preHandler: [authMiddleware] }, async (req, reply) => {
-    const { domain } = req.params as { domain: string };
-    const d = await getDomainByUrl(normalizeUrl(domain));
+  app.get('/api/v1/monitors', { preHandler: [authMiddleware] }, async (req, reply) => {
+    const authErr = requireAuth(req, reply);
+    if (authErr) return authErr;
 
-    if (!d) {
-      return reply.status(404).send({ error: 'Domain not found' });
+    const user = (req as any).user;
+    const monitors = await getMonitorsByUser(user.id);
+    return reply.send({ success: true, data: monitors });
+  });
+
+  app.delete('/api/v1/monitors/:id', { preHandler: [authMiddleware] }, async (req, reply) => {
+    const authErr = requireAuth(req, reply);
+    if (authErr) return authErr;
+
+    const { id } = req.params as { id: string };
+
+    try {
+      await toggleMonitor(id, false);
+      logger.info('MONITOR', `Disabled monitor ${id}`);
+      return reply.send({ success: true, data: { id, enabled: false } });
+    } catch (err: any) {
+      logger.error('MONITOR', err.message);
+      return reply.status(500).send({ success: false, error: 'Failed to disable monitor', code: 'INTERNAL' });
     }
-
-    const audits = await listAuditsByDomain(d.id, 10);
-    return reply.send({ domain: d, audits });
   });
 }
