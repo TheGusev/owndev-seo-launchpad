@@ -71,3 +71,31 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Architecture
+
+### API Layer (`src/lib/api/`)
+
+| File | Purpose |
+|------|---------|
+| `config.ts` | `API_BASE_URL`, `API_VERSION`, helpers (`edgeFunctionUrl`, `apiUrl`) |
+| `client.ts` | `invokeFunction()` (Supabase SDK) and `request()` (raw fetch) with 401/403/429 handling |
+| `tools.ts` | One function per tool (e.g. `auditSite`, `checkIndexation`) |
+| `scan.ts` | Site-check scan lifecycle (`startScan`, `pollScan`, `getScanResult`) |
+| `types.ts` | Shared types (`AuditResult`, `AuditIssue`, `ConfidenceMeta`) |
+
+All HTTP calls go through `client.ts`. No hardcoded URLs in components.
+
+**Switching to own backend:** set `VITE_API_BASE_URL` env var (e.g. `https://api.owndev.ru`), then migrate `invokeFunction` calls to `request`/`apiUrl` paths.
+
+### Event Logging (`src/lib/analytics/logger.ts`)
+
+`logEvent(name, payload)` — prints to console in dev, silent in production. Replace implementation with `POST /api/events` when backend is ready.
+
+### Session Stub (`src/lib/auth/session.ts`)
+
+`getCurrentUser()` / `canAccess(feature)` — returns `null` / `true`. Placeholder for future auth and plan-based limits.
+
+### Audit State (`src/state/audit/`)
+
+In-memory session store via React Context + `useReducer`. Hook `useAudit(toolId)` manages loading/error/result and history per tool. Ready to swap for server-side history.
