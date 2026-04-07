@@ -30,6 +30,7 @@ import GeoRating from "./pages/GeoRating";
 import Academy from "./pages/Academy";
 import AcademyLesson from "./pages/AcademyLesson";
 import BorderBot from "@/components/mascot/BorderBot";
+import { AuditProvider } from "@/state/audit";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const RouteTracker = () => {
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
+      <AuditProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -77,6 +79,7 @@ const App = () => (
           <BorderBot />
         </BrowserRouter>
       </TooltipProvider>
+      </AuditProvider>
     </QueryClientProvider>
   </HelmetProvider>
 );
