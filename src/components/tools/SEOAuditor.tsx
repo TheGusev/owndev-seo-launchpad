@@ -63,7 +63,7 @@ const SEOAuditor = () => {
   const runAudit = async () => {
     if (!url.trim()) return;
     try {
-      await run(url.trim(), () => auditSite(url.trim()));
+      await run(url.trim(), () => auditSite(url.trim(), { toolId: 'seo-audit' }));
       saveLastUrl(url.trim());
     } catch {
       // error stored in audit state

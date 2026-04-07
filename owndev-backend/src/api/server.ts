@@ -3,6 +3,8 @@ import cors from '@fastify/cors';
 import { healthRoutes } from './routes/health.js';
 import { auditRoutes } from './routes/audit.js';
 import { monitorRoutes } from './routes/monitor.js';
+import { eventRoutes } from './routes/events.js';
+import { monitorRoutes } from './routes/monitor.js';
 import { authMiddleware } from './middleware/auth.js';
 import { rateLimitMiddleware } from './middleware/rateLimit.js';
 import { logger } from '../utils/logger.js';
@@ -30,6 +32,7 @@ export async function startServer() {
   await app.register(healthRoutes);
   await app.register(auditRoutes);
   await app.register(monitorRoutes);
+  await app.register(eventRoutes);
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
