@@ -1,59 +1,53 @@
 
 
-## Интерактивные демо-блоки на страницах сценариев
+## Событийное логирование аудитов
 
-### Идея
+### Подход
 
-Встроить мини-формы прямо на каждой странице сценария, чтобы пользователь мог начать работу не уходя со страницы. При отправке формы — редирект на соответствующий инструмент с предзаполненным URL/запросом.
-
-### Реализация по сценариям
-
-**1. AI Visibility** — мини-форма аудита (URL-поле + кнопка), при сабмите редирект на `/tools/site-check?url=...`
-
-**2. AI-Ready Content** — поле ввода темы/ключевого слова + кнопка "Создать бриф", редирект на `/tools/content-brief?topic=...`
-
-**3. Brand Presence** — поле ввода названия бренда + кнопка "Проверить бренд", редирект на `/tools/brand-tracker?brand=...`
-
-**4. Monitoring** — поле ввода домена + кнопка "Добавить в мониторинг", редирект на `/geo-rating?url=...`
-
-### Новый компонент
-
-`src/components/scenarios/ScenarioDemoForm.tsx` — универсальный компонент:
-
-```typescript
-interface ScenarioDemoFormProps {
-  placeholder: string;       // "https://ваш-сайт.ru" или "Название бренда"
-  buttonText: string;        // "Запустить аудит"
-  targetPath: string;        // "/tools/site-check"
-  queryParam: string;        // "url" или "brand" или "topic"
-  accentColor: string;       // "cyan" | "violet" | "emerald" | "amber"
-  icon: LucideIcon;
-}
-```
-
-При сабмите — `navigate(\`\${targetPath}?\${queryParam}=\${encodeURIComponent(value)}\`)`.
-
-Визуально: glass-карточка с полем ввода, иконкой и gradient-кнопкой в цвете сценария. Анимация появления через framer-motion.
-
-### Размещение
-
-На каждой странице сценария — между Hero и блоком "Как работает". Заменяет кнопку-ссылку в Hero на scroll до формы (или дублирует — форма как основной CTA).
+Создать `src/lib/analytics/logger.ts` с функцией `logEvent()`. Интегрировать в `useAudit.ts` — единственную точку запуска всех аудитов. Три события: `audit_start`, `audit_success`, `audit_error`.
 
 ### Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/scenarios/ScenarioDemoForm.tsx` | Новый — универсальная мини-форма |
-| `src/pages/scenarios/AiVisibility.tsx` | Добавить форму (url → site-check) |
-| `src/pages/scenarios/AiReadyContent.tsx` | Добавить форму (topic → content-brief) |
-| `src/pages/scenarios/BrandPresence.tsx` | Добавить форму (brand → brand-tracker) |
-| `src/pages/scenarios/Monitoring.tsx` | Добавить форму (url → geo-rating) |
+| `src/lib/analytics/logger.ts` | Новый — `logEvent()` с console.info и TODO для backend |
+| `src/state/audit/useAudit.ts` | Добавить 3 вызова `logEvent` в `run()` |
+
+### logger.ts
+
+```typescript
+type EventPayload = Record<string, unknown>;
+
+export function logEvent(name: string, payload?: EventPayload): void {
+  // TODO: replace with backend API call (POST /api/events)
+  if (import.meta.env.DEV) {
+    console.info(`[OWNDEV] ${name}`, payload);
+  }
+}
+```
+
+- В production — тишина (никакого шума в консоли)
+- В dev — видно для отладки
+- Единая точка замены на любой analytics-сервис
+
+### useAudit.ts — 3 точки интеграции
+
+```typescript
+// Before API call (line ~22)
+logEvent('audit_start', { url, toolId, timestamp: new Date().toISOString() });
+
+// After success (line ~25)
+logEvent('audit_success', { url, toolId, score: (result as any)?.score, timestamp: new Date().toISOString() });
+
+// On error (line ~28)
+logEvent('audit_error', { url, toolId, errorMessage: msg, timestamp: new Date().toISOString() });
+```
 
 ### Что НЕ трогаем
 
-Header, Footer, мобильное меню, блок "Последние проверки" — 0 изменений.
+Header, Footer, меню, UI компонентов, `analytics.ts` (Яндекс.Метрика) — 0 изменений.
 
 ### Объём
 
-~60 строк новый компонент, ~10 строк вставки в каждую из 4 страниц.
+~15 строк новый файл, ~6 строк добавлений в useAudit.ts.
 
