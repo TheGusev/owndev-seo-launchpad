@@ -33,9 +33,7 @@ const IndexationChecker = () => {
     setResult(null);
     setCheckedAt(null);
     try {
-      const { data, error } = await supabase.functions.invoke("check-indexation", { body: { url } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await checkIndexation(url);
       setResult(data);
       setCheckedAt(new Date());
       saveLastUrl(url.trim());

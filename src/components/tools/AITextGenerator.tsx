@@ -30,9 +30,7 @@ const AITextGenerator = () => {
     setLoading(true);
     setResult("");
     try {
-      const { data, error } = await supabase.functions.invoke("generate-text", { body: { type, topic, keywords } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await generateText(type, topic, keywords);
       setResult(data.text || "");
       setGeneratedAt(new Date());
     } catch (e: any) {

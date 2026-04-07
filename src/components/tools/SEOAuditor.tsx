@@ -143,11 +143,7 @@ const SEOAuditor = () => {
     setCheckedAt(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("seo-audit", {
-        body: { url: url.trim() },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (data.error) throw new Error(data.error);
+      const data = await auditSite(url.trim());
       setResult(data as AuditResult);
       setCheckedAt(new Date());
       saveLastUrl(url.trim());

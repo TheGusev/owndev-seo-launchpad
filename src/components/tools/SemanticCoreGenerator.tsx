@@ -32,9 +32,7 @@ const SemanticCoreGenerator = () => {
     setLoading(true);
     setClusters([]);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-semantic-core", { body: { topic } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await generateSemanticCore(topic);
       setClusters(data.clusters || []);
       setCheckedAt(new Date());
     } catch (e: any) {

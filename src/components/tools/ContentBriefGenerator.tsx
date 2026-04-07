@@ -58,14 +58,7 @@ const ContentBriefGenerator = () => {
     setLoading(true);
     setBrief(null);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-content-brief", {
-        body: { query: query.trim(), url: url.trim() || undefined, contentType },
-      });
-      if (error) throw error;
-      if (data?.error) {
-        toast.error(data.error);
-        return;
-      }
+      const data = await generateContentBrief(query.trim(), url.trim() || undefined, contentType);
       setBrief(data.brief);
     } catch (e: any) {
       toast.error(e?.message || "Ошибка генерации");

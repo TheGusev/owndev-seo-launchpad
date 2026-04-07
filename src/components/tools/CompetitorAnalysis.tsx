@@ -105,9 +105,7 @@ const CompetitorAnalysis = () => {
     setResult(null);
     setCheckedAt(null);
     try {
-      const { data, error } = await supabase.functions.invoke("competitor-analysis", { body: { url1, url2 } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await analyzeCompetitors(url1, url2);
       setResult(data);
       setCheckedAt(new Date());
       saveLastUrl(url1.trim());

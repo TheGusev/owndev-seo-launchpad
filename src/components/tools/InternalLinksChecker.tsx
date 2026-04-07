@@ -41,9 +41,7 @@ const InternalLinksChecker = () => {
     setResult(null);
     setCheckedAt(null);
     try {
-      const { data, error } = await supabase.functions.invoke("check-internal-links", { body: { url } });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      const data = await checkInternalLinks(url);
       setResult(data);
       setCheckedAt(new Date());
       saveLastUrl(url.trim());

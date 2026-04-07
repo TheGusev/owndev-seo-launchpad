@@ -62,11 +62,8 @@ const BrandTracker = () => {
     setResults([]);
 
     try {
-      const { data, error } = await supabase.functions.invoke("brand-tracker", {
-        body: { brand: brand.trim(), prompts: promptList, aiSystems: selectedAIs },
-      });
+      const data = await trackBrand(brand.trim(), promptList, selectedAIs);
 
-      if (error) throw error;
       if (data?.results) {
         setResults(data.results);
       }
