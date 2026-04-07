@@ -13,11 +13,19 @@ export interface AuditIssue {
   source?: string;
 }
 
+export interface AuditBlock {
+  name: string;
+  score: number;
+  weight: number;
+  issues: AuditIssue[];
+}
+
 export interface AuditResult {
   score: number;
   confidence: number;
   summary: string;
   issues: AuditIssue[];
+  blocks: AuditBlock[];
   meta: Record<string, unknown>;
 }
 
@@ -34,4 +42,22 @@ export interface AuditRecord {
   error_msg: string | null;
   created_at: string;
   finished_at: string | null;
+}
+
+export interface CrawlData {
+  url: string;
+  finalUrl: string;
+  statusCode: number;
+  headers: Record<string, string>;
+  html: string;
+  renderedHtml: string;
+  title: string;
+  metaTags: Record<string, string>;
+  links: Array<{ href: string; rel?: string; text?: string }>;
+  scripts: string[];
+  schemas: object[];
+  robots: { index: boolean; follow: boolean; rawContent?: string };
+  llmsTxt: { found: boolean; content?: string; url?: string };
+  duration_ms: number;
+  error?: string;
 }
