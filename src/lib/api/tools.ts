@@ -169,3 +169,11 @@ export async function generateGeoContent(
 export async function sendTelegram(body: object) {
   return invokeFunction("send-telegram", body);
 }
+
+export async function judgeLlm(scanId: string, url: string, theme?: string) {
+  return invokeFunction("llm-judge", { scan_id: scanId, url, theme });
+}
+
+export async function getTechPassport(url: string) {
+  return invokeFunction("tech-passport", { url });
+}

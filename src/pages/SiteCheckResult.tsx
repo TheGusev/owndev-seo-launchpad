@@ -13,6 +13,7 @@ import LlmJudgeSection from "@/components/site-check/LlmJudgeSection";
 import TechPassport from "@/components/site-check/TechPassport";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
 import { getFullScan } from "@/lib/site-check-api";
+import { judgeLlm, getTechPassport } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
 import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
