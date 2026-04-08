@@ -1,72 +1,34 @@
 
 
-## Доработка API роутов, rate limiting и подготовка к связи с фронтом
+## Исправление сломанных API-вызовов на фронте
 
-### Что уже есть
-- `auth.ts` — блокирует без API-ключа (нужно: пускать анонимных)
-- `rateLimit.ts` — единый лимит 30/мин для всех (нужно: по плану)
-- `health.ts` — `/health` без очередей (нужно: `/api/v1/health` + queue stats)
-- `audit.ts` — POST + GET по ID (нужно: + GET список по домену, единый формат ответа)
-- `monitor.ts` — использует несуществующие `getDomainByUrl`/`insertDomain`/`listAuditsByDomain` (нужно: переписать на реальные query-функции + DELETE)
-- `server.ts` — CORS `origin: true` (нужно: whitelist + error handler)
+### Проблема
 
-### Файлы
+В `SiteCheckResult.tsx` два вызова — **LLM Judge** и **Tech Passport** — используют хардкоженные URL напрямую к Supabase Edge Functions, минуя единый API-слой. Это единственные места с прямыми `fetch` к `supabase.co/functions` (кроме `config.ts` и `MCPServerDocs`, которые корректны).
 
-| Файл | Изменение |
-|------|-----------|
-| `owndev-backend/src/api/middleware/auth.ts` | Анонимный доступ: без ключа — `req.user = { id: 'anon', plan: 'free', credits_limit: 5 }` |
-| `owndev-backend/src/api/middleware/rateLimit.ts` | Plan-based лимиты через Redis: anon 10/мин, free 20/мин, solo+ 200/мин |
-| `owndev-backend/src/api/routes/health.ts` | Перенести на `/api/v1/health`, добавить queue stats (waiting/active/completed) |
-| `owndev-backend/src/api/routes/audit.ts` | Добавить `GET /api/v1/audits` (по hostname), единый формат `{ success, data/error }`, event logging |
-| `owndev-backend/src/api/routes/monitor.ts` | Полная переработка: POST создаёт monitor через `createMonitor()`, GET список, DELETE отключает. Требует авторизацию (не анонимно) |
-| `owndev-backend/src/api/server.ts` | CORS whitelist, глобальный error handler, prefix `/api/v1` |
+### Что сломано
 
-### Ключевые решения
+| Вызов | Строка | Проблема |
+|-------|--------|----------|
+| `llm-judge` | SiteCheckResult.tsx:62 | Прямой fetch к Supabase вместо `invokeFunction()` |
+| `tech-passport` | SiteCheckResult.tsx:76 | Прямой fetch к Supabase вместо `invokeFunction()` |
 
-**auth.ts** — не блокирует без ключа, а ставит анонимного пользователя:
-```
-if (!apiKey) → req.user = { id: 'anon', plan: 'free', ... }
-if (apiKey invalid) → 403
-if (apiKey valid) → req.user = dbUser
-```
+### Решение
 
-**rateLimit.ts** — читает `req.user.plan` (после auth middleware):
-```
-anon → 10/мин, free → 20/мин, solo/pro/agency → 200/мин
-```
-Redis ключ: `rl:{plan}:{ip}`.
+1. **`src/lib/api/tools.ts`** — добавить две функции:
+   - `judgeLlm(scanId, url, theme?)` → `invokeFunction("llm-judge", { scan_id, url, theme })`
+   - `getTechPassport(url)` → `invokeFunction("tech-passport", { url })`
 
-**monitor.ts** — полная переработка:
-- `POST /api/v1/monitors` — body: `{ url, period }`, zod-валидация, требует не-анонимного пользователя, вызывает `createMonitor()` + `MonitorService.scheduleMonitor()`
-- `GET /api/v1/monitors` — список мониторов пользователя через `getMonitorsByUser()`
-- `DELETE /api/v1/monitors/:id` — `toggleMonitor(id, false)`
-
-**Единый формат ответа:**
-```typescript
-// Успех: { success: true, data: {...} }
-// Ошибка: { success: false, error: "message", code: "CREDIT_LIMIT" }
-```
-
-**server.ts** — глобальный error handler скрывает стеки:
-```typescript
-app.setErrorHandler((error, req, reply) => {
-  logger.error('SERVER', error.message);
-  reply.status(500).send({ success: false, error: 'Internal error' });
-});
-```
-
-CORS: `['https://owndev.ru', 'http://localhost:5173', 'http://localhost:3000']`
-
-**Event logging** — после каждого успешного действия вызов `logEvent()`:
-- `audit_created` в POST audit
-- `monitor_created` в POST monitors
+2. **`src/pages/SiteCheckResult.tsx`** — заменить оба хардкоженных fetch на вызовы новых функций из API-слоя. Убрать ручное построение URL и headers.
 
 ### Что НЕ трогаем
-- Фронтенд — 0 изменений (фронт уже готов через `apiUrl()`)
-- CrawlerService, AuditService, workers — без изменений
-- DB queries — используем существующие функции
-- Redis, BullMQ конфиг — без изменений
+
+- Backend, роуты, воркеры — 0 изменений
+- `MCPServerDocs.tsx` — это документация/конфиг для пользователя, не API-вызов
+- Остальные инструменты — уже используют `invokeFunction()`
+- UI компоненты `LlmJudgeSection`, `TechPassport` — без изменений
 
 ### Объём
-~6 файлов, ~200 строк изменений.
+
+~6 строк в tools.ts, ~10 строк замены в SiteCheckResult.tsx.
 
