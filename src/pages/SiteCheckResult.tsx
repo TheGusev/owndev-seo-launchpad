@@ -59,13 +59,8 @@ const SiteCheckResult = () => {
   const triggerLlmJudge = async (id: string, url: string, theme?: string) => {
     setLlmJudgeLoading(true);
     try {
-      const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/llm-judge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-        body: JSON.stringify({ scan_id: id, url, theme }),
-      });
-      if (resp.ok) setLlmJudge(await resp.json());
+      const result = await judgeLlm(id, url, theme);
+      if (result) setLlmJudge(result);
     } catch (e) { console.error('LLM Judge error:', e); }
     finally { setLlmJudgeLoading(false); }
   };
@@ -73,13 +68,8 @@ const SiteCheckResult = () => {
   const triggerTechPassport = async (url: string) => {
     setTechPassportLoading(true);
     try {
-      const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/tech-passport`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-        body: JSON.stringify({ url }),
-      });
-      if (resp.ok) { const result = await resp.json(); if (result.tech) setTechPassport(result); }
+      const result = await getTechPassport(url);
+      if (result?.tech) setTechPassport(result);
     } catch (e) { console.error('Tech passport error:', e); }
     finally { setTechPassportLoading(false); }
   };
