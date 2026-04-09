@@ -62,9 +62,10 @@ const SEOAuditor = () => {
 
   const runAudit = async () => {
     if (!url.trim()) return;
+    const normalized = ensureProtocol(url);
     try {
-      await run(url.trim(), () => auditSite(url.trim(), { toolId: 'seo-audit' }));
-      saveLastUrl(url.trim());
+      await run(normalized, () => auditSite(normalized, { toolId: 'seo-audit' }));
+      saveLastUrl(normalized);
     } catch {
       // error stored in audit state
     }
