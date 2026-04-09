@@ -73,9 +73,13 @@ const GeoRating = () => {
       .map((r: any) => ({
         ...r,
         top_errors:
-          typeof r.top_errors === "string"
-            ? JSON.parse(r.top_errors)
-            : r.top_errors ?? [],
+          (() => {
+            try {
+              if (Array.isArray(r.top_errors)) return r.top_errors;
+              if (typeof r.top_errors === "string") return JSON.parse(r.top_errors);
+              return [];
+            } catch { return []; }
+          })(),
       }))
       .filter(
         (r: any) =>
@@ -374,13 +378,13 @@ const GeoRating = () => {
                           </div>
                         </div>
 
-                        {entry.topErrors.length > 0 && (
+                        {entry.topErrors?.length > 0 && (
                           <div className="mb-4">
                             <div className="text-xs font-medium text-muted-foreground/70 mb-1.5">
                               Основные проблемы:
                             </div>
                             <ul className="space-y-1">
-                              {entry.topErrors.slice(0, 3).map((e: string, i: number) => (
+                              {(entry.topErrors ?? []).slice(0, 3).map((e: string, i: number) => (
                                 <li
                                   key={i}
                                   className="flex items-start gap-2 text-xs text-muted-foreground"

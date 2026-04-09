@@ -54,11 +54,13 @@ export function mapDbRowToEntry(
     hasSchema: row.has_schema,
     hasFaq: row.has_faqpage,
     issuesCount: row.errors_count,
-    topErrors: Array.isArray(row.top_errors)
-      ? row.top_errors
-      : typeof row.top_errors === "string"
-        ? JSON.parse(row.top_errors)
-        : [],
+    topErrors: (() => {
+      try {
+        if (Array.isArray(row.top_errors)) return row.top_errors;
+        if (typeof row.top_errors === "string") return JSON.parse(row.top_errors);
+        return [];
+      } catch { return []; }
+    })(),
     verifiedAt: row.last_checked_at,
   };
 }
