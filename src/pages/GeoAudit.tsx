@@ -64,7 +64,7 @@ const auditCards = [
   { icon: Code2, title: "Schema.org / FAQPage", desc: "Структурированные данные помогают нейросетям понять контент и использовать в ответах.", weight: "+15 LLM Score" },
   { icon: BookOpen, title: "Структура контента", desc: "H1/H2, объём текста, логичность — нейросети извлекают факты из хорошо структурированных страниц.", weight: "+20 LLM Score" },
   { icon: Sparkles, title: "Технические AI-сигналы", desc: "og:image, lang, canonical, скорость — базовые сигналы достоверности для AI-краулеров.", weight: "+15 LLM Score" },
-  { icon: Brain, title: "Direct Score", desc: "Готовность к рекламе в Яндекс.Директ: ключи, минус-слова, конкуренты.", weight: "Отдельная метрика" },
+  { icon: Brain, title: "AI-боты и краулеры", desc: "Проверка доступности для GPTBot, ClaudeBot, YandexBot-AI. Правильные настройки robots.txt для AI-краулеров.", weight: "+15 LLM Score" },
 ];
 
 const faqs = [
