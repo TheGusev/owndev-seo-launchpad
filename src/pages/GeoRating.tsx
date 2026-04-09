@@ -26,7 +26,7 @@ import {
   mapDbRowToEntry,
 } from "@/data/geo-rating-types";
 
-const CATEGORIES = ["Все", "E-commerce", "Медиа", "Банки", "Сервисы", "Образование", "Госорганы", "Телеком"];
+const DEFAULT_CATEGORIES = ["Все"];
 const SCORE_FILTERS = [
   { label: "Все", min: 0, max: 100 },
   { label: "80+", min: 80, max: 100 },

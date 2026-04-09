@@ -10,6 +10,7 @@ import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import LlmJudgeSection from "@/components/site-check/LlmJudgeSection";
+import GeoRatingNomination from "@/components/site-check/GeoRatingNomination";
 import TechPassport from "@/components/site-check/TechPassport";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
 import { getFullScan } from "@/lib/site-check-api";
@@ -229,6 +230,9 @@ const SiteCheckResult = () => {
           )}
 
           {directAdMeta && <DirectMeta data={directAdMeta} />}
+
+          {/* GEO Rating nomination */}
+          {scores && <GeoRatingNomination totalScore={scores.total} url={data.url} scanId={scanId} />}
 
           {/* Download llms.txt */}
           <div className="flex justify-start">
