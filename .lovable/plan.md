@@ -1,128 +1,112 @@
 
 
-## Frontend-only патч: 4 задачи
+## GEO Рейтинг — Product Truth Redesign
 
-**Важно**: `src/lib/api/tools.ts` НЕ трогаем. `audit.status === 'done'` уже корректный.
-
----
-
-### Задача 1 — Placeholder без протокола + ensureProtocol везде
-
-Заменить `placeholder="https://..."` → `placeholder="example.com"` / `"ваш-сайт.ru"` в **13 файлах**:
-
-| Файл | Placeholder |
-|------|-------------|
-| `Hero.tsx` | `yoursite.ru` |
-| `ScanForm.tsx` | `ваш-сайт.ru` |
-| `SEOAuditor.tsx` | `example.com` |
-| `IndexationChecker.tsx` | `example.com/page` |
-| `InternalLinksChecker.tsx` | `example.com` |
-| `CompetitorAnalysis.tsx` | `example.com` / `competitor.com` |
-| `ContentBriefGenerator.tsx` | `example.com` |
-| `LLMPromptHelper.tsx` | `example.com/services` |
-| `SitemapGenerator.tsx` | `example.com/sitemap.xml` |
-| `GeoAudit.tsx` | `yoursite.ru` |
-| `NotFound.tsx` | `example.com` |
-| `ScenarioDemoForm.tsx` (AiVisibility, Monitoring) | `ваш-сайт.ru` |
-
-Также: убрать `type="url"` из Hero input (браузер блокирует submit без протокола).
-
-Добавить `ensureProtocol()` в submit-хэндлеры, где его ещё нет:
-- `Hero.tsx` — `handleQuickCheck`
-- `GeoAudit.tsx`
-- `NotFound.tsx`
-- `ScenarioDemoForm.tsx`
-- `IndexationChecker.tsx`
-- `InternalLinksChecker.tsx`
-- `CompetitorAnalysis.tsx`
-- `ContentBriefGenerator.tsx`
-- `LLMPromptHelper.tsx`
-- `SitemapGenerator.tsx`
-
-Импортировать `ensureProtocol` из `@/lib/api`.
+### Принцип: "Сначала trust, потом wow"
 
 ---
 
-### Задача 2 — Главная → auto-submit аудита
+### 1. Типизированная data-модель snapshot
 
-**Hero.tsx**: навигация уже идёт на `/tools/site-check?url=...` — корректно, протокол добавить через `ensureProtocol`.
+Создать `src/data/geo-rating-types.ts` с типами:
 
-**SiteCheck.tsx**: уже есть `useEffect` с `searchParams.get("url")` + auto-rescan. Нужно убрать требование `rescan === "true"` — запускать автоматически если есть `?url=`:
-```
-if (rescanUrl && !rescanTriggered.current) {
-  rescanTriggered.current = true;
-  handleSubmit(rescanUrl, "site");
+```typescript
+type GeoRatingSnapshot = {
+  version: string;            // "2026-Q2-W15"
+  updatedAt: string;          // ISO date
+  methodology: string;        // краткое описание
+  source: string;             // "OWNDEV audit engine"
+  entriesCount: number;
+}
+
+type GeoRatingEntry = {
+  rank: number;
+  brandName: string;
+  domain: string;
+  category: string;
+  llmScore: number;
+  seoScore: number;
+  hasLlmsTxt: boolean;
+  hasSchema: boolean;
+  hasFaq: boolean;
+  issuesCount: number;
+  topErrors: string[];
+  verifiedAt: string;
 }
 ```
 
-**ScanForm.tsx**: уже подставляет URL из `?url=` — оставить как есть.
+Данные по-прежнему загружаются из БД (таблица `geo_rating`), но маппятся в эти типы. Snapshot-метаданные (version, methodology) — из констант, пока нет отдельной таблицы.
 
----
+### 2. Удаление недостоверных метрик
 
-### Задача 3 — Убрать "Проверить страницу" из ScanForm
+- **Убрать `direct_score`** из таблицы и expanded view — нет прозрачного source-of-truth
+- **Убрать `schema_score`** из expanded view — дублирует `has_schema` boolean, числовое значение не обосновано
+- В expanded view оставить только: LLM Score, SEO Score, top errors, verifiedAt, CTA
 
-В `ScanForm.tsx`:
-- Удалить блок с двумя кнопками mode toggle (строки 51-76)
-- Убрать state `mode` — всегда передавать `"site"`
-- В `handleSubmit`: `onSubmit(cleanUrl, "site")`
-- Убрать импорт `FileText`, `Globe`, тип `ScanMode` (если не нужен в props)
-- Props `onSubmit` сигнатура сохраняется `(url: string, mode: ScanMode)` для совместимости
+### 3. Компонент SiteBadge
 
----
+Создать `src/components/ui/site-badge.tsx`:
+- Принимает `domain` и `brandName`
+- Пытается загрузить favicon: `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
+- Fallback: monogram (первая буква brandName) в стилизованном круге
+- Единый размер 28x28, border-radius, тёмный фон, subtle border
+- Без glow, без градиентов, минималистично
 
-### Задача 4 — Новый экран загрузки аудита
+### 4. Hero-блок — продуктовый, не лендинговый
 
-Полная переработка `ScanProgress.tsx`:
+Убрать декоративность, добавить trust-блок:
 
-**Новая структура:**
-- Принимает доп-проп `domain?: string` (для заголовка "Анализируем domain...")
-- 6 шагов вместо 4, вертикальный список (не горизонтальный stepper)
-- Каждый шаг: иконка + название + статус (ожидание / spinner / галочка + мини-результат)
-- Прогресс-бар внизу
+```text
+┌─────────────────────────────────────────┐
+│  GEO Рейтинг Рунета 2026              │
+│  AI-готовность популярных сайтов России │
+│                                         │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  │
+│  │ N    │ │ Avg  │ │ %txt │ │ %faq │  │
+│  │сайтов│ │ LLM  │ │llms  │ │ FAQ  │  │
+│  └──────┘ └──────┘ └──────┘ └──────┘  │
+│                                         │
+│  Обновлено: 07.04.2026                 │
+│  Методология: 50+ GEO/SEO/AI сигналов │
+│  Источник: OWNDEV audit snapshot       │
+│                                         │
+│  [Проверить свой сайт]  [Поделиться]   │
+└─────────────────────────────────────────┘
+```
 
-**Шаги:**
-1. `Search` — Краулинг страницы
-2. `FileText` — Индексируемость
-3. `AlignLeft` — Структура контента
-4. `Bot` — AI-готовность
-5. `Code` — Schema.org разметка
-6. `Star` — E-E-A-T сигналы
+### 5. Таблица — analytics UI
 
-**Анимация:**
-- Шаги появляются stagger (delay 100ms каждый)
-- Симуляция: каждые 2-4 секунды следующий шаг завершается (независимо от API)
-- Завершённый шаг: зелёная галочка + текст результата, opacity-70
-- Активный шаг: `Loader2` spinner + пульсация
-- При `realProgress >= 100` или `status === 'done'` — все шаги мгновенно done
-- При `error` — красная иконка на текущем шаге
+- Добавить `SiteBadge` перед именем бренда
+- Sticky header на десктопе
+- Убрать zebra striping через opacity hack → чистые `border-b border-border/10`
+- Boolean значения (llms.txt, Schema, FAQ): `CheckCircle2` (green) / `XCircle` (muted) вместо ✓/✗ текста
+- Hover: `hover:bg-white/[0.03]` — мягкий, не кислотный
+- Колонки: `#` | `SiteBadge + Бренд (домен)` | `Категория` | `LLM` | `SEO` | `llms.txt` | `Schema` | `FAQ` | `Ошибки`
+- Убрать Trophy emoji для top-10 → subtle gold left-border для строк 1-3
 
-**В `SiteCheck.tsx`**: передать `domain` в ScanProgress (парсить из URL).
+### 6. Expanded row — полезный, не декоративный
 
----
+Вместо 4-х score-карточек:
+- Два score: LLM Score и SEO Score (крупно, цветом)
+- Top issues (до 3 штук, как сейчас)
+- `Проверено: {verifiedAt}` — мелким текстом
+- `Источник: OWNDEV audit snapshot` — мелким текстом
+- CTA "Полный аудит" — остаётся
+- Badge code — остаётся для top-10
 
-### Файлы и объём
+### 7. Файлы и объём
 
 | Файл | Действие | Строк |
 |------|----------|-------|
-| `src/components/Hero.tsx` | placeholder, type, ensureProtocol | ~3 |
-| `src/components/site-check/ScanForm.tsx` | placeholder, убрать mode toggle | ~-25 |
-| `src/components/site-check/ScanProgress.tsx` | Полная переработка | ~120 |
-| `src/pages/SiteCheck.tsx` | auto-submit без rescan, передать domain | ~5 |
-| `src/components/tools/SEOAuditor.tsx` | placeholder | ~1 |
-| `src/components/tools/IndexationChecker.tsx` | placeholder + ensureProtocol | ~3 |
-| `src/components/tools/InternalLinksChecker.tsx` | placeholder + ensureProtocol | ~3 |
-| `src/components/tools/CompetitorAnalysis.tsx` | placeholder + ensureProtocol | ~4 |
-| `src/components/tools/ContentBriefGenerator.tsx` | placeholder + ensureProtocol | ~3 |
-| `src/components/tools/LLMPromptHelper.tsx` | placeholder + ensureProtocol | ~3 |
-| `src/components/tools/SitemapGenerator.tsx` | placeholder | ~1 |
-| `src/pages/GeoAudit.tsx` | placeholder + ensureProtocol | ~3 |
-| `src/pages/NotFound.tsx` | placeholder + ensureProtocol | ~3 |
-| `src/components/scenarios/ScenarioDemoForm.tsx` | placeholder + ensureProtocol | ~3 |
+| `src/data/geo-rating-types.ts` | Создать — типы snapshot + entry | ~30 |
+| `src/components/ui/site-badge.tsx` | Создать — favicon/monogram badge | ~50 |
+| `src/pages/GeoRating.tsx` | Переработать — hero, таблица, expanded | ~250 |
 
 ### Что НЕ трогаем
-- `src/lib/api/tools.ts` — 0 изменений, `audit.status === 'done'` не трогаем
-- Backend, workers, BullMQ, auth — 0 изменений
-- Роутинг (react-router routes) — 0 изменений
-- Результирующий экран после done — 0 изменений
-- `useAudit` hook — 0 изменений
+
+- Backend, API, workers, queue — 0 изменений
+- Таблица `geo_rating` в БД — без изменений
+- `tools.ts`, polling, auth — 0 изменений
+- Другие страницы и компоненты — 0 изменений
+- Edge function `geo-rating-cron` — без изменений
 
