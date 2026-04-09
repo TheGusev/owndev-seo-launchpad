@@ -4,7 +4,6 @@ import { healthRoutes } from './routes/health.js';
 import { auditRoutes } from './routes/audit.js';
 import { monitorRoutes } from './routes/monitor.js';
 import { eventRoutes } from './routes/events.js';
-import { monitorRoutes } from './routes/monitor.js';
 import { authMiddleware } from './middleware/auth.js';
 import { rateLimitMiddleware } from './middleware/rateLimit.js';
 import { logger } from '../utils/logger.js';

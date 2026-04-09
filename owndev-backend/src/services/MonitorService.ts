@@ -12,11 +12,16 @@ export class MonitorService {
       ? Math.max(0, new Date(monitor.next_run_at).getTime() - Date.now())
       : 0;
 
+    // Resolve hostname from domain record for the job URL
+    const { getDomainById } = await import('../db/queries/domains.js');
+    const domain = await getDomainById(monitor.domain_id);
+    const resolvedUrl = domain ? `https://${domain.hostname}` : '';
+
     await addMonitorJob(
       {
         monitorId: monitor.id,
         domainId: monitor.domain_id,
-        url: '', // resolved by worker from domain
+        url: resolvedUrl,
         userId: monitor.user_id,
       },
       delay,

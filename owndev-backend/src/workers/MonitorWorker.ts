@@ -19,9 +19,8 @@ export function startMonitorWorker() {
       const auditId = await createAudit({ domainId, userId: userId ?? null, url });
       await addAuditJob({ auditId, domainId, url, userId: userId ?? null });
 
-      const periodMs = 6 * 60 * 60 * 1000; // default 6h
       const monitor = await getMonitorById(monitorId);
-      const interval = monitor?.period === 'daily' ? 24 * 60 * 60 * 1000 : periodMs;
+      const interval = monitor?.period === 'daily' ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
       const nextRunAt = new Date(Date.now() + interval);
 
       await updateMonitorRun(monitorId, nextRunAt);

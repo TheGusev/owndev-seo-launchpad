@@ -49,14 +49,14 @@ export class AuditService {
 
       await saveAuditResult(auditId, result);
       await updateAuditStatus(auditId, 'done', { score: result.score, confidence: result.confidence, durationMs });
-      await logEvent('audit_done', { auditId, url, score: result.score, durationMs });
+      try { await logEvent('audit_done', { auditId, url, score: result.score, durationMs }); } catch { /* non-critical */ }
       logger.info('AUDIT_SERVICE', `Audit ${auditId} done, score=${result.score}, ${durationMs}ms`);
       return result;
     } catch (err: any) {
       const durationMs = Date.now() - startMs;
       logger.error('AUDIT_SERVICE', `Audit ${auditId} failed: ${err.message}`);
       await updateAuditStatus(auditId, 'error', { errorMsg: err.message, durationMs });
-      await logEvent('audit_error', { auditId, url, error: err.message });
+      try { await logEvent('audit_error', { auditId, url, error: err.message }); } catch { /* non-critical */ }
       throw err;
     }
   }
