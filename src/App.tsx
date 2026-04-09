@@ -27,6 +27,7 @@ import Refund from "./pages/Refund";
 import Contacts from "./pages/Contacts";
 import GeoAudit from "./pages/GeoAudit";
 import GeoRating from "./pages/GeoRating";
+import GeoRatingMethodology from "./pages/GeoRatingMethodology";
 import Academy from "./pages/Academy";
 import AcademyLesson from "./pages/AcademyLesson";
 import AiVisibility from "./pages/scenarios/AiVisibility";
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/terms" element={<Terms />} />
             <Route path="/geo-audit" element={<GeoAudit />} />
             <Route path="/geo-rating" element={<GeoRating />} />
+            <Route path="/geo-rating/methodology" element={<GeoRatingMethodology />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/site-check" element={<SiteCheck />} />
             <Route path="/academy" element={<Academy />} />
