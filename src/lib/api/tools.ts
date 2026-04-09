@@ -66,8 +66,11 @@ export async function auditSite(
   const { pollingIntervalMs = 2000, maxAttempts = 15, toolId } = options ?? {};
 
   // 1. Create audit
+  const normalizedUrl = ensureProtocol(url);
+
+  // 1. Create audit
   const create = await backendPost<{ auditId: string; status: string }>('/audit', {
-    url,
+    url: normalizedUrl,
     toolId,
   });
 

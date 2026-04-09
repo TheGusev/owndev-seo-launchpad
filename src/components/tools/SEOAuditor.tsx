@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Search, Loader2 } from "lucide-react";
-import { auditSite } from "@/lib/api";
+import { auditSite, ensureProtocol } from "@/lib/api";
 import ToolCTA from "./ToolCTA";
 import { saveLastUrl } from "@/utils/lastUrl";
 import { useAudit } from "@/state/audit";
