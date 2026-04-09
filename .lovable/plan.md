@@ -1,51 +1,32 @@
 
 
-## Исправление 7 ошибок компиляции бэкенда + предупреждение CSS
+## Исправление определения llms.txt в GEO Рейтинге
 
-Бэкенд не собирается из-за 7 TypeScript-ошибок в 4 файлах. Пока `tsc` не проходит, PM2 запускает старый код (или падает), поэтому фронт получает «Сервер загружен».
+### Проблема
+Для owndev.ru и goruslugimsk.ru (и всех остальных сайтов) в рейтинге показывается «llms.txt отсутствует», хотя файл есть. Причина:
 
-### Файлы и фиксы
+- `site-check-scan` сохраняет `hasLlmsTxt: true` в поле `seo_data`
+- Но `geo-rating-cron` ищет `has_llms_txt` в поле `llm_judge`, которое заполняется отдельной функцией LLM Judge и **никогда не содержит** это поле
+- Результат: `llmJudge?.has_llms_txt` всегда `undefined` → fallback `false`
 
-#### 1. `owndev-backend/src/api/server.ts` — 3 ошибки (error is unknown)
-Fastify 5 типизирует `error` как `FastifyError`, но TS strict видит `unknown`. Решение — явный каст:
+Данные в базе подтверждают: `seo_data.hasLlmsTxt = true`, `llm_judge = null`.
+
+### Решение
+
+Одно изменение в `supabase/functions/geo-rating-cron/index.ts`, строка 185:
+
+**Было:**
 ```typescript
-app.setErrorHandler((error, _req, reply) => {
-  const err = error as any;
-  logger.error('SERVER', err?.message || String(err));
-  const status = err?.statusCode ?? 500;
-  const message = status >= 500 ? 'Internal error' : (err?.message || 'Unknown error');
-  reply.status(status).send({ success: false, error: message, code: 'INTERNAL' });
-});
+const hasLlmsTxt = llmJudge?.has_llms_txt ?? false;
 ```
 
-#### 2. `owndev-backend/src/cache/redis.ts` — 2 ошибки (Redis not constructable + err any)
-`ioredis@5` с ESM экспортирует `Redis` как default, но TS strict + `moduleResolution: NodeNext` ломает конструктор. Фикс:
+**Станет:**
 ```typescript
-import Redis from 'ioredis';
-// ...
-export const redis = new (Redis as any)(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-  lazyConnect: true,
-});
-
-redis.on('error', (err: unknown) => {
-  logger.error('REDIS', (err as Error)?.message || String(err));
-});
+const hasLlmsTxt = seoData?.hasLlmsTxt ?? llmJudge?.has_llms_txt ?? false;
 ```
 
-#### 3. `owndev-backend/src/db/queries/audits.ts` — 1 ошибка (sql.json type)
-```typescript
-VALUES (${auditId}, ${sql.json(result as any)})
-```
+Теперь `has_llms_txt` берётся из `seo_data.hasLlmsTxt` (где оно реально хранится), с fallback на `llm_judge` для обратной совместимости.
 
-#### 4. `owndev-backend/src/db/queries/events.ts` — 1 ошибка (sql.json type)
-```typescript
-${payload ? sql.json(payload as any) : null}
-```
-
-#### 5. `src/index.css` — `@import` должен быть первым
-Переместить строку `@import url(...)` выше `@tailwind` директив (строка 5 → строка 1).
-
-### Результат
-После этих 5 правок `tsc` в бэкенде пройдёт, деплой завершится, и сканирование снова заработает.
+### После деплоя
+Перепрогнать хотя бы owndev.ru и goruslugimsk.ru через `geo-rating-cron`, чтобы обновить значение в таблице.
 
