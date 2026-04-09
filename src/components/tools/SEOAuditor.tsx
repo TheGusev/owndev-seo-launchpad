@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Search, Loader2 } from "lucide-react";
-import { auditSite } from "@/lib/api";
+import { auditSite, ensureProtocol } from "@/lib/api";
 import ToolCTA from "./ToolCTA";
 import { saveLastUrl } from "@/utils/lastUrl";
 import { useAudit } from "@/state/audit";
@@ -62,9 +62,10 @@ const SEOAuditor = () => {
 
   const runAudit = async () => {
     if (!url.trim()) return;
+    const normalized = ensureProtocol(url);
     try {
-      await run(url.trim(), () => auditSite(url.trim(), { toolId: 'seo-audit' }));
-      saveLastUrl(url.trim());
+      await run(normalized, () => auditSite(normalized, { toolId: 'seo-audit' }));
+      saveLastUrl(normalized);
     } catch {
       // error stored in audit state
     }
