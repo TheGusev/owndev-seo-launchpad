@@ -1,46 +1,48 @@
 
 
-## Добавить кастомную иконку секции в AuditSectionBlock
+## Как работает GEO Рейтинг сейчас и что нужно исправить
 
-Сейчас все секции используют только статусные иконки (CheckCircle / AlertTriangle / XCircle). Добавим возможность задавать **секционную иконку** рядом с названием — для Яндекса это будет кастомный SVG-компонент с буквой «Я».
+### Текущее состояние
 
-### Изменения
+**Что есть:**
+- Таблица `geo_rating` с 30 доменами (включая goruslugimsk.ru)
+- Edge-функция `geo-rating-cron` которая должна сканировать домены через `site-check-scan` и записывать реальные баллы
+- Фронтенд корректно отображает данные из таблицы
 
-**1. `SectionConfig` — новое опциональное поле `icon`**
+**Проблема:** Все данные в таблице — **фейковые seed-значения** (вставлены одним INSERT, все с одинаковым `last_checked_at`). Функция `geo-rating-cron` **ни разу не отработала успешно** — она пытается последовательно сканировать 30 доменов, но edge-функции имеют таймаут ~60с, а один домен может сканироваться до 2 минут.
 
-В интерфейсе `SectionConfig` добавить `icon?: React.ComponentType<{ className?: string }>`.
+### План исправления
 
-**2. `AuditSectionBlock` — отображение иконки секции**
+#### 1. Переписать `geo-rating-cron` на пакетный режим
 
-Во всех трёх рендер-ветках (comingSoon, issues=0, accordion) перед `<span>{section.label}</span>` добавить:
-```tsx
-{section.icon && <section.icon className="w-4 h-4 text-muted-foreground" />}
+Вместо обработки всех 30 доменов за один вызов — принимать параметр `batch_size` (по умолчанию 3) и `offset`. Каждый вызов обрабатывает 3 домена, записывает результаты, возвращает прогресс.
+
+```
+POST /geo-rating-cron
+{ "batch_size": 3, "offset": 0 }
+→ обрабатывает домены 0-2
+
+POST /geo-rating-cron
+{ "batch_size": 3, "offset": 3 }
+→ обрабатывает домены 3-5
 ```
 
-**3. `AuditResultView` — кастомный Yandex-иконка**
-
-Создать inline SVG-компонент `YandexIcon` — стилизованная буква «Я» в круге (красный акцент, стиль Lucide). Назначить его в секцию `yandex-ai`:
-
-```tsx
-const YandexIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-    <circle cx="12" cy="12" r="10" stroke="currentColor" fill="rgba(255,0,0,0.15)" />
-    <text x="12" y="16.5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="currentColor" stroke="none">Я</text>
-  </svg>
-);
+Также добавить режим `single_domain` для ручного обновления одного сайта:
+```
+POST /geo-rating-cron
+{ "domain": "goruslugimsk.ru" }
+→ сканирует только этот домен
 ```
 
-Затем в `SECTIONS`:
-```tsx
-{ id: "yandex-ai", label: "ЯндексGPT и Алиса", icon: YandexIcon, categories: [...], ... }
-```
+#### 2. Запустить обновление данных
 
-### Файлы
+После деплоя — вызвать функцию несколько раз с разным offset (или по одному домену) чтобы заполнить таблицу реальными данными.
 
-| Файл | Строк |
-|------|-------|
-| `src/components/audit/AuditSectionBlock.tsx` | +5 (поле icon + рендер) |
-| `src/components/audit/AuditResultView.tsx` | +12 (YandexIcon + привязка) |
+### Что изменится
 
-Остальные секции без иконки — поведение не меняется.
+| Файл | Действие |
+|------|----------|
+| `supabase/functions/geo-rating-cron/index.ts` | Добавить batch_size/offset/single_domain параметры |
+
+Один файл, ~20 строк изменений. После деплоя — ручной запуск для каждого батча (или по одному домену) чтобы получить реальные данные.
 
