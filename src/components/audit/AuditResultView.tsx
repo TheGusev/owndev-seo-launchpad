@@ -15,6 +15,7 @@ const SECTIONS: SectionConfig[] = [
   { id: "eeat", label: "E-E-A-T", categories: ["eeat", "trust"], whyImportant: "Сигналы экспертности и доверия напрямую влияют на ранжирование и AI-цитирование." },
   { id: "schema", label: "Schema / llms.txt", categories: ["schema"], whyImportant: "Структурированные данные и llms.txt помогают AI-системам корректно интерпретировать контент." },
   { id: "speed", label: "Speed / Rendering", categories: ["speed", "performance"], whyImportant: "Скорость загрузки влияет на Core Web Vitals и пользовательский опыт." },
+  { id: "yandex-ai", label: "ЯндексGPT и Алиса", categories: ["yandex_ai", "yandex_no_llms_txt", "yandex_thin_llms_txt", "yandex_no_org_schema", "yandex_no_content_schema", "yandex_no_question_headings", "yandex_no_lists_tables", "yandex_very_slow", "yandex_slow"], whyImportant: "ЯндексGPT и голосовой помощник Алиса используют структуру, скорость и разметку сайта для формирования ответов в поиске." },
   { id: "brand", label: "Brand Signals", categories: ["brand"], comingSoon: true },
 ];
 

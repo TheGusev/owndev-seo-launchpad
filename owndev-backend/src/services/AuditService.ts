@@ -16,6 +16,7 @@ export class AuditService {
       this.safeBlock(() => this.checkSchema(data)),
       this.safeBlock(() => this.checkEEAT(data)),
       this.safeBlock(() => this.checkTechnical(data)),
+      this.safeBlock(() => this.checkYandexAiReadiness(data)),
     ];
 
     const totalWeight = blocks.reduce((s, b) => s + b.weight, 0);
@@ -126,10 +127,10 @@ export class AuditService {
       issues.push(this.issue('thin_content', 'warning', `Мало текста (${wordCount} слов)`, 'Рекомендуется минимум 300 слов', 'P2', 80, 'dom', 'Расширьте контент до 300+ слов'));
     }
 
-    return { name: 'content_structure', weight: 20, score: this.blockScore(issues, 3), issues };
+    return { name: 'content_structure', weight: 18, score: this.blockScore(issues, 3), issues };
   }
 
-  // ── Block 3: AI Readiness (weight 20) ──────────────────────────
+  // ── Block 3: AI Readiness (weight 18) ──────────────────────────
 
   private checkAIReadiness(d: CrawlData): AuditBlock {
     const issues: AuditIssue[] = [];
@@ -150,7 +151,7 @@ export class AuditService {
       issues.push(this.issue('no_structured_content', 'info', 'Нет списков и таблиц', 'Структурированный контент лучше воспринимается AI', 'P3', 55, 'heuristic', 'Добавьте списки или таблицы'));
     }
 
-    return { name: 'ai_readiness', weight: 20, score: this.blockScore(issues, 3), issues };
+    return { name: 'ai_readiness', weight: 18, score: this.blockScore(issues, 3), issues };
   }
 
   // ── Block 4: Schema / Structured Data (weight 15) ──────────────
@@ -227,6 +228,56 @@ export class AuditService {
     }
 
     return { name: 'technical', weight: 15, score: this.blockScore(issues, 3), issues };
+  }
+
+  // ── Block 7: Yandex AI Readiness (weight 10) ───────────────────
+
+  private checkYandexAiReadiness(d: CrawlData): AuditBlock {
+    const issues: AuditIssue[] = [];
+    const html = d.renderedHtml;
+
+    // llms.txt
+    if (!d.llmsTxt.found) {
+      issues.push(this.issue('yandex_no_llms_txt', 'warning', 'Отсутствует llms.txt для ЯндексGPT', 'Файл llms.txt помогает ЯндексGPT корректно интерпретировать контент сайта', 'P2', 88, 'external', 'Создайте /llms.txt с описанием структуры и ключевых страниц'));
+    } else if ((d.llmsTxt.content || '').length < 200) {
+      issues.push(this.issue('yandex_thin_llms_txt', 'info', 'llms.txt слишком краткий', 'Рекомендуется подробное описание разделов и важных страниц (>200 символов)', 'P3', 70, 'external', 'Расширьте llms.txt: добавьте описания разделов, ключевые страницы и тематику'));
+    }
+
+    // Schema.org — Organization / WebSite
+    const types = d.schemas.map((s: any) => s['@type']).filter(Boolean).flat();
+    const hasOrg = types.some((t: string) => ['Organization', 'WebSite'].includes(t));
+    if (!hasOrg) {
+      issues.push(this.issue('yandex_no_org_schema', 'warning', 'Нет Schema Organization/WebSite', 'ЯндексGPT использует эти типы для идентификации бренда и сайта', 'P2', 85, 'html', 'Добавьте JSON-LD с типом Organization или WebSite'));
+    }
+
+    // Schema.org — Article / FAQPage / HowTo
+    const contentTypes = ['Article', 'BlogPosting', 'FAQPage', 'HowTo'];
+    const hasContentSchema = types.some((t: string) => contentTypes.includes(t));
+    if (!hasContentSchema) {
+      issues.push(this.issue('yandex_no_content_schema', 'info', 'Нет Article/FAQPage/HowTo разметки', 'Эти типы помогают Алисе и ЯндексGPT структурировать ответы', 'P3', 65, 'html', 'Добавьте JSON-LD Article, FAQPage или HowTo'));
+    }
+
+    // Вопросительные H2/H3
+    const questionHeadings = (html.match(/<h[23][^>]*>[^<]*\?<\/h[23]>/gi) || []).length;
+    if (questionHeadings === 0) {
+      issues.push(this.issue('yandex_no_question_headings', 'info', 'Нет вопросительных заголовков H2/H3', 'Вопросительные заголовки повышают шансы попасть в ответы Алисы', 'P3', 55, 'dom', 'Добавьте H2/H3 в формате вопросов (Что? Как? Почему?)'));
+    }
+
+    // Списки и таблицы
+    const hasLists = /<(ul|ol)[\s>]/i.test(html);
+    const hasTables = /<table[\s>]/i.test(html);
+    if (!hasLists && !hasTables) {
+      issues.push(this.issue('yandex_no_lists_tables', 'info', 'Нет списков и таблиц', 'Структурированный контент лучше цитируется ЯндексGPT', 'P3', 50, 'dom', 'Добавьте маркированные/нумерованные списки или таблицы'));
+    }
+
+    // Скорость
+    if (d.duration_ms > 5000) {
+      issues.push(this.issue('yandex_very_slow', 'critical', `Очень медленная загрузка (${d.duration_ms}ms)`, 'Страницы >5с могут не попасть в индекс ЯндексGPT', 'P1', 92, 'dom', 'Оптимизируйте скорость до <3 секунд'));
+    } else if (d.duration_ms > 3000) {
+      issues.push(this.issue('yandex_slow', 'warning', `Медленная загрузка для AI-краулера (${d.duration_ms}ms)`, 'Рекомендуется <3с для корректной обработки ЯндексGPT', 'P2', 80, 'dom', 'Ускорьте загрузку: сжатие, кэширование, оптимизация изображений'));
+    }
+
+    return { name: 'yandex_ai_readiness', weight: 10, score: this.blockScore(issues, 4), issues };
   }
 
   // ── Scoring ────────────────────────────────────────────────────
