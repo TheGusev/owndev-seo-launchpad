@@ -629,6 +629,43 @@
   }
 }
 
+/* Starfield galaxy background */
+@keyframes starfield-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: var(--star-opacity, 0.4);
+  }
+  100% {
+    transform: translate(
+      calc(cos(var(--drift-angle)) * var(--drift-distance)),
+      calc(sin(var(--drift-angle)) * var(--drift-distance))
+    ) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes starfield-twinkle {
+  0%, 100% { opacity: var(--star-opacity, 0.3); }
+  50% { opacity: 0.05; }
+}
+
+.starfield-drift {
+  animation: starfield-drift var(--drift-speed, 15s) linear infinite;
+}
+
+.starfield-twinkle {
+  animation:
+    starfield-drift var(--drift-speed, 15s) linear infinite,
+    starfield-twinkle 2.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .starfield-drift,
+  .starfield-twinkle {
+    animation: none;
+  }
+}
+
 .grid-line {
   stroke: hsl(var(--primary) / 0.4);
   stroke-width: 0.15;

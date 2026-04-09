@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
-import { AnimatedGrid } from "@/components/ui/animated-grid";
+import { StarfieldBackground } from "@/components/ui/starfield-background";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
