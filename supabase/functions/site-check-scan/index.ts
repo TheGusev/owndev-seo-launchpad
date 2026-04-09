@@ -2637,6 +2637,9 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   // Increment trigger counts (fire and forget)
   incrementTriggerCounts(firedRuleIds).catch(e => console.error('Trigger count error:', e));
   
+  // Await AI ad suggestion
+  const adSuggestion = await adSuggestionPromise;
+  
   await updateScan(scanId, {
     status: 'done', progress_pct: 100,
     minus_words: minusWords,
@@ -2646,7 +2649,13 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       compResult.directMeta,
       ...compResult.competitors,
       compResult.comparisonTable,
-      { _type: 'direct_ad_meta', ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
+      {
+        _type: 'direct_ad_meta',
+        ad_headline: directResult.ad_headline,
+        autotargeting_categories: directResult.autotargeting_categories,
+        readiness_score: directResult.readiness_score,
+        ad_suggestion: adSuggestion,
+      },
     ].filter(Boolean),
   });
 }
