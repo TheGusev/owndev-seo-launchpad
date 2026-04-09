@@ -990,10 +990,20 @@ function contentAudit(html: string, theme: string): Issue[] {
 }
 
 // ═══ STEP 3: Yandex Direct / Autotargeting Audit (ПРОМТ 4) ═══
+interface DirectAdSuggestion {
+  headline1: string;
+  headline2: string;
+  ad_text: string;
+  sitelinks: { title: string; description: string }[];
+  callouts: string[];
+}
+
 interface DirectAuditResult {
   issues: Issue[];
   ad_headline: string;
   autotargeting_categories: Record<string, boolean>;
+  readiness_score: number;
+  ad_suggestion?: DirectAdSuggestion;
 }
 
 function directAudit(html: string, theme: string): DirectAuditResult {
@@ -1015,6 +1025,11 @@ function directAudit(html: string, theme: string): DirectAuditResult {
   const wordCount = bodyText.split(/\s+/).filter(w => w.length > 1).length;
   const themeWords = theme.toLowerCase().split(/[\s,—–\-]+/).filter(w => w.length > 3);
 
+  // Track passed checks for readiness score
+  let totalChecks = 9;
+  let passedChecks = 0;
+  const checkWeights: number[] = [];
+
   // ── 1. H1 конкретность ── critical, visible_in_preview=true
   const genericH1 = /^(главная|home|добро пожаловать|welcome|о компании|о нас|about|услуги|наши услуги|каталог|продукция)$/i;
   if (h1 && genericH1.test(h1.trim())) {
@@ -1029,6 +1044,10 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       impact_score: 11, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: true,
     }));
+    checkWeights.push(0);
+  } else {
+    passedChecks++;
+    checkWeights.push(1.5);
   }
 
   // ── 2. Совпадение смысла H1 ↔ Title ── high, visible_in_preview=true
@@ -1051,7 +1070,13 @@ function directAudit(html: string, theme: string): DirectAuditResult {
         example_fix: `<title>${theme} — заказать в Москве | Бренд</title>\n<h1>${theme} — надёжные решения для бизнеса</h1>`,
         visible_in_preview: true,
       }));
+      checkWeights.push(0);
+    } else {
+      passedChecks++;
+      checkWeights.push(1);
     }
+  } else {
+    checkWeights.push(0.5);
   }
 
   // ── 3. H1 ↔ основной текст (когерентность) ── high, visible_in_preview=false
@@ -1071,17 +1096,21 @@ function directAudit(html: string, theme: string): DirectAuditResult {
         example_fix: `H1: "${h1.slice(0, 40)}"\n→ В тексте ниже опишите: что это, для кого, условия, цены`,
         visible_in_preview: false,
       }));
+      checkWeights.push(0);
+    } else {
+      passedChecks++;
+      checkWeights.push(1);
     }
+  } else {
+    checkWeights.push(0.5);
   }
 
   // ── 4. Несколько тематик на странице ── high, visible_in_preview=true
   const h2Matches = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi) || [];
   const h2Texts = h2Matches.map(m => m.replace(/<[^>]+>/g, '').trim().toLowerCase());
   if (h2Texts.length >= 3 && themeWords.length > 0) {
-    // Group H2s by whether they match the theme
     const onTopic = h2Texts.filter(h2 => themeWords.some(tw => h2.includes(tw)));
     const offTopic = h2Texts.filter(h2 => !themeWords.some(tw => h2.includes(tw)));
-    // If more than half of H2s are off-topic, flag it
     if (offTopic.length > onTopic.length && offTopic.length >= 2) {
       issues.push(makeIssue({
         module: 'direct', severity: 'high',
@@ -1093,7 +1122,14 @@ function directAudit(html: string, theme: string): DirectAuditResult {
         example_fix: `Страница 1: "${theme}"\nСтраница 2: "${offTopic[0] || 'другая услуга'}"\nКаждая — отдельная посадочная для Директа`,
         visible_in_preview: true,
       }));
+      checkWeights.push(0);
+    } else {
+      passedChecks++;
+      checkWeights.push(1);
     }
+  } else {
+    passedChecks++;
+    checkWeights.push(1);
   }
 
   // ── 5. Отсутствие коммерческих сигналов ── medium, visible_in_preview=false
@@ -1120,6 +1156,7 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       impact_score: 9, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: false,
     }));
+    checkWeights.push(0);
   } else if (!hasCta) {
     issues.push(makeIssue({
       module: 'direct', severity: 'high',
@@ -1132,6 +1169,10 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       impact_score: 11, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
       visible_in_preview: true,
     }));
+    checkWeights.push(0);
+  } else {
+    passedChecks++;
+    checkWeights.push(1);
   }
 
   // ── 6. Страница слишком общая для Директа ── medium, visible_in_preview=false
@@ -1150,7 +1191,78 @@ function directAudit(html: string, theme: string): DirectAuditResult {
       example_fix: `Вместо: ${title || 'Главная'}\nСоздайте: /uslugi/${theme.toLowerCase().replace(/\s+/g, '-')}/ — с конкретным H1, ценой и формой заказа`,
       visible_in_preview: false,
     }));
+    checkWeights.push(0);
+  } else {
+    passedChecks++;
+    checkWeights.push(1);
   }
+
+  // ── 7. Яндекс.Метрика ── critical
+  const hasMetrika = /mc\.yandex\.ru\/metrika\/tag\.js|mc\.yandex\.ru\/watch\/|ym\(\s*\d+/i.test(html);
+  if (!hasMetrika) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'critical',
+      title: 'Нет Яндекс.Метрики — невозможно отследить конверсии',
+      found: 'Счётчик Яндекс.Метрики не найден на странице',
+      location: '<head> / <body> скрипты',
+      why_it_matters: 'Без Метрики невозможно настроить цели и отследить конверсии из Директа. Вы не узнаете какие объявления и ключи приносят заявки, а какие сливают бюджет',
+      how_to_fix: '1. Создайте счётчик на metrika.yandex.ru\n2. Установите код счётчика на все страницы сайта\n3. Настройте цели: отправка формы, клик по телефону, посещение страницы «Спасибо»',
+      example_fix: `<script type="text/javascript">\n(function(m,e,t,r,i,k,a){...})(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");\nym(XXXXXX, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true });\n</script>`,
+      impact_score: 15, docs_url: 'https://yandex.ru/support/metrica/quick-start.html',
+      visible_in_preview: true,
+    }));
+    checkWeights.push(0);
+  } else {
+    passedChecks++;
+    checkWeights.push(1.5);
+  }
+
+  // ── 8. Мобильный viewport для Директа ── high
+  const vpMatch = html.match(/<meta[^>]*name=["']viewport["'][^>]*content=["']([^"']+)["']/i);
+  if (!vpMatch) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'high',
+      title: 'Страница не адаптирована для мобильного трафика Директа',
+      found: '<meta name="viewport"> не найден',
+      location: '<head>',
+      why_it_matters: '60-70% трафика из Директа приходит с мобильных устройств. Без адаптивной вёрстки конверсия на мобильных близка к нулю — бюджет сливается',
+      how_to_fix: 'Добавьте meta viewport и проверьте отображение на мобильных',
+      example_fix: '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      impact_score: 12, docs_url: 'https://yandex.ru/support/direct/requirements/landing-page.html',
+      visible_in_preview: true,
+    }));
+    checkWeights.push(0);
+  } else {
+    passedChecks++;
+    checkWeights.push(1);
+  }
+
+  // ── 9. UTM-совместимость canonical ── medium
+  const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i)
+    || html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["']canonical["']/i);
+  const canonical = canonicalMatch ? canonicalMatch[1].trim() : null;
+  if (canonical && /[?&]/.test(canonical)) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'medium',
+      title: 'Canonical с параметрами — конфликт с UTM-метками',
+      found: `Canonical: "${canonical}"`,
+      location: '<head> → <link rel="canonical">',
+      why_it_matters: 'Canonical с query-параметрами может конфликтовать с UTM-метками Директа. Поисковик может проигнорировать UTM-разметку или склеить не тот URL',
+      how_to_fix: 'Уберите query-параметры из canonical URL. Canonical должен содержать только чистый путь без ?utm_source=...',
+      example_fix: `Было: <link rel="canonical" href="${canonical}">\nСтало: <link rel="canonical" href="${canonical.split('?')[0]}">`,
+      impact_score: 7,
+      visible_in_preview: false,
+    }));
+    checkWeights.push(0);
+  } else {
+    passedChecks++;
+    checkWeights.push(0.5);
+  }
+
+  // ── Calculate Direct Readiness Score (0-10) ──
+  const maxWeight = 1.5 + 1 + 1 + 1 + 1 + 1 + 1.5 + 1 + 0.5; // = 9.5
+  const earnedWeight = checkWeights.reduce((a, b) => a + b, 0);
+  const readiness_score = Math.round((earnedWeight / maxWeight) * 10);
 
   // ── Generate ad_headline (max 35 chars) ──
   const baseHeadline = h1 || title || theme;
@@ -1159,7 +1271,6 @@ function directAudit(html: string, theme: string): DirectAuditResult {
     .replace(/[|—–\-].*$/, '')
     .trim();
   if (ad_headline.length > 35) {
-    // Try to shorten intelligently
     const words = ad_headline.split(/\s+/);
     ad_headline = '';
     for (const w of words) {
@@ -1182,7 +1293,130 @@ function directAudit(html: string, theme: string): DirectAuditResult {
     'Брендовые': /бренд|brand/i.test(bodyText) || false,
   };
 
-  return { issues, ad_headline, autotargeting_categories };
+  return { issues, ad_headline, autotargeting_categories, readiness_score };
+}
+
+// ═══ STEP 3b: AI Direct Ad Generation ═══
+async function generateDirectAd(html: string, theme: string, url: string): Promise<DirectAdSuggestion | null> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) return null;
+
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1].trim() : '';
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyText = bodyMatch
+    ? bodyMatch[1]
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim().slice(0, 1500)
+    : '';
+
+  try {
+    console.log(`[OWNDEV] Шаг: generateDirectAd | URL: ${url}`);
+    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: `Ты — эксперт по Яндекс.Директу. Сгенерируй полное объявление для рекламы в Яндекс.Директ на основе содержимого страницы.
+
+СТРОГИЕ ОГРАНИЧЕНИЯ Яндекс.Директ:
+- headline1: до 35 символов (основной заголовок)
+- headline2: до 30 символов (дополнительный заголовок)  
+- ad_text: до 81 символа (текст объявления)
+- sitelinks: 4 быстрые ссылки (title до 30 символов, description до 60 символов)
+- callouts: 4 уточнения (каждое до 25 символов)
+
+ПРАВИЛА:
+- Используй конкретику: цифры, выгоды, УТП
+- Добавляй призыв к действию
+- Учитывай тематику и содержимое страницы
+- Пиши на русском языке
+
+Отвечай СТРОГО валидным JSON без markdown-блоков.`
+          },
+          {
+            role: 'user',
+            content: `URL: ${url}\nТематика: ${theme}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 800)}`
+          },
+        ],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'create_direct_ad',
+            description: 'Создаёт рекламное объявление для Яндекс.Директа',
+            parameters: {
+              type: 'object',
+              properties: {
+                headline1: { type: 'string', description: 'Основной заголовок (до 35 символов)' },
+                headline2: { type: 'string', description: 'Дополнительный заголовок (до 30 символов)' },
+                ad_text: { type: 'string', description: 'Текст объявления (до 81 символа)' },
+                sitelinks: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      description: { type: 'string' },
+                    },
+                    required: ['title', 'description'],
+                    additionalProperties: false,
+                  },
+                },
+                callouts: { type: 'array', items: { type: 'string' } },
+              },
+              required: ['headline1', 'headline2', 'ad_text', 'sitelinks', 'callouts'],
+              additionalProperties: false,
+            },
+          },
+        }],
+        tool_choice: { type: 'function', function: { name: 'create_direct_ad' } },
+        temperature: 0.4,
+      }),
+    });
+
+    if (!resp.ok) {
+      console.error(`[OWNDEV] Direct ad AI error: ${resp.status}`);
+      return null;
+    }
+
+    const data = await resp.json();
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall?.function?.arguments) {
+      // Fallback to content parsing
+      const content = data.choices?.[0]?.message?.content;
+      if (content) {
+        return safeParseJson<DirectAdSuggestion | null>(content, null);
+      }
+      return null;
+    }
+
+    const parsed = typeof toolCall.function.arguments === 'string'
+      ? JSON.parse(toolCall.function.arguments)
+      : toolCall.function.arguments;
+
+    console.log(`[OWNDEV] Direct ad generated: headline1="${parsed.headline1}"`);
+    return {
+      headline1: (parsed.headline1 || '').slice(0, 35),
+      headline2: (parsed.headline2 || '').slice(0, 30),
+      ad_text: (parsed.ad_text || '').slice(0, 81),
+      sitelinks: (parsed.sitelinks || []).slice(0, 4).map((s: any) => ({
+        title: (s.title || '').slice(0, 30),
+        description: (s.description || '').slice(0, 60),
+      })),
+      callouts: (parsed.callouts || []).slice(0, 4).map((c: string) => (c || '').slice(0, 25)),
+    };
+  } catch (e) {
+    console.error('[OWNDEV] Direct ad generation failed:', e.message);
+    return null;
+  }
 }
 
 // ═══ STEP 7: Schema Audit ═══
@@ -2331,6 +2565,9 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   // STEP 3: Yandex Direct
   const directResult = directAudit(html, theme);
   
+  // STEP 3b: AI Direct Ad Generation (async, non-blocking)
+  const adSuggestionPromise = generateDirectAd(html, theme, scanUrl);
+  
   // Steps 7 & 8
   const schemaIssues = schemaAudit(html);
   const aiIssues = await aiAudit(html, parsedUrl.origin, parsedUrl.toString(), isSpa, spaRenderFailed);
@@ -2400,6 +2637,9 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   // Increment trigger counts (fire and forget)
   incrementTriggerCounts(firedRuleIds).catch(e => console.error('Trigger count error:', e));
   
+  // Await AI ad suggestion
+  const adSuggestion = await adSuggestionPromise;
+  
   await updateScan(scanId, {
     status: 'done', progress_pct: 100,
     minus_words: minusWords,
@@ -2409,7 +2649,13 @@ async function runPipeline(scanId: string, url: string, mode: string) {
       compResult.directMeta,
       ...compResult.competitors,
       compResult.comparisonTable,
-      { _type: 'direct_ad_meta', ad_headline: directResult.ad_headline, autotargeting_categories: directResult.autotargeting_categories },
+      {
+        _type: 'direct_ad_meta',
+        ad_headline: directResult.ad_headline,
+        autotargeting_categories: directResult.autotargeting_categories,
+        readiness_score: directResult.readiness_score,
+        ad_suggestion: adSuggestion,
+      },
     ].filter(Boolean),
   });
 }

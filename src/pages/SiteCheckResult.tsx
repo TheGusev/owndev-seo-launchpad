@@ -6,6 +6,7 @@ import ScoreCards from "@/components/site-check/ScoreCards";
 import FullReportView from "@/components/site-check/FullReportView";
 import CompetitorsTable from "@/components/site-check/CompetitorsTable";
 import DirectMeta from "@/components/site-check/DirectMeta";
+import DirectAdPreview from "@/components/site-check/DirectAdPreview";
 import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
@@ -112,6 +113,8 @@ const SiteCheckResult = () => {
   const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table') || null;
   const directMeta = rawCompetitors.find((c: any) => c._type === 'direct_meta') || null;
   const directAdMeta = rawCompetitors.find((c: any) => c._type === 'direct_ad_meta' || c._direct_meta);
+  const directAdSuggestion = directAdMeta?.ad_suggestion || null;
+  const directReadinessScore = directAdMeta?.readiness_score ?? null;
   const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
     keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
     volume: kw.frequency ?? kw.volume ?? 0,
@@ -230,6 +233,26 @@ const SiteCheckResult = () => {
           )}
 
           {directAdMeta && <DirectMeta data={directAdMeta} />}
+
+          {/* Direct Ad Preview */}
+          {directAdSuggestion && (
+            <ResultAccordion title="Объявление для Яндекс.Директ" defaultOpen={true}>
+              <DirectAdPreview
+                adSuggestion={directAdSuggestion}
+                readinessScore={directReadinessScore ?? 0}
+                url={data.url}
+              />
+            </ResultAccordion>
+          )}
+          {!directAdSuggestion && directReadinessScore !== null && (
+            <ResultAccordion title="Готовность к Яндекс.Директ" defaultOpen={false}>
+              <DirectAdPreview
+                adSuggestion={{ headline1: '', headline2: '', ad_text: '', sitelinks: [], callouts: [] }}
+                readinessScore={directReadinessScore}
+                url={data.url}
+              />
+            </ResultAccordion>
+          )}
 
           {/* GEO Rating nomination */}
           {scores && <GeoRatingNomination totalScore={scores.total} url={data.url} scanId={scanId} />}
