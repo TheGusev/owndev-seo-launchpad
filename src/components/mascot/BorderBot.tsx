@@ -50,12 +50,12 @@ const BotSvg = memo(({ size, isWalking, step, pupilL, pupilR, cursorNear }: {
       {/* Left eye */}
       <g style={{ transform: blink ? "scaleY(0.1)" : "scaleY(1)", transformOrigin: "12px 17px", transition: "transform 0.08s" }}>
         <circle cx="12" cy="17" r="3.5" fill="rgba(167,139,250,0.9)" />
-        <circle cx={12 + pupilL.dx} cy={17 + pupilL.dy} r="1.5" fill="rgba(255,255,255,0.9)" />
+        <circle cx={12 + pupilL.dx} cy={17 + pupilL.dy} r="1.5" fill="rgba(0,0,0,0.85)" />
       </g>
       {/* Right eye */}
       <g style={{ transform: blink ? "scaleY(0.1)" : "scaleY(1)", transformOrigin: "24px 17px", transition: "transform 0.08s" }}>
         <circle cx="24" cy="17" r="3.5" fill="rgba(167,139,250,0.9)" />
-        <circle cx={24 + pupilR.dx} cy={17 + pupilR.dy} r="1.5" fill="rgba(255,255,255,0.9)" />
+        <circle cx={24 + pupilR.dx} cy={17 + pupilR.dy} r="1.5" fill="rgba(0,0,0,0.85)" />
       </g>
 
       {/* Body */}
@@ -65,15 +65,15 @@ const BotSvg = memo(({ size, isWalking, step, pupilL, pupilR, cursorNear }: {
       <rect x="10" y="31" width="16" height="12" rx="2" fill="rgba(139,92,246,0.08)" stroke="rgba(139,92,246,0.3)" strokeWidth="0.5" />
 
       {/* Screen bars — animated via SMIL */}
-      <rect x="12" y="33" rx="1" height="2" fill="rgba(167,139,250,0.6)">
+      <rect x="12" y="33" rx="1" height="2" fill="rgba(255,255,255,0.8)">
         <animate attributeName="width" values="12;6;12" dur="1.8s" repeatCount="indefinite" />
         <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.8s" repeatCount="indefinite" />
       </rect>
-      <rect x="12" y="36.5" rx="1" height="2" fill="rgba(167,139,250,0.45)">
+      <rect x="12" y="36.5" rx="1" height="2" fill="rgba(0,57,166,0.7)">
         <animate attributeName="width" values="8;14;8" dur="2.2s" begin="0.4s" repeatCount="indefinite" />
         <animate attributeName="opacity" values="0.6;1;0.6" dur="2.2s" begin="0.4s" repeatCount="indefinite" />
       </rect>
-      <rect x="12" y="40" rx="1" height="2" fill="rgba(167,139,250,0.3)">
+      <rect x="12" y="40" rx="1" height="2" fill="rgba(213,43,30,0.7)">
         <animate attributeName="width" values="10;5;10" dur="1.6s" begin="0.8s" repeatCount="indefinite" />
         <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.6s" begin="0.8s" repeatCount="indefinite" />
       </rect>
