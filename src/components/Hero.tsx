@@ -49,7 +49,7 @@ const Hero = () => {
   return (
     <section className="relative min-h-[85vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-20">
       <CornerDecorations size="lg" />
-      <FloatingParticles count={10} className="absolute inset-0 z-[3] pointer-events-none" />
+      <FloatingParticles count={15} className="absolute inset-0 z-[3] pointer-events-none" />
 
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.08),transparent_60%)]" />
@@ -59,7 +59,7 @@ const Hero = () => {
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
 
-      <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="absolute inset-0 z-[2] opacity-70" theme="primary" />
+      <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="absolute inset-0 z-[2]" theme="primary" />
 
       <div className="container relative z-10 px-4 md:px-6">
         <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
