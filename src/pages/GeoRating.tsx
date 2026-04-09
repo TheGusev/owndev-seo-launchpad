@@ -26,7 +26,7 @@ import {
   mapDbRowToEntry,
 } from "@/data/geo-rating-types";
 
-const CATEGORIES = ["Все", "E-commerce", "Медиа", "Банки", "Сервисы", "Образование", "Госорганы", "Телеком"];
+const DEFAULT_CATEGORIES = ["Все"];
 const SCORE_FILTERS = [
   { label: "Все", min: 0, max: 100 },
   { label: "80+", min: 80, max: 100 },
@@ -96,6 +96,11 @@ const GeoRating = () => {
       entry: mapDbRowToEntry(r, idx + 1),
     }));
   }, [rawRows, cat, scoreFi, sortKey]);
+
+  const CATEGORIES = useMemo(() => {
+    const cats = Array.from(new Set(rawRows.map((r: any) => r.category as string))).sort();
+    return ["Все", ...cats];
+  }, [rawRows]);
 
   const avgLlm = rawRows.length
     ? Math.round(rawRows.reduce((s: number, r: any) => s + r.llm_score, 0) / rawRows.length)
