@@ -23,7 +23,7 @@ function headers() {
   };
 }
 
-async function pollScan(scanId: string, timeoutMs = 120000): Promise<boolean> {
+async function pollScan(scanId: string, timeoutMs = 90000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
@@ -42,74 +42,117 @@ async function pollScan(scanId: string, timeoutMs = 120000): Promise<boolean> {
   return false;
 }
 
+async function processSite(site: { id: string; domain: string }): Promise<{ domain: string; status: string; error?: string }> {
+  try {
+    const startResp = await fetch(fnUrl("site-check-scan", "/start"), {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ url: `https://${site.domain}`, mode: "page" }),
+    });
+
+    if (!startResp.ok) {
+      const body = await startResp.json().catch(() => ({}));
+      if (startResp.status === 429 && body.last_scan_id) {
+        const scanDone = await pollScan(body.last_scan_id);
+        if (scanDone) {
+          await updateFromScan(site.id, body.last_scan_id);
+          return { domain: site.domain, status: "updated_from_cached" };
+        }
+      }
+      return { domain: site.domain, status: "scan_start_failed", error: body.error };
+    }
+
+    const startData = await startResp.json();
+    const scanId = startData.scan_id;
+
+    if (startData.cached) {
+      await updateFromScan(site.id, scanId);
+      return { domain: site.domain, status: "updated_from_cache" };
+    }
+
+    const done = await pollScan(scanId);
+    if (!done) {
+      return { domain: site.domain, status: "timeout" };
+    }
+
+    await updateFromScan(site.id, scanId);
+    return { domain: site.domain, status: "updated" };
+  } catch (e) {
+    return { domain: site.domain, status: "error", error: String(e) };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { data: sites, error } = await supabase
-      .from("geo_rating")
-      .select("id, domain")
-      .order("domain");
+    let domain: string | undefined;
+    let batchSize = 3;
+    let offset = 0;
 
-    if (error || !sites) {
-      return new Response(JSON.stringify({ error: "Failed to read geo_rating" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const results: { domain: string; status: string; error?: string }[] = [];
-
-    for (const site of sites) {
+    if (req.method === "POST") {
       try {
-        // Start scan
-        const startResp = await fetch(fnUrl("site-check-scan", "/start"), {
-          method: "POST",
-          headers: headers(),
-          body: JSON.stringify({ url: `https://${site.domain}`, mode: "page" }),
-        });
-
-        if (!startResp.ok) {
-          const body = await startResp.json().catch(() => ({}));
-          // If rate limited with existing scan, try to use that
-          if (startResp.status === 429 && body.last_scan_id) {
-            const scanDone = await pollScan(body.last_scan_id);
-            if (scanDone) {
-              await updateFromScan(site.id, body.last_scan_id);
-              results.push({ domain: site.domain, status: "updated_from_cached" });
-              continue;
-            }
-          }
-          results.push({ domain: site.domain, status: "scan_start_failed", error: body.error });
-          continue;
-        }
-
-        const startData = await startResp.json();
-        const scanId = startData.scan_id;
-
-        if (startData.cached) {
-          await updateFromScan(site.id, scanId);
-          results.push({ domain: site.domain, status: "updated_from_cache" });
-          continue;
-        }
-
-        // Poll until done
-        const done = await pollScan(scanId);
-        if (!done) {
-          results.push({ domain: site.domain, status: "timeout" });
-          continue;
-        }
-
-        await updateFromScan(site.id, scanId);
-        results.push({ domain: site.domain, status: "updated" });
-      } catch (e) {
-        results.push({ domain: site.domain, status: "error", error: String(e) });
+        const body = await req.json();
+        domain = body.domain;
+        batchSize = body.batch_size ?? 3;
+        offset = body.offset ?? 0;
+      } catch {
+        // empty body is fine, use defaults
       }
     }
 
-    return new Response(JSON.stringify({ processed: results.length, results }), {
+    let sites: { id: string; domain: string }[];
+
+    if (domain) {
+      // Single domain mode
+      const { data, error } = await supabase
+        .from("geo_rating")
+        .select("id, domain")
+        .eq("domain", domain)
+        .limit(1);
+      if (error || !data?.length) {
+        return new Response(JSON.stringify({ error: `Domain "${domain}" not found in geo_rating` }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      sites = data;
+    } else {
+      // Batch mode
+      const { data, error } = await supabase
+        .from("geo_rating")
+        .select("id, domain")
+        .order("domain")
+        .range(offset, offset + batchSize - 1);
+      if (error || !data) {
+        return new Response(JSON.stringify({ error: "Failed to read geo_rating" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      sites = data;
+    }
+
+    // Get total count for progress info
+    const { count } = await supabase
+      .from("geo_rating")
+      .select("id", { count: "exact", head: true });
+
+    const results = [];
+    for (const site of sites) {
+      const result = await processSite(site);
+      results.push(result);
+    }
+
+    return new Response(JSON.stringify({
+      processed: results.length,
+      total: count ?? 0,
+      offset,
+      next_offset: domain ? null : offset + batchSize,
+      results,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
