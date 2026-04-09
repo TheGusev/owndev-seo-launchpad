@@ -1,34 +1,40 @@
 
 
-## Исправление сломанных API-вызовов на фронте
+## Исправление "Invalid input" — автодобавление https://
 
-### Проблема
+### Причина бага
 
-В `SiteCheckResult.tsx` два вызова — **LLM Judge** и **Tech Passport** — используют хардкоженные URL напрямую к Supabase Edge Functions, минуя единый API-слой. Это единственные места с прямыми `fetch` к `supabase.co/functions` (кроме `config.ts` и `MCPServerDocs`, которые корректны).
-
-### Что сломано
-
-| Вызов | Строка | Проблема |
-|-------|--------|----------|
-| `llm-judge` | SiteCheckResult.tsx:62 | Прямой fetch к Supabase вместо `invokeFunction()` |
-| `tech-passport` | SiteCheckResult.tsx:76 | Прямой fetch к Supabase вместо `invokeFunction()` |
+Пользователь вводит `owndev.ru` (без протокола). Фронтенд отправляет `{"url": "owndev.ru"}` на backend. Backend валидирует через `z.string().url()`, который требует полный URL с протоколом → возвращает 400 "Invalid input".
 
 ### Решение
 
-1. **`src/lib/api/tools.ts`** — добавить две функции:
-   - `judgeLlm(scanId, url, theme?)` → `invokeFunction("llm-judge", { scan_id, url, theme })`
-   - `getTechPassport(url)` → `invokeFunction("tech-passport", { url })`
+Добавить функцию `ensureProtocol(url)` в `src/lib/api/tools.ts` и применить её перед отправкой в `auditSite()`. Также применить на уровне UI в `SEOAuditor.tsx` и других формах, где пользователь вводит URL.
 
-2. **`src/pages/SiteCheckResult.tsx`** — заменить оба хардкоженных fetch на вызовы новых функций из API-слоя. Убрать ручное построение URL и headers.
+### Файлы
+
+| Файл | Изменение |
+|------|-----------|
+| `src/lib/api/tools.ts` | Добавить `ensureProtocol()` — если нет `http://` или `https://`, добавить `https://`. Вызвать в `auditSite()` перед POST |
+| `src/components/tools/SEOAuditor.tsx` | Применить `ensureProtocol()` к `url` перед передачей в `auditSite()` |
+| `src/components/scenarios/ScenarioDemoForm.tsx` | Применить `ensureProtocol()` в формах сценариев, где URL передаётся в навигацию |
+
+### Логика `ensureProtocol`
+
+```typescript
+function ensureProtocol(url: string): string {
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+```
 
 ### Что НЕ трогаем
 
-- Backend, роуты, воркеры — 0 изменений
-- `MCPServerDocs.tsx` — это документация/конфиг для пользователя, не API-вызов
-- Остальные инструменты — уже используют `invokeFunction()`
-- UI компоненты `LlmJudgeSection`, `TechPassport` — без изменений
+- Backend валидацию (zod `.url()` корректно требует протокол)
+- Header, Footer, меню — 0 изменений
+- Polling логику — без изменений
 
 ### Объём
 
-~6 строк в tools.ts, ~10 строк замены в SiteCheckResult.tsx.
+~5 строк новая функция, ~3 строки применения.
 
