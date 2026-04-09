@@ -22,6 +22,14 @@ interface ApiResponse<T = any> {
   code?: string;
 }
 
+// ── Helpers ──
+
+export function ensureProtocol(url: string): string {
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 // ── Own-backend helpers ──
 
 async function backendPost<T = any>(path: string, body: object): Promise<ApiResponse<T>> {
