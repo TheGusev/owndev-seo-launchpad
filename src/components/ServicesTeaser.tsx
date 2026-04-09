@@ -23,19 +23,19 @@ const directions = [
   {
     icon: Bot,
     title: "GEO-готовность",
-    desc: "llms.txt, E-E-A-T, попадание в ответы нейросетей. Готовность к ChatGPT, Perplexity, Яндекс Нейро.",
+    desc: "llms.txt, E-E-A-T, AI-видимость. Проверка готовности к ChatGPT, Perplexity, Яндекс Нейро.",
     badge: "NEW 2025",
     pulse: true,
     accent: "text-emerald-400 border-emerald-500/20 hover:border-emerald-500/30 hover:bg-emerald-500/5",
-    link: "/geo-audit",
+    link: "/tools/site-check",
   },
   {
     icon: Target,
-    title: "Яндекс.Директ",
-    desc: "150+ ключей, минус-слова, готовый семантический план. Конкуренты и бюджет — готово к запуску.",
-    badge: "150 ключей",
+    title: "Семантика и ключи",
+    desc: "AI-генерация кластеров ключевых слов, минус-слова, семантический план по интентам.",
+    badge: "AI-семантика",
     accent: "text-pink-400 border-pink-500/20 hover:border-pink-500/30 hover:bg-pink-500/5",
-    link: "/tools/site-check",
+    link: "/tools/semantic-core",
   },
 ];
 
