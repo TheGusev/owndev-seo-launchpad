@@ -1,25 +1,51 @@
 
 
-## Прогон всех новых доменов через geo-rating-cron
+## Исправление 7 ошибок компиляции бэкенда + предупреждение CSS
 
-### Текущее состояние
-- **52 домена** с нулевыми баллами (llm_score=0, seo_score=0) — все новые, ещё не просканированные
-- Функция `geo-rating-cron` поддерживает batch mode с параметрами `batch_size` и `offset`
+Бэкенд не собирается из-за 7 TypeScript-ошибок в 4 файлах. Пока `tsc` не проходит, PM2 запускает старый код (или падает), поэтому фронт получает «Сервер загружен».
 
-### План выполнения
+### Файлы и фиксы
 
-Буду последовательно вызывать `geo-rating-cron` батчами по 3 домена (лимит rate limit), используя offset для перехода к следующей порции. Всего потребуется ~17 батчей.
+#### 1. `owndev-backend/src/api/server.ts` — 3 ошибки (error is unknown)
+Fastify 5 типизирует `error` как `FastifyError`, но TS strict видит `unknown`. Решение — явный каст:
+```typescript
+app.setErrorHandler((error, _req, reply) => {
+  const err = error as any;
+  logger.error('SERVER', err?.message || String(err));
+  const status = err?.statusCode ?? 500;
+  const message = status >= 500 ? 'Internal error' : (err?.message || 'Unknown error');
+  reply.status(status).send({ success: false, error: message, code: 'INTERNAL' });
+});
+```
 
-Однако есть ограничение: функция `site-check-scan` имеет rate limit (3 скана в день на IP/домен). Поэтому за один сеанс удастся обновить только часть доменов. Остальные потребуют повторных запусков позже.
+#### 2. `owndev-backend/src/cache/redis.ts` — 2 ошибки (Redis not constructable + err any)
+`ioredis@5` с ESM экспортирует `Redis` как default, но TS strict + `moduleResolution: NodeNext` ломает конструктор. Фикс:
+```typescript
+import Redis from 'ioredis';
+// ...
+export const redis = new (Redis as any)(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+  lazyConnect: true,
+});
 
-**Порядок действий:**
-1. Вызвать `geo-rating-cron` с `batch_size=3, offset=0` — первые 3 непросканированных домена
-2. Дождаться завершения, вызвать следующий батч с `offset=3`
-3. Повторять до исчерпания лимита или всех 52 доменов
-4. Отчитаться по статусу каждого домена
+redis.on('error', (err: unknown) => {
+  logger.error('REDIS', (err as Error)?.message || String(err));
+});
+```
 
-Поскольку скан одного домена занимает ~30-90 секунд, а rate limit может блокировать после 3 сканов — буду вызывать поштучно по домену для максимального контроля и прогонять столько, сколько позволят лимиты.
+#### 3. `owndev-backend/src/db/queries/audits.ts` — 1 ошибка (sql.json type)
+```typescript
+VALUES (${auditId}, ${sql.json(result as any)})
+```
 
-### Ожидаемый результат
-Все 52 домена получат реальные баллы (или ошибку с пояснением) в таблице `geo_rating`.
+#### 4. `owndev-backend/src/db/queries/events.ts` — 1 ошибка (sql.json type)
+```typescript
+${payload ? sql.json(payload as any) : null}
+```
+
+#### 5. `src/index.css` — `@import` должен быть первым
+Переместить строку `@import url(...)` выше `@tailwind` директив (строка 5 → строка 1).
+
+### Результат
+После этих 5 правок `tsc` в бэкенде пройдёт, деплой завершится, и сканирование снова заработает.
 
