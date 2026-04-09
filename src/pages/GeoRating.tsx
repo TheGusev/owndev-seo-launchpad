@@ -97,7 +97,12 @@ const GeoRating = () => {
     }));
   }, [rawRows, cat, scoreFi, sortKey]);
 
-  const avgLlm = rawRows.length
+  const CATEGORIES = useMemo(() => {
+    const cats = Array.from(new Set(rawRows.map((r: any) => r.category as string))).sort();
+    return ["Все", ...cats];
+  }, [rawRows]);
+
+
     ? Math.round(rawRows.reduce((s: number, r: any) => s + r.llm_score, 0) / rawRows.length)
     : 0;
   const pctLlms = rawRows.length
