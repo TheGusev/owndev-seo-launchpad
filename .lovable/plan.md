@@ -1,31 +1,24 @@
 
 
-## Разукрасим робота BorderBot
+## Добавить JSON-LD BreadcrumbList на страницу методологии
 
-### Изменения в `src/components/mascot/BorderBot.tsx`
+Добавить структурированную разметку `BreadcrumbList` внутрь `<Helmet>` на странице `GeoRatingMethodology.tsx`.
 
-**1. Глаза — добавить чёрные зрачки**
+### Изменение
 
-Сейчас зрачки белые (`fill="rgba(255,255,255,0.9)"`). Заменить на чёрные точки:
-- `fill="rgba(0,0,0,0.85)"` для обоих зрачков (строки 53, 58)
+В `src/pages/GeoRatingMethodology.tsx` — добавить `<script type="application/ld+json">` в блок `<Helmet>` (после существующего `<meta name="description">`):
 
-**2. Полоски на животе — цвета флага РФ**
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Главная", "item": "https://owndev.ru/" },
+    { "@type": "ListItem", "position": 2, "name": "GEO Рейтинг", "item": "https://owndev.ru/geo-rating" },
+    { "@type": "ListItem", "position": 3, "name": "Методология" }
+  ]
+}
+```
 
-Три полоски (строки 68-79) перекрасить:
-- Верхняя (y=33): белая — `fill="rgba(255,255,255,0.8)"`
-- Средняя (y=36.5): синяя — `fill="rgba(0,57,166,0.7)"`
-- Нижняя (y=40): красная — `fill="rgba(213,43,30,0.7)"`
-
-Анимация width/opacity остаётся та же самая (SMIL animate).
-
-**Порядок флага РФ сверху вниз: белый → синий → красный** ✓
-
-### Файлы
-| Файл | Строк изменений |
-|------|----------------|
-| `src/components/mascot/BorderBot.tsx` | ~5 строк (замена fill цветов) |
-
-### Что НЕ трогаем
-- Анимацию ходьбы, моргания, курсор-трекинг — без изменений
-- Все остальные компоненты — 0 изменений
+Один файл, ~10 строк добавления. Ничего больше не трогаем.
 
