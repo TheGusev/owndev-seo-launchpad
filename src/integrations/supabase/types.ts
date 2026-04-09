@@ -113,6 +113,42 @@ export type Database = {
         }
         Relationships: []
       }
+      geo_rating_nominations: {
+        Row: {
+          category: string
+          created_at: string
+          display_name: string
+          domain: string
+          email: string | null
+          id: string
+          scan_id: string | null
+          status: string
+          total_score: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          display_name: string
+          domain: string
+          email?: string | null
+          id?: string
+          scan_id?: string | null
+          status?: string
+          total_score?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          display_name?: string
+          domain?: string
+          email?: string | null
+          id?: string
+          scan_id?: string | null
+          status?: string
+          total_score?: number
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
