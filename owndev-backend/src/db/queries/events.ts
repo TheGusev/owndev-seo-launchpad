@@ -7,6 +7,6 @@ export async function logEvent(
 ): Promise<void> {
   await sql`
     INSERT INTO events (user_id, name, payload)
-    VALUES (${userId ?? null}, ${name}, ${payload ? sql.json(payload) : null})
+    VALUES (${userId ?? null}, ${name}, ${payload ? sql.json(payload as any) : null})
   `;
 }

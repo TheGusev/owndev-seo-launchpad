@@ -1,13 +1,13 @@
 import Redis from 'ioredis';
 import { logger } from '../utils/logger.js';
 
-export const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+export const redis = new (Redis as any)(process.env.REDIS_URL ?? 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
   lazyConnect: true,
 });
 
-redis.on('error', (err) => {
-  logger.error('REDIS', err.message);
+redis.on('error', (err: unknown) => {
+  logger.error('REDIS', (err as Error)?.message || String(err));
 });
 
 redis.on('reconnecting', (delay: number) => {

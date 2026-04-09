@@ -37,7 +37,7 @@ export async function updateAuditStatus(
 export async function saveAuditResult(auditId: string, result: AuditResult): Promise<void> {
   await sql`
     INSERT INTO audit_results (audit_id, result)
-    VALUES (${auditId}, ${sql.json(result)})
+    VALUES (${auditId}, ${sql.json(result as any)})
     ON CONFLICT (audit_id) DO UPDATE SET result = EXCLUDED.result, created_at = NOW()
   `;
 }
