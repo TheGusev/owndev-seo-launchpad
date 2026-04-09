@@ -10,6 +10,7 @@ export interface SectionConfig {
   categories: string[];
   whyImportant?: string;
   comingSoon?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 interface AuditSectionBlockProps {
@@ -35,6 +36,7 @@ const AuditSectionBlock = ({ section, issues, confidence }: AuditSectionBlockPro
     return (
       <div className="glass rounded-xl p-4 flex items-center gap-3 opacity-60">
         <Construction className="w-4 h-4 text-muted-foreground" />
+        {section.icon && <section.icon className="w-4 h-4 text-muted-foreground" />}
         <span className="text-sm font-medium text-foreground">{section.label}</span>
         <Badge variant="outline" className="ml-auto text-[10px]">В разработке</Badge>
       </div>
@@ -45,6 +47,7 @@ const AuditSectionBlock = ({ section, issues, confidence }: AuditSectionBlockPro
     return (
       <div className="glass rounded-xl p-4 flex items-center gap-3">
         <CheckCircle className="w-4 h-4 text-success" />
+        {section.icon && <section.icon className="w-4 h-4 text-muted-foreground" />}
         <span className="text-sm font-medium text-foreground">{section.label}</span>
         <Badge className="ml-auto text-[10px] bg-success/10 text-success border border-success/30">OK</Badge>
       </div>
@@ -61,6 +64,7 @@ const AuditSectionBlock = ({ section, issues, confidence }: AuditSectionBlockPro
         <AccordionTrigger className="glass rounded-xl px-4 py-3 hover:no-underline [&[data-state=open]]:rounded-b-none">
           <div className="flex items-center gap-3 flex-1">
             <StatusIcon className={`w-4 h-4 ${cfg.cls.split(" ")[0]}`} />
+            {section.icon && <section.icon className="w-4 h-4 text-muted-foreground" />}
             <span className="text-sm font-medium text-foreground">{section.label}</span>
             <Badge className={`ml-auto text-[10px] border ${cfg.cls}`}>{cfg.label} · {issues.length}</Badge>
           </div>

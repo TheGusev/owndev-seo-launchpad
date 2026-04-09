@@ -8,6 +8,13 @@ import AuditPriorityList from "./AuditPriorityList";
 import AuditActions from "./AuditActions";
 import type { AuditResult, AuditIssue, ToolId } from "@/lib/api/types";
 
+const YandexIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" fill="rgba(255,0,0,0.15)" />
+    <text x="12" y="16.5" textAnchor="middle" fontSize="13" fontWeight="bold" fill="currentColor" stroke="none">Я</text>
+  </svg>
+);
+
 const SECTIONS: SectionConfig[] = [
   { id: "indexability", label: "Indexability", categories: ["technical", "seo"], whyImportant: "Если поисковик не может найти и проиндексировать страницу, остальные оптимизации бесполезны." },
   { id: "content", label: "Content Structure", categories: ["content"], whyImportant: "Структурированный контент помогает и поисковикам, и LLM правильно понять смысл страницы." },
@@ -15,7 +22,7 @@ const SECTIONS: SectionConfig[] = [
   { id: "eeat", label: "E-E-A-T", categories: ["eeat", "trust"], whyImportant: "Сигналы экспертности и доверия напрямую влияют на ранжирование и AI-цитирование." },
   { id: "schema", label: "Schema / llms.txt", categories: ["schema"], whyImportant: "Структурированные данные и llms.txt помогают AI-системам корректно интерпретировать контент." },
   { id: "speed", label: "Speed / Rendering", categories: ["speed", "performance"], whyImportant: "Скорость загрузки влияет на Core Web Vitals и пользовательский опыт." },
-  { id: "yandex-ai", label: "ЯндексGPT и Алиса", categories: ["yandex_ai", "yandex_no_llms_txt", "yandex_thin_llms_txt", "yandex_no_org_schema", "yandex_no_content_schema", "yandex_no_question_headings", "yandex_no_lists_tables", "yandex_very_slow", "yandex_slow"], whyImportant: "ЯндексGPT и голосовой помощник Алиса используют структуру, скорость и разметку сайта для формирования ответов в поиске." },
+  { id: "yandex-ai", label: "ЯндексGPT и Алиса", icon: YandexIcon, categories: ["yandex_ai", "yandex_no_llms_txt", "yandex_thin_llms_txt", "yandex_no_org_schema", "yandex_no_content_schema", "yandex_no_question_headings", "yandex_no_lists_tables", "yandex_very_slow", "yandex_slow"], whyImportant: "ЯндексGPT и голосовой помощник Алиса используют структуру, скорость и разметку сайта для формирования ответов в поиске." },
   { id: "brand", label: "Brand Signals", categories: ["brand"], comingSoon: true },
 ];
 
