@@ -1,7 +1,22 @@
 import { sql } from '../client.js';
 import type { Domain } from '../../types/domain.js';
 
-export async function getOrCreateDomain(userId: string, hostname: string): Promise<Domain> {
+export async function getOrCreateDomain(userId: string | null, hostname: string): Promise<Domain> {
+  if (!userId) {
+    // For anonymous users: NULL != NULL in PostgreSQL UNIQUE, so ON CONFLICT won't work.
+    // Try to find existing anon domain first, then insert if not found.
+    const [existing] = await sql<Domain[]>`
+      SELECT * FROM domains WHERE user_id IS NULL AND hostname = ${hostname} LIMIT 1
+    `;
+    if (existing) return existing;
+
+    const [created] = await sql<Domain[]>`
+      INSERT INTO domains (user_id, hostname) VALUES (NULL, ${hostname})
+      RETURNING *
+    `;
+    return created;
+  }
+
   const [domain] = await sql<Domain[]>`
     INSERT INTO domains (user_id, hostname)
     VALUES (${userId}, ${hostname})

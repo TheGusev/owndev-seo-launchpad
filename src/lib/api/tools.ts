@@ -90,11 +90,11 @@ export async function auditSite(
     const audit = poll.data;
     if (!audit) continue;
 
-    if (audit.status === 'success' || audit.status === 'completed') {
+    if (audit.status === 'done') {
       return audit.result;
     }
 
-    if (audit.status === 'error' || audit.status === 'failed') {
+    if (audit.status === 'error') {
       throw new Error(audit.error_message || 'Аудит завершился с ошибкой');
     }
     // pending / running — continue polling

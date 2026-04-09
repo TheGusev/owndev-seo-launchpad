@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { authMiddleware, requireAuth } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
 import { normalizeUrl } from '../../utils/url.js';
 import { getOrCreateDomain } from '../../db/queries/domains.js';
 import { createMonitor, getMonitorsByUser, toggleMonitor } from '../../db/queries/monitors.js';
@@ -16,7 +16,7 @@ const monitorBodySchema = z.object({
 export async function monitorRoutes(app: FastifyInstance) {
   const monitorService = new MonitorService();
 
-  app.post('/api/v1/monitors', { preHandler: [authMiddleware] }, async (req, reply) => {
+  app.post('/api/v1/monitors', async (req, reply) => {
     const authErr = requireAuth(req, reply);
     if (authErr) return authErr;
 
@@ -44,7 +44,7 @@ export async function monitorRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get('/api/v1/monitors', { preHandler: [authMiddleware] }, async (req, reply) => {
+  app.get('/api/v1/monitors', async (req, reply) => {
     const authErr = requireAuth(req, reply);
     if (authErr) return authErr;
 
@@ -53,7 +53,7 @@ export async function monitorRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: monitors });
   });
 
-  app.delete('/api/v1/monitors/:id', { preHandler: [authMiddleware] }, async (req, reply) => {
+  app.delete('/api/v1/monitors/:id', async (req, reply) => {
     const authErr = requireAuth(req, reply);
     if (authErr) return authErr;
 

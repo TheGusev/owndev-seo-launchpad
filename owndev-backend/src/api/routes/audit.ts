@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware/auth.js';
 import { normalizeUrl } from '../../utils/url.js';
 import { getOrCreateDomain } from '../../db/queries/domains.js';
 import { createAudit, getAuditById, getAuditsByDomain } from '../../db/queries/audits.js';
@@ -20,7 +19,7 @@ const auditsQuerySchema = z.object({
 });
 
 export async function auditRoutes(app: FastifyInstance) {
-  app.post('/api/v1/audit', { preHandler: [authMiddleware] }, async (req, reply) => {
+  app.post('/api/v1/audit', async (req, reply) => {
     const parsed = auditBodySchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ success: false, error: 'Invalid input', code: 'VALIDATION', details: parsed.error.flatten() });
@@ -50,7 +49,7 @@ export async function auditRoutes(app: FastifyInstance) {
         await incrementUserCredits(user.id);
       }
 
-      await addAuditJob({ auditId, domainId: domain.id, url, userId: user.id === 'anon' ? undefined : user.id });
+      await addAuditJob({ auditId, domainId: domain.id, url, userId: user.id === 'anon' ? null : user.id });
 
       await logEvent('audit_created', { url, toolId: parsed.data.toolId, auditId }, user.id === 'anon' ? null : user.id);
 
@@ -62,7 +61,7 @@ export async function auditRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get('/api/v1/audit/:id', { preHandler: [authMiddleware] }, async (req, reply) => {
+  app.get('/api/v1/audit/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const audit = await getAuditById(id);
 
@@ -73,7 +72,7 @@ export async function auditRoutes(app: FastifyInstance) {
     return reply.send({ success: true, data: audit });
   });
 
-  app.get('/api/v1/audits', { preHandler: [authMiddleware] }, async (req, reply) => {
+  app.get('/api/v1/audits', async (req, reply) => {
     const parsed = auditsQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       return reply.status(400).send({ success: false, error: 'Invalid query', code: 'VALIDATION' });
