@@ -189,10 +189,10 @@ async function updateFromScan(geoRatingId: string, scanId: string) {
   await supabase
     .from("geo_rating")
     .update({
-      llm_score: scores.ai_score ?? scores.llm_score ?? 0,
-      seo_score: scores.seo_score ?? 0,
-      schema_score: scores.schema_score ?? 0,
-      direct_score: scores.direct_score ?? 0,
+      llm_score: scores.ai ?? scores.ai_score ?? scores.llm_score ?? 0,
+      seo_score: scores.seo ?? scores.seo_score ?? 0,
+      schema_score: scores.schema ?? scores.schema_score ?? 0,
+      direct_score: scores.direct ?? scores.direct_score ?? 0,
       has_llms_txt: hasLlmsTxt,
       has_faqpage: hasFaqpage,
       has_schema: hasSchema,
