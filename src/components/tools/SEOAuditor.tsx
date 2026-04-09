@@ -78,7 +78,7 @@ const SEOAuditor = () => {
           <label className="text-sm font-medium text-foreground">URL сайта для аудита</label>
           <div className="flex gap-3">
             <Input
-              placeholder="https://example.com"
+              placeholder="example.com"
               className="bg-card border-border flex-1"
               value={url}
               onChange={(e) => setUrl(e.target.value)}

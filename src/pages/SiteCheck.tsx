@@ -42,14 +42,13 @@ const SiteCheck = () => {
     setHistory(getHistory());
   }, []);
 
-  // Auto-rescan from query params
+  // Auto-submit from query params (e.g. from homepage)
   const rescanTriggered = useRef(false);
   useEffect(() => {
     const rescanUrl = searchParams.get("url");
-    const rescan = searchParams.get("rescan");
-    if (rescanUrl && rescan === "true" && !rescanTriggered.current) {
+    if (rescanUrl && !rescanTriggered.current) {
       rescanTriggered.current = true;
-      handleSubmit(rescanUrl, "page");
+      handleSubmit(rescanUrl, "site");
     }
   }, [searchParams]);
 
@@ -120,7 +119,7 @@ const SiteCheck = () => {
 
           <div className="glass rounded-2xl p-5 md:p-8">
             {scanning ? (
-              <ScanProgress onComplete={() => {}} realProgress={progress} error={scanError} />
+              <ScanProgress onComplete={() => {}} realProgress={progress} error={scanError} domain={(() => { try { return new URL(searchParams.get("url") || "").hostname; } catch { return undefined; } })()} />
             ) : (
               <ScanForm onSubmit={handleSubmit} />
             )}

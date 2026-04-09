@@ -30,7 +30,8 @@ const ScenarioDemoForm = ({ placeholder, buttonText, targetPath, queryParam, acc
     e.preventDefault();
     const trimmed = value.trim();
     if (!trimmed) return;
-    navigate(`${targetPath}?${queryParam}=${encodeURIComponent(trimmed)}`);
+    const normalized = queryParam === "url" && !trimmed.startsWith("http") ? `https://${trimmed}` : trimmed;
+    navigate(`${targetPath}?${queryParam}=${encodeURIComponent(normalized)}`);
   };
 
   return (

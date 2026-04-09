@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { generateContentBrief } from "@/lib/api";
+import { generateContentBrief, ensureProtocol } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,8 +58,9 @@ const ContentBriefGenerator = () => {
 
   const generate = async () => {
     if (!query.trim()) { toast.error("Введите целевой запрос"); return; }
+    const normalizedUrl = url.trim() ? ensureProtocol(url) : undefined;
     try {
-      await run(query.trim(), () => generateContentBrief(query.trim(), url.trim() || undefined, contentType));
+      await run(query.trim(), () => generateContentBrief(query.trim(), normalizedUrl, contentType));
     } catch (e: any) {
       toast.error(e?.message || "Ошибка генерации");
     }
@@ -118,7 +119,7 @@ const ContentBriefGenerator = () => {
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">URL вашего сайта <span className="text-muted-foreground">(опционально)</span></label>
           <Input
-            placeholder="https://example.com"
+            placeholder="example.com"
             value={url}
             onChange={e => setUrl(e.target.value)}
             className="bg-background/50"

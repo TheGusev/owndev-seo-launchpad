@@ -5,7 +5,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { Swords, CheckCircle, XCircle, Loader2, Clock, RefreshCw, Trophy } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
-import { analyzeCompetitors } from "@/lib/api";
+import { analyzeCompetitors, ensureProtocol } from "@/lib/api";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
 import { useAudit } from "@/state/audit";
@@ -104,11 +104,13 @@ const CompetitorAnalysis = () => {
 
   const handleAnalyze = async () => {
     if (!url1 || !url2) { toast({ title: "Введите оба URL", variant: "destructive" }); return; }
+    const n1 = ensureProtocol(url1);
+    const n2 = ensureProtocol(url2);
     setCheckedAt(null);
     try {
-      await run(url1.trim(), () => analyzeCompetitors(url1, url2));
+      await run(n1, () => analyzeCompetitors(n1, n2));
       setCheckedAt(new Date());
-      saveLastUrl(url1.trim());
+      saveLastUrl(n1);
     } catch (e: any) {
       toast({ title: "Ошибка анализа", description: e.message, variant: "destructive" });
     }
@@ -123,11 +125,11 @@ const CompetitorAnalysis = () => {
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">URL страницы 1</label>
-          <Input placeholder="https://example.com" value={url1} onChange={(e) => setUrl1(e.target.value)} className="bg-card border-border" />
+          <Input placeholder="example.com" value={url1} onChange={(e) => setUrl1(e.target.value)} className="bg-card border-border" />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">URL страницы 2</label>
-          <Input placeholder="https://competitor.com" value={url2} onChange={(e) => setUrl2(e.target.value)} className="bg-card border-border" />
+          <Input placeholder="competitor.com" value={url2} onChange={(e) => setUrl2(e.target.value)} className="bg-card border-border" />
         </div>
       </div>
       <div className="text-center">

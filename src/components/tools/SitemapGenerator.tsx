@@ -130,7 +130,7 @@ const SitemapGenerator = () => {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Sitemap URL</label>
-              <Input className="bg-card border-border" placeholder="https://example.com/sitemap.xml"
+              <Input className="bg-card border-border" placeholder="example.com/sitemap.xml"
                 value={rbConfig.sitemapUrl} onChange={(e) => setRbConfig({ ...rbConfig, sitemapUrl: e.target.value })} />
             </div>
           </div>

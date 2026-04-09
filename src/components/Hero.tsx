@@ -42,8 +42,9 @@ const Hero = () => {
     e.preventDefault();
     const trimmed = url.trim();
     if (!trimmed) return;
-    saveLastUrl(trimmed);
-    navigate(`/tools/site-check?url=${encodeURIComponent(trimmed)}`);
+    const normalized = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+    saveLastUrl(normalized);
+    navigate(`/tools/site-check?url=${encodeURIComponent(normalized)}`);
   };
 
   return (
@@ -150,10 +151,10 @@ const Hero = () => {
               />
               <form onSubmit={handleQuickCheck} className="relative z-10 flex flex-col sm:flex-row gap-3">
                 <input
-                  type="url"
+                  type="text"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://yoursite.ru"
+                  placeholder="yoursite.ru"
                   className="flex-1 h-14 min-h-[48px] rounded-xl border border-border bg-card/60 backdrop-blur-xl px-5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-base"
                 />
                 <Button type="submit" variant="default" size="lg" disabled={!url.trim()} className="h-14 min-h-[44px] px-8 shrink-0 text-base font-semibold">
