@@ -102,7 +102,7 @@ const GeoRating = () => {
     return ["Все", ...cats];
   }, [rawRows]);
 
-
+  const avgLlm = rawRows.length
     ? Math.round(rawRows.reduce((s: number, r: any) => s + r.llm_score, 0) / rawRows.length)
     : 0;
   const pctLlms = rawRows.length
