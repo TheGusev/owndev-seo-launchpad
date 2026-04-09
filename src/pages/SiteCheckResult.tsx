@@ -234,6 +234,26 @@ const SiteCheckResult = () => {
 
           {directAdMeta && <DirectMeta data={directAdMeta} />}
 
+          {/* Direct Ad Preview */}
+          {directAdSuggestion && (
+            <ResultAccordion title="Объявление для Яндекс.Директ" defaultOpen={true}>
+              <DirectAdPreview
+                adSuggestion={directAdSuggestion}
+                readinessScore={directReadinessScore ?? 0}
+                url={data.url}
+              />
+            </ResultAccordion>
+          )}
+          {!directAdSuggestion && directReadinessScore !== null && (
+            <ResultAccordion title="Готовность к Яндекс.Директ" defaultOpen={false}>
+              <DirectAdPreview
+                adSuggestion={{ headline1: '', headline2: '', ad_text: '', sitelinks: [], callouts: [] }}
+                readinessScore={directReadinessScore}
+                url={data.url}
+              />
+            </ResultAccordion>
+          )}
+
           {/* GEO Rating nomination */}
           {scores && <GeoRatingNomination totalScore={scores.total} url={data.url} scanId={scanId} />}
 
