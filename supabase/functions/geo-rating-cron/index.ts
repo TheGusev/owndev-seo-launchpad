@@ -182,7 +182,7 @@ async function updateFromScan(geoRatingId: string, scanId: string) {
     .slice(0, 3)
     .map((i: any) => ({ title: i.title, severity: i.severity }));
 
-  const hasLlmsTxt = llmJudge?.has_llms_txt ?? false;
+  const hasLlmsTxt = seoData?.hasLlmsTxt ?? llmJudge?.has_llms_txt ?? false;
   const hasFaqpage = seoData?.has_faqpage ?? (issues.some((i: any) => i.rule_id === "no_faqpage") ? false : true);
   const schemaVal = scores.schema ?? scores.schema_score ?? 0;
   const hasSchema = schemaVal > 30;
