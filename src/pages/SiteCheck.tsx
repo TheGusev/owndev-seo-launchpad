@@ -13,13 +13,15 @@ import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHist
 
 const checkItems = [
   "SEO Score (20+ параметров)",
-  "LLM Score (AI‑готовность)",
+  "LLM Score (AI-готовность)",
+  "Direct Readiness Score",
+  "AI-генерация объявления Директа",
   "Топ-10 конкурентов",
   "200+ ключевых слов",
   "Минус-слова для Директа",
-  "E‑E‑A‑T и Schema.org",
+  "E-E-A-T и Schema.org",
   "llms.txt проверка и генерация",
-  "Экспорт PDF / CSV / TXT",
+  "Экспорт PDF / Word / CSV",
 ];
 
 const SiteCheck = () => {
@@ -107,7 +109,7 @@ const SiteCheck = () => {
       </Helmet>
       <Header />
       <main className="min-h-screen pt-24 pb-16">
-        <div className="container max-w-2xl mx-auto px-4">
+        <div className="container max-w-3xl mx-auto px-4">
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">
               Полный GEO и AI‑ready аудит сайта
@@ -176,7 +178,7 @@ const SiteCheck = () => {
 
           <div className="mt-10">
             <h2 className="text-lg font-semibold text-foreground mb-4">Что проверяем</h2>
-            <ul className="space-y-3">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {checkItems.map((text, i) => (
                 <li key={i} className="flex items-center gap-3 text-sm">
                   <Check className="w-4 h-4 text-green-500 shrink-0" />
