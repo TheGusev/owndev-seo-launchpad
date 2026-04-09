@@ -87,74 +87,76 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
         </div>
       </div>
 
-      {/* Ad Preview */}
-      <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
-        <div className="px-4 py-2.5 bg-muted/30 border-b border-border/30 flex items-center justify-between">
-          <p className="text-xs font-medium text-muted-foreground">Превью объявления Яндекс.Директ</p>
-          <button
-            onClick={copyAll}
-            className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
-          >
-            <Copy className="w-3.5 h-3.5" /> Скопировать всё
-          </button>
-        </div>
-
-        <div className="p-4 space-y-2">
-          {/* Ad mock */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <span className="px-1 py-0.5 rounded bg-muted text-[10px] font-medium">Реклама</span>
-              <span>{displayDomain}</span>
-            </div>
-
-            {/* Headlines */}
-            <div className="group flex items-start gap-1">
-              <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary text-base font-medium hover:underline leading-tight">
-                {adSuggestion.headline1} — {adSuggestion.headline2}
-              </a>
-              <CopyBtn text={`${adSuggestion.headline1} — ${adSuggestion.headline2}`} field="Заголовки" />
-            </div>
-
-            {/* Ad text */}
-            <div className="group flex items-start gap-1">
-              <p className="text-sm text-foreground/80 leading-snug">{adSuggestion.ad_text}</p>
-              <CopyBtn text={adSuggestion.ad_text} field="Текст объявления" />
-            </div>
+      {/* Ad Preview - only show if we have actual ad content */}
+      {adSuggestion.headline1 && (
+        <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+          <div className="px-4 py-2.5 bg-muted/30 border-b border-border/30 flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">Превью объявления Яндекс.Директ</p>
+            <button
+              onClick={copyAll}
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" /> Скопировать всё
+            </button>
           </div>
 
-          {/* Sitelinks */}
-          {adSuggestion.sitelinks.length > 0 && (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-border/20">
-              {adSuggestion.sitelinks.map((link, i) => (
-                <div key={i} className="group">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-primary font-medium hover:underline cursor-pointer">{link.title}</span>
-                    <CopyBtn text={link.title} field={`Ссылка ${i + 1}`} />
+          <div className="p-4 space-y-2">
+            {/* Ad mock */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <span className="px-1 py-0.5 rounded bg-muted text-[10px] font-medium">Реклама</span>
+                <span>{displayDomain}</span>
+              </div>
+
+              {/* Headlines */}
+              <div className="group flex items-start gap-1">
+                <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary text-base font-medium hover:underline leading-tight">
+                  {adSuggestion.headline1} — {adSuggestion.headline2}
+                </a>
+                <CopyBtn text={`${adSuggestion.headline1} — ${adSuggestion.headline2}`} field="Заголовки" />
+              </div>
+
+              {/* Ad text */}
+              <div className="group flex items-start gap-1">
+                <p className="text-sm text-foreground/80 leading-snug">{adSuggestion.ad_text}</p>
+                <CopyBtn text={adSuggestion.ad_text} field="Текст объявления" />
+              </div>
+            </div>
+
+            {/* Sitelinks */}
+            {adSuggestion.sitelinks.length > 0 && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-border/20">
+                {adSuggestion.sitelinks.map((link, i) => (
+                  <div key={i} className="group">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-primary font-medium hover:underline cursor-pointer">{link.title}</span>
+                      <CopyBtn text={link.title} field={`Ссылка ${i + 1}`} />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-tight">{link.description}</p>
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-tight">{link.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {/* Callouts */}
-          {adSuggestion.callouts.length > 0 && (
-            <div className="group flex items-center gap-1 pt-1 border-t border-border/20">
-              <p className="text-[11px] text-muted-foreground">
-                {adSuggestion.callouts.join(" · ")}
-              </p>
-              <CopyBtn text={adSuggestion.callouts.join(" · ")} field="Уточнения" />
-            </div>
-          )}
-        </div>
+            {/* Callouts */}
+            {adSuggestion.callouts.length > 0 && (
+              <div className="group flex items-center gap-1 pt-1 border-t border-border/20">
+                <p className="text-[11px] text-muted-foreground">
+                  {adSuggestion.callouts.join(" · ")}
+                </p>
+                <CopyBtn text={adSuggestion.callouts.join(" · ")} field="Уточнения" />
+              </div>
+            )}
+          </div>
 
-        {/* Char limits info */}
-        <div className="px-4 py-2 bg-muted/20 border-t border-border/20 flex flex-wrap gap-3 text-[10px] text-muted-foreground/60">
-          <span>Заг.1: {adSuggestion.headline1.length}/35</span>
-          <span>Заг.2: {adSuggestion.headline2.length}/30</span>
-          <span>Текст: {adSuggestion.ad_text.length}/81</span>
+          {/* Char limits info */}
+          <div className="px-4 py-2 bg-muted/20 border-t border-border/20 flex flex-wrap gap-3 text-[10px] text-muted-foreground/60">
+            <span>Заг.1: {adSuggestion.headline1.length}/35</span>
+            <span>Заг.2: {adSuggestion.headline2.length}/30</span>
+            <span>Текст: {adSuggestion.ad_text.length}/81</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
