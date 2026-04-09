@@ -82,8 +82,9 @@ const GeoAudit = () => {
     e.preventDefault();
     const trimmed = url.trim();
     if (!trimmed) return;
-    saveLastUrl(trimmed);
-    navigate(`/tools/site-check?url=${encodeURIComponent(trimmed)}`);
+    const normalized = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+    saveLastUrl(normalized);
+    navigate(`/tools/site-check?url=${encodeURIComponent(normalized)}`);
   };
 
   return (
@@ -228,10 +229,10 @@ const GeoAudit = () => {
             </p>
             <form onSubmit={handleCheck} className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
               <input
-                type="url"
+                type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://yoursite.ru"
+                placeholder="yoursite.ru"
                 className="flex-1 h-14 rounded-xl border border-border bg-card/60 backdrop-blur-xl px-5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-base"
               />
               <Button type="submit" size="lg" className="h-14 px-8 shrink-0">

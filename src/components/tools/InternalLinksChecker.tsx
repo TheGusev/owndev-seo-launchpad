@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Link2, CheckCircle, XCircle, Loader2, ExternalLink, Globe, Clock, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { checkInternalLinks } from "@/lib/api";
+import { checkInternalLinks, ensureProtocol } from "@/lib/api";
 import { saveLastUrl } from "@/utils/lastUrl";
 import EmptyState from "@/components/ui/empty-state";
 import { useAudit } from "@/state/audit";
@@ -40,11 +40,12 @@ const InternalLinksChecker = () => {
 
   const handleCheck = async () => {
     if (!url.trim()) { toast({ title: "Введите URL", variant: "destructive" }); return; }
+    const normalized = ensureProtocol(url);
     setCheckedAt(null);
     try {
-      await run(url.trim(), () => checkInternalLinks(url));
+      await run(normalized, () => checkInternalLinks(normalized));
       setCheckedAt(new Date());
-      saveLastUrl(url.trim());
+      saveLastUrl(normalized);
     } catch (e: any) {
       toast({ title: "Ошибка проверки", description: e.message, variant: "destructive" });
     }
@@ -63,7 +64,7 @@ const InternalLinksChecker = () => {
   return (
     <div className="glass rounded-2xl p-5 md:p-8 space-y-6">
       <div className="flex gap-3">
-        <Input placeholder="https://example.com" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-card border-border flex-1"
+        <Input placeholder="example.com" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-card border-border flex-1"
           onKeyDown={(e) => e.key === "Enter" && handleCheck()} />
         <GradientButton onClick={handleCheck} disabled={loading}>
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Link2 className="w-5 h-5" />}

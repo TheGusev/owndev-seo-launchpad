@@ -22,7 +22,8 @@ const NotFound = () => {
 
   const handleQuickCheck = () => {
     if (quickUrl.trim()) {
-      navigate(`/tools/site-check?url=${encodeURIComponent(quickUrl.trim())}`);
+      const normalized = quickUrl.trim().startsWith("http") ? quickUrl.trim() : `https://${quickUrl.trim()}`;
+      navigate(`/tools/site-check?url=${encodeURIComponent(normalized)}`);
     }
   };
 
@@ -76,7 +77,7 @@ const NotFound = () => {
             <p className="text-sm text-muted-foreground mb-2">Проверьте свой сайт прямо сейчас:</p>
             <div className="flex gap-2 max-w-sm mx-auto">
               <Input
-                placeholder="https://example.com"
+                placeholder="example.com"
                 value={quickUrl}
                 onChange={(e) => setQuickUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleQuickCheck()}

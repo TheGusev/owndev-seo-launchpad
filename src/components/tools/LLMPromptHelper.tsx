@@ -155,8 +155,9 @@ const LLMPromptHelper = () => {
 
   const handleGenerate = () => {
     if (!keyword.trim() || !niche.trim()) return;
-    if (url.trim()) saveLastUrl(url.trim());
-    setPrompts(generatePrompts(lang, goal, keyword.trim(), niche.trim(), url.trim()));
+    const normalizedUrl = url.trim() ? (url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`) : "";
+    if (normalizedUrl) saveLastUrl(normalizedUrl);
+    setPrompts(generatePrompts(lang, goal, keyword.trim(), niche.trim(), normalizedUrl));
   };
 
   const copyToClipboard = (text: string, idx: number) => {
@@ -209,7 +210,7 @@ const LLMPromptHelper = () => {
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">URL страницы (опционально)</label>
-          <Input placeholder="https://example.com/services" className="bg-card border-border" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <Input placeholder="example.com/services" className="bg-card border-border" value={url} onChange={(e) => setUrl(e.target.value)} />
         </div>
 
         <div className="text-center">
