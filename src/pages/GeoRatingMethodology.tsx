@@ -104,6 +104,17 @@ const GeoRatingMethodology = () => {
       <Helmet>
         <title>Методология GEO Рейтинга | OWNDEV</title>
         <meta name="description" content="Как OWNDEV оценивает AI-готовность сайтов: 50+ сигналов, 6 блоков анализа, прозрачная система scoring." />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Главная", "item": "https://owndev.ru/" },
+              { "@type": "ListItem", "position": 2, "name": "GEO Рейтинг", "item": "https://owndev.ru/geo-rating" },
+              { "@type": "ListItem", "position": 3, "name": "Методология" }
+            ]
+          })}
+        </script>
       </Helmet>
       <Header />
       <main className="min-h-screen bg-background pt-20 pb-16">
