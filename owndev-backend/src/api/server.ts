@@ -23,9 +23,11 @@ export async function startServer() {
   app.addHook('onRequest', rateLimitMiddleware);
 
   app.setErrorHandler((error, _req, reply) => {
-    logger.error('SERVER', error.message);
-    const status = error.statusCode ?? 500;
-    reply.status(status).send({ success: false, error: status >= 500 ? 'Internal error' : error.message, code: 'INTERNAL' });
+    const err = error as any;
+    logger.error('SERVER', err?.message || String(err));
+    const status = err?.statusCode ?? 500;
+    const message = status >= 500 ? 'Internal error' : (err?.message || 'Unknown error');
+    reply.status(status).send({ success: false, error: message, code: 'INTERNAL' });
   });
 
   await app.register(healthRoutes);
