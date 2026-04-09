@@ -184,7 +184,8 @@ async function updateFromScan(geoRatingId: string, scanId: string) {
 
   const hasLlmsTxt = llmJudge?.has_llms_txt ?? false;
   const hasFaqpage = seoData?.has_faqpage ?? (issues.some((i: any) => i.rule_id === "no_faqpage") ? false : true);
-  const hasSchema = (scores.schema_score ?? 0) > 30;
+  const schemaVal = scores.schema ?? scores.schema_score ?? 0;
+  const hasSchema = schemaVal > 30;
 
   await supabase
     .from("geo_rating")
