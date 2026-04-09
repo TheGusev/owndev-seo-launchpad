@@ -55,6 +55,9 @@ const StarfieldBackground = ({ count = 100, className }: StarfieldBackgroundProp
         const rad = (star.angle * Math.PI) / 180;
         const x = 50 + star.distance * Math.cos(rad);
         const y = 50 + star.distance * Math.sin(rad);
+        const driftDist = 10 + star.distance * 0.8;
+        const dx = Math.cos(rad) * driftDist;
+        const dy = Math.sin(rad) * driftDist;
 
         return (
           <div
@@ -70,9 +73,9 @@ const StarfieldBackground = ({ count = 100, className }: StarfieldBackgroundProp
               width: `${star.size}px`,
               height: `${star.size}px`,
               opacity: star.opacity,
-              '--drift-angle': `${star.angle}deg`,
+              '--drift-dx': `${dx}vh`,
+              '--drift-dy': `${dy}vh`,
               '--drift-speed': `${star.speed}s`,
-              '--drift-distance': `${10 + star.distance * 0.8}vh`,
               animationDelay: `${Math.random() * star.speed}s`,
             } as React.CSSProperties}
           />
