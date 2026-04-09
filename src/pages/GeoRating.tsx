@@ -178,7 +178,7 @@ const GeoRating = () => {
             {/* Trust block */}
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-muted-foreground mb-6">
               <span>Обновлено: {lastUpdate}</span>
-              <span>Методология: {SNAPSHOT_META.methodology}</span>
+              <Link to="/geo-rating/methodology" className="hover:text-foreground transition-colors underline underline-offset-2">Методология: {SNAPSHOT_META.methodology}</Link>
               <span>Источник: {SNAPSHOT_META.source}</span>
             </div>
 
