@@ -59,7 +59,7 @@ const Hero = () => {
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
 
-      <AnimatedGrid lineCount={{ h: 8, v: 10 }} className="absolute inset-0 z-[2]" theme="primary" />
+      <StarfieldBackground count={100} className="absolute inset-0 z-[2]" />
 
       <div className="container relative z-10 px-4 md:px-6">
         <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
