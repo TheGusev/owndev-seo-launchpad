@@ -2565,6 +2565,9 @@ async function runPipeline(scanId: string, url: string, mode: string) {
   // STEP 3: Yandex Direct
   const directResult = directAudit(html, theme);
   
+  // STEP 3b: AI Direct Ad Generation (async, non-blocking)
+  const adSuggestionPromise = generateDirectAd(html, theme, scanUrl);
+  
   // Steps 7 & 8
   const schemaIssues = schemaAudit(html);
   const aiIssues = await aiAudit(html, parsedUrl.origin, parsedUrl.toString(), isSpa, spaRenderFailed);
