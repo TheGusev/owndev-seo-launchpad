@@ -285,13 +285,25 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
             )}
 
             {/* Callouts */}
-            {currentAd.callouts.length > 0 && (
+            {(isEditing || currentAd.callouts.length > 0) && (
               <div className="pt-1 border-t border-border/20">
                 {isEditing ? (
-                  <div className="flex flex-wrap gap-2">
-                    {callouts.map((c, i) => (
-                      <Input key={i} value={c} onChange={e => updateCallout(i, e.target.value)} className="h-7 text-xs w-auto min-w-[100px] max-w-[180px]" />
-                    ))}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {callouts.map((c, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <Input value={c} onChange={e => updateCallout(i, e.target.value)} className="h-7 text-xs w-auto min-w-[100px] max-w-[180px]" />
+                          <button onClick={() => removeCallout(i)} disabled={callouts.length <= 1} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors" title="Удалить уточнение">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {callouts.length < 8 && (
+                      <button onClick={addCallout} className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors">
+                        <Plus className="w-3.5 h-3.5" /> Добавить уточнение
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="group flex items-center gap-1">
