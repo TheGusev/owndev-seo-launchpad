@@ -7,21 +7,22 @@ import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
 import type { ScanMode } from "@/lib/site-check-types";
-import { Check, ArrowRight, Globe, Trash2 } from "lucide-react";
+import { ArrowRight, Globe, Trash2, Search, BrainCircuit, Target, Sparkles, Users, Key, Ban, ShieldCheck, FileText, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
+import type { LucideIcon } from "lucide-react";
 
-const checkItems = [
-  "SEO Score (20+ параметров)",
-  "LLM Score (AI-готовность)",
-  "Direct Readiness Score",
-  "AI-генерация объявления Директа",
-  "Топ-10 конкурентов",
-  "200+ ключевых слов",
-  "Минус-слова для Директа",
-  "E-E-A-T и Schema.org",
-  "llms.txt проверка и генерация",
-  "Экспорт PDF / Word / CSV",
+const checkItems: { icon: LucideIcon; text: string }[] = [
+  { icon: Search, text: "SEO Score (20+ параметров)" },
+  { icon: BrainCircuit, text: "LLM Score (AI-готовность)" },
+  { icon: Target, text: "Direct Readiness Score" },
+  { icon: Sparkles, text: "AI-генерация объявления Директа" },
+  { icon: Users, text: "Топ-10 конкурентов" },
+  { icon: Key, text: "200+ ключевых слов" },
+  { icon: Ban, text: "Минус-слова для Директа" },
+  { icon: ShieldCheck, text: "E-E-A-T и Schema.org" },
+  { icon: FileText, text: "llms.txt проверка и генерация" },
+  { icon: Download, text: "Экспорт PDF / Word / CSV" },
 ];
 
 const SiteCheck = () => {
