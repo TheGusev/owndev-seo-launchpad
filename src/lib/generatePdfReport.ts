@@ -1,11 +1,13 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  COLORS, getSeverityColor, getSeverityLabel,
+  PRINT_COLORS, getSeverityColor, getSeverityLabel,
   getCategoryLabel, getScoreStatus,
   calcPotentialGain, formatDate, truncate,
   ReportData,
 } from './reportHelpers';
+
+const P = PRINT_COLORS;
 
 async function initDoc(): Promise<jsPDF> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -38,13 +40,13 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   const setTextColor = (hex: string) => doc.setTextColor(...hexToRgb(hex));
 
   const drawPageHeader = () => {
-    setFill(COLORS.bg_dark);
+    setFill(P.bg_header);
     doc.rect(0, 0, PAGE_W, 10, 'F');
-    setTextColor(COLORS.purple);
+    setTextColor(P.accent);
     doc.setFontSize(7);
     doc.setFont('Roboto', 'bold');
     doc.text('OWNDEV', MARGIN, 7);
-    setTextColor(COLORS.text_gray);
+    setTextColor(P.text_secondary);
     doc.setFont('Roboto', 'normal');
     doc.text(`GEO и AI-ready аудит · ${data.domain}`, MARGIN + 18, 7);
     doc.text(`стр. ${(doc as any).internal.getCurrentPageInfo().pageNumber}`, PAGE_W - MARGIN, 7, { align: 'right' });
@@ -61,7 +63,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     if (y + neededHeight > PAGE_H - 20) newPage();
   };
 
-  const drawLine = (color = COLORS.purple) => {
+  const drawLine = (color = P.border) => {
     doc.setDrawColor(...hexToRgb(color));
     doc.setLineWidth(0.3);
     doc.line(MARGIN, y, PAGE_W - MARGIN, y);
@@ -70,9 +72,9 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
 
   const drawSectionTitle = (title: string) => {
     checkPageBreak(14);
-    setFill(COLORS.bg_card2);
+    setFill(P.bg_header);
     doc.roundedRect(MARGIN, y, CONTENT_W, 9, 2, 2, 'F');
-    setTextColor(COLORS.purple_light);
+    setTextColor(P.accent);
     doc.setFontSize(10);
     doc.setFont('Roboto', 'bold');
     doc.text(title, MARGIN + 4, y + 6);
@@ -80,46 +82,45 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   };
 
   // ─── СТРАНИЦА 1: ТИТУЛЬНЫЙ ЛИСТ ──────────────────
-  setFill(COLORS.bg_dark);
-  doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
-  setFill(COLORS.purple);
+  // White background (default)
+  setFill(P.accent);
   doc.rect(0, 0, PAGE_W, 2, 'F');
 
   y = 35;
-  setTextColor(COLORS.purple);
+  setTextColor(P.accent);
   doc.setFontSize(28);
   doc.setFont('Roboto', 'bold');
   doc.text('OWNDEV', MARGIN, y);
 
   y += 8;
-  setTextColor(COLORS.text_gray);
+  setTextColor(P.text_secondary);
   doc.setFontSize(10);
   doc.setFont('Roboto', 'normal');
   doc.text('GEO и AI-ready аудит сайта', MARGIN, y);
 
   y += 6;
-  setFill(COLORS.purple);
+  setFill(P.accent);
   doc.rect(MARGIN, y, 40, 0.5, 'F');
 
   y += 16;
-  setTextColor(COLORS.text_white);
+  setTextColor(P.text);
   doc.setFontSize(20);
   doc.setFont('Roboto', 'bold');
   doc.text('Отчёт аудита сайта', MARGIN, y);
 
   y += 10;
-  setTextColor(COLORS.purple_light);
+  setTextColor(P.accent);
   doc.setFontSize(13);
   doc.text(truncate(data.url, 60), MARGIN, y);
 
   y += 8;
-  setTextColor(COLORS.text_gray);
+  setTextColor(P.text_secondary);
   doc.setFontSize(9);
   doc.text(`Тематика: ${data.theme}`, MARGIN, y);
   y += 5;
   doc.text(`Дата аудита: ${formatDate(new Date(data.scanDate))}`, MARGIN, y);
 
-  // Score cards
+  // Score cards as a simple table
   y += 20;
   const scoreCards = [
     { label: 'Общий', value: data.scores.total },
@@ -133,17 +134,18 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   scoreCards.forEach((card, i) => {
     const x = MARGIN + i * cardW;
     const status = getScoreStatus(card.value);
-    setFill(COLORS.bg_card);
+    setFill(P.bg_header);
     doc.roundedRect(x + 1, y, cardW - 2, 28, 3, 3, 'F');
-    doc.setFillColor(...hexToRgb(status.color));
-    doc.roundedRect(x + 1, y, cardW - 2, 1.5, 1, 1, 'F');
+    doc.setDrawColor(...hexToRgb(P.border));
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x + 1, y, cardW - 2, 28, 3, 3, 'S');
     doc.setTextColor(...hexToRgb(status.color));
     doc.setFontSize(20);
     doc.setFont('Roboto', 'bold');
     doc.text(String(card.value), x + cardW / 2, y + 12, { align: 'center' });
     doc.setFontSize(7);
     doc.setFont('Roboto', 'normal');
-    setTextColor(COLORS.text_gray);
+    setTextColor(P.text_secondary);
     doc.text(card.label, x + cardW / 2, y + 18, { align: 'center' });
     doc.setFontSize(6);
     doc.setTextColor(...hexToRgb(status.color));
@@ -154,9 +156,9 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   const gain = calcPotentialGain(data.issues);
   const critCount = data.issues.filter((i: any) => i.severity === 'critical').length;
 
-  setFill(COLORS.bg_card2);
+  setFill(P.bg_header);
   doc.roundedRect(MARGIN, y, CONTENT_W, 12, 2, 2, 'F');
-  setTextColor(COLORS.text_gray);
+  setTextColor(P.text_secondary);
   doc.setFontSize(8);
   doc.setFont('Roboto', 'normal');
   doc.text(
@@ -165,8 +167,8 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   );
 
   y = PAGE_H - 25;
-  drawLine(COLORS.purple_dark);
-  setTextColor(COLORS.text_gray);
+  drawLine(P.border);
+  setTextColor(P.text_secondary);
   doc.setFontSize(7);
   doc.text('Сгенерировано сервисом OWNDEV.ru — первый GEO и AI-ready аудит в Рунете', MARGIN, y);
   y += 4;
@@ -201,13 +203,13 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     margin: { left: MARGIN, right: MARGIN },
     styles: { font: 'Roboto',
       fontSize: 7.5, cellPadding: 2.5,
-      fillColor: hexToRgb(COLORS.bg_card),
-      textColor: hexToRgb(COLORS.text_white),
-      lineColor: hexToRgb(COLORS.bg_card2), lineWidth: 0.3,
+      fillColor: hexToRgb(P.bg),
+      textColor: hexToRgb(P.text),
+      lineColor: hexToRgb(P.border), lineWidth: 0.3,
     },
     headStyles: { font: 'Roboto',
-      fillColor: hexToRgb(COLORS.purple_dark),
-      textColor: hexToRgb(COLORS.text_white),
+      fillColor: hexToRgb(P.bg_header),
+      textColor: hexToRgb(P.text),
       fontSize: 8, fontStyle: 'bold',
     },
     columnStyles: {
@@ -219,12 +221,12 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     didParseCell: (hookData: any) => {
       if (hookData.column.index === 2 && hookData.section === 'body') {
         const val = String(hookData.cell.raw || '');
-        if (val.startsWith('✓')) hookData.cell.styles.textColor = hexToRgb(COLORS.success);
-        else if (val.startsWith('✗')) hookData.cell.styles.textColor = hexToRgb(COLORS.critical);
-        else if (val.startsWith('⚠')) hookData.cell.styles.textColor = hexToRgb(COLORS.medium);
+        if (val.startsWith('✓')) hookData.cell.styles.textColor = hexToRgb(P.success);
+        else if (val.startsWith('✗')) hookData.cell.styles.textColor = hexToRgb(P.critical);
+        else if (val.startsWith('⚠')) hookData.cell.styles.textColor = hexToRgb(P.medium);
       }
       if (hookData.section === 'body' && hookData.row.index % 2 === 1) {
-        hookData.cell.styles.fillColor = hexToRgb(COLORS.bg_card2);
+        hookData.cell.styles.fillColor = hexToRgb(P.bg_alt);
       }
     },
   });
@@ -234,7 +236,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   newPage();
   drawSectionTitle(`ПЛАН ИСПРАВЛЕНИЯ — ${data.issues.length} ПРОБЛЕМ`);
 
-  setTextColor(COLORS.text_gray);
+  setTextColor(P.text_secondary);
   doc.setFontSize(8);
   doc.text(`Исправьте ${critCount} критических ошибок → оценка вырастет примерно на +${gain} баллов`, MARGIN, y);
   y += 8;
@@ -249,7 +251,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     checkPageBreak(45);
 
     // Header bar
-    setFill(COLORS.bg_card);
+    setFill(P.bg_header);
     doc.roundedRect(MARGIN, y, CONTENT_W, 6, 1, 1, 'F');
     doc.setFillColor(...hexToRgb(severityColor));
     doc.rect(MARGIN, y, 2, 6, 'F');
@@ -258,15 +260,15 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(...hexToRgb(severityColor));
     doc.text(`${idx + 1}. [${getSeverityLabel(issue.severity).toUpperCase()}]`, MARGIN + 4, y + 4);
-    setTextColor(COLORS.text_gray);
+    setTextColor(P.text_secondary);
     doc.setFont('Roboto', 'normal');
     doc.text(getCategoryLabel(issue.category || issue.module || ''), MARGIN + 32, y + 4);
-    setTextColor(COLORS.success);
+    doc.setTextColor(...hexToRgb(P.success));
     doc.text(`+${issue.impact_score || 0} балл.`, PAGE_W - MARGIN - 2, y + 4, { align: 'right' });
     y += 8;
 
     // Title
-    setTextColor(COLORS.text_white);
+    setTextColor(P.text);
     doc.setFontSize(9);
     doc.setFont('Roboto', 'bold');
     const titleLines = doc.splitTextToSize(issue.title || 'Ошибка', CONTENT_W);
@@ -274,7 +276,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     y += titleLines.length * 4 + 2;
 
     if (issue.where || issue.location) {
-      setTextColor(COLORS.text_dark);
+      setTextColor(P.text_secondary);
       doc.setFontSize(7);
       doc.setFont('Roboto', 'normal');
       doc.text(`Где: ${issue.where || issue.location}`, MARGIN, y);
@@ -282,7 +284,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     }
 
     if (issue.description) {
-      setTextColor(COLORS.text_gray);
+      setTextColor(P.text_secondary);
       doc.setFontSize(7.5);
       doc.setFont('Roboto', 'normal');
       const descLines = doc.splitTextToSize(issue.description, CONTENT_W);
@@ -292,14 +294,14 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
 
     if (issue.why_important || issue.why_it_matters) {
       checkPageBreak(20);
-      setFill(COLORS.bg_card2);
+      setFill(P.bg_alt);
       doc.roundedRect(MARGIN, y, CONTENT_W, 5, 1, 1, 'F');
       doc.setFontSize(7);
       doc.setFont('Roboto', 'bold');
-      doc.setTextColor(...hexToRgb(COLORS.medium));
+      doc.setTextColor(...hexToRgb(P.medium));
       doc.text('ПОЧЕМУ ЭТО ВАЖНО:', MARGIN + 2, y + 3.5);
       y += 7;
-      setTextColor(COLORS.text_gray);
+      setTextColor(P.text);
       doc.setFont('Roboto', 'normal');
       doc.setFontSize(7.5);
       const whyLines = doc.splitTextToSize(issue.why_important || issue.why_it_matters, CONTENT_W - 4);
@@ -310,18 +312,18 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
 
     if (issue.how_to_fix) {
       checkPageBreak(20);
-      setFill(COLORS.bg_card2);
+      setFill(P.bg_alt);
       doc.roundedRect(MARGIN, y, CONTENT_W, 5, 1, 1, 'F');
       doc.setFontSize(7);
       doc.setFont('Roboto', 'bold');
-      doc.setTextColor(...hexToRgb(COLORS.success));
+      doc.setTextColor(...hexToRgb(P.success));
       doc.text('КАК ИСПРАВИТЬ:', MARGIN + 2, y + 3.5);
       y += 7;
       const steps = (issue.how_to_fix as string).split('\n').filter((s: string) => s.trim());
       steps.forEach((step: string) => {
         const stepLines = doc.splitTextToSize(step.trim(), CONTENT_W - 6);
         checkPageBreak(stepLines.length * 3.5 + 2);
-        setTextColor(COLORS.text_white);
+        setTextColor(P.text);
         doc.setFont('Roboto', 'normal');
         doc.setFontSize(7.5);
         doc.text(stepLines, MARGIN + 4, y);
@@ -333,17 +335,17 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     if (issue.example || issue.example_fix) {
       const exampleText = issue.example || issue.example_fix;
       checkPageBreak(20);
-      setFill('#0d1117');
+      setFill(P.bg_alt);
       const exLines = doc.splitTextToSize(exampleText, CONTENT_W - 8);
       const exHeight = exLines.length * 3.5 + 6;
       checkPageBreak(exHeight + 6);
       doc.roundedRect(MARGIN, y, CONTENT_W, exHeight, 2, 2, 'F');
-      doc.setDrawColor(...hexToRgb(COLORS.purple_dark));
+      doc.setDrawColor(...hexToRgb(P.border));
       doc.setLineWidth(0.3);
       doc.roundedRect(MARGIN, y, CONTENT_W, exHeight, 2, 2, 'S');
       doc.setFontSize(6.5);
       doc.setFont('Roboto', 'normal');
-      doc.setTextColor(...hexToRgb(COLORS.success));
+      setTextColor(P.text);
       doc.text(exLines, MARGIN + 4, y + 4);
       y += exHeight + 4;
     }
@@ -367,12 +369,14 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       ];
       summaryData.forEach((item, i) => {
         const x = MARGIN + i * (CONTENT_W / 3);
-        setFill(i === 0 ? COLORS.bg_card2 : COLORS.bg_card);
+        setFill(i === 0 ? P.bg_header : P.bg_alt);
         doc.roundedRect(x + 1, y, CONTENT_W / 3 - 2, 14, 2, 2, 'F');
-        setTextColor(COLORS.text_gray);
+        doc.setDrawColor(...hexToRgb(P.border));
+        doc.roundedRect(x + 1, y, CONTENT_W / 3 - 2, 14, 2, 2, 'S');
+        setTextColor(P.text_secondary);
         doc.setFontSize(6.5);
         doc.text(item[0], x + 4, y + 5);
-        setTextColor(i === 0 ? COLORS.purple_light : COLORS.text_white);
+        setTextColor(i === 0 ? P.accent : P.text);
         doc.setFontSize(9);
         doc.setFont('Roboto', 'bold');
         doc.text(item[1], x + 4, y + 11);
@@ -425,14 +429,14 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       margin: { left: MARGIN, right: MARGIN },
       styles: { font: 'Roboto',
         fontSize: 6.5, cellPadding: 2,
-        fillColor: hexToRgb(COLORS.bg_card),
-        textColor: hexToRgb(COLORS.text_white),
-        lineColor: hexToRgb(COLORS.bg_card2), lineWidth: 0.2,
+        fillColor: hexToRgb(P.bg),
+        textColor: hexToRgb(P.text),
+        lineColor: hexToRgb(P.border), lineWidth: 0.2,
         overflow: 'ellipsize' as any,
       },
       headStyles: { font: 'Roboto',
-        fillColor: hexToRgb(COLORS.purple_dark), fontSize: 7, fontStyle: 'bold',
-        textColor: hexToRgb(COLORS.text_white),
+        fillColor: hexToRgb(P.bg_header), fontSize: 7, fontStyle: 'bold',
+        textColor: hexToRgb(P.text),
       },
       columnStyles: {
         0: { cellWidth: 38 }, 1: { cellWidth: 14, halign: 'center' },
@@ -443,16 +447,16 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       },
       didParseCell: (hookData: any) => {
         if (hookData.row.index === 0 && hookData.section === 'body') {
-          hookData.cell.styles.fillColor = [45, 25, 80];
+          hookData.cell.styles.fillColor = hexToRgb(P.bg_header);
           hookData.cell.styles.fontStyle = 'bold';
         }
         if (hookData.row.index === compRows.length - 1 && hookData.section === 'body') {
-          hookData.cell.styles.fillColor = hexToRgb(COLORS.bg_card2);
-          hookData.cell.styles.textColor = hexToRgb(COLORS.info);
+          hookData.cell.styles.fillColor = hexToRgb(P.bg_alt);
+          hookData.cell.styles.textColor = hexToRgb(P.info);
         }
         const val = String(hookData.cell.raw || '');
-        if (val === '✓') hookData.cell.styles.textColor = hexToRgb(COLORS.success);
-        else if (val === '✗') hookData.cell.styles.textColor = hexToRgb(COLORS.critical);
+        if (val === '✓') hookData.cell.styles.textColor = hexToRgb(P.success);
+        else if (val === '✗') hookData.cell.styles.textColor = hexToRgb(P.critical);
       },
     });
     y = (doc as any).lastAutoTable.finalY + 6;
@@ -462,12 +466,12 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       drawSectionTitle('ЧТО ВЗЯТЬ У КОНКУРЕНТОВ');
       comparison.insights.forEach((insight: string) => {
         checkPageBreak(12);
-        setFill(COLORS.bg_card2);
+        setFill(P.bg_alt);
         const insightLines = doc.splitTextToSize(insight, CONTENT_W - 6);
         const h = insightLines.length * 4 + 4;
         doc.roundedRect(MARGIN, y, CONTENT_W, h, 2, 2, 'F');
         doc.setFontSize(7.5);
-        setTextColor(COLORS.text_white);
+        setTextColor(P.text);
         doc.setFont('Roboto', 'normal');
         doc.text(insightLines, MARGIN + 3, y + 4.5);
         y += h + 3;
@@ -484,7 +488,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     const infoKeys = data.keywords.filter((k: any) => k.intent === 'informational');
     const landingKeys = data.keywords.filter((k: any) => k.landing_needed === true);
 
-    setTextColor(COLORS.text_gray);
+    setTextColor(P.text_secondary);
     doc.setFontSize(8);
     doc.text(
       `Коммерческих: ${commercialKeys.length}  ·  Информационных: ${infoKeys.length}  ·  Требуют лендинга: ${landingKeys.length}`,
@@ -511,31 +515,26 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
       margin: { left: MARGIN, right: MARGIN },
       styles: { font: 'Roboto',
         fontSize: 7, cellPadding: 2,
-        fillColor: hexToRgb(COLORS.bg_card),
-        textColor: hexToRgb(COLORS.text_white),
-        lineColor: hexToRgb(COLORS.bg_card2), lineWidth: 0.2,
+        fillColor: hexToRgb(P.bg),
+        textColor: hexToRgb(P.text),
+        lineColor: hexToRgb(P.border), lineWidth: 0.2,
       },
-      headStyles: { font: 'Roboto', fillColor: hexToRgb(COLORS.purple_dark), fontSize: 7.5, fontStyle: 'bold', textColor: hexToRgb(COLORS.text_white) },
+      headStyles: { font: 'Roboto', fillColor: hexToRgb(P.bg_header), fontSize: 7.5, fontStyle: 'bold', textColor: hexToRgb(P.text) },
       columnStyles: {
         0: { cellWidth: 75 }, 1: { cellWidth: 45 },
         2: { cellWidth: 20, halign: 'center' }, 3: { cellWidth: 22, halign: 'right' },
         4: { cellWidth: 18, halign: 'center' },
       },
       didParseCell: (hookData: any) => {
-        if (hookData.section === 'body') {
-          if (hookData.column.index === 2) {
-            const val = String(hookData.cell.raw || '');
-            if (val.includes('Коммер') || val.includes('Трансак')) hookData.cell.styles.textColor = hexToRgb(COLORS.success);
-            else hookData.cell.styles.textColor = hexToRgb(COLORS.info);
-          }
-          if (hookData.row.index % 2 === 1) hookData.cell.styles.fillColor = hexToRgb(COLORS.bg_card2);
+        if (hookData.section === 'body' && hookData.row.index % 2 === 1) {
+          hookData.cell.styles.fillColor = hexToRgb(P.bg_alt);
         }
       },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
 
     if (data.keywords.length > 100) {
-      setTextColor(COLORS.text_gray);
+      setTextColor(P.text_secondary);
       doc.setFontSize(7);
       doc.text(`* Показаны топ-100 из ${data.keywords.length} запросов. Полный список — в CSV.`, MARGIN, y);
     }
@@ -546,7 +545,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
     newPage();
     drawSectionTitle(`МИНУС-СЛОВА ДЛЯ ЯНДЕКС.ДИРЕКТ — ${data.minusWords.length}`);
 
-    setTextColor(COLORS.text_gray);
+    setTextColor(P.text_secondary);
     doc.setFontSize(8);
     doc.text('Добавьте эти слова на уровне аккаунта в Яндекс.Директ.', MARGIN, y);
     y += 8;
@@ -569,15 +568,15 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
 
     Object.entries(minusGroups).forEach(([cat, words]) => {
       checkPageBreak(20);
-      setFill(COLORS.bg_card2);
+      setFill(P.bg_header);
       doc.roundedRect(MARGIN, y, CONTENT_W, 7, 1, 1, 'F');
-      setTextColor(COLORS.purple_light);
+      setTextColor(P.accent);
       doc.setFontSize(8);
       doc.setFont('Roboto', 'bold');
       doc.text(`${catNames[cat] || cat} (${words.length})`, MARGIN + 3, y + 5);
       y += 10;
       const wordsText = words.map((w: any) => `-${w.word}`).join('  ');
-      setTextColor(COLORS.text_white);
+      setTextColor(P.text);
       doc.setFontSize(7.5);
       doc.setFont('Roboto', 'normal');
       const wordLines = doc.splitTextToSize(wordsText, CONTENT_W);
@@ -591,7 +590,7 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   newPage();
   drawSectionTitle('ПРИОРИТЕТНЫЙ ПЛАН ДЕЙСТВИЙ');
 
-  setTextColor(COLORS.text_gray);
+  setTextColor(P.text_secondary);
   doc.setFontSize(8);
   doc.text('Выполните эти шаги последовательно — и сайт выйдет в топ.', MARGIN, y);
   y += 8;
@@ -603,19 +602,21 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   topIssues.forEach((issue: any, idx: number) => {
     checkPageBreak(16);
     const sevColor = getSeverityColor(issue.severity);
-    setFill(COLORS.bg_card);
+    setFill(P.bg_alt);
     doc.roundedRect(MARGIN, y, CONTENT_W, 12, 2, 2, 'F');
+    doc.setDrawColor(...hexToRgb(P.border));
+    doc.roundedRect(MARGIN, y, CONTENT_W, 12, 2, 2, 'S');
     doc.setFillColor(...hexToRgb(sevColor));
     doc.rect(MARGIN, y, 2, 12, 'F');
-    setTextColor(COLORS.text_gray);
+    setTextColor(P.text_secondary);
     doc.setFontSize(8);
     doc.setFont('Roboto', 'bold');
     doc.text(`${idx + 1}.`, MARGIN + 4, y + 8);
-    setTextColor(COLORS.text_white);
+    setTextColor(P.text);
     const titleText = doc.splitTextToSize(issue.title || '', CONTENT_W - 40);
     doc.text(titleText, MARGIN + 12, y + 5);
     doc.setFontSize(7);
-    doc.setTextColor(...hexToRgb(COLORS.success));
+    doc.setTextColor(...hexToRgb(P.success));
     doc.text(`+${issue.impact_score || 0} б.`, PAGE_W - MARGIN - 2, y + 5, { align: 'right' });
     doc.setTextColor(...hexToRgb(sevColor));
     doc.text(getSeverityLabel(issue.severity), PAGE_W - MARGIN - 2, y + 10, { align: 'right' });
@@ -624,22 +625,21 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
 
   y += 4;
   checkPageBreak(30);
-  setFill(COLORS.purple_dark);
+  setFill(P.accent);
   doc.roundedRect(MARGIN, y, CONTENT_W, 22, 3, 3, 'F');
-  setTextColor(COLORS.text_white);
+  setTextColor('#ffffff');
   doc.setFontSize(9);
   doc.setFont('Roboto', 'bold');
   doc.text('Следующий шаг:', MARGIN + 6, y + 8);
   doc.setFont('Roboto', 'normal');
   doc.setFontSize(8);
   doc.text('Запустите повторный аудит через 30 дней на OWNDEV.ru', MARGIN + 6, y + 14);
-  setTextColor(COLORS.purple_light);
   doc.setFontSize(7);
   doc.text('OWNDEV.ru — первый GEO и AI-ready аудит сайта в Рунете', MARGIN + 6, y + 20);
 
   y += 28;
-  drawLine(COLORS.purple_dark);
-  setTextColor(COLORS.text_gray);
+  drawLine(P.border);
+  setTextColor(P.text_secondary);
   doc.setFontSize(7);
   doc.text(`Сгенерировано: OWNDEV.ru  ·  ${formatDate()}  ·  Аудит: ${data.domain}`, MARGIN, y);
 

@@ -7,16 +7,19 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import {
+  PRINT_COLORS,
   getSeverityLabel, getCategoryLabel,
   getScoreStatus, calcPotentialGain,
   formatDate, truncate, ReportData,
 } from './reportHelpers';
 
+const P = PRINT_COLORS;
+
 const W = {
-  purple: '8B5CF6', bg_dark: '0A0A0F', bg_card: '12121A',
-  gray: '6B7280', white: 'FFFFFF',
-  critical: 'EF4444', high: 'F97316', medium: 'EAB308', low: '6B7280',
-  success: '10B981', info: '3B82F6',
+  text: '1A1A1A', text_sec: '6B7280', accent: '7C3AED',
+  bg_header: 'F3F4F6', bg_alt: 'F9FAFB', border: 'E5E7EB',
+  critical: 'DC2626', high: 'EA580C', medium: 'CA8A04', low: '6B7280',
+  success: '059669', info: '2563EB',
 };
 
 const getSevColorW = (severity: string): string => {
@@ -27,31 +30,31 @@ const getSevColorW = (severity: string): string => {
 const sectionTitle = (text: string): Paragraph =>
   new Paragraph({
     spacing: { before: 400, after: 200 },
-    shading: { type: ShadingType.CLEAR, color: '1A0A3A', fill: '1A0A3A' },
+    shading: { type: ShadingType.CLEAR, color: W.bg_header, fill: W.bg_header },
     indent: { left: convertInchesToTwip(0.1) },
-    children: [new TextRun({ text, bold: true, color: W.purple, size: 32, font: 'Calibri' })],
+    children: [new TextRun({ text, bold: true, color: W.accent, size: 32, font: 'Arial' })],
   });
 
 const subTitle = (text: string): Paragraph =>
   new Paragraph({
     heading: HeadingLevel.HEADING_2,
     spacing: { before: 300, after: 150 },
-    children: [new TextRun({ text, bold: true, color: 'A78BFA', size: 26, font: 'Calibri' })],
+    children: [new TextRun({ text, bold: true, color: W.accent, size: 26, font: 'Arial' })],
   });
 
 const bodyText = (text: string, options?: { bold?: boolean; color?: string; size?: number; indent?: number }): Paragraph =>
   new Paragraph({
     spacing: { before: 60, after: 60 },
     indent: options?.indent ? { left: convertInchesToTwip(options.indent) } : undefined,
-    children: [new TextRun({ text, bold: options?.bold, color: options?.color || W.white, size: options?.size || 20, font: 'Calibri' })],
+    children: [new TextRun({ text, bold: options?.bold, color: options?.color || W.text, size: options?.size || 20, font: 'Arial' })],
   });
 
 const labelBlock = (label: string, text: string, labelColor: string): Paragraph =>
   new Paragraph({
     spacing: { before: 80, after: 80 },
     children: [
-      new TextRun({ text: `${label} `, bold: true, color: labelColor, size: 18, font: 'Calibri' }),
-      new TextRun({ text, color: W.white, size: 18, font: 'Calibri' }),
+      new TextRun({ text: `${label} `, bold: true, color: labelColor, size: 18, font: 'Arial' }),
+      new TextRun({ text, color: W.text, size: 18, font: 'Arial' }),
     ],
   });
 
@@ -59,7 +62,7 @@ const pageBreakP = (): Paragraph => new Paragraph({ children: [new PageBreak()] 
 
 const hrLine = (): Paragraph =>
   new Paragraph({
-    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: W.purple } },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: W.border } },
     spacing: { before: 100, after: 100 },
     children: [],
   });
@@ -69,18 +72,18 @@ const createStyledTable = (headers: string[], rows: string[][], colWidths: numbe
     tableHeader: true,
     children: headers.map((h, i) => new TableCell({
       width: { size: colWidths[i], type: WidthType.PERCENTAGE },
-      shading: { type: ShadingType.CLEAR, color: '3D1B8A', fill: '3D1B8A' },
+      shading: { type: ShadingType.CLEAR, color: W.bg_header, fill: W.bg_header },
       margins: { top: 80, bottom: 80, left: 120, right: 120 },
-      children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: W.white, size: 18, font: 'Calibri' })], alignment: AlignmentType.CENTER })],
+      children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: W.text, size: 18, font: 'Arial' })], alignment: AlignmentType.CENTER })],
     })),
   });
   const dataRows = rows.map((row, rowIdx) =>
     new TableRow({
       children: row.map((cell, colIdx) => new TableCell({
         width: { size: colWidths[colIdx], type: WidthType.PERCENTAGE },
-        shading: { type: ShadingType.CLEAR, color: rowIdx % 2 === 0 ? '12121A' : '1A1A2E', fill: rowIdx % 2 === 0 ? '12121A' : '1A1A2E' },
+        shading: { type: ShadingType.CLEAR, color: rowIdx % 2 === 0 ? 'FFFFFF' : W.bg_alt, fill: rowIdx % 2 === 0 ? 'FFFFFF' : W.bg_alt },
         margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: cell, color: W.white, size: 17, font: 'Calibri' })] })],
+        children: [new Paragraph({ children: [new TextRun({ text: cell, color: W.text, size: 17, font: 'Arial' })] })],
       })),
     }),
   );
@@ -97,15 +100,15 @@ export async function generateWordReport(data: ReportData): Promise<void> {
   // Title page
   children.push(
     new Paragraph({ spacing: { before: 2000 }, children: [] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'OWNDEV', bold: true, size: 72, color: W.purple, font: 'Calibri' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 400 }, children: [new TextRun({ text: 'GEO и AI-ready аудит сайта', size: 24, color: W.gray, font: 'Calibri' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'OWNDEV', bold: true, size: 72, color: W.accent, font: 'Arial' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 400 }, children: [new TextRun({ text: 'GEO и AI-ready аудит сайта', size: 24, color: W.text_sec, font: 'Arial' })] }),
     hrLine(),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400, after: 200 }, children: [new TextRun({ text: 'ОТЧЁТ АУДИТА САЙТА', bold: true, size: 48, color: W.white, font: 'Calibri' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 100 }, children: [new TextRun({ text: truncate(data.url, 70), size: 28, color: W.purple, font: 'Calibri', bold: true })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 100 }, children: [new TextRun({ text: `Тематика: ${data.theme}`, size: 22, color: W.gray, font: 'Calibri' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 600 }, children: [new TextRun({ text: `Дата: ${formatDate(new Date(data.scanDate))}`, size: 22, color: W.gray, font: 'Calibri' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400, after: 200 }, children: [new TextRun({ text: 'ОТЧЁТ АУДИТА САЙТА', bold: true, size: 48, color: W.text, font: 'Arial' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 100 }, children: [new TextRun({ text: truncate(data.url, 70), size: 28, color: W.accent, font: 'Arial', bold: true })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 100 }, children: [new TextRun({ text: `Тематика: ${data.theme}`, size: 22, color: W.text_sec, font: 'Arial' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100, after: 600 }, children: [new TextRun({ text: `Дата: ${formatDate(new Date(data.scanDate))}`, size: 22, color: W.text_sec, font: 'Arial' })] }),
     hrLine(),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300, after: 100 }, children: [new TextRun({ text: 'ИТОГОВЫЕ ОЦЕНКИ', bold: true, size: 24, color: W.purple, font: 'Calibri' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300, after: 100 }, children: [new TextRun({ text: 'ИТОГОВЫЕ ОЦЕНКИ', bold: true, size: 24, color: W.accent, font: 'Arial' })] }),
   );
 
   children.push(createStyledTable(
@@ -116,7 +119,7 @@ export async function generateWordReport(data: ReportData): Promise<void> {
 
   children.push(
     new Paragraph({ spacing: { before: 200 }, children: [] }),
-    bodyText(`Найдено: ${data.issues.length} проблем · ${critCount} критических · Потенциальный прирост: +${gain} баллов`, { color: W.gray }),
+    bodyText(`Найдено: ${data.issues.length} проблем · ${critCount} критических · Потенциальный прирост: +${gain} баллов`, { color: W.text_sec }),
     pageBreakP(),
   );
 
@@ -140,7 +143,7 @@ export async function generateWordReport(data: ReportData): Promise<void> {
   // Issues
   children.push(
     sectionTitle(`ПЛАН ИСПРАВЛЕНИЯ — ${data.issues.length} ПРОБЛЕМ`),
-    bodyText(`Исправьте ${critCount} критических ошибок → оценка вырастет на ~+${gain} баллов`, { color: W.gray }),
+    bodyText(`Исправьте ${critCount} критических ошибок → оценка вырастет на ~+${gain} баллов`, { color: W.text_sec }),
     new Paragraph({ spacing: { before: 200 }, children: [] }),
   );
 
@@ -152,39 +155,39 @@ export async function generateWordReport(data: ReportData): Promise<void> {
         border: { left: { style: BorderStyle.THICK, size: 12, color: sevColor } },
         indent: { left: convertInchesToTwip(0.15) },
         children: [
-          new TextRun({ text: `${idx + 1}. `, bold: true, color: sevColor, size: 22, font: 'Calibri' }),
-          new TextRun({ text: `[${getSeverityLabel(issue.severity).toUpperCase()}] `, bold: true, color: sevColor, size: 20, font: 'Calibri' }),
-          new TextRun({ text: issue.title || '', bold: true, color: W.white, size: 22, font: 'Calibri' }),
-          new TextRun({ text: `  +${issue.impact_score || 0} балл.`, color: '10B981', size: 18, font: 'Calibri' }),
+          new TextRun({ text: `${idx + 1}. `, bold: true, color: sevColor, size: 22, font: 'Arial' }),
+          new TextRun({ text: `[${getSeverityLabel(issue.severity).toUpperCase()}] `, bold: true, color: sevColor, size: 20, font: 'Arial' }),
+          new TextRun({ text: issue.title || '', bold: true, color: W.text, size: 22, font: 'Arial' }),
+          new TextRun({ text: `  +${issue.impact_score || 0} балл.`, color: W.success, size: 18, font: 'Arial' }),
         ],
       }),
-      labelBlock('Категория:', getCategoryLabel(issue.category || issue.module || ''), W.purple),
-      labelBlock('Где:', issue.where || issue.location || '—', W.gray),
+      labelBlock('Категория:', getCategoryLabel(issue.category || issue.module || ''), W.accent),
+      labelBlock('Где:', issue.where || issue.location || '—', W.text_sec),
     );
 
-    if (issue.description) children.push(bodyText(issue.description, { color: W.gray }));
+    if (issue.description) children.push(bodyText(issue.description, { color: W.text_sec }));
 
     if (issue.why_important || issue.why_it_matters) {
       children.push(
-        new Paragraph({ spacing: { before: 120, after: 40 }, children: [new TextRun({ text: 'ПОЧЕМУ ЭТО ВАЖНО:', bold: true, color: 'EAB308', size: 18, font: 'Calibri' })] }),
-        bodyText(issue.why_important || issue.why_it_matters, { color: W.white, indent: 0.2 }),
+        new Paragraph({ spacing: { before: 120, after: 40 }, children: [new TextRun({ text: 'ПОЧЕМУ ЭТО ВАЖНО:', bold: true, color: W.medium, size: 18, font: 'Arial' })] }),
+        bodyText(issue.why_important || issue.why_it_matters, { color: W.text, indent: 0.2 }),
       );
     }
 
     if (issue.how_to_fix) {
-      children.push(new Paragraph({ spacing: { before: 120, after: 40 }, children: [new TextRun({ text: 'КАК ИСПРАВИТЬ:', bold: true, color: '10B981', size: 18, font: 'Calibri' })] }));
+      children.push(new Paragraph({ spacing: { before: 120, after: 40 }, children: [new TextRun({ text: 'КАК ИСПРАВИТЬ:', bold: true, color: W.success, size: 18, font: 'Arial' })] }));
       (issue.how_to_fix as string).split('\n').filter((s: string) => s.trim()).forEach((step: string) => {
-        children.push(new Paragraph({ spacing: { before: 40, after: 40 }, indent: { left: convertInchesToTwip(0.25) }, children: [new TextRun({ text: step.trim(), color: W.white, size: 18, font: 'Calibri' })] }));
+        children.push(new Paragraph({ spacing: { before: 40, after: 40 }, indent: { left: convertInchesToTwip(0.25) }, children: [new TextRun({ text: step.trim(), color: W.text, size: 18, font: 'Arial' })] }));
       });
     }
 
     if (issue.example || issue.example_fix) {
       children.push(
-        new Paragraph({ spacing: { before: 120, after: 40 }, children: [new TextRun({ text: 'ПРИМЕР:', bold: true, color: '10B981', size: 18, font: 'Calibri' })] }),
+        new Paragraph({ spacing: { before: 120, after: 40 }, children: [new TextRun({ text: 'ПРИМЕР:', bold: true, color: W.success, size: 18, font: 'Arial' })] }),
         new Paragraph({
           spacing: { before: 60, after: 60 }, indent: { left: convertInchesToTwip(0.2) },
-          shading: { type: ShadingType.CLEAR, color: '0D1117', fill: '0D1117' },
-          children: [new TextRun({ text: issue.example || issue.example_fix, color: '10B981', size: 16, font: 'Courier New' })],
+          shading: { type: ShadingType.CLEAR, color: W.bg_alt, fill: W.bg_alt },
+          children: [new TextRun({ text: issue.example || issue.example_fix, color: W.text, size: 16, font: 'Courier New' })],
         }),
       );
     }
@@ -201,7 +204,7 @@ export async function generateWordReport(data: ReportData): Promise<void> {
       const ct = data.comparisonTable;
       children.push(bodyText(
         `Ваш контент: ${ct.your_site?.content_length_words || 0} слов  ·  Среднее: ${ct.avg_top10?.content_length_words || 0} слов  ·  Лидер: ${ct.leader?.content_length_words || 0} слов`,
-        { color: W.gray },
+        { color: W.text_sec },
       ));
     }
 
@@ -229,9 +232,9 @@ export async function generateWordReport(data: ReportData): Promise<void> {
       data.comparisonTable.insights.forEach((insight: string) => {
         children.push(new Paragraph({
           spacing: { before: 100, after: 100 },
-          shading: { type: ShadingType.CLEAR, color: '1A1A2E', fill: '1A1A2E' },
+          shading: { type: ShadingType.CLEAR, color: W.bg_alt, fill: W.bg_alt },
           indent: { left: convertInchesToTwip(0.1) },
-          children: [new TextRun({ text: insight, color: W.white, size: 19, font: 'Calibri' })],
+          children: [new TextRun({ text: insight, color: W.text, size: 19, font: 'Arial' })],
         }));
       });
     }
@@ -256,7 +259,7 @@ export async function generateWordReport(data: ReportData): Promise<void> {
   if (data.minusWords.length > 0) {
     children.push(
       sectionTitle(`МИНУС-СЛОВА ДЛЯ ДИРЕКТА — ${data.minusWords.length}`),
-      bodyText('Добавьте на уровне аккаунта в Яндекс.Директ:', { color: W.gray }),
+      bodyText('Добавьте на уровне аккаунта в Яндекс.Директ:', { color: W.text_sec }),
     );
     const catNames: Record<string, string> = { informational: 'Информационные', irrelevant: 'Нерелевантные', competitor: 'Конкуренты', geo: 'Регионы', other: 'Прочие', general: 'Общие' };
     const groups: Record<string, any[]> = {};
@@ -267,8 +270,8 @@ export async function generateWordReport(data: ReportData): Promise<void> {
       subTitle('Строка для вставки в Яндекс.Директ:'),
       new Paragraph({
         spacing: { before: 100, after: 100 },
-        shading: { type: ShadingType.CLEAR, color: '0D1117', fill: '0D1117' },
-        children: [new TextRun({ text: data.minusWords.map((w: any) => `-${w.word}`).join(' '), color: '10B981', size: 16, font: 'Courier New' })],
+        shading: { type: ShadingType.CLEAR, color: W.bg_alt, fill: W.bg_alt },
+        children: [new TextRun({ text: data.minusWords.map((w: any) => `-${w.word}`).join(' '), color: W.text, size: 16, font: 'Courier New' })],
       }),
       pageBreakP(),
     );
@@ -277,7 +280,7 @@ export async function generateWordReport(data: ReportData): Promise<void> {
   // Action plan
   children.push(
     sectionTitle('ПРИОРИТЕТНЫЙ ПЛАН ДЕЙСТВИЙ'),
-    bodyText('Выполните эти шаги последовательно — сайт выйдет в топ.', { color: W.gray }),
+    bodyText('Выполните эти шаги последовательно — сайт выйдет в топ.', { color: W.text_sec }),
     new Paragraph({ spacing: { before: 200 }, children: [] }),
   );
 
@@ -289,9 +292,9 @@ export async function generateWordReport(data: ReportData): Promise<void> {
       border: { left: { style: BorderStyle.THICK, size: 12, color: sevColor } },
       indent: { left: convertInchesToTwip(0.2) },
       children: [
-        new TextRun({ text: `${idx + 1}. `, bold: true, color: sevColor, size: 22, font: 'Calibri' }),
-        new TextRun({ text: issue.title || '', bold: true, color: W.white, size: 22, font: 'Calibri' }),
-        new TextRun({ text: `  → +${issue.impact_score || 0} баллов`, color: '10B981', size: 18, font: 'Calibri' }),
+        new TextRun({ text: `${idx + 1}. `, bold: true, color: sevColor, size: 22, font: 'Arial' }),
+        new TextRun({ text: issue.title || '', bold: true, color: W.text, size: 22, font: 'Arial' }),
+        new TextRun({ text: `  → +${issue.impact_score || 0} баллов`, color: W.success, size: 18, font: 'Arial' }),
       ],
     }));
   });
@@ -299,16 +302,16 @@ export async function generateWordReport(data: ReportData): Promise<void> {
   children.push(
     new Paragraph({ spacing: { before: 400 }, children: [] }),
     hrLine(),
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 }, children: [new TextRun({ text: 'Сгенерировано: OWNDEV.ru — GEO и AI-ready аудит', color: W.gray, size: 18, font: 'Calibri' })] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Следующий аудит рекомендуется через 30 дней', color: W.gray, size: 16, font: 'Calibri' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 }, children: [new TextRun({ text: 'Сгенерировано: OWNDEV.ru — GEO и AI-ready аудит', color: W.text_sec, size: 18, font: 'Arial' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Следующий аудит рекомендуется через 30 дней', color: W.text_sec, size: 16, font: 'Arial' })] }),
   );
 
   const doc = new Document({
     styles: {
-      default: { document: { run: { font: 'Calibri', color: W.white, size: 20 } } },
+      default: { document: { run: { font: 'Arial', color: W.text, size: 20 } } },
       paragraphStyles: [
-        { id: 'Heading1', name: 'Heading 1', run: { bold: true, color: W.purple, size: 32, font: 'Calibri' }, paragraph: { spacing: { before: 240, after: 240 } } },
-        { id: 'Heading2', name: 'Heading 2', run: { bold: true, color: 'A78BFA', size: 26, font: 'Calibri' }, paragraph: { spacing: { before: 180, after: 180 } } },
+        { id: 'Heading1', name: 'Heading 1', run: { bold: true, color: W.accent, size: 32, font: 'Arial' }, paragraph: { spacing: { before: 240, after: 240 } } },
+        { id: 'Heading2', name: 'Heading 2', run: { bold: true, color: W.accent, size: 26, font: 'Arial' }, paragraph: { spacing: { before: 180, after: 180 } } },
       ],
     },
     sections: [{
@@ -322,10 +325,10 @@ export async function generateWordReport(data: ReportData): Promise<void> {
         default: new Header({
           children: [new Paragraph({
             children: [
-              new TextRun({ text: `OWNDEV  ·  GEO-аудит  ·  ${data.domain}  ·  `, color: W.gray, size: 14, font: 'Calibri' }),
-              new TextRun({ children: ['стр. ', PageNumber.CURRENT], color: W.gray, size: 14, font: 'Calibri' }),
+              new TextRun({ text: `OWNDEV  ·  GEO-аудит  ·  ${data.domain}  ·  `, color: W.text_sec, size: 14, font: 'Arial' }),
+              new TextRun({ children: ['стр. ', PageNumber.CURRENT], color: W.text_sec, size: 14, font: 'Arial' }),
             ],
-            border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: W.purple } },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: W.accent } },
           })],
         }),
       },
@@ -333,9 +336,9 @@ export async function generateWordReport(data: ReportData): Promise<void> {
         default: new Footer({
           children: [new Paragraph({
             alignment: AlignmentType.CENTER,
-            border: { top: { style: BorderStyle.SINGLE, size: 4, color: '3D1B8A' } },
+            border: { top: { style: BorderStyle.SINGLE, size: 4, color: W.border } },
             children: [
-              new TextRun({ text: `OWNDEV.ru — первый GEO и AI-ready аудит  ·  ${formatDate()}`, color: W.gray, size: 14, font: 'Calibri' }),
+              new TextRun({ text: `OWNDEV.ru — первый GEO и AI-ready аудит  ·  ${formatDate()}`, color: W.text_sec, size: 14, font: 'Arial' }),
             ],
           })],
         }),

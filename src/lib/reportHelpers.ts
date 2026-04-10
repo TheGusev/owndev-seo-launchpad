@@ -21,6 +21,22 @@ export const COLORS = {
   cat_direct:    '#ec4899',
 };
 
+export const PRINT_COLORS = {
+  bg:            '#ffffff',
+  bg_alt:        '#f9fafb',
+  bg_header:     '#f3f4f6',
+  text:          '#1a1a1a',
+  text_secondary:'#6b7280',
+  border:        '#e5e7eb',
+  accent:        '#7c3aed',
+  critical:      '#dc2626',
+  high:          '#ea580c',
+  medium:        '#ca8a04',
+  low:           '#6b7280',
+  success:       '#059669',
+  info:          '#2563eb',
+};
+
 export const getSeverityColor = (severity: string): string => {
   const map: Record<string, string> = {
     critical: COLORS.critical,
