@@ -272,6 +272,8 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         org: geoip.org || null,
       } : null,
       raw_headers: headers,
+  });
+  });
     
   // POST /api/v1/site-check/nomination
   app.post<{ Body: { domain: string; display_name: string; category: string; email?: string; scan_id?: string; total_score: number } }>('/nomination', async (req, reply) => {
