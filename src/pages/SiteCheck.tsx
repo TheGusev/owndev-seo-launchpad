@@ -25,6 +25,40 @@ const checkItems: { icon: LucideIcon; text: string }[] = [
   { icon: Download, text: "Экспорт PDF / Word / CSV" },
 ];
 
+const CheckList = () => {
+  const listRef = useRef<HTMLUListElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.2 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div className="mt-10">
+      <h2 className="text-lg font-semibold text-foreground mb-4">Что проверяем</h2>
+      <ul ref={listRef} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {checkItems.map((item, i) => (
+          <li
+            key={i}
+            className={`flex items-center gap-3 text-sm transition-all ${visible ? 'animate-fade-in-up' : 'opacity-0'}`}
+            style={visible ? { animationDelay: `${i * 100}ms`, animationFillMode: 'forwards', opacity: 0 } : undefined}
+          >
+            <item.icon className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-foreground">{item.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
 const SiteCheck = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
