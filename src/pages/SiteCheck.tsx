@@ -180,10 +180,10 @@ const SiteCheck = () => {
           <div className="mt-10">
             <h2 className="text-lg font-semibold text-foreground mb-4">Что проверяем</h2>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {checkItems.map((text, i) => (
+              {checkItems.map((item, i) => (
                 <li key={i} className="flex items-center gap-3 text-sm">
-                  <Check className="w-4 h-4 text-green-500 shrink-0" />
-                  <span className="text-foreground">{text}</span>
+                  <item.icon className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-foreground">{item.text}</span>
                 </li>
               ))}
             </ul>
