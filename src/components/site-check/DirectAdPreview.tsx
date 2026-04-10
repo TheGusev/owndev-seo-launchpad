@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, ExternalLink, Gauge, Download, Pencil, X, Save } from "lucide-react";
+import { Copy, Check, ExternalLink, Gauge, Download, Pencil, X, Save, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
