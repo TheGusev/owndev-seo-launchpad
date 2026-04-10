@@ -272,5 +272,31 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         org: geoip.org || null,
       } : null,
       raw_headers: headers,
-    });
-  }
+    
+  // POST /api/v1/site-check/nomination
+  app.post<{ Body: { domain: string; display_name: string; category: string; email?: string; scan_id?: string; total_score: number } }>('/nomination', async (req, reply) => {
+    const { domain, display_name, category, email, scan_id, total_score } = req.body as any;
+    if (!domain || !display_name) {
+      return reply.status(400).send({ success: false, error: 'domain and display_name are required' });
+    }
+    await sql`
+      CREATE TABLE IF NOT EXISTS geo_rating_nominations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        domain TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'Другое',
+        email TEXT,
+        scan_id UUID,
+        total_score INT NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await sql`
+      INSERT INTO geo_rating_nominations (domain, display_name, category, email, scan_id, total_score)
+      VALUES (${domain}, ${display_name}, ${category || 'Другое'}, ${email || null}, ${scan_id || null}, ${total_score || 0})
+    `;
+    logger.info('SITE_CHECK', `Nomination created for ${domain}`);
+    return reply.status(200).send({ success: true });
+  });
+    }
