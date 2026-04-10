@@ -251,15 +251,25 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
             </div>
 
             {/* Sitelinks */}
-            {currentAd.sitelinks.length > 0 && (
+            {(isEditing || currentAd.sitelinks.length > 0) && (
               <div className={`${isEditing ? "space-y-2" : "grid grid-cols-2 gap-x-4 gap-y-1"} pt-1 border-t border-border/20`}>
                 {isEditing ? (
-                  currentAd.sitelinks.map((link, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2">
-                      <Input value={link.title} onChange={e => updateSitelink(i, "title", e.target.value)} placeholder={`Ссылка ${i + 1} заголовок`} className="h-7 text-xs" />
-                      <Input value={link.description} onChange={e => updateSitelink(i, "description", e.target.value)} placeholder="Описание" className="h-7 text-xs" />
-                    </div>
-                  ))
+                  <>
+                    {sitelinks.map((link, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <Input value={link.title} onChange={e => updateSitelink(i, "title", e.target.value)} placeholder={`Ссылка ${i + 1} заголовок`} className="h-7 text-xs flex-1" />
+                        <Input value={link.description} onChange={e => updateSitelink(i, "description", e.target.value)} placeholder="Описание" className="h-7 text-xs flex-1" />
+                        <button onClick={() => removeSitelink(i)} disabled={sitelinks.length <= 1} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors" title="Удалить ссылку">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {sitelinks.length < 8 && (
+                      <button onClick={addSitelink} className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors pt-1">
+                        <Plus className="w-3.5 h-3.5" /> Добавить ссылку
+                      </button>
+                    )}
+                  </>
                 ) : (
                   currentAd.sitelinks.map((link, i) => (
                     <div key={i} className="group">
