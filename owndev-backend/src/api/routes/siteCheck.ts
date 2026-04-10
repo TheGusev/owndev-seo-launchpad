@@ -141,4 +141,55 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     const row = rows[0];
     return reply.send({ status: row.status, progress_pct: row.progress_pct, scores: row.scores ?? null });
   });
+  
+  // POST /api/site-check/report/create
+  app.post<{ Body: { scan_id: string; email: string } }>('/report/create', async (req, reply) => {
+    const { scan_id, email } = req.body as { scan_id: string; email: string };
+    if (!scan_id || !email) {
+      return reply.status(400).send({ success: false, error: 'scan_id and email are required' });
+    }
+    // Ensure reports table exists
+    await sql`
+      CREATE TABLE IF NOT EXISTS site_check_reports (
+        id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+        scan_id     UUID        NOT NULL,
+        email       TEXT        NOT NULL,
+        status      TEXT        NOT NULL DEFAULT 'pending',
+        download_token TEXT,
+        payment_url TEXT,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    const report_id = randomUUID();
+    const download_token = randomUUID();
+    await sql`
+      INSERT INTO site_check_reports (id, scan_id, email, status, download_token)
+      VALUES (${report_id}, ${scan_id}, ${email}, 'pending', ${download_token})
+    `;
+    logger.info('SITE_CHECK', `Report ${report_id} created for scan ${scan_id}`);
+    return reply.status(200).send({ report_id, download_token, payment_url: null });
+  });
+
+  // GET /api/site-check/report/:reportId
+  app.get<{ Params: { reportId: string }; Querystring: { token?: string } }>('/report/:reportId', async (req, reply) => {
+    const { reportId } = req.params;
+    const { token } = req.query as { token?: string };
+    const rows = await sql<Array<{
+      id: string;
+      scan_id: string;
+      email: string;
+      status: string;
+      download_token: string | null;
+      payment_url: string | null;
+    }>>`
+      SELECT id, scan_id, email, status, download_token, payment_url
+      FROM site_check_reports WHERE id = ${reportId}
+    `;
+    if (!rows.length) return reply.status(404).send({ success: false, error: 'Report not found' });
+    const row = rows[0];
+    if (token && row.download_token !== token) {
+      return reply.status(403).send({ success: false, error: 'Invalid token' });
+    }
+    return reply.send(row);
+  });
 }
