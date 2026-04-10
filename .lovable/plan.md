@@ -1,16 +1,30 @@
 
 
-## Анимация появления пунктов «Что проверяем»
+## Диагностика и исправление: SEO Auditor не работает
 
-### Файл: `src/pages/SiteCheck.tsx`
+### Проблема
 
-Обернуть каждый `<li>` в IntersectionObserver-логику с `animate-fade-in` и нарастающей задержкой (`delay = i * 100ms`). Использовать уже существующую анимацию `fade-in` из Tailwind-конфига (translateY + opacity).
+Функция `auditSite()` в `src/lib/api/tools.ts` пытается обращаться к собственному бэкенду по адресу `/api/v1/audit` (POST + polling). Этот бэкенд (`owndev-backend/`) — отдельный Node.js сервер, который **не запущен** в среде Lovable. В результате все запросы аудита падают с ошибкой «Не удалось создать аудит».
 
-Реализация:
-- Добавить `opacity-0` по умолчанию каждому элементу
-- При появлении секции в viewport — добавить `animate-fade-in` + `animation-delay` через inline style `{ animationDelay: \`${i * 100}ms\`, animationFillMode: 'forwards' }`
-- Использовать один `useRef` + `IntersectionObserver` на контейнер `<ul>`, чтобы запускать анимацию всех элементов одновременно (с задержками)
-- Порог: `threshold: 0.2`
+Все остальные инструменты (indexation, semantic core, competitor analysis и т.д.) работают корректно — они используют Edge Functions через `invokeFunction()`.
 
-Никаких новых зависимостей или компонентов не требуется.
+### Решение
+
+**Файл: `src/lib/api/tools.ts`**
+
+Заменить функцию `auditSite()` (POST + polling через собственный бэкенд) на прямой вызов Edge Function `seo-audit` через `invokeFunction()`:
+
+```typescript
+export async function auditSite(url: string, options?: { toolId?: string }) {
+  return invokeFunction("seo-audit", { url });
+}
+```
+
+Удалить неиспользуемые хелперы `backendPost`, `backendGet`, интерфейс `AuditPollOptions`, `ApiResponse`, и импорты `apiUrl`, `apiHeaders` из config.
+
+### Что это даст
+
+- SEO Auditor заработает — запросы пойдут через Edge Function `seo-audit`, которая уже развернута и функционирует
+- Остальные инструменты не затрагиваются
+- Код бэкенда в `owndev-backend/` остаётся на месте для будущего использования
 
