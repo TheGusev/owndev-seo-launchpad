@@ -4,6 +4,7 @@
  */
 
 import { invokeFunction } from "./client";
+import { apiUrl } from "./config";
 
 // ── Helpers ──
 
@@ -98,9 +99,21 @@ export async function sendTelegram(body: object) {
 }
 
 export async function judgeLlm(scanId: string, url: string, theme?: string) {
-  return invokeFunction("llm-judge", { scan_id: scanId, url, theme });
+  const params = new URLSearchParams({ url });
+  if (scanId) params.set('scan_id', scanId);
+  if (theme) params.set('theme', theme);
+  const resp = await fetch(apiUrl(`/site-check/llm-judge`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scan_id: scanId, url, theme }),
+  });
+  if (!resp.ok) return null;
+  return resp.json();
 }
 
 export async function getTechPassport(url: string) {
-  return invokeFunction("tech-passport", { url });
+  const params = new URLSearchParams({ url });
+  const resp = await fetch(apiUrl(`/site-check/tech-passport?${params}`));
+  if (!resp.ok) return null;
+  return resp.json();
 }
