@@ -1,26 +1,9 @@
 /**
  * High-level API functions for all OWNDEV tools.
- *
- * auditSite() now uses the own backend POST+polling pattern.
- * Other tools still go through Supabase Edge Functions via invokeFunction().
+ * All tools go through Supabase Edge Functions via invokeFunction().
  */
 
 import { invokeFunction } from "./client";
-import { apiUrl, apiHeaders } from "./config";
-
-// ── Types ──
-
-interface AuditPollOptions {
-  pollingIntervalMs?: number;
-  maxAttempts?: number;
-}
-
-interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  code?: string;
-}
 
 // ── Helpers ──
 
@@ -30,80 +13,13 @@ export function ensureProtocol(url: string): string {
   return `https://${trimmed}`;
 }
 
-// ── Own-backend helpers ──
+// ── Audit (Edge Function) ──
 
-async function backendPost<T = any>(path: string, body: object): Promise<ApiResponse<T>> {
-  const resp = await fetch(apiUrl(path), {
-    method: 'POST',
-    headers: apiHeaders(),
-    body: JSON.stringify(body),
-  });
-  const json = await resp.json().catch(() => ({ success: false, error: `HTTP ${resp.status}` }));
-  if (!resp.ok) {
-    throw new Error(json.error || `Ошибка ${resp.status}`);
-  }
-  return json as ApiResponse<T>;
+export async function auditSite(url: string, options?: { toolId?: string }) {
+  return invokeFunction("seo-audit", { url });
 }
 
-async function backendGet<T = any>(path: string): Promise<ApiResponse<T>> {
-  const resp = await fetch(apiUrl(path), {
-    method: 'GET',
-    headers: apiHeaders(),
-  });
-  const json = await resp.json().catch(() => ({ success: false, error: `HTTP ${resp.status}` }));
-  if (!resp.ok) {
-    throw new Error(json.error || `Ошибка ${resp.status}`);
-  }
-  return json as ApiResponse<T>;
-}
-
-// ── Audit (own backend — POST + polling) ──
-
-export async function auditSite(
-  url: string,
-  options?: AuditPollOptions & { toolId?: string },
-) {
-  const { pollingIntervalMs = 2000, maxAttempts = 15, toolId } = options ?? {};
-
-  // 1. Create audit
-  const normalizedUrl = ensureProtocol(url);
-
-  // 1. Create audit
-  const create = await backendPost<{ auditId: string; status: string }>('/audit', {
-    url: normalizedUrl,
-    toolId,
-  });
-
-  const auditId = create.data?.auditId;
-  if (!auditId) throw new Error('Не удалось создать аудит');
-
-  // 2. Poll for result
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    await new Promise((r) => setTimeout(r, pollingIntervalMs));
-
-    const poll = await backendGet<{
-      status: string;
-      result?: any;
-      error_message?: string;
-    }>(`/audit/${auditId}`);
-
-    const audit = poll.data;
-    if (!audit) continue;
-
-    if (audit.status === 'done') {
-      return audit.result;
-    }
-
-    if (audit.status === 'error') {
-      throw new Error(audit.error_message || 'Аудит завершился с ошибкой');
-    }
-    // pending / running — continue polling
-  }
-
-  throw new Error('Превышено время ожидания аудита (30 сек)');
-}
-
-// ── Edge Function tools (unchanged) ──
+// ── Edge Function tools ──
 
 export async function checkIndexation(url: string) {
   return invokeFunction("check-indexation", { url });
