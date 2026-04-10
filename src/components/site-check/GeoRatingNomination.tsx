@@ -3,7 +3,7 @@ import { Trophy, ArrowRight, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
+import { apiUrl } from "@/lib/api/config";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -46,16 +46,22 @@ const GeoRatingNomination = ({ totalScore, url, scanId }: Props) => {
     if (!brandName.trim()) return;
     setSending(true);
     try {
-      const { error } = await supabase.from("geo_rating_nominations" as any).insert({
-        domain,
-        display_name: brandName.trim(),
-        category,
-        email: email.trim() || null,
-        scan_id: scanId || null,
-        total_score: totalScore,
-      } as any);
-      if (error) throw error;
-      setSent(true);
+const resp = await fetch(apiUrl('/site-check/nomination'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain,
+          display_name: brandName.trim(),
+          category,
+          email: email.trim() || null,
+          scan_id: scanId || null,
+          total_score: totalScore,
+        }),
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${resp.status}`);
+      }
       setOpen(false);
       toast({ title: "Заявка отправлена!", description: "Мы проверим ваш сайт и добавим в рейтинг." });
     } catch (e: any) {
