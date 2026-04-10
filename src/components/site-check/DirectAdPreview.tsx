@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, ExternalLink, Gauge, Download, Pencil, X, Save } from "lucide-react";
+import { Copy, Check, ExternalLink, Gauge, Download, Pencil, X, Save, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,10 +103,26 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
     setSitelinks(next);
   };
 
+  const addSitelink = () => {
+    if (sitelinks.length < 8) setSitelinks([...sitelinks, { title: "", description: "" }]);
+  };
+
+  const removeSitelink = (idx: number) => {
+    if (sitelinks.length > 1) setSitelinks(sitelinks.filter((_, i) => i !== idx));
+  };
+
   const updateCallout = (idx: number, value: string) => {
     const next = [...callouts];
     next[idx] = value;
     setCallouts(next);
+  };
+
+  const addCallout = () => {
+    if (callouts.length < 8) setCallouts([...callouts, ""]);
+  };
+
+  const removeCallout = (idx: number) => {
+    if (callouts.length > 1) setCallouts(callouts.filter((_, i) => i !== idx));
   };
 
   const scoreColor = readinessScore >= 7 ? "text-success" : readinessScore >= 4 ? "text-warning" : "text-destructive";
@@ -235,15 +251,25 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
             </div>
 
             {/* Sitelinks */}
-            {currentAd.sitelinks.length > 0 && (
+            {(isEditing || currentAd.sitelinks.length > 0) && (
               <div className={`${isEditing ? "space-y-2" : "grid grid-cols-2 gap-x-4 gap-y-1"} pt-1 border-t border-border/20`}>
                 {isEditing ? (
-                  currentAd.sitelinks.map((link, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2">
-                      <Input value={link.title} onChange={e => updateSitelink(i, "title", e.target.value)} placeholder={`Ссылка ${i + 1} заголовок`} className="h-7 text-xs" />
-                      <Input value={link.description} onChange={e => updateSitelink(i, "description", e.target.value)} placeholder="Описание" className="h-7 text-xs" />
-                    </div>
-                  ))
+                  <>
+                    {sitelinks.map((link, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <Input value={link.title} onChange={e => updateSitelink(i, "title", e.target.value)} placeholder={`Ссылка ${i + 1} заголовок`} className="h-7 text-xs flex-1" />
+                        <Input value={link.description} onChange={e => updateSitelink(i, "description", e.target.value)} placeholder="Описание" className="h-7 text-xs flex-1" />
+                        <button onClick={() => removeSitelink(i)} disabled={sitelinks.length <= 1} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors" title="Удалить ссылку">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {sitelinks.length < 8 && (
+                      <button onClick={addSitelink} className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors pt-1">
+                        <Plus className="w-3.5 h-3.5" /> Добавить ссылку
+                      </button>
+                    )}
+                  </>
                 ) : (
                   currentAd.sitelinks.map((link, i) => (
                     <div key={i} className="group">
@@ -259,13 +285,25 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
             )}
 
             {/* Callouts */}
-            {currentAd.callouts.length > 0 && (
+            {(isEditing || currentAd.callouts.length > 0) && (
               <div className="pt-1 border-t border-border/20">
                 {isEditing ? (
-                  <div className="flex flex-wrap gap-2">
-                    {callouts.map((c, i) => (
-                      <Input key={i} value={c} onChange={e => updateCallout(i, e.target.value)} className="h-7 text-xs w-auto min-w-[100px] max-w-[180px]" />
-                    ))}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {callouts.map((c, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <Input value={c} onChange={e => updateCallout(i, e.target.value)} className="h-7 text-xs w-auto min-w-[100px] max-w-[180px]" />
+                          <button onClick={() => removeCallout(i)} disabled={callouts.length <= 1} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors" title="Удалить уточнение">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {callouts.length < 8 && (
+                      <button onClick={addCallout} className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors">
+                        <Plus className="w-3.5 h-3.5" /> Добавить уточнение
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="group flex items-center gap-1">
