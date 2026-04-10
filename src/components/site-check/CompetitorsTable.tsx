@@ -54,8 +54,7 @@ const EXCLUDE_DOMAINS = ['google.com','google.ru','yandex.ru','bing.com','wikipe
 
 const CompetitorsTable = ({ competitors: rawCompetitors, comparisonTable: ct, directMeta }: CompetitorsTableProps) => {
   const competitors = useMemo(
-    () => rawCompetitors.filter(c => !EXCLUDE_DOMAINS.some(ex => c.domain?.includes(ex))),
-    [rawCompetitors]
+      () => rawCompetitors.filter(c => c.domain && !EXCLUDE_DOMAINS.some(ex => c.domain.includes(ex))),    [rawCompetitors]
   );
 
   if (!competitors?.length) return null;
