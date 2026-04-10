@@ -192,4 +192,85 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     }
     return reply.send(row);
   });
-}
+  
+  // POST /api/v1/site-check/llm-judge
+  app.post<{ Body: { scan_id: string; url: string; theme?: string } }>('/llm-judge', async (req, reply) => {
+    const { scan_id, url, theme } = req.body as { scan_id: string; url: string; theme?: string };
+    if (!url) return reply.status(400).send({ success: false, error: 'url is required' });
+    // If scan has cached llm_judge result, return it
+    if (scan_id) {
+      const rows = await sql<Array<{ result: any }>>`
+        SELECT result FROM site_check_scans WHERE id = ${scan_id}
+      `;
+      const cached = rows[0]?.result as any;
+      if (cached?.llm_judge) {
+        return reply.send(cached.llm_judge);
+      }
+    }
+    // Return a structured stub — real LLM judge runs async via worker
+    const origin = (() => { try { return new URL(url).origin; } catch { return url; } })();
+    const llmsTxtResp = await fetch(`${origin}/llms.txt`).catch(() => null);
+    const llmsTxtFound = llmsTxtResp?.ok ?? false;
+    return reply.send({
+      total_prompts: 0,
+      cited_count: 0,
+      citation_rate: '0%',
+      competitors_found: [],
+      llm_judge_score: 0,
+      llms_txt_found: llmsTxtFound,
+      results: [],
+      _pending: true,
+    });
+  });
+
+  // GET /api/v1/site-check/tech-passport
+  app.get<{ Querystring: { url: string } }>('/tech-passport', async (req, reply) => {
+    const { url } = req.query as { url: string };
+    if (!url) return reply.status(400).send({ success: false, error: 'url is required' });
+    let origin = url;
+    try { origin = new URL(url).origin; } catch { /* keep */ }
+    const [headersData, geoipData] = await Promise.allSettled([
+      fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(8000) }).then(r => ({
+        server: r.headers.get('server'),
+        poweredBy: r.headers.get('x-powered-by'),
+        via: r.headers.get('via'),
+        cacheControl: r.headers.get('cache-control'),
+        contentType: r.headers.get('content-type'),
+        xFrameOptions: r.headers.get('x-frame-options'),
+        contentSecurityPolicy: r.headers.get('content-security-policy'),
+        strictTransportSecurity: r.headers.get('strict-transport-security'),
+        xContentTypeOptions: r.headers.get('x-content-type-options'),
+      })).catch(() => ({})),
+      fetch(`https://ipapi.co/${new URL(origin).hostname}/json/`, { signal: AbortSignal.timeout(5000) })
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    const headers = headersData.status === 'fulfilled' ? headersData.value : {};
+    const geoip = geoipData.status === 'fulfilled' ? geoipData.value : null;
+    const server = (headers as any).server || '';
+    const poweredBy = (headers as any).poweredBy || '';
+    // Detect CMS/tech from headers
+    const tech: Record<string, string> = {};
+    if (/nginx/i.test(server)) tech.server = 'Nginx';
+    else if (/apache/i.test(server)) tech.server = 'Apache';
+    else if (server) tech.server = server;
+    if (/php/i.test(poweredBy)) tech.language = 'PHP';
+    else if (/express/i.test(poweredBy)) tech.language = 'Node.js/Express';
+    if (/wordpress/i.test(poweredBy) || /wp/i.test(server)) tech.cms = 'WordPress';
+    const hasHttps = origin.startsWith('https://');
+    const hasCsp = !!(headers as any).contentSecurityPolicy;
+    const hasHsts = !!(headers as any).strictTransportSecurity;
+    const hasXContentType = !!(headers as any).xContentTypeOptions;
+    const hasXFrame = !!(headers as any).xFrameOptions;
+    return reply.send({
+      tech,
+      security: { https: hasHttps, csp: hasCsp, hsts: hasHsts, x_content_type: hasXContentType, x_frame: hasXFrame },
+      performance: { cache_control: (headers as any).cacheControl || null },
+      geoip: geoip ? {
+        country_code: geoip.country_code || null,
+        country_flag: geoip.country_code ? `\uD83C\uDFF3` : null,
+        city: geoip.city || null,
+        org: geoip.org || null,
+      } : null,
+      raw_headers: headers,
+    });
+  }
