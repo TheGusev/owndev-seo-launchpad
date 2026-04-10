@@ -177,17 +177,7 @@ const SiteCheck = () => {
             </div>
           )}
 
-          <div className="mt-10">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Что проверяем</h2>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {checkItems.map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm">
-                  <item.icon className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-foreground">{item.text}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <CheckList />
         </div>
       </main>
       <Footer />
