@@ -7,21 +7,22 @@ import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
 import type { ScanMode } from "@/lib/site-check-types";
-import { Check, ArrowRight, Globe, Trash2 } from "lucide-react";
+import { ArrowRight, Globe, Trash2, Search, BrainCircuit, Target, Sparkles, Users, Key, Ban, ShieldCheck, FileText, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
+import type { LucideIcon } from "lucide-react";
 
-const checkItems = [
-  "SEO Score (20+ параметров)",
-  "LLM Score (AI-готовность)",
-  "Direct Readiness Score",
-  "AI-генерация объявления Директа",
-  "Топ-10 конкурентов",
-  "200+ ключевых слов",
-  "Минус-слова для Директа",
-  "E-E-A-T и Schema.org",
-  "llms.txt проверка и генерация",
-  "Экспорт PDF / Word / CSV",
+const checkItems: { icon: LucideIcon; text: string }[] = [
+  { icon: Search, text: "SEO Score (20+ параметров)" },
+  { icon: BrainCircuit, text: "LLM Score (AI-готовность)" },
+  { icon: Target, text: "Direct Readiness Score" },
+  { icon: Sparkles, text: "AI-генерация объявления Директа" },
+  { icon: Users, text: "Топ-10 конкурентов" },
+  { icon: Key, text: "200+ ключевых слов" },
+  { icon: Ban, text: "Минус-слова для Директа" },
+  { icon: ShieldCheck, text: "E-E-A-T и Schema.org" },
+  { icon: FileText, text: "llms.txt проверка и генерация" },
+  { icon: Download, text: "Экспорт PDF / Word / CSV" },
 ];
 
 const SiteCheck = () => {
@@ -179,10 +180,10 @@ const SiteCheck = () => {
           <div className="mt-10">
             <h2 className="text-lg font-semibold text-foreground mb-4">Что проверяем</h2>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {checkItems.map((text, i) => (
+              {checkItems.map((item, i) => (
                 <li key={i} className="flex items-center gap-3 text-sm">
-                  <Check className="w-4 h-4 text-green-500 shrink-0" />
-                  <span className="text-foreground">{text}</span>
+                  <item.icon className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-foreground">{item.text}</span>
                 </li>
               ))}
             </ul>
