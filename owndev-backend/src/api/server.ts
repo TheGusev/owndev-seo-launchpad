@@ -35,7 +35,7 @@ export async function startServer() {
   await app.register(auditRoutes);
   await app.register(monitorRoutes);
   await app.register(eventRoutes);
-  await app.register(siteCheckRoutes, { prefix: '/api/site-check' });
+    await app.register(siteCheckRoutes, { prefix: '/api/v1/site-check' });
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
