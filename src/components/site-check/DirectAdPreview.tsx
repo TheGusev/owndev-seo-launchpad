@@ -103,10 +103,26 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
     setSitelinks(next);
   };
 
+  const addSitelink = () => {
+    if (sitelinks.length < 8) setSitelinks([...sitelinks, { title: "", description: "" }]);
+  };
+
+  const removeSitelink = (idx: number) => {
+    if (sitelinks.length > 1) setSitelinks(sitelinks.filter((_, i) => i !== idx));
+  };
+
   const updateCallout = (idx: number, value: string) => {
     const next = [...callouts];
     next[idx] = value;
     setCallouts(next);
+  };
+
+  const addCallout = () => {
+    if (callouts.length < 8) setCallouts([...callouts, ""]);
+  };
+
+  const removeCallout = (idx: number) => {
+    if (callouts.length > 1) setCallouts(callouts.filter((_, i) => i !== idx));
   };
 
   const scoreColor = readinessScore >= 7 ? "text-success" : readinessScore >= 4 ? "text-warning" : "text-destructive";
