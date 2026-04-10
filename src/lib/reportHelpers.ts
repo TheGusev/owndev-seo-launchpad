@@ -36,27 +36,6 @@ export const PRINT_COLORS = {
   success:       '#059669',
   info:          '#2563eb',
 };
-  bg_dark:       '#0a0a0f',
-  bg_card:       '#12121a',
-  bg_card2:      '#1a1a2e',
-  purple:        '#8b5cf6',
-  purple_light:  '#a78bfa',
-  purple_dark:   '#6d28d9',
-  critical:      '#ef4444',
-  high:          '#f97316',
-  medium:        '#eab308',
-  low:           '#6b7280',
-  success:       '#10b981',
-  info:          '#3b82f6',
-  text_white:    '#ffffff',
-  text_gray:     '#9ca3af',
-  text_dark:     '#4b5563',
-  cat_technical: '#3b82f6',
-  cat_content:   '#8b5cf6',
-  cat_schema:    '#6366f1',
-  cat_ai:        '#10b981',
-  cat_direct:    '#ec4899',
-};
 
 export const getSeverityColor = (severity: string): string => {
   const map: Record<string, string> = {
