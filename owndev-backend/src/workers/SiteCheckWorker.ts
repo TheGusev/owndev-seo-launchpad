@@ -1,8 +1,7 @@
 import { Worker, type Job } from 'bullmq';
 import { redis } from '../cache/redis.js';
 import { sql } from '../db/client.js';
-import { CrawlerService } from '../services/CrawlerService.js';
-import { AuditService } from '../services/AuditService.js';
+import { runPipeline } from '../services/SiteCheckPipeline.js';
 import { logger } from '../utils/logger.js';
 
 interface SiteCheckJobData {
@@ -11,52 +10,66 @@ interface SiteCheckJobData {
   mode: string;
 }
 
-const crawler = new CrawlerService();
-const auditor = new AuditService();
+const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY || '';
 
-async function updateProgress(scan_id: string, pct: number): Promise<void> {
-  await sql`
-    UPDATE site_check_scans
-    SET progress_pct = ${pct}, updated_at = NOW()
-    WHERE id = ${scan_id}
-  `;
+async function loadDbRules(): Promise<any[]> {
+  try {
+    const rows = await sql`SELECT * FROM scan_rules WHERE active = true`;
+    return rows as any[];
+  } catch {
+    // Table may not exist in local DB — return empty
+    return [];
+  }
 }
 
 async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
-  const { scan_id, url } = job.data;
+  const { scan_id, url, mode } = job.data;
   logger.info('SITE_CHECK_WORKER', `Processing scan ${scan_id} for ${url}`);
 
   try {
-    await updateProgress(scan_id, 5);
+    const dbRules = await loadDbRules();
 
-    const crawlData = await crawler.crawl(url);
-    await updateProgress(scan_id, 50);
+    const result = await runPipeline(
+      url,
+      mode,
+      async (pct, partialData) => {
+        const updates: Record<string, any> = { progress_pct: pct, updated_at: new Date() };
+        if (partialData) {
+          if (partialData.theme) updates.theme = partialData.theme;
+          if (partialData.is_spa !== undefined) updates.is_spa = partialData.is_spa;
+          if (partialData.scores) updates.scores = JSON.stringify(partialData.scores);
+          if (partialData.issues) updates.issues = JSON.stringify(partialData.issues);
+          if (partialData.seo_data) updates.seo_data = JSON.stringify(partialData.seo_data);
+          if (partialData.keywords) updates.keywords = JSON.stringify(partialData.keywords);
+        }
+        await sql`
+          UPDATE site_check_scans
+          SET ${sql(updates)}
+          WHERE id = ${scan_id}
+        `;
+      },
+      LOVABLE_API_KEY,
+      dbRules,
+    );
 
-    if (crawlData.error) {
-      throw new Error(`Crawl failed: ${crawlData.error}`);
-    }
-
-    const result = auditor.analyze(crawlData);
-    await updateProgress(scan_id, 90);
-
-    const scores = {
-      seo: result.score,
-      confidence: result.confidence,
-      issues_count: result.issues.length,
-      blocks: result.blocks.map((b) => ({ name: b.name, score: b.score, weight: b.weight })),
-    };
-
+    // Save final result
     await sql`
       UPDATE site_check_scans
       SET status = 'done',
           progress_pct = 100,
-          scores = ${JSON.stringify(scores) as unknown as any}::jsonb,
-          result = ${JSON.stringify(result) as unknown as any}::jsonb,
+          theme = ${result.theme},
+          is_spa = ${result.is_spa},
+          scores = ${JSON.stringify(result.scores)}::jsonb,
+          issues = ${JSON.stringify(result.issues)}::jsonb,
+          competitors = ${JSON.stringify(result.competitors)}::jsonb,
+          keywords = ${JSON.stringify(result.keywords)}::jsonb,
+          minus_words = ${JSON.stringify(result.minus_words)}::jsonb,
+          seo_data = ${JSON.stringify(result.seo_data)}::jsonb,
           updated_at = NOW()
       WHERE id = ${scan_id}
     `;
 
-    logger.info('SITE_CHECK_WORKER', `Scan ${scan_id} done, score=${result.score}`);
+    logger.info('SITE_CHECK_WORKER', `Scan ${scan_id} done, score=${result.scores.total}`);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('SITE_CHECK_WORKER', `Scan ${scan_id} failed: ${message}`);
@@ -66,7 +79,7 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           error_message = ${message},
           updated_at = NOW()
       WHERE id = ${scan_id}
-    `.catch(() => { /* best effort */ });
+    `.catch(() => {});
   }
 }
 
@@ -76,7 +89,7 @@ export function startSiteCheckWorker() {
     processSiteCheckJob,
     {
       connection: redis,
-      concurrency: Number(process.env.MAX_CONCURRENT_SITE_CHECKS ?? 5),
+      concurrency: Number(process.env.MAX_CONCURRENT_SITE_CHECKS ?? 3),
     },
   );
 
