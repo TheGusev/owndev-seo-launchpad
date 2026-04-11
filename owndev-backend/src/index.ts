@@ -9,9 +9,6 @@ import { MonitorService } from './services/MonitorService.js';
 import { logger } from './utils/logger.js';
 
 async function main() {
-  // Connect Redis
-  await redis.connect();
-  logger.info('BOOT', 'Redis connected');
 
   // Test Postgres
   const pgOk = await testConnection();

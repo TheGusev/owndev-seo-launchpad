@@ -1,113 +1,68 @@
-import { useState } from "react";
-import { Wand2, Copy, Check, Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { generateAutofix } from "@/lib/api";
-import { autoFixTemplates, matchIssueToTemplate } from "@/utils/autoFixTemplates";
-import { useToast } from "@/hooks/use-toast";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface AutoFixGeneratorProps {
-  issueTitle: string;
-  url: string;
-  pageTitle?: string;
-  pageDescription?: string;
+  templateKey: string;
+  generated: Record<string, string>;
 }
 
-const AutoFixGenerator = ({ issueTitle, url, pageTitle, pageDescription }: AutoFixGeneratorProps) => {
-  const [fixCode, setFixCode] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const { toast } = useToast();
+export default function AutoFixGenerator({ templateKey, generated }: AutoFixGeneratorProps) {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
 
-  const templateKey = matchIssueToTemplate(issueTitle);
+  const snippets = useMemo(
+    () =>
+      Object.entries(generated).filter(
+        ([, value]) => typeof value === "string" && value.trim().length > 0
+      ),
+    [generated]
+  );
 
-  // Don't render if no template matches
-  if (!templateKey) return null;
+  if (!snippets.length) return null;
 
-  const handleGenerate = async () => {
-    if (fixCode) {
-      setExpanded(!expanded);
-      return;
-    }
+  const safeKey = typeof templateKey === "string" ? templateKey : "";
 
-    setLoading(true);
-    setExpanded(true);
-
-    // Try AI generation first
-    try {
-      const data = await generateAutofix(templateKey, url, pageTitle, pageDescription);
-
-      if (data?.code) {
-        setFixCode(data.code);
-        setLoading(false);
-        return;
-      }
-    } catch {
-      // Fall through to template
-    }
-
-    // Fallback: use static template
-    const template = autoFixTemplates[templateKey];
-    if (template) {
-      setFixCode(
-        template({
-          url,
-          title: pageTitle || "",
-          description: pageDescription || "",
-          suggestedDescription: pageDescription || "",
-          suggestedTitle: pageTitle || "",
-          suggestedH1: pageTitle || "",
-          siteName: "",
-        })
-      );
-    }
-    setLoading(false);
-  };
-
-  const handleCopy = async () => {
-    if (!fixCode) return;
-    await navigator.clipboard.writeText(fixCode);
-    setCopied(true);
-    toast({ title: "Код скопирован!" });
-    setTimeout(() => setCopied(false), 2000);
+  const getFormatLabel = () => {
+    if (safeKey.includes("llms")) return "TXT";
+    if (safeKey.includes("robots") || safeKey.includes("sitemap")) return "XML";
+    return "HTML";
   };
 
   return (
-    <div className="mt-2">
-      <button
-        onClick={handleGenerate}
-        disabled={loading}
-        className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 active:text-primary/80 transition-colors min-h-[36px]"
-      >
-        {loading ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <Wand2 className="w-3.5 h-3.5" />
-        )}
-        {fixCode ? (expanded ? "Скрыть код" : "Показать код") : "Получить код исправления"}
-        {fixCode && (expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-      </button>
-
-      {expanded && fixCode && (
-        <div className="mt-2 rounded-lg border border-primary/20 bg-muted/30 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/20 bg-muted/20">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-              {templateKey.includes("llms") ? "TXT" : templateKey.includes("robots") || templateKey.includes("sitemap") ? "XML" : "HTML"}
-            </span>
-            <button
-              onClick={handleCopy}
-              className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-              {copied ? "Скопировано" : "Копировать"}
-            </button>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Автофикс: {getFormatLabel()}-шаблоны
+        </h3>
+      </div>
+      <div className="space-y-2">
+        {snippets.map(([key, value]) => (
+          <div
+            key={key}
+            className="rounded-md border border-border/60 bg-card/60 px-3 py-2 text-xs font-mono leading-relaxed"
+          >
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
+                {key}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => setActiveKey(activeKey === key ? null : key)}
+                >
+                  {activeKey === key ? "Скрыть" : "Показать"}
+                </Button>
+              </div>
+            </div>
+            {activeKey === key && (
+              <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap text-[11px]">
+                {value}
+              </pre>
+            )}
           </div>
-          <pre className="p-3 text-[11px] overflow-x-auto whitespace-pre-wrap break-all max-h-64 text-foreground/80 font-mono">
-            {fixCode}
-          </pre>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
-};
-
-export default AutoFixGenerator;
+}

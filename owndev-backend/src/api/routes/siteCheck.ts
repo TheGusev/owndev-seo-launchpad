@@ -117,7 +117,29 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       FROM site_check_scans WHERE id = ${scanId}
     `;
     if (!rows.length) return reply.status(404).send({ success: false, error: 'Scan not found' });
-    const row = rows[0];
+    const row = rows[0] as any;
+
+    let scores = row.scores ?? null;
+    let result = row.result ?? null;
+
+    try {
+      scores = typeof scores === 'string' ? JSON.parse(scores) : scores;
+    } catch {
+      scores = row.scores ?? null;
+    }
+
+    try {
+      result = typeof result === 'string' ? JSON.parse(result) : result;
+    } catch {
+      result = row.result ?? null;
+    }
+
+    const issues = result?.issues ?? [];
+    const blocks = result?.blocks ?? [];
+    const summary = result?.summary ?? null;
+
+    const totalScore = scores?.total ?? result?.score ?? scores?.seo ?? null;
+
     return reply.send({
       id: row.id,
       scan_id: row.id,
@@ -125,8 +147,30 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       mode: row.mode,
       status: row.status,
       progress_pct: row.progress_pct,
-      scores: row.scores ?? null,
-      result: row.result ?? null,
+
+      scores: {
+        total: totalScore,
+        seo: scores?.seo ?? null,
+        direct: scores?.direct ?? null,
+        schema: scores?.schema ?? null,
+        ai: scores?.ai ?? null,
+        confidence: scores?.confidence ?? null,
+        issues_count: scores?.issues_count ?? issues.length ?? null,
+        blocks: scores?.blocks ?? [],
+      },
+
+      score: totalScore,
+      summary,
+      issues,
+      blocks,
+      theme: result?.theme ?? row.theme ?? null,
+      competitors: result?.competitors ?? row.competitors ?? [],
+      keywords: result?.keywords ?? row.keywords ?? [],
+      minus_words: result?.minus_words ?? row.minus_words ?? [],
+      seo_data: result?.seo_data ?? row.seo_data ?? null,
+
+      result,
+      raw_scores: scores,
       error_message: row.error_message ?? null,
     });
   });
