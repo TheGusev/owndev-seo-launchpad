@@ -184,7 +184,7 @@ const GeoRating = () => {
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
               <span className="text-xs text-muted-foreground self-center mr-2">Категория:</span>
-              {CATEGORIES.map((c) => (
+              {CATEGORIES.map((c: string) => (
                 <button key={c} onClick={() => setCat(c)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${cat === c ? "bg-primary/20 text-primary border-primary/30" : "bg-card/40 text-muted-foreground border-border/30 hover:bg-card/60"}`}>{c}</button>
               ))}
             </div>
