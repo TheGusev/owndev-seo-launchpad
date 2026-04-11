@@ -27,6 +27,9 @@ interface Props {
 
 const GeoRatingNomination = ({ totalScore, url, scanId }: Props) => {
   const { toast } = useToast();
+    
+  // HOTFIX: Guard against undefined/invalid URL to prevent crash
+  if (!url || typeof url !== 'string') return null;
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
