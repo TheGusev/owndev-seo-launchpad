@@ -8,7 +8,7 @@ import { logger } from '../../utils/logger.js';
 const CONCURRENCY_LIMIT = Number(process.env.SITE_CHECK_CONCURRENCY ?? 10);
 
 export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
-  // Ensure table exists
+  // Ensure table exists with all needed columns
   await sql`
     CREATE TABLE IF NOT EXISTS site_check_scans (
       id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -16,7 +16,14 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       mode        TEXT        NOT NULL DEFAULT 'site',
       status      TEXT        NOT NULL DEFAULT 'running',
       progress_pct INT        NOT NULL DEFAULT 0,
+      theme       TEXT,
+      is_spa      BOOLEAN     DEFAULT false,
       scores      JSONB,
+      issues      JSONB       DEFAULT '[]'::jsonb,
+      competitors JSONB       DEFAULT '[]'::jsonb,
+      keywords    JSONB       DEFAULT '[]'::jsonb,
+      minus_words JSONB       DEFAULT '[]'::jsonb,
+      seo_data    JSONB,
       result      JSONB,
       error_message TEXT,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -24,43 +31,63 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     )
   `;
 
+  // Add columns if they don't exist (for existing tables)
+  for (const col of [
+    'theme TEXT',
+    'is_spa BOOLEAN DEFAULT false',
+    'competitors JSONB DEFAULT \'[]\'::jsonb',
+    'keywords JSONB DEFAULT \'[]\'::jsonb',
+    'minus_words JSONB DEFAULT \'[]\'::jsonb',
+    'seo_data JSONB',
+    'issues JSONB DEFAULT \'[]\'::jsonb',
+  ]) {
+    const colName = col.split(' ')[0];
+    try {
+      await sql`SELECT ${sql(colName)} FROM site_check_scans LIMIT 0`;
+    } catch {
+      try {
+        await sql.unsafe(`ALTER TABLE site_check_scans ADD COLUMN IF NOT EXISTS ${col}`);
+      } catch {}
+    }
+  }
+
   const queue = new Queue('site-check', { connection: redis });
 
-  // POST /api/site-check/start
+  // POST /api/v1/site-check/start
   app.post<{ Body: { url: string; mode?: string } }>('/start', async (req, reply) => {
-    const { url, mode = 'site' } = req.body as { url: string; mode?: string };
+    const { url, mode = 'page' } = req.body as { url: string; mode?: string };
     if (!url) return reply.status(400).send({ success: false, error: 'url is required' });
 
     const [{ count }] = await sql<[{ count: number }]>`
       SELECT COUNT(*)::int AS count FROM site_check_scans WHERE status = 'running'
     `;
     if ((count || 0) >= CONCURRENCY_LIMIT) {
-      return reply.status(429).send({
-        success: false,
-        error: '\u0421\u0435\u0440\u0432\u0435\u0440 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0447\u0435\u0440\u0435\u0437 \u043f\u0430\u0440\u0443 \u043c\u0438\u043d\u0443\u0442.',
-        code: 'CONCURRENCY_LIMIT',
-      });
+      return reply
+        .status(429)
+        .send({
+          success: false,
+          error: 'Сервер загружен. Попробуйте через пару минут.',
+          code: 'CONCURRENCY_LIMIT',
+        });
     }
 
-    // Check if this domain was scanned today (return cached scan_id)
+    // Check cache
     let hostname = url;
-    try { hostname = new URL(url).hostname; } catch { /* keep raw */ }
+    try {
+      hostname = new URL(url).hostname;
+    } catch {}
     const today = new Date().toISOString().slice(0, 10);
     const cached = await sql<[{ id: string }?]>`
       SELECT id FROM site_check_scans
       WHERE url LIKE ${'%' + hostname + '%'}
         AND status = 'done'
         AND created_at::date = ${today}::date
-      ORDER BY created_at DESC
-      LIMIT 1
+      ORDER BY created_at DESC LIMIT 1
     `;
     if (cached[0]) {
-      const err: any = new Error('Domain scanned today');
-      err.code = 'CONCURRENCY_LIMIT';
-      err.last_scan_id = cached[0].id;
       return reply.status(429).send({
         success: false,
-        error: '\u042d\u0442\u043e\u0442 \u0434\u043e\u043c\u0435\u043d \u0443\u0436\u0435 \u043f\u0440\u043e\u0432\u0435\u0440\u044f\u043b\u0441\u044f \u0441\u0435\u0433\u043e\u0434\u043d\u044f.',
+        error: 'Этот домен уже проверялся сегодня.',
         code: 'CONCURRENCY_LIMIT',
         last_scan_id: cached[0].id,
       });
@@ -74,23 +101,22 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 
     await queue.add('scan', { scan_id, url, mode });
     logger.info('SITE_CHECK', `Scan ${scan_id} queued for ${url}`);
-
     return reply.status(200).send({ scan_id, status: 'running' });
   });
 
-  // GET /api/site-check/status/:scanId
+  // GET /api/v1/site-check/status/:scanId
   app.get<{ Params: { scanId: string } }>('/status/:scanId', async (req, reply) => {
     const { scanId } = req.params;
-    const rows = await sql<Array<{
-      status: string;
-      progress_pct: number;
-      scores: unknown;
-      error_message: string | null;
-    }>>`
+    const rows = await sql<
+      Array<{ status: string; progress_pct: number; scores: unknown; error_message: string | null }>
+    >`
       SELECT status, progress_pct, scores, error_message
-      FROM site_check_scans WHERE id = ${scanId}
+      FROM site_check_scans
+      WHERE id = ${scanId}
     `;
-    if (!rows.length) return reply.status(404).send({ success: false, error: 'Scan not found' });
+    if (!rows.length) {
+      return reply.status(404).send({ success: false, error: 'Scan not found' });
+    }
     const row = rows[0];
     return reply.send({
       status: row.status,
@@ -100,23 +126,19 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // GET /api/site-check/result/:scanId
+  // GET /api/v1/site-check/result/:scanId — FLATTENED response for frontend
   app.get<{ Params: { scanId: string } }>('/result/:scanId', async (req, reply) => {
     const { scanId } = req.params;
-    const rows = await sql<Array<{
-      id: string;
-      url: string;
-      mode: string;
-      status: string;
-      progress_pct: number;
-      scores: unknown;
-      result: unknown;
-      error_message: string | null;
-    }>>`
-      SELECT id, url, mode, status, progress_pct, scores, result, error_message
-      FROM site_check_scans WHERE id = ${scanId}
+    const rows = await sql<Array<any>>`
+      SELECT id, url, mode, status, progress_pct, theme, is_spa,
+             scores, issues, competitors, keywords, minus_words,
+             seo_data, result, error_message, created_at
+      FROM site_check_scans
+      WHERE id = ${scanId}
     `;
-    if (!rows.length) return reply.status(404).send({ success: false, error: 'Scan not found' });
+    if (!rows.length) {
+      return reply.status(404).send({ success: false, error: 'Scan not found' });
+    }
     const row = rows[0] as any;
 
     let scores = row.scores ?? null;
@@ -171,37 +193,48 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 
       result,
       raw_scores: scores,
+
       error_message: row.error_message ?? null,
+      created_at: row.created_at,
     });
   });
 
-  // GET /api/site-check/preview/:scanId (alias for status)
+  // GET /api/v1/site-check/preview/:scanId
   app.get<{ Params: { scanId: string } }>('/preview/:scanId', async (req, reply) => {
     const { scanId } = req.params;
     const rows = await sql<Array<{ status: string; progress_pct: number; scores: unknown }>>`
-      SELECT status, progress_pct, scores FROM site_check_scans WHERE id = ${scanId}
+      SELECT status, progress_pct, scores
+      FROM site_check_scans
+      WHERE id = ${scanId}
     `;
-    if (!rows.length) return reply.status(404).send({ success: false, error: 'Scan not found' });
+    if (!rows.length) {
+      return reply.status(404).send({ success: false, error: 'Scan not found' });
+    }
     const row = rows[0];
-    return reply.send({ status: row.status, progress_pct: row.progress_pct, scores: row.scores ?? null });
+    return reply.send({
+      status: row.status,
+      progress_pct: row.progress_pct,
+      scores: row.scores ?? null,
+    });
   });
-  
-  // POST /api/site-check/report/create
+
+  // POST /api/v1/site-check/report/create
   app.post<{ Body: { scan_id: string; email: string } }>('/report/create', async (req, reply) => {
     const { scan_id, email } = req.body as { scan_id: string; email: string };
     if (!scan_id || !email) {
-      return reply.status(400).send({ success: false, error: 'scan_id and email are required' });
+      return reply
+        .status(400)
+        .send({ success: false, error: 'scan_id and email are required' });
     }
-    // Ensure reports table exists
     await sql`
       CREATE TABLE IF NOT EXISTS site_check_reports (
-        id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-        scan_id     UUID        NOT NULL,
-        email       TEXT        NOT NULL,
-        status      TEXT        NOT NULL DEFAULT 'pending',
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        scan_id UUID NOT NULL,
+        email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
         download_token TEXT,
         payment_url TEXT,
-        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
     const report_id = randomUUID();
@@ -210,120 +243,147 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       INSERT INTO site_check_reports (id, scan_id, email, status, download_token)
       VALUES (${report_id}, ${scan_id}, ${email}, 'pending', ${download_token})
     `;
-    logger.info('SITE_CHECK', `Report ${report_id} created for scan ${scan_id}`);
-    return reply.status(200).send({ report_id, download_token, payment_url: null });
+    return reply
+      .status(200)
+      .send({ report_id, download_token, payment_url: null });
   });
 
-  // GET /api/site-check/report/:reportId
-  app.get<{ Params: { reportId: string }; Querystring: { token?: string } }>('/report/:reportId', async (req, reply) => {
-    const { reportId } = req.params;
-    const { token } = req.query as { token?: string };
-    const rows = await sql<Array<{
-      id: string;
-      scan_id: string;
-      email: string;
-      status: string;
-      download_token: string | null;
-      payment_url: string | null;
-    }>>`
-      SELECT id, scan_id, email, status, download_token, payment_url
-      FROM site_check_reports WHERE id = ${reportId}
-    `;
-    if (!rows.length) return reply.status(404).send({ success: false, error: 'Report not found' });
-    const row = rows[0];
-    if (token && row.download_token !== token) {
-      return reply.status(403).send({ success: false, error: 'Invalid token' });
-    }
-    return reply.send(row);
-  });
-  
-  // POST /api/v1/site-check/llm-judge
-  app.post<{ Body: { scan_id: string; url: string; theme?: string } }>('/llm-judge', async (req, reply) => {
-    const { scan_id, url, theme } = req.body as { scan_id: string; url: string; theme?: string };
-    if (!url) return reply.status(400).send({ success: false, error: 'url is required' });
-    // If scan has cached llm_judge result, return it
-    if (scan_id) {
-      const rows = await sql<Array<{ result: any }>>`
-        SELECT result FROM site_check_scans WHERE id = ${scan_id}
+  // GET /api/v1/site-check/report/:reportId
+  app.get<{ Params: { reportId: string }; Querystring: { token?: string } }>(
+    '/report/:reportId',
+    async (req, reply) => {
+      const { reportId } = req.params;
+      const { token } = req.query as { token?: string };
+      const rows = await sql<Array<any>>`
+        SELECT id, scan_id, email, status, download_token, payment_url
+        FROM site_check_reports
+        WHERE id = ${reportId}
       `;
-      const cached = rows[0]?.result as any;
-      if (cached?.llm_judge) {
-        return reply.send(cached.llm_judge);
+      if (!rows.length) {
+        return reply
+          .status(404)
+          .send({ success: false, error: 'Report not found' });
       }
-    }
-    // Return a structured stub — real LLM judge runs async via worker
-    const origin = (() => { try { return new URL(url).origin; } catch { return url; } })();
-    const llmsTxtResp = await fetch(`${origin}/llms.txt`).catch(() => null);
-    const llmsTxtFound = llmsTxtResp?.ok ?? false;
-    return reply.send({
-      total_prompts: 0,
-      cited_count: 0,
-      citation_rate: '0%',
-      competitors_found: [],
-      llm_judge_score: 0,
-      llms_txt_found: llmsTxtFound,
-      results: [],
-      _pending: true,
-    });
-  });
+      const row = rows[0];
+      if (token && row.download_token !== token) {
+        return reply
+          .status(403)
+          .send({ success: false, error: 'Invalid token' });
+      }
+      return reply.send(row);
+    },
+  );
+
+  // POST /api/v1/site-check/llm-judge
+  app.post<{ Body: { scan_id: string; url: string; theme?: string } }>(
+    '/llm-judge',
+    async (req, reply) => {
+      const { scan_id, url, theme } = req.body as {
+        scan_id: string;
+        url: string;
+        theme?: string;
+      };
+      if (!url) {
+        return reply.status(400).send({ success: false, error: 'url is required' });
+      }
+      const origin = (() => {
+        try {
+          return new URL(url).origin;
+        } catch {
+          return url;
+        }
+      })();
+      const llmsTxtResp = await fetch(`${origin}/llms.txt`).catch(() => null);
+      const llmsTxtFound = llmsTxtResp?.ok ?? false;
+      return reply.send({
+        total_prompts: 0,
+        cited_count: 0,
+        citation_rate: '0%',
+        competitors_found: [],
+        llm_judge_score: 0,
+        llms_txt_found: llmsTxtFound,
+        results: [],
+        _pending: true,
+      });
+    },
+  );
 
   // GET /api/v1/site-check/tech-passport
-  app.get<{ Querystring: { url: string } }>('/tech-passport', async (req, reply) => {
-    const { url } = req.query as { url: string };
-    if (!url) return reply.status(400).send({ success: false, error: 'url is required' });
-    let origin = url;
-    try { origin = new URL(url).origin; } catch { /* keep */ }
-    const [headersData, geoipData] = await Promise.allSettled([
-      fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(8000) }).then(r => ({
-        server: r.headers.get('server'),
-        poweredBy: r.headers.get('x-powered-by'),
-        via: r.headers.get('via'),
-        cacheControl: r.headers.get('cache-control'),
-        contentType: r.headers.get('content-type'),
-        xFrameOptions: r.headers.get('x-frame-options'),
-        contentSecurityPolicy: r.headers.get('content-security-policy'),
-        strictTransportSecurity: r.headers.get('strict-transport-security'),
-        xContentTypeOptions: r.headers.get('x-content-type-options'),
-      })).catch(() => ({})),
-      fetch(`https://ipapi.co/${new URL(origin).hostname}/json/`, { signal: AbortSignal.timeout(5000) })
-        .then(r => r.ok ? r.json() : null).catch(() => null),
-    ]);
-    const headers = headersData.status === 'fulfilled' ? headersData.value : {};
-    const geoip = geoipData.status === 'fulfilled' ? geoipData.value : null;
-    const server = (headers as any).server || '';
-    const poweredBy = (headers as any).poweredBy || '';
-    // Detect CMS/tech from headers
-    const tech: Record<string, string> = {};
-    if (/nginx/i.test(server)) tech.server = 'Nginx';
-    else if (/apache/i.test(server)) tech.server = 'Apache';
-    else if (server) tech.server = server;
-    if (/php/i.test(poweredBy)) tech.language = 'PHP';
-    else if (/express/i.test(poweredBy)) tech.language = 'Node.js/Express';
-    if (/wordpress/i.test(poweredBy) || /wp/i.test(server)) tech.cms = 'WordPress';
-    const hasHttps = origin.startsWith('https://');
-    const hasCsp = !!(headers as any).contentSecurityPolicy;
-    const hasHsts = !!(headers as any).strictTransportSecurity;
-    const hasXContentType = !!(headers as any).xContentTypeOptions;
-    const hasXFrame = !!(headers as any).xFrameOptions;
-    return reply.send({
-      tech,
-      security: { https: hasHttps, csp: hasCsp, hsts: hasHsts, x_content_type: hasXContentType, x_frame: hasXFrame },
-      performance: { cache_control: (headers as any).cacheControl || null },
-      geoip: geoip ? {
-        country_code: geoip.country_code || null,
-        country_flag: geoip.country_code ? `\uD83C\uDFF3` : null,
-        city: geoip.city || null,
-        org: geoip.org || null,
-      } : null,
-      raw_headers: headers,
-  });
-  });
-    
+  app.get<{ Querystring: { url: string } }>(
+    '/tech-passport',
+    async (req, reply) => {
+      const { url } = req.query as { url: string };
+      if (!url) {
+        return reply.status(400).send({ success: false, error: 'url is required' });
+      }
+      let origin = url;
+      try {
+        origin = new URL(url).origin;
+      } catch {}
+      const [headersData, geoipData] = await Promise.allSettled([
+        fetch(url, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(8000),
+        })
+          .then((r) => ({
+            server: r.headers.get('server'),
+            poweredBy: r.headers.get('x-powered-by'),
+            cacheControl: r.headers.get('cache-control'),
+            contentType: r.headers.get('content-type'),
+            contentSecurityPolicy: r.headers.get('content-security-policy'),
+            strictTransportSecurity: r.headers.get('strict-transport-security'),
+            xContentTypeOptions: r.headers.get('x-content-type-options'),
+            xFrameOptions: r.headers.get('x-frame-options'),
+          }))
+          .catch(() => ({})),
+        fetch(`https://ipapi.co/${new URL(origin).hostname}/json/`, {
+          signal: AbortSignal.timeout(5000),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+      ]);
+      const headers = headersData.status === 'fulfilled' ? headersData.value : {};
+      const geoip = geoipData.status === 'fulfilled' ? geoipData.value : null;
+      const server = (headers as any).server || '';
+      const poweredBy = (headers as any).poweredBy || '';
+      const tech: Record<string, string> = {};
+      if (/nginx/i.test(server)) tech.server = 'Nginx';
+      else if (/apache/i.test(server)) tech.server = 'Apache';
+      else if (server) tech.server = server;
+      if (/php/i.test(poweredBy)) tech.language = 'PHP';
+      else if (/express/i.test(poweredBy))
+        tech.language = 'Node.js/Express';
+      if (/wordpress/i.test(poweredBy)) tech.cms = 'WordPress';
+      return reply.send({
+        tech,
+        security: {
+          https: origin.startsWith('https://'),
+          csp: !!(headers as any).contentSecurityPolicy,
+          hsts: !!(headers as any).strictTransportSecurity,
+        },
+        performance: {
+          cache_control: (headers as any).cacheControl || null,
+        },
+        geoip: geoip
+          ? {
+              country_code: geoip.country_code,
+              city: geoip.city,
+              org: geoip.org,
+            }
+          : null,
+        raw_headers: headers,
+      });
+    },
+  );
+
   // POST /api/v1/site-check/nomination
-  app.post<{ Body: { domain: string; display_name: string; category: string; email?: string; scan_id?: string; total_score: number } }>('/nomination', async (req, reply) => {
-    const { domain, display_name, category, email, scan_id, total_score } = req.body as any;
+  app.post<{ Body: any }>('/nomination', async (req, reply) => {
+    const { domain, display_name, category, email, scan_id, total_score } =
+      req.body as any;
     if (!domain || !display_name) {
-      return reply.status(400).send({ success: false, error: 'domain and display_name are required' });
+      return reply
+        .status(400)
+        .send({ success: false, error: 'domain and display_name are required' });
     }
     await sql`
       CREATE TABLE IF NOT EXISTS geo_rating_nominations (
@@ -340,9 +400,44 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     `;
     await sql`
       INSERT INTO geo_rating_nominations (domain, display_name, category, email, scan_id, total_score)
-      VALUES (${domain}, ${display_name}, ${category || 'Другое'}, ${email || null}, ${scan_id || null}, ${total_score || 0})
+      VALUES (${domain}, ${display_name}, ${category || 'Другое'}, ${email || null}, ${
+        scan_id || null
+      }, ${total_score || 0})
     `;
-    logger.info('SITE_CHECK', `Nomination created for ${domain}`);
     return reply.status(200).send({ success: true });
   });
+
+  // GET /api/v1/site-check/geo-rating — GEO Rating data from local DB or Supabase proxy
+  app.get('/geo-rating', async (_req, reply) => {
+    try {
+      // Try local table first
+      const rows = await sql`SELECT * FROM geo_rating ORDER BY llm_score DESC`;
+      return reply.send(rows);
+    } catch {
+      // Table doesn't exist locally — proxy to Supabase
+      try {
+        const supabaseUrl =
+          process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+        const supabaseKey =
+          process.env.SUPABASE_SERVICE_ROLE_KEY ||
+          process.env.SUPABASE_ANON_KEY;
+        if (supabaseUrl && supabaseKey) {
+          const resp = await fetch(
+            `${supabaseUrl}/rest/v1/geo_rating?select=*&order=llm_score.desc`,
+            {
+              headers: {
+                apikey: supabaseKey,
+                Authorization: `Bearer ${supabaseKey}`,
+              },
+            },
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            return reply.send(data);
+          }
+        }
+      } catch {}
+      return reply.send([]);
     }
+  });
+}
