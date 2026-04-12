@@ -10,7 +10,7 @@ interface SiteCheckJobData {
   mode: string;
 }
 
-const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY || '';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
 async function loadDbRules(): Promise<any[]> {
   try {
@@ -48,7 +48,7 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           WHERE id = ${scan_id}
         `;
       },
-      LOVABLE_API_KEY,
+      OPENAI_API_KEY,
       dbRules,
     );
 

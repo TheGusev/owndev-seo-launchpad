@@ -537,7 +537,7 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: `Не удалось загрузить страницу: ${error.message}` }),
+      JSON.stringify({ error: `Не удалось загрузить страницу: ${(error as Error).message}` }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
