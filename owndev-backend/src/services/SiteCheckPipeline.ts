@@ -348,7 +348,7 @@ async function detectTheme(html: string, url: string, apiKey: string): Promise<s
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
   if (!apiKey) return 'Общая тематика';
-  const result = await llmCall(apiKey, 'google/gemini-2.5-flash-lite', 
+  const result = await llmCall(apiKey, 'gpt-4o-mini', 
     'Определи тематику/нишу сайта одной короткой фразой на русском (2-5 слов). Примеры: "SEO-продвижение", "Интернет-магазин одежды". Отвечай ТОЛЬКО тематику.',
     `URL: ${url}\nTitle: ${title}\nТекст: ${bodyText.slice(0, 1000)}`, 30);
   return result || 'Общая тематика';
@@ -577,7 +577,7 @@ async function generateDirectAd(html: string, theme: string, url: string, apiKey
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1500) : '';
 
-  const parsed = await llmToolCall(apiKey, 'google/gemini-2.5-flash', 
+  const parsed = await llmToolCall(apiKey, 'gpt-4o-mini', 
     `Ты — эксперт по Яндекс.Директу. Сгенерируй полное объявление.\nОГРАНИЧЕНИЯ: headline1 до 35 символов, headline2 до 30, ad_text до 81, sitelinks: 4 (title до 30, description до 60), callouts: 4 (до 25). Пиши на русском.`,
     `URL: ${url}\nТематика: ${theme}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 800)}`,
     { type: 'function', function: { name: 'create_direct_ad', description: 'Создаёт объявление', parameters: { type: 'object', properties: { headline1: { type: 'string' }, headline2: { type: 'string' }, ad_text: { type: 'string' }, sitelinks: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' } }, required: ['title', 'description'] } }, callouts: { type: 'array', items: { type: 'string' } } }, required: ['headline1', 'headline2', 'ad_text', 'sitelinks', 'callouts'] } } }
@@ -771,7 +771,7 @@ async function competitorAnalysis(url: string, theme: string, html: string, mode
     for (const query of searchQueries.slice(0, 2)) {
       if (competitorUrls.size >= 10) break;
       try {
-        const content = await llmCall(apiKey, 'google/gemini-2.5-flash',
+        const content = await llmCall(apiKey, 'gpt-4o-mini',
           'Ты — поисковый аналитик. Верни JSON-массив из 5-7 URL-адресов сайтов-конкурентов для данного запроса. Только домашние страницы реальных компаний. Исключи маркетплейсы, соцсети, Wikipedia. Формат: ["https://example.com",...]',
           `Запрос: "${query}"\nСайт пользователя: ${url}\nНЕ включай ${ownHostname}`, 1000);
         const urls: string[] = safeParseJson<string[]>(content, []);
@@ -880,7 +880,7 @@ async function extractKeywords(html: string, theme: string, url: string, competi
     const userPrompt = batch === 0
       ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
       : `Ещё 100 НОВЫХ запросов для "${theme}". Не дублируй: ${allKeywords.slice(0, 20).map(k => k.phrase).join(', ')}`;
-    const content = await llmCall(apiKey, 'google/gemini-2.5-flash',
+    const content = await llmCall(apiKey, 'gpt-4o-mini',
       `Ты — SEO-специалист для Рунета. Сгенерируй 150 ключевых запросов.\nТребования: реальные запросы Яндекса, 7 кластеров max, intent: commercial/informational/navigational/transactional, frequency: 50-50000.\nФормат: JSON-массив [{"phrase":"...","cluster":"...","intent":"commercial","frequency":2400,"landing_needed":false}].\nТолько JSON.`,
       userPrompt, 16000, 0.1);
     const parsed = safeParseJson<KeywordEntry[]>(content, []);
@@ -904,7 +904,7 @@ interface MinusWord { word: string; type: string; reason: string; }
 async function generateMinusWords(theme: string, keywords: KeywordEntry[], apiKey: string): Promise<MinusWord[]> {
   if (!apiKey) return [];
   const topPhrases = keywords.slice(0, 40).map(k => k.phrase).join(', ');
-  const content = await llmCall(apiKey, 'google/gemini-2.5-flash',
+  const content = await llmCall(apiKey, 'gpt-4o-mini',
     `Ты — специалист по Яндекс.Директу. Сгенерируй 50-100 минус-слов для рекламной кампании.\nФормат: JSON-массив [{"word":"бесплатно","type":"informational","reason":"Отсекает некоммерческий трафик"}].\nТолько JSON.`,
     `Тематика: ${theme}\nКлючевые: ${topPhrases}`, 8000, 0.1);
   const parsed = safeParseJson<MinusWord[]>(content, []);
