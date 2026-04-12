@@ -291,14 +291,19 @@ interface DbRule {
 // ─── LLM helper ───
 async function llmCall(apiKey: string, model: string, systemPrompt: string, userPrompt: string, maxTokens = 4000, temperature = 0.1): Promise<string> {
   try {
-    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-        max_tokens: maxTokens, temperature, top_p: 0.85, top_k: 20,
+        max_tokens: maxTokens, temperature, top_p: 0.85,
       }),
     });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      logger.error('PIPELINE', `LLM HTTP ${resp.status}: ${errText.slice(0, 300)}`);
+      return '';
+    }
     const data = await resp.json();
     return data.choices?.[0]?.message?.content?.trim() || '';
   } catch (e: any) {
@@ -309,7 +314,7 @@ async function llmCall(apiKey: string, model: string, systemPrompt: string, user
 
 async function llmToolCall(apiKey: string, model: string, systemPrompt: string, userPrompt: string, tool: any): Promise<any> {
   try {
-    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -318,6 +323,11 @@ async function llmToolCall(apiKey: string, model: string, systemPrompt: string, 
         temperature: 0.4,
       }),
     });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      logger.error('PIPELINE', `LLM tool HTTP ${resp.status}: ${errText.slice(0, 300)}`);
+      return null;
+    }
     const data = await resp.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) {
