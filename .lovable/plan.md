@@ -1,91 +1,59 @@
 
 
-## Диагностика и план исправления: GEO-аудит + GEO-рейтинг
+## Починка GEO-аудита + GEO-рейтинга + ошибок сборки
 
-### Корневая проблема
+### Найденные проблемы
 
-Сейчас существуют **две параллельные системы** проверки сайтов:
+**Ошибки сборки (7 штук):**
 
-1. **Edge Function `site-check-scan`** (2855 строк, работает через Supabase) — полный пайплайн: тема, SEO, контент, Директ, конкуренты, ключевые слова, минус-слова, Schema, AI. Сохраняет в таблицу `scans` в Supabase.
+1. **Edge Functions** — 6 функций используют `error.message` где `error` имеет тип `unknown`. Нужно `(error as Error).message`.
+2. **`AutoFixGenerator.tsx`** — использует `size="xs"`, но Button не имеет такого варианта. Нужно `size="sm"`.
+3. **`AutoFixGenerator.tsx`** — интерфейс `AutoFixGeneratorProps` ожидает `templateKey` + `generated`, но вызывается с `issueTitle` + `url`. Нужно обновить интерфейс.
+4. **`TechPassport.tsx`** — импортирует из `@/types/site-check`, которого не существует. Нужно определить тип inline.
+5. **`SiteCheckResult.tsx`** — передаёт `data={techPassport}` в TechPassport, а тот ожидает `tech` + `geoip`.
 
-2. **Бэкенд `owndev-backend`** (SiteCheckWorker + AuditService) — упрощённый анализ: 7 блоков через Puppeteer. Сохраняет в таблицу `site_check_scans` в PostgreSQL бэкенда.
+**Функциональные проблемы:**
 
-**Фронтенд** (`src/lib/api/scan.ts`) обращается к бэкенду (`/api/v1/site-check/*`), но бэкенд возвращает **бедный** результат:
-- `scores`: `{ seo: 75, confidence: 80, issues_count: 5, blocks: [...] }` — а фронт ожидает `{ total, seo, direct, schema, ai }`
-- `result`: `{ score, issues, blocks }` — а фронт ожидает `issues`, `competitors`, `keywords`, `minus_words`, `theme` на верхнем уровне
-- Итог: пустой отчёт, нет конкурентов, нет ключевиков, нет минус-слов
-
-Вторая проблема: прогресс зависает на 5% потому что воркер, вероятно, падает на этапе Puppeteer `crawl()` (таймаут, отсутствие Chromium), и ошибка не доходит до фронта корректно.
-
-### GEO Рейтинг
-
-GEO Рейтинг (`src/pages/GeoRating.tsx`) читает данные из **Supabase таблицы `geo_rating`** через `supabase.from("geo_rating").select("*")`. Это единственный источник данных рейтинга. Чтобы отвязать от Supabase — нужно добавить API-эндпоинт на бэкенд.
-
-### Ошибка сборки
-
-Edge Function `mcp-server` использует `npm:mcp-lite@^0.10.0` — Deno не может разрешить пакет. Нужен `deno.json` с маппингом импортов.
+6. **SiteCheckPipeline.ts** — LLM-вызовы идут на `ai.gateway.lovable.dev` с `LOVABLE_API_KEY`. На продакшн-сервере этот ключ не работает. Нужно заменить на `https://api.openai.com/v1/chat/completions` + `OPENAI_API_KEY`.
+7. **SiteCheckWorker.ts** — читает `LOVABLE_API_KEY`, нужно `OPENAI_API_KEY`.
+8. **Модели** — используются `google/gemini-*` алиасы, которых нет в OpenAI. Нужно заменить на `gpt-4o-mini`.
 
 ---
 
-### План исправления (5 шагов)
+### План изменений
 
-#### Шаг 1: Исправить `mcp-server` (ошибка сборки)
+#### 1. `owndev-backend/src/services/SiteCheckPipeline.ts`
+- Заменить `https://ai.gateway.lovable.dev/v1/chat/completions` → `https://api.openai.com/v1/chat/completions` (2 вхождения)
+- Заменить все модели `google/gemini-2.5-flash-lite` и `google/gemini-2.5-flash` → `gpt-4o-mini`
+- Добавить логирование HTTP-статуса и тела ответа при ошибке LLM
 
-Создать `supabase/functions/mcp-server/deno.json` с маппингом npm-зависимостей, чтобы Deno мог резолвить `mcp-lite` и `hono`.
+#### 2. `owndev-backend/src/workers/SiteCheckWorker.ts`
+- `LOVABLE_API_KEY` → `OPENAI_API_KEY`
 
-#### Шаг 2: Перенести полный пайплайн проверки на бэкенд
+#### 3. `src/components/site-check/AutoFixGenerator.tsx`
+- Обновить интерфейс: `templateKey` → `issueTitle: string; url: string; pageTitle?: string; pageDescription?: string`
+- `size="xs"` → `size="sm"`
 
-Основная работа. Перенести логику из Edge Function `site-check-scan` (2855 строк) в бэкенд-воркер `SiteCheckWorker`:
+#### 4. `src/components/site-check/TechPassport.tsx`
+- Убрать импорт `@/types/site-check`, определить тип `TechPassportData` inline
+- Обновить интерфейс: добавить проп `data` который разворачивается в `tech` + `geoip`
 
-- **Заменить Puppeteer на fetch** — Edge Function использует простой `fetch` + Jina Reader для SPA. Это надёжнее и не требует Chromium.
-- Перенести все шаги пайплайна:
-  1. Theme detection (LLM через Lovable API)
-  2. Technical SEO audit
-  3. Content audit
-  4. Direct audit + AI ad generation
-  5. Schema audit
-  6. AI readiness audit
-  7. Competitor analysis (LLM)
-  8. Keywords extraction (LLM)
-  9. Minus words generation (LLM)
-- Перенести `calcScoresWeighted()` для расчёта `{ total, seo, direct, schema, ai }`
-- Сохранять результат в формате, который ожидает фронтенд: `scores`, `issues`, `competitors`, `keywords`, `minus_words`, `theme`, `seo_data`, `is_spa` — всё на верхнем уровне
+#### 5. `src/pages/SiteCheckResult.tsx`
+- Исправить передачу пропсов в `<TechPassport>`: `data={techPassport}` → прокидывать как ожидает компонент
 
-#### Шаг 3: Исправить `/result/:scanId` эндпоинт
-
-Изменить ответ так, чтобы данные из JSONB-колонки `result` «разворачивались» на верхний уровень:
-
-```text
-Было:  { id, url, scores, result: { issues, ... }, ... }
-Стало: { id, url, scores, issues, competitors, keywords, minus_words, theme, seo_data, ... }
-```
-
-Также обновить таблицу `site_check_scans` — добавить колонки `theme`, `keywords`, `competitors`, `minus_words`, `seo_data`, `is_spa` (или хранить всё в `result` JSONB и разворачивать при отдаче).
-
-#### Шаг 4: Перенести GEO Рейтинг на бэкенд
-
-- Добавить эндпоинт `GET /api/v1/geo-rating` на бэкенд, который читает из таблицы `geo_rating` в PostgreSQL бэкенда
-- Создать таблицу `geo_rating` в PostgreSQL бэкенда (миграция)
-- В `GeoRating.tsx` заменить `supabase.from("geo_rating")` на `fetch(apiUrl('/geo-rating'))`
-- В `GeoRatingNomination.tsx` — уже использует бэкенд, оставить как есть
-
-#### Шаг 5: Убрать неиспользуемые Edge Functions
-
-Удалить или деактивировать `site-check-scan` и `site-check-report` — они больше не нужны, вся логика на бэкенде.
+#### 6. Edge Functions (6 файлов) — исправить `error.message` → `(error as Error).message`:
+- `check-indexation/index.ts`
+- `generate-text/index.ts`
+- `generate-semantic-core/index.ts`
+- `competitor-analysis/index.ts`
+- `send-telegram/index.ts`
+- `seo-audit/index.ts`
 
 ---
 
-### Что НЕ трогаем
+### Как проверить
 
-- Остальные Edge Functions (seo-audit, brand-tracker, generate-text и пр.) — они работают как инструменты и не связаны с основным пайплайном проверки
-- `src/lib/api/tools.ts` — уже настроен правильно
-- `src/lib/api/scan.ts` — уже ходит через бэкенд
-
-### Порядок реализации
-
-Шаги 1-3 критичны и будут сделаны в первую очередь. Шаг 2 — самый объёмный (перенос ~2000 строк логики). Шаг 4 вторичен. Шаг 5 — cleanup.
-
-### Важно
-
-Все LLM-вызовы (тема, конкуренты, ключевики, минус-слова, объявления Директ) будут использовать Lovable AI API через HTTPS-запросы из бэкенда (тот же эндпоинт, что и Edge Functions).
+1. **Сборка** — все TS-ошибки исчезнут
+2. **GEO-аудит** — запустить проверку сайта, прогресс должен дойти до 100%, LLM-поля (theme, keywords, competitors, minus_words) должны быть заполнены
+3. **GEO-рейтинг** — страница /geo-rating должна отображать таблицу с данными
 
