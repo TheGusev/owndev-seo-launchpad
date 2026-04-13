@@ -138,6 +138,9 @@ const SiteCheckResult = () => {
     };
   });
 
+  const isBasic = data.scan_mode === 'basic';
+  const handleUnlock = () => navigate(`/tools/site-check?url=${encodeURIComponent(data.url)}&mode=full`);
+
   // Tech passport summary badges for accordion header
   const techBadges = techPassport ? (
     <div className="flex items-center gap-1.5 flex-wrap">
@@ -168,6 +171,11 @@ const SiteCheckResult = () => {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold text-foreground">Полный GEO-отчёт</h1>
+              {isBasic ? (
+                <Badge variant="secondary" className="text-xs">Базовый</Badge>
+              ) : (
+                <Badge className="text-xs bg-primary text-primary-foreground">Полный</Badge>
+              )}
               {data.is_spa && <Badge variant="outline" className="text-xs border-primary/50 text-primary">SPA</Badge>}
               <a href={data.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors">
                 {data.url} <ExternalLink className="w-3.5 h-3.5" />
