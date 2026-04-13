@@ -288,8 +288,17 @@ interface DbRule {
   example_fix: string; score_weight: number; visible_in_preview: boolean; active: boolean;
 }
 
-// ─── LLM config (Lovable AI Gateway only) ───
+// ─── LLM config (Edge Function proxy → Lovable AI Gateway) ───
 function getLlmConfig(apiKey: string) {
+  const proxyUrl = process.env.EDGE_FUNCTION_URL;
+  if (proxyUrl) {
+    return {
+      url: proxyUrl,
+      authHeader: `Bearer ${process.env.EDGE_FUNCTION_SECRET || ''}`,
+      defaultModel: 'google/gemini-2.5-flash',
+    };
+  }
+  // Fallback: direct gateway (local dev only)
   return {
     url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
     authHeader: `Bearer ${process.env.LOVABLE_API_KEY || apiKey}`,
