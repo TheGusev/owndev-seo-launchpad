@@ -289,7 +289,7 @@ interface DbRule {
 }
 
 // ─── LLM provider config ───
-const LLM_PROVIDER = process.env.LLM_PROVIDER || 'lovable';
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
 
 function getLlmConfig(apiKey: string) {
   if (LLM_PROVIDER === 'lovable') {
@@ -1005,7 +1005,6 @@ export async function runPipeline(
   onProgress: (pct: number, partialData?: Record<string, any>) => Promise<void>,
   apiKey: string,
   dbRules: DbRule[] = [],
-  scanMode: string = 'full',
 ): Promise<PipelineResult> {
   issueCounter = 0;
   
@@ -1048,8 +1047,8 @@ export async function runPipeline(
     }
   }
 
-  // Theme (skip LLM for basic mode)
-  const theme = scanMode === 'basic' ? 'Общая тематика' : await detectTheme(html, parsedUrl.toString(), apiKey);
+  // Theme
+  const theme = await detectTheme(html, parsedUrl.toString(), apiKey);
   await onProgress(20, { theme, is_spa: isSpa });
 
   // Robots & sitemap
@@ -1087,8 +1086,8 @@ export async function runPipeline(
   // STEP 3: Direct
   const directResult = directAudit(html, theme);
 
-  // STEP 3b: AI ad (async — skip for basic)
-  const adSuggestionPromise = scanMode === 'basic' ? Promise.resolve(null) : generateDirectAd(html, theme, parsedUrl.toString(), apiKey);
+  // STEP 3b: AI ad (async)
+  const adSuggestionPromise = generateDirectAd(html, theme, parsedUrl.toString(), apiKey);
 
   // STEP 7: Schema
   const schemaIssues = schemaAudit(html);
@@ -1129,25 +1128,20 @@ export async function runPipeline(
   const scores = calcScoresWeighted(allIssues, dbRules);
   await onProgress(60, { scores, issues: allIssues });
 
-  // STEP 4: Competitors (skip LLM for basic)
-  const compResult = scanMode === 'basic'
-    ? { competitors: [] as any[], gap_issues: [] as Issue[], directMeta: null, comparisonTable: null }
-    : await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, apiKey);
+  // STEP 4: Competitors
+  const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, apiKey);
   allIssues = [...allIssues, ...compResult.gap_issues];
 
   await onProgress(75);
 
-  // STEP 5: Keywords (skip for basic)
-  let keywords: KeywordEntry[] = [];
-  if (scanMode !== 'basic') {
-    const competitorPhrases = compResult.competitors.flatMap((c: any) => c.top_phrases).slice(0, 30);
-    keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases, apiKey);
-  }
+  // STEP 5: Keywords
+  const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
+  const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases, apiKey);
 
   await onProgress(85, { keywords });
 
-  // STEP 6: Minus words (skip for basic)
-  const minusWords = scanMode === 'basic' ? [] as MinusWord[] : await generateMinusWords(theme, keywords, apiKey);
+  // STEP 6: Minus words
+  const minusWords = await generateMinusWords(theme, keywords, apiKey);
 
   const finalScores = calcScoresWeighted(allIssues, dbRules);
 

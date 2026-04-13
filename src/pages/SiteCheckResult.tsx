@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -14,8 +14,6 @@ import LlmJudgeSection from "@/components/site-check/LlmJudgeSection";
 import GeoRatingNomination from "@/components/site-check/GeoRatingNomination";
 import TechPassport from "@/components/site-check/TechPassport";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
-import { PaywallCTA } from "@/components/site-check/PaywallCTA";
-import { PaymentModal } from "@/components/site-check/PaymentModal";
 import { getFullScan } from "@/lib/site-check-api";
 import { judgeLlm, getTechPassport } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
@@ -26,7 +24,6 @@ import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
 
 const SiteCheckResult = () => {
-  const navigate = useNavigate();
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
@@ -36,7 +33,6 @@ const SiteCheckResult = () => {
   const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
   const [techPassport, setTechPassport] = useState<any>(null);
   const [techPassportLoading, setTechPassportLoading] = useState(false);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const previousScores = useMemo(() => {
     if (!data?.url || !scanId) return undefined;
@@ -52,7 +48,7 @@ const SiteCheckResult = () => {
         setData(d);
         if (d && scanId) addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
         if (d?.llm_judge) setLlmJudge(d.llm_judge);
-        else if (d?.url && d?.status === 'done' && d?.scan_mode !== 'basic') triggerLlmJudge(scanId, d.url, d.theme);
+        else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme);
         if (d?.url) triggerTechPassport(d.url);
       })
       .catch((e) => {
@@ -140,9 +136,6 @@ const SiteCheckResult = () => {
     };
   });
 
-  const isBasic = data.scan_mode === 'basic';
-  const handleUnlock = () => setPaymentModalOpen(true);
-
   // Tech passport summary badges for accordion header
   const techBadges = techPassport ? (
     <div className="flex items-center gap-1.5 flex-wrap">
@@ -173,11 +166,6 @@ const SiteCheckResult = () => {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold text-foreground">Полный GEO-отчёт</h1>
-              {isBasic ? (
-                <Badge variant="secondary" className="text-xs">Базовый</Badge>
-              ) : (
-                <Badge className="text-xs bg-primary text-primary-foreground">Полный</Badge>
-              )}
               {data.is_spa && <Badge variant="outline" className="text-xs border-primary/50 text-primary">SPA</Badge>}
               <a href={data.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors">
                 {data.url} <ExternalLink className="w-3.5 h-3.5" />
@@ -206,7 +194,7 @@ const SiteCheckResult = () => {
               />
             </ResultAccordion>
           )}
-          {!directAdSuggestion && directReadinessScore !== null && !isBasic && (
+          {!directAdSuggestion && directReadinessScore !== null && (
             <ResultAccordion title="Готовность к Яндекс.Директ" defaultOpen={false}>
               <DirectAdPreview
                 adSuggestion={{ headline1: '', headline2: '', ad_text: '', sitelinks: [], callouts: [] }}
@@ -214,13 +202,6 @@ const SiteCheckResult = () => {
                 url={data.url}
               />
             </ResultAccordion>
-          )}
-          {isBasic && !directAdSuggestion && (
-            <PaywallCTA
-              title="Рекомендации для Яндекс.Директ"
-              features={["AI-генерация объявления", "Оценка готовности к рекламе", "Заголовки, быстрые ссылки, уточнения"]}
-              onUnlock={handleUnlock}
-            />
           )}
 
           {/* 4. Tech Passport */}
@@ -244,23 +225,16 @@ const SiteCheckResult = () => {
           )}
 
           {/* 6. AI-видимость */}
-          {llmJudge && !isBasic && (
+          {llmJudge && (
             <ResultAccordion title="AI-видимость: проверка нейросетями" defaultOpen={false}>
               <LlmJudgeSection data={llmJudge} />
             </ResultAccordion>
           )}
-          {llmJudgeLoading && !llmJudge && !isBasic && (
+          {llmJudgeLoading && !llmJudge && (
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">
               <Loader2 className="w-4 h-4 text-primary animate-spin" />
               <p className="text-xs text-muted-foreground">Опрашиваем нейросети...</p>
             </div>
-          )}
-          {isBasic && (
-            <PaywallCTA
-              title="AI-видимость"
-              features={["Проверка упоминаний в ChatGPT и Gemini", "Процент цитирования", "Сравнение с конкурентами"]}
-              onUnlock={handleUnlock}
-            />
           )}
 
           {/* 7. Competitors */}
@@ -269,12 +243,10 @@ const SiteCheckResult = () => {
               <CompetitorsTable competitors={competitors} comparisonTable={comparisonTable} directMeta={directMeta} userUrl={data.url} />
             </ResultAccordion>
           )}
-          {isBasic && competitors.length === 0 && (
-            <PaywallCTA
-              title="Конкуренты в AI-выдаче"
-              features={["Топ-10 конкурентов по теме", "Сравнительная таблица метрик", "Анализ сильных и слабых сторон"]}
-              onUnlock={handleUnlock}
-            />
+          {data?.competitors && competitors.length === 0 && rawCompetitors.length > 0 && (
+            <ResultAccordion title="Конкуренты (raw)" defaultOpen={false}>
+              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(rawCompetitors.slice(0, 3), null, 2)}</pre>
+            </ResultAccordion>
           )}
 
           {/* 8. Keywords */}
@@ -283,12 +255,10 @@ const SiteCheckResult = () => {
               <KeywordsSection keywords={keywords} />
             </ResultAccordion>
           )}
-          {isBasic && keywords.length === 0 && (
-            <PaywallCTA
-              title="Ключевые слова для продвижения"
-              features={["200+ целевых запросов с частотностью", "Кластеризация по намерению", "Рекомендации по посадочным страницам"]}
-              onUnlock={handleUnlock}
-            />
+          {data?.keywords && keywords.length === 0 && (
+            <ResultAccordion title="Ключевые слова (raw)" defaultOpen={false}>
+              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(Array.isArray(data.keywords) ? data.keywords.slice(0, 5) : data.keywords, null, 2)}</pre>
+            </ResultAccordion>
           )}
 
           {/* 9. Minus words */}
@@ -297,12 +267,10 @@ const SiteCheckResult = () => {
               <MinusWordsSection minusWords={minusWords} />
             </ResultAccordion>
           )}
-          {isBasic && minusWords.length === 0 && (
-            <PaywallCTA
-              title="Минус-фразы для Директа"
-              features={["Автоматический подбор минус-слов", "Фильтрация нецелевого трафика", "Экспорт для загрузки в Директ"]}
-              onUnlock={handleUnlock}
-            />
+          {data?.minus_words && minusWords.length === 0 && (
+            <ResultAccordion title="Минус-фразы (raw)" defaultOpen={false}>
+              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(Array.isArray(data.minus_words) ? data.minus_words.slice(0, 5) : data.minus_words, null, 2)}</pre>
+            </ResultAccordion>
           )}
 
           {/* 10. GEO Rating */}
@@ -324,20 +292,10 @@ const SiteCheckResult = () => {
             keywords={keywords} minusWords={minusWords} competitors={competitors}
             scanDate={data.created_at} seoData={data.seo_data}
             comparisonTable={comparisonTable} directMeta={directMeta}
-            isBasic={isBasic}
           />
         </div>
       </main>
       <Footer />
-
-      {isBasic && scanId && (
-        <PaymentModal
-          open={paymentModalOpen}
-          onOpenChange={setPaymentModalOpen}
-          scanId={scanId}
-          url={data.url}
-        />
-      )}
     </>
   );
 };

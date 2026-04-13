@@ -23,9 +23,3 @@ verify_jwt = false
 
 [functions.geo-rating-cron]
 verify_jwt = false
-
-[functions.yukassa-create-payment]
-verify_jwt = false
-
-[functions.yukassa-webhook]
-verify_jwt = false

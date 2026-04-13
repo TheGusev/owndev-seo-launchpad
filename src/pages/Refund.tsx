@@ -16,7 +16,7 @@ const Refund = () => {
       <Header />
       <Helmet>
         <title>Политика возврата | OWNDEV</title>
-        <meta name="description" content="Политика возврата средств за услугу «Полный GEO-аудит сайта» на owndev.ru." />
+        <meta name="description" content="Политика возврата средств за услугу «Полный отчёт Проверки сайта» на owndev.ru." />
         <link rel="canonical" href="https://owndev.ru/refund" />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
@@ -36,17 +36,10 @@ const Refund = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-8">Политика возврата</h1>
 
             <div className="prose prose-invert max-w-none space-y-6">
-              <p className="text-muted-foreground text-sm">Дата публикации: 13 апреля 2026 г.</p>
+              <p className="text-muted-foreground text-sm">Дата публикации: 27 марта 2026 г.</p>
 
               <section>
-                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">1. Исполнитель</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  ИП (ИНН 511007293446), действующий под брендом OWNDEV, сайт: owndev.ru.
-                </p>
-              </section>
-
-              <section>
-                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">2. Основания для возврата</h2>
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">1. Основания для возврата</h2>
                 <p className="text-muted-foreground leading-relaxed">Возврат средств осуществляется в следующих случаях:</p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-1">
                   <li>Отчёт не был сгенерирован из-за технического сбоя на стороне сервиса</li>
@@ -56,18 +49,17 @@ const Refund = () => {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">3. Сроки возврата</h2>
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">2. Сроки возврата</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Возврат средств производится в течение <strong className="text-foreground">10 рабочих дней</strong> с момента
-                  подтверждения обоснованности обращения, в соответствии с Законом РФ «О защите прав потребителей».
+                  Возврат средств производится в течение <strong className="text-foreground">5 рабочих дней</strong> с момента подтверждения обоснованности обращения.
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Средства возвращаются тем же способом, которым была произведена оплата (через ЮKassa на карту или счёт плательщика).
+                  Средства возвращаются тем же способом, которым была произведена оплата.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">4. Порядок обращения</h2>
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">3. Порядок обращения</h2>
                 <p className="text-muted-foreground leading-relaxed">Для оформления возврата свяжитесь с нами любым удобным способом:</p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-1">
                   <li>Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a></li>
@@ -79,7 +71,7 @@ const Refund = () => {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">5. Случаи отказа в возврате</h2>
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">4. Случаи отказа в возврате</h2>
                 <p className="text-muted-foreground leading-relaxed">Возврат не производится, если:</p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-1">
                   <li>Отчёт был успешно сгенерирован и доставлен на указанный email</li>
@@ -89,12 +81,8 @@ const Refund = () => {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">6. Реквизиты</h2>
-                <ul className="list-none text-muted-foreground space-y-1">
-                  <li><strong className="text-foreground">Статус:</strong> Индивидуальный предприниматель</li>
-                  <li><strong className="text-foreground">ИНН:</strong> 511007293446</li>
-                </ul>
-                <p className="text-muted-foreground leading-relaxed mt-4">
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">5. Контакты</h2>
+                <p className="text-muted-foreground leading-relaxed">
                   По всем вопросам возврата:{" "}
                   <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a>
                   {" "}или{" "}

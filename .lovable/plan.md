@@ -1,32 +1,103 @@
 
 
-## Обновление README backend
+## LLM Provider Abstraction: OpenAI → Lovable AI Gateway
 
-### Что делаем — 1 файл
+### Summary
 
-#### `owndev-backend/README.md`
+All LLM calls in the backend are in `SiteCheckPipeline.ts` via two low-level functions (`llmCall`, `llmToolCall`). The simplest and safest approach: make these two functions switchable by env var, without touching any business logic above them.
 
-Добавить раздел **"Переменные окружения"** после "Быстрый старт" с таблицей всех env-переменных из `.env.example`:
+### Architecture
 
-| Переменная | Обязательная | Описание |
-|---|---|---|
-| `PORT` | нет | Порт сервера (по умолчанию 3001) |
-| `DATABASE_URL` | да | PostgreSQL connection string |
-| `REDIS_URL` | да | Redis connection string |
-| `API_KEY_SECRET` | да | Секрет для X-API-Key аутентификации |
-| `LOVABLE_API_KEY` | да | Ключ Lovable AI Gateway для LLM-вызовов |
-| `LLM_PROVIDER` | нет | `lovable` (по умолчанию) или `openai` |
-| `PUPPETEER_TIMEOUT` | нет | Таймаут Puppeteer в мс (по умолчанию 15000) |
-| `MAX_CONCURRENT_AUDITS` | нет | Макс. параллельных аудитов (по умолчанию 3) |
-| `SITE_CHECK_CONCURRENCY` | нет | Параллельность site-check (по умолчанию 10) |
-| `MAX_CONCURRENT_SITE_CHECKS` | нет | Макс. параллельных site-check (по умолчанию 5) |
+The Lovable AI Gateway (`https://ai.gateway.lovable.dev/v1/chat/completions`) is **OpenAI-compatible** — same request/response format. So switching providers means changing only: URL, auth header, and model name.
 
-Плюс добавить примечание:
+```text
+┌─────────────────────────────────┐
+│  SiteCheckPipeline.ts           │
+│  detectTheme / extractKeywords  │
+│  generateMinusWords / etc.      │
+│         │                       │
+│    llmCall() / llmToolCall()    │  ← These two functions are the ONLY change point
+│         │                       │
+│  ┌──────┴──────┐                │
+│  │ LLM_PROVIDER │               │
+│  │ = lovable?   │               │
+│  └──┬──────┬───┘                │
+│     │      │                    │
+│  Lovable  OpenAI                │
+│  Gateway  API                   │
+└─────────────────────────────────┘
+```
 
-> **OpenAI API Key не нужен.** Все LLM-вызовы идут через Lovable AI Gateway. Для переключения на OpenAI установите `LLM_PROVIDER=openai` и добавьте `OPENAI_API_KEY` (не рекомендуется).
+### Changes — 3 files
 
-Также добавить в таблицу API эндпоинты site-check:
+#### 1. `owndev-backend/src/services/SiteCheckPipeline.ts`
 
-| POST | `/api/v1/site-check` | Запустить проверку `{ url, mode }` |
-| GET | `/api/v1/site-check/result/:id` | Результат проверки |
+Replace `llmCall` and `llmToolCall` (lines 292-342) to read env vars and route accordingly:
+
+```typescript
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
+
+function getLlmConfig(apiKey: string) {
+  if (LLM_PROVIDER === 'lovable') {
+    const lovableKey = process.env.LOVABLE_API_KEY || apiKey;
+    return {
+      url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+      authHeader: `Bearer ${lovableKey}`,
+      defaultModel: 'google/gemini-2.5-flash',
+    };
+  }
+  return {
+    url: 'https://api.openai.com/v1/chat/completions',
+    authHeader: `Bearer ${apiKey}`,
+    defaultModel: 'gpt-4o-mini',
+  };
+}
+```
+
+Then `llmCall` and `llmToolCall` use `getLlmConfig(apiKey)` instead of hardcoded URL/model. All callers (`detectTheme`, `extractKeywords`, `generateMinusWords`, `generateDirectAd`, `competitorAnalysis`) pass `'gpt-4o-mini'` as model — this gets overridden by `config.defaultModel` when provider is lovable.
+
+**No other code changes in this file.** All prompts, parsing, return types stay identical.
+
+#### 2. `owndev-backend/src/workers/SiteCheckWorker.ts`
+
+Line 13: also read `LOVABLE_API_KEY` as fallback:
+```typescript
+const API_KEY = process.env.OPENAI_API_KEY || process.env.LOVABLE_API_KEY || '';
+```
+
+Pass this to `runPipeline` as before. The `llmCall`/`llmToolCall` inside will pick the right URL based on `LLM_PROVIDER`.
+
+#### 3. `owndev-backend/.env.example`
+
+Add:
+```
+LLM_PROVIDER=lovable
+LOVABLE_API_KEY=your_lovable_api_key_here
+```
+
+### Model choice for Lovable
+
+Using `google/gemini-2.5-flash` as default — good balance of speed and quality for structured JSON extraction (keywords, minus-words, competitors, ad copy). Tool calling is supported.
+
+### What does NOT change
+
+- All pipeline business logic (steps 0-8)
+- All return types (`PipelineResult`, `Issue`, `KeywordEntry`, `MinusWord`, etc.)
+- All prompts (system + user)
+- Worker DB writes (scores, issues, competitors, keywords, minus_words, seo_data)
+- API endpoints and response format
+- Frontend components
+- Edge functions (they have their own LLM integration)
+
+### Verification after implementation
+
+- Build check: `cd owndev-backend && npx tsc --noEmit`
+- Log output to confirm Lovable Gateway is being called
+- Data format stays identical — frontend displays without changes
+
+### Risk mitigation
+
+- If Lovable Gateway returns different JSON structure in tool_calls — the existing `safeParseJson` handles edge cases
+- If LOVABLE_API_KEY is missing — falls back to empty string, same as current OpenAI behavior (returns empty results gracefully)
+- Switching back: just set `LLM_PROVIDER=openai` in env
 

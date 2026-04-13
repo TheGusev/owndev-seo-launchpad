@@ -34,12 +34,12 @@ export async function getFullScan(scanId: string) {
   return apiFetch(`/site-check/result/${scanId}`);
 }
 
-export async function startScan(url: string, mode: 'page' | 'site', scanMode: 'basic' | 'full' = 'basic') {
+export async function startScan(url: string, mode: 'page' | 'site') {
   return apiFetch<{ scan_id: string; status: string; cached?: boolean }>(
     '/site-check/start',
     {
       method: 'POST',
-      body: JSON.stringify({ url, mode, scan_mode: scanMode }),
+      body: JSON.stringify({ url, mode }),
     }
   );
 }

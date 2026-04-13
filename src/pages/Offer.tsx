@@ -16,7 +16,7 @@ const Offer = () => {
       <Header />
       <Helmet>
         <title>Оферта | OWNDEV</title>
-        <meta name="description" content="Публичная оферта на услугу «Полный GEO-аудит сайта» на owndev.ru." />
+        <meta name="description" content="Публичная оферта на услугу «Полный отчёт Проверки сайта» на owndev.ru." />
         <link rel="canonical" href="https://owndev.ru/offer" />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
@@ -36,52 +36,43 @@ const Offer = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-8">Публичная оферта</h1>
 
             <div className="prose prose-invert max-w-none space-y-6">
-              <p className="text-muted-foreground text-sm">Дата публикации: 13 апреля 2026 г.</p>
+              <p className="text-muted-foreground text-sm">Дата публикации: 27 марта 2026 г.</p>
 
               <section>
                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">1. Общие положения</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Настоящий документ является официальным предложением (публичной офертой) ИП (ИНН 511007293446),
-                  действующего под брендом OWNDEV (сайт owndev.ru), о предоставлении платной услуги
-                  «Полный GEO-аудит сайта» любому лицу, принявшему условия данной оферты.
+                  Настоящий документ является официальным предложением (публичной офертой) сайта OWNDEV (owndev.ru)
+                  о предоставлении платной услуги «Полный отчёт Проверки сайта» любому лицу, принявшему условия данной оферты.
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Акцептом (принятием) оферты является факт оплаты услуги. С момента оплаты договор считается заключённым
-                  в соответствии со ст. 437 и ст. 438 Гражданского кодекса Российской Федерации.
+                  Акцептом (принятием) оферты является факт оплаты услуги. С момента оплаты договор считается заключённым.
                 </p>
               </section>
 
               <section>
                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">2. Предмет оферты</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Исполнитель предоставляет Заказчику доступ к полному отчёту GEO-аудита сайта, включающему:
+                  Исполнитель предоставляет Заказчику доступ к полному отчёту проверки сайта, включающему:
                 </p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-1">
                   <li>Технический SEO-аудит</li>
-                  <li>Аудит контента и структуры</li>
+                  <li>Аудит контента</li>
                   <li>Анализ совместимости с Яндекс.Директ (автотаргетинг)</li>
-                  <li>Проверку AI-видимости (упоминания в нейросетях)</li>
                   <li>Конкурентный анализ топ-10</li>
-                  <li>Генерацию семантического ядра (200+ ключевых запросов)</li>
-                  <li>Генерацию минус-слов для рекламных кампаний</li>
-                  <li>Генерацию объявления для Яндекс.Директ</li>
-                  <li>Экспорт в PDF, Word и CSV</li>
+                  <li>Генерация семантического ядра (ключевые запросы)</li>
+                  <li>Генерация минус-слов для рекламных кампаний</li>
                 </ul>
               </section>
 
               <section>
                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">3. Стоимость и порядок оплаты</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Стоимость услуги: <strong className="text-foreground">1 490 ₽</strong> (один платёж, включая НДС при применимости).
+                  Стоимость услуги: <strong className="text-foreground">1 490 ₽</strong> (единоразовый платёж).
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Оплата производится онлайн через платёжный сервис ЮKassa (ООО «ЮКасса», ИНН 7750005725).
-                  Принимаются банковские карты Visa, Mastercard, МИР, оплата через СБП и другие способы,
+                  Оплата производится онлайн через платёжный сервис ЮKassa.
+                  Принимаются банковские карты (Visa, Mastercard, МИР), электронные кошельки и другие способы оплаты,
                   доступные в ЮKassa.
-                </p>
-                <p className="text-muted-foreground leading-relaxed">
-                  Платёжные данные (номер карты, срок действия, CVV) обрабатываются исключительно ЮKassa
-                  в соответствии со стандартом PCI DSS. Исполнитель не получает и не хранит платёжные реквизиты Заказчика.
                 </p>
               </section>
 
@@ -89,9 +80,7 @@ const Offer = () => {
                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">4. Порядок оказания услуги</h2>
                 <ol className="list-decimal pl-6 text-muted-foreground space-y-2">
                   <li>Заказчик вводит URL сайта для проверки и указывает email.</li>
-                  <li>Заказчик производит оплату через ЮKassa.</li>
-                  <li>После подтверждения оплаты система автоматически выполняет полный GEO-аудит.</li>
-                  <li>Результаты отображаются на странице сайта и доступны для скачивания.</li>
+                  <li>После оплаты система автоматически генерирует полный отчёт.</li>
                   <li>Ссылка на отчёт отправляется на указанный email.</li>
                   <li>Отчёт доступен по ссылке в течение 72 часов с момента генерации.</li>
                 </ol>
@@ -124,14 +113,13 @@ const Offer = () => {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">8. Реквизиты Исполнителя</h2>
-                <ul className="list-none text-muted-foreground space-y-2">
-                  <li><strong className="text-foreground">Статус:</strong> Индивидуальный предприниматель</li>
-                  <li><strong className="text-foreground">ИНН:</strong> 511007293446</li>
-                  <li><strong className="text-foreground">Бренд:</strong> OWNDEV</li>
-                  <li>Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a></li>
-                  <li>Telegram: <a href="https://t.me/one_help" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">@one_help</a></li>
-                </ul>
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">8. Контакты</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a>
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Telegram: <a href="https://t.me/one_help" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">@one_help</a>
+                </p>
               </section>
             </div>
           </motion.div>

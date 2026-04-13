@@ -19,7 +19,6 @@ interface DownloadButtonsProps {
   seoData?: any;
   comparisonTable?: any;
   directMeta?: any;
-  isBasic?: boolean;
 }
 
 export default function DownloadButtons({
@@ -34,7 +33,6 @@ export default function DownloadButtons({
   seoData,
   comparisonTable,
   directMeta,
-  isBasic = false,
 }: DownloadButtonsProps) {
   const { toast } = useToast();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -121,10 +119,10 @@ export default function DownloadButtons({
   };
 
   const buttons = [
-    { label: isGeneratingPdf ? "Генерируем..." : "PDF-отчёт", icon: isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />, onClick: handlePdf, disabled: isGeneratingPdf || isBasic },
-    { label: isGeneratingWord ? "Генерируем..." : "Word-отчёт", icon: isGeneratingWord ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />, onClick: handleWord, disabled: isGeneratingWord || isBasic },
-    { label: "Ключевые слова", icon: <FileText className="w-4 h-4" />, onClick: handleKeywords, disabled: !keywords?.length || isBasic },
-    { label: "Минус-слова", icon: <Download className="w-4 h-4" />, onClick: handleMinusWords, disabled: !minusWords?.length || isBasic },
+    { label: isGeneratingPdf ? "Генерируем..." : "PDF-отчёт", icon: isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />, onClick: handlePdf, disabled: isGeneratingPdf },
+    { label: isGeneratingWord ? "Генерируем..." : "Word-отчёт", icon: isGeneratingWord ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />, onClick: handleWord, disabled: isGeneratingWord },
+    { label: "Ключевые слова", icon: <FileText className="w-4 h-4" />, onClick: handleKeywords, disabled: !keywords?.length },
+    { label: "Минус-слова", icon: <Download className="w-4 h-4" />, onClick: handleMinusWords, disabled: !minusWords?.length },
   ];
 
   return (

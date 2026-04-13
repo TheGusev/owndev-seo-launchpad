@@ -33,11 +33,12 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Scan not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // Create report with pending status — payment handled by yukassa-create-payment
+      // TODO: заменить на ЮKassa createPayment после прохождения проверки
+      // Stub: сразу ставим payment_status = 'paid'
       const { data: report, error } = await supabase.from('reports').insert({
         scan_id,
         email,
-        payment_status: 'pending',
+        payment_status: 'paid', // stub — после подключения ЮKassa будет 'pending'
       }).select('id, download_token').single();
 
       if (error) throw error;
