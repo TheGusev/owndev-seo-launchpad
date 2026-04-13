@@ -21,47 +21,27 @@ const Terms = () => {
         <meta name="robots" content="noindex, follow" />
       </Helmet>
       <main className="pt-24 pb-16 relative">
-        {/* Background animations */}
         <div className="absolute inset-0 pointer-events-none">
           <AnimatedGrid theme="primary" lineCount={{ h: 3, v: 4 }} />
           <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
         </div>
 
         <div className="container px-4 md:px-6 max-w-3xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4 }}
-          >
+          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
             <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px] py-2 mb-6">
               <ArrowLeft className="w-4 h-4" />
               Вернуться на главную
             </Link>
           </motion.div>
 
-          <motion.article
-            className="max-w-none"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+          <motion.article className="max-w-none" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
             <h1 className="text-2xl md:text-3xl font-bold mb-6 font-serif text-foreground">
               Пользовательское соглашение
             </h1>
-
-            <p className="text-muted-foreground mb-8">
-              Дата вступления в силу: 24 декабря 2024 года
-            </p>
+            <p className="text-muted-foreground mb-8">Дата вступления в силу: 13 апреля 2026 года</p>
 
             {termsData.map((section, idx) => (
-              <motion.section
-                key={idx}
-                className="mb-8"
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4 }}
-              >
+              <motion.section key={idx} className="mb-8" initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4 }}>
                 <h2 className="text-lg md:text-xl font-semibold mb-4 text-foreground">{section.title}</h2>
                 {section.content}
               </motion.section>
@@ -79,7 +59,7 @@ const termsData = [
     title: "1. Общие положения",
     content: (
       <>
-        <p className="text-muted-foreground mb-4">1.1. Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует отношения между OWNDEV (далее — «Исполнитель») и любым физическим или юридическим лицом (далее — «Заказчик»), использующим сайт owndev.ru (далее — «Сайт») и/или заказывающим услуги Исполнителя.</p>
+        <p className="text-muted-foreground mb-4">1.1. Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует отношения между ИП (ИНН 511007293446), действующим под брендом OWNDEV (далее — «Исполнитель»), и любым физическим или юридическим лицом (далее — «Заказчик»), использующим сайт owndev.ru (далее — «Сайт») и/или заказывающим услуги Исполнителя.</p>
         <p className="text-muted-foreground mb-4">1.2. Использование Сайта и/или отправка заявки через форму обратной связи означает полное и безоговорочное принятие Заказчиком условий настоящего Соглашения.</p>
         <p className="text-muted-foreground mb-4">1.3. Настоящее Соглашение является публичной офертой в соответствии со статьёй 437 Гражданского кодекса Российской Федерации.</p>
       </>
@@ -89,7 +69,7 @@ const termsData = [
     title: "2. Предмет Соглашения",
     content: (
       <>
-        <p className="text-muted-foreground mb-4">2.1. Исполнитель обязуется оказать Заказчику услуги по разработке веб-сайтов и программного обеспечения, а Заказчик обязуется принять и оплатить эти услуги в порядке и на условиях, определённых настоящим Соглашением и дополнительными договорами.</p>
+        <p className="text-muted-foreground mb-4">2.1. Исполнитель обязуется оказать Заказчику услуги по разработке веб-сайтов, программного обеспечения и онлайн-сервисов, а Заказчик обязуется принять и оплатить эти услуги в порядке и на условиях, определённых настоящим Соглашением и дополнительными договорами.</p>
         <p className="text-muted-foreground mb-4">2.2. Конкретный перечень услуг, сроки и стоимость определяются индивидуально для каждого проекта и фиксируются в отдельном договоре или техническом задании.</p>
       </>
     ),
@@ -106,6 +86,7 @@ const termsData = [
           <li>SEO-оптимизация и продвижение сайтов</li>
           <li>Разработка SaaS-платформ и веб-приложений</li>
           <li>Консультации по веб-разработке и цифровому маркетингу</li>
+          <li><strong className="text-foreground">Полный GEO-аудит сайта</strong> — онлайн-услуга автоматического анализа сайта, включающая технический SEO-аудит, конкурентный анализ, генерацию семантического ядра, минус-слов и рекомендаций для Яндекс.Директ. Стоимость: 1 490 ₽. Условия предоставления описаны в <Link to="/offer" className="text-primary hover:underline">Публичной оферте</Link>.</li>
         </ul>
       </>
     ),
@@ -159,9 +140,10 @@ const termsData = [
     title: "6. Стоимость и порядок оплаты",
     content: (
       <>
-        <p className="text-muted-foreground mb-4">6.1. Стоимость услуг определяется индивидуально для каждого проекта и указывается в коммерческом предложении или договоре.</p>
-        <p className="text-muted-foreground mb-4">6.2. Оплата производится безналичным переводом на расчётный счёт Исполнителя или иным согласованным способом.</p>
-        <p className="text-muted-foreground mb-4">6.3. Стандартный порядок оплаты: 50% предоплата, 50% после сдачи проекта. Иные условия могут быть согласованы сторонами.</p>
+        <p className="text-muted-foreground mb-4">6.1. Стоимость индивидуальных услуг (разработка сайтов, SEO и пр.) определяется для каждого проекта и указывается в коммерческом предложении или договоре.</p>
+        <p className="text-muted-foreground mb-4">6.2. Стоимость онлайн-услуги «Полный GEO-аудит сайта» составляет <strong className="text-foreground">1 490 ₽</strong> (единоразовый платёж).</p>
+        <p className="text-muted-foreground mb-4">6.3. Оплата онлайн-услуг производится через платёжный сервис ЮKassa (ООО «ЮКасса», ИНН 7750005725). Принимаются банковские карты Visa, MasterCard, МИР, а также оплата через СБП и другие способы, доступные в ЮKassa.</p>
+        <p className="text-muted-foreground mb-4">6.4. Оплата индивидуальных услуг производится безналичным переводом на расчётный счёт Исполнителя или иным согласованным способом. Стандартный порядок: 50% предоплата, 50% после сдачи проекта.</p>
       </>
     ),
   },
@@ -171,7 +153,7 @@ const termsData = [
       <>
         <p className="text-muted-foreground mb-4">7.1. Стороны несут ответственность за неисполнение или ненадлежащее исполнение своих обязательств в соответствии с законодательством Российской Федерации.</p>
         <p className="text-muted-foreground mb-4">7.2. Исполнитель не несёт ответственности за убытки Заказчика, возникшие вследствие неправильного использования результатов работ.</p>
-        <p className="text-muted-foreground mb-4">7.3. Исполнитель не несёт ответственности за действия третьих лиц (хостинг-провайдеров, регистраторов доменов и т.д.).</p>
+        <p className="text-muted-foreground mb-4">7.3. Исполнитель не несёт ответственности за действия третьих лиц (хостинг-провайдеров, регистраторов доменов, платёжных систем и т.д.).</p>
       </>
     ),
   },
@@ -229,8 +211,9 @@ const termsData = [
     title: "13. Реквизиты Исполнителя",
     content: (
       <ul className="list-none text-muted-foreground space-y-2">
-        <li><strong className="text-foreground">Наименование:</strong> OWNDEV</li>
-        <li><strong className="text-foreground">Адрес:</strong> г. Москва, Россия</li>
+        <li><strong className="text-foreground">Статус:</strong> Индивидуальный предприниматель</li>
+        <li><strong className="text-foreground">ИНН:</strong> 511007293446</li>
+        <li><strong className="text-foreground">Бренд:</strong> OWNDEV</li>
         <li>📧 Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a></li>
         <li>📞 Телефон: <a href="tel:+79939289488" className="text-primary hover:underline">+7 993 928-94-88</a></li>
         <li>💬 Telegram: <a href="https://t.me/one_help" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@one_help</a></li>
