@@ -31,6 +31,28 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     )
   `;
 
+  // Ensure geo_rating table exists
+  await sql`
+    CREATE TABLE IF NOT EXISTS geo_rating (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      domain TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Сервисы',
+      llm_score INTEGER NOT NULL DEFAULT 0,
+      seo_score INTEGER NOT NULL DEFAULT 0,
+      schema_score INTEGER NOT NULL DEFAULT 0,
+      direct_score INTEGER NOT NULL DEFAULT 0,
+      has_llms_txt BOOLEAN NOT NULL DEFAULT false,
+      has_faqpage BOOLEAN NOT NULL DEFAULT false,
+      has_schema BOOLEAN NOT NULL DEFAULT false,
+      errors_count INTEGER NOT NULL DEFAULT 0,
+      top_errors JSONB DEFAULT '[]'::jsonb,
+      last_checked_at TIMESTAMPTZ DEFAULT NOW(),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)`;
+
   // Add columns if they don't exist (for existing tables)
   for (const col of [
     'theme TEXT',
