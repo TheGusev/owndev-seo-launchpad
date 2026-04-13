@@ -289,7 +289,7 @@ interface DbRule {
 }
 
 // ─── LLM provider config ───
-const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'lovable';
 
 function getLlmConfig(apiKey: string) {
   if (LLM_PROVIDER === 'lovable') {
