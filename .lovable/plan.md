@@ -1,107 +1,66 @@
 
 
-# Frontend Runtime Audit — Post-Backend Fixes
+## Root Cause Analysis — GEO Rating Blank Screen
 
-## A. Bugs Found
+### A. Root cause
 
-### P0-1 — Checkbox double-toggle in FullReportView (issues never stay checked)
+`top_errors` in the database contains **objects** `{severity, title}` — not strings — for 78 out of 80 domains. When the expanded detail panel renders:
 
-**File**: `src/components/site-check/FullReportView.tsx`, lines 70–74
-
-The `<Checkbox>` has both `onClick` (calls `onToggle()`) and `onCheckedChange` (calls `onToggle()` when truthy). When user clicks to **check** a resolved issue:
-1. `onClick` fires → `onToggle()` → adds ID to set
-2. `onCheckedChange(true)` fires → `true && onToggle()` → removes ID from set
-
-Net effect: nothing happens. The checkbox appears broken — user can never mark issues as resolved. Unchecking works by accident because `onCheckedChange(false)` skips the second toggle.
-
-**Fix**: Separate concerns — `onClick` only stops propagation, `onCheckedChange` does the toggle:
 ```tsx
-<Checkbox
-  checked={resolved}
-  onCheckedChange={() => onToggle()}
-  onClick={(e) => e.stopPropagation()}
-  className="shrink-0"
-/>
+{(entry.topErrors ?? []).slice(0, 3).map((e: string, i: number) => (
+  <li key={i}>…{e}</li>
+))}
 ```
 
----
+React throws **"Objects are not valid as a React child"** because `e` is `{severity: "critical", title: "..."}`, not a string. Since `GeoRating` is NOT wrapped in `ErrorBoundary` (line 68 of App.tsx), the entire React tree unmounts → blank screen.
 
-### P1-1 — GeoRatingNomination never hides after submit
+### B. Where it crashes
 
-**File**: `src/components/site-check/GeoRatingNomination.tsx`, line 67
+`src/pages/GeoRating.tsx`, line 271: `{e}` where `e` is an object from `entry.topErrors`.
 
-After successful nomination, `setOpen(false)` closes the dialog but `setSent(true)` is never called. The guard on line 41 (`if (totalScore < 70 || sent) return null`) never triggers, so the banner keeps showing and the user can submit duplicate nominations.
+### C. Why it worked with 2 domains
 
-**Fix**: Add `setSent(true)` before `setOpen(false)`:
+The original 2 domains (e.g. habr.com) were seeded manually with plain string arrays: `["Неполный llms.txt", "Нет HowTo", ...]`. The 78 new domains were auto-upserted by `SiteCheckWorker`, which stores `top_errors` as `JSON.stringify(topErrors)` where `topErrors` is mapped from `i.title` — but the worker version that ran apparently stored full issue objects `{severity, title}` instead of just title strings.
+
+### D. Three fixes needed
+
+**FIX 1** — `src/data/geo-rating-types.ts`: Normalize `topErrors` in `mapDbRowToEntry` to always produce `string[]`:
 ```typescript
-setSent(true);
-setOpen(false);
+topErrors: (() => {
+  try {
+    let arr: any = row.top_errors;
+    if (typeof arr === "string") arr = JSON.parse(arr);
+    if (!Array.isArray(arr)) return [];
+    return arr.map((e: any) =>
+      typeof e === 'string' ? e : (e?.title ?? String(e))
+    );
+  } catch { return []; }
+})(),
 ```
 
----
-
-## B. Priority Summary
-
-| ID | Severity | Description | Status |
-|---|---|---|---|
-| P0-1 | **DEFINITELY BROKEN** | Checkbox can't be checked (double-toggle) | Fix: 1 line |
-| P1-1 | **DEFINITELY BROKEN** | Nomination banner never hides after submit | Fix: 1 line |
-
-## C. No issues found in
-
-- ScoreCards — renders correctly with fallbacks
-- KeywordsSection — proper guards, filters work
-- CompetitorsTable — proper `_type` filtering, null-safe
-- MinusWordsSection — proper string/object normalization
-- LlmJudgeSection — all fields accessed safely, loading state exists
-- TechPassport — null guards, array checks present
-- GeoRating page — `mapDbRowToEntry` matches snake_case DB columns, `top_errors` JSON parsing is guarded
-- ResultAccordion — animation logic correct
-- ScoreDetailsModal — escape handler, breakdown fallback text
-- DirectAdPreview — edit/copy/export all wired correctly
-- API layer (`scan.ts`, `tools.ts`, `config.ts`) — all clean, no legacy refs
-
-## D. Patch List
-
-1. `src/components/site-check/FullReportView.tsx` — fix Checkbox handlers (lines 70–74)
-2. `src/components/site-check/GeoRatingNomination.tsx` — add `setSent(true)` (line 67)
-
-## E. Code Diffs
-
-### Diff 1: FullReportView.tsx
-```typescript
-// Lines 70-74 — BEFORE:
-<Checkbox
-  checked={resolved}
-  onCheckedChange={(e) => { e && onToggle(); }}
-  onClick={(e) => { e.stopPropagation(); onToggle(); }}
-  className="shrink-0"
-/>
-
-// AFTER:
-<Checkbox
-  checked={resolved}
-  onCheckedChange={() => onToggle()}
-  onClick={(e) => e.stopPropagation()}
-  className="shrink-0"
-/>
+**FIX 2** — `src/pages/GeoRating.tsx`: Same normalization in the `useMemo` preprocessing (lines 64-71), and a defensive render in the JSX (line 271):
+```tsx
+{typeof e === 'string' ? e : (e as any)?.title ?? String(e)}
 ```
 
-### Diff 2: GeoRatingNomination.tsx
-```typescript
-// Line 67 — BEFORE:
-      setOpen(false);
-
-// AFTER:
-      setSent(true);
-      setOpen(false);
+**FIX 3** — `src/App.tsx`: Wrap GeoRating route in `ErrorBoundary` so future crashes don't blank the entire app:
+```tsx
+<Route path="/geo-rating" element={<ErrorBoundary><GeoRating /></ErrorBoundary>} />
 ```
 
-## F. Regression Checklist
+### E. Files changed
 
-1. Open any scan result → expand "План исправления" → click checkbox on an issue → verify it stays checked (green checkmark, opacity change, strikethrough text)
-2. Click same checkbox again → verify it unchecks
-3. Refresh page → verify checked state persists from localStorage
-4. On result with score ≥ 70, click "Добавить в рейтинг" → submit → verify banner disappears
-5. Verify all other sections (keywords, competitors, scores, LLM judge, tech passport) render unchanged
+1. `src/data/geo-rating-types.ts` — normalize objects to strings in mapper
+2. `src/pages/GeoRating.tsx` — normalize in useMemo + defensive render
+3. `src/App.tsx` — add ErrorBoundary wrapper
+
+### F. Regression checklist
+
+1. Open /geo-rating — table loads with 80 domains
+2. Click any domain row — expanded details show scores + top errors as text
+3. Click habr.com (string format) — same behavior
+4. Click tinkoff.ru (object format) — same behavior, no crash
+5. Filter by category, score range — verify filtering still works
+6. Click "Алфавит" sort — verify sorting works
+7. Verify no console errors
 
