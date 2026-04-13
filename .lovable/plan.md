@@ -1,68 +1,54 @@
 
 
-## GitHub Actions: автодеплой на сервер после каждого пуша
+## Seed GEO Rating: вшить 80 строк прямо в скрипт миграции
 
-### Схема
+### Проблема
+Скрипт `migrate-geo-rating-from-supabase.ts` требует `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` для подключения к API. У тебя этих ключей нет на сервере — скрипт не запускается.
 
-```text
-Lovable пушит в GitHub
-        ↓
-GitHub Actions (on push to main)
-        ↓
-SSH на 155.212.188.244
-        ↓
-cd /var/www/owndev.ru && git pull
-cd owndev-backend && npm run build && pm2 restart owndev-backend
-npm run build (frontend)
-```
+### Решение
+Я вытянул все 80 строк из базы данных напрямую. Теперь заменю скрипт миграции: вместо fetch из API — захардкоженный массив данных. Скрипту нужен только `DATABASE_URL` (который уже есть на сервере).
 
-### Что нужно сделать
+### Что меняется
 
-#### 1. Создать `.github/workflows/deploy.yml`
+**1 файл**: `owndev-backend/scripts/migrate-geo-rating-from-supabase.ts`
 
-```yaml
-name: Deploy to production
-on:
-  push:
-    branches: [main]
+Полная замена содержимого:
+- Убирается fetch из Supabase API
+- Убираются проверки `SUPABASE_URL` / `SUPABASE_KEY`
+- Добавляется массив `SEED_DATA` с 80 объектами (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors)
+- Логика остаётся: проверка дублей → unique index → UPSERT по domain → верификация
+- Единственное требование: `DATABASE_URL` в `.env`
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            cd /var/www/owndev.ru && git pull
-            cd owndev-backend && npm run build && pm2 restart owndev-backend
-            cd /var/www/owndev.ru && npm run build
-```
+### Данные (все 80 доменов)
 
-#### 2. Настроить GitHub Secrets (ты делаешь руками)
+Топ-5 для примера:
+| domain | display_name | llm | seo | schema | direct |
+|--------|-------------|-----|-----|--------|--------|
+| owndev.ru | OWNDEV | 90 | 100 | 100 | 79 |
+| goruslugimsk.ru | ГорУслуги МСК | 90 | 82 | 100 | 79 |
+| vc.ru | VC.ru | 80 | 74 | 85 | 100 |
+| tinkoff.ru | Тинькофф | 80 | 65 | 85 | 58 |
+| iz.ru | Известия | 80 | 69 | 85 | 100 |
 
-В GitHub → Settings → Secrets and variables → Actions → New repository secret:
+Все 80 строк будут вшиты с полными `top_errors` (JSONB).
 
-| Secret | Значение |
-|--------|----------|
-| `SERVER_HOST` | `155.212.188.244` |
-| `SERVER_USER` | `root` (или твой SSH-юзер) |
-| `SERVER_SSH_KEY` | Приватный SSH-ключ (содержимое `~/.ssh/id_rsa` или `id_ed25519`) |
+### Запуск на сервере (после git pull + build)
 
-Как получить ключ (если ещё нет):
 ```bash
-# На сервере:
-ssh-keygen -t ed25519 -C "deploy" -f ~/.ssh/deploy_key -N ""
-cat ~/.ssh/deploy_key.pub >> ~/.ssh/authorized_keys
-cat ~/.ssh/deploy_key  # ← это вставить в SECRET SERVER_SSH_KEY
+cd /var/www/owndev.ru/owndev-backend
+npm run migrate:geo-rating
 ```
 
-### Итого
+Никаких ключей не нужно — только `DATABASE_URL`.
 
-- Lovable пишет код → пуш в GitHub → Actions автоматически деплоит на сервер
-- Больше не нужно заходить на сервер руками
-- Единственное ручное действие: один раз настроить 3 секрета в GitHub
+### Ожидаемый вывод
+
+```
+✅ No duplicates — safe to proceed
+✅ Unique index ensured
+✅ Upserted 80 rows into local geo_rating
+✅ Total rows: 80
+📊 Top 5: owndev.ru — llm: 90, seo: 100
+🎉 Done!
+```
 
