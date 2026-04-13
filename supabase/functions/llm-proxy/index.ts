@@ -18,10 +18,10 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Auth check — use x-proxy-secret header (Authorization is reserved by Supabase)
+  // Auth check — use x-proxy-secret header
   const secret = Deno.env.get('EDGE_FUNCTION_SECRET')
   const token = req.headers.get('x-proxy-secret') || ''
-
+  console.log(`auth-debug secret-set=${!!secret} secret-len=${secret?.length || 0} token-len=${token.length} match=${token === secret}`)
 
 
   if (!secret || token !== secret) {
