@@ -96,6 +96,7 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
       await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)`;
 
       const scores = result.scores;
+      const displayName = result.seo_data?.title?.trim() || hostname;
       const hasLlmsTxtIssue = (result.issues || []).some((i: any) => /llms\.txt/i.test(i.title || ''));
       const hasSchemaIssue = (result.issues || []).some((i: any) => i.module === 'schema' && /JSON-LD не найден/i.test(i.title || ''));
       const hasFaqIssue = (result.issues || []).some((i: any) => /faqpage/i.test(i.found || ''));
@@ -106,8 +107,9 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
 
       await sql`
         INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)
-        VALUES (${hostname}, ${hostname}, ${'Сервисы'}, ${scores.ai ?? 0}, ${scores.seo ?? 0}, ${scores.schema ?? 0}, ${scores.direct ?? 0}, ${!hasLlmsTxtIssue}, ${!hasFaqIssue}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
+        VALUES (${hostname}, ${displayName}, ${'Сервисы'}, ${scores.ai ?? 0}, ${scores.seo ?? 0}, ${scores.schema ?? 0}, ${scores.direct ?? 0}, ${!hasLlmsTxtIssue}, ${!hasFaqIssue}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
         ON CONFLICT (domain) DO UPDATE SET
+          display_name = EXCLUDED.display_name,
           llm_score = EXCLUDED.llm_score,
           seo_score = EXCLUDED.seo_score,
           schema_score = EXCLUDED.schema_score,
