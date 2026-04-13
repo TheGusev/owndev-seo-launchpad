@@ -83,9 +83,10 @@ const SiteCheck = () => {
   const rescanTriggered = useRef(false);
   useEffect(() => {
     const rescanUrl = searchParams.get("url");
+    const rescanMode = searchParams.get("mode") as 'basic' | 'full' | null;
     if (rescanUrl && !rescanTriggered.current) {
       rescanTriggered.current = true;
-      handleSubmit(rescanUrl, "site");
+      handleSubmit(rescanUrl, "site", rescanMode || 'full');
     }
   }, [searchParams]);
 
@@ -94,12 +95,12 @@ const SiteCheck = () => {
     setHistory([]);
   };
 
-  const handleSubmit = async (url: string, mode: ScanMode) => {
+  const handleSubmit = async (url: string, mode: ScanMode, scanMode: 'basic' | 'full' = 'basic') => {
     setScanning(true);
     setLimitScanId(null);
     setScanError(null);
     try {
-      const result = await startScan(url, mode);
+      const result = await startScan(url, mode, scanMode);
       setScanId(result.scan_id);
       pollStatus(result.scan_id);
     } catch (e: any) {

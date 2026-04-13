@@ -8,6 +8,7 @@ interface SiteCheckJobData {
   scan_id: string;
   url: string;
   mode: string;
+  scan_mode?: string;
 }
 
 const API_KEY = process.env.OPENAI_API_KEY || process.env.LOVABLE_API_KEY || '';
@@ -23,8 +24,8 @@ async function loadDbRules(): Promise<any[]> {
 }
 
 async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
-  const { scan_id, url, mode } = job.data;
-  logger.info('SITE_CHECK_WORKER', `Processing scan ${scan_id} for ${url}`);
+  const { scan_id, url, mode, scan_mode = 'full' } = job.data;
+  logger.info('SITE_CHECK_WORKER', `Processing scan ${scan_id} for ${url} [${scan_mode}]`);
 
   try {
     const dbRules = await loadDbRules();
@@ -50,6 +51,7 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
       },
       API_KEY,
       dbRules,
+      scan_mode,
     );
 
     // Save final result

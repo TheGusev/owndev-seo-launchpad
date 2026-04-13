@@ -27,9 +27,17 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       result      JSONB,
       error_message TEXT,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      scan_mode   TEXT        NOT NULL DEFAULT 'basic',
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+
+  // Add scan_mode column if missing (for existing tables)
+  try {
+    await sql`SELECT scan_mode FROM site_check_scans LIMIT 0`;
+  } catch {
+    try { await sql.unsafe(`ALTER TABLE site_check_scans ADD COLUMN IF NOT EXISTS scan_mode TEXT NOT NULL DEFAULT 'basic'`); } catch {}
+  }
 
   // Ensure geo_rating table exists
   await sql`
@@ -76,8 +84,8 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   const queue = new Queue('site-check', { connection: redis });
 
   // POST /api/v1/site-check/start
-  app.post<{ Body: { url: string; mode?: string } }>('/start', async (req, reply) => {
-    const { url, mode = 'page' } = req.body as { url: string; mode?: string };
+  app.post<{ Body: { url: string; mode?: string; scan_mode?: string } }>('/start', async (req, reply) => {
+    const { url, mode = 'page', scan_mode = 'basic' } = req.body as { url: string; mode?: string; scan_mode?: string };
     if (!url) return reply.status(400).send({ success: false, error: 'url is required' });
 
     const [{ count }] = await sql<[{ count: number }]>`
@@ -103,6 +111,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       SELECT id FROM site_check_scans
       WHERE url LIKE ${'%' + hostname + '%'}
         AND status = 'done'
+        AND scan_mode = ${scan_mode}
         AND created_at::date = ${today}::date
       ORDER BY created_at DESC LIMIT 1
     `;
@@ -117,11 +126,11 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 
     const scan_id = randomUUID();
     await sql`
-      INSERT INTO site_check_scans (id, url, mode, status, progress_pct)
-      VALUES (${scan_id}, ${url}, ${mode}, 'running', 0)
+      INSERT INTO site_check_scans (id, url, mode, scan_mode, status, progress_pct)
+      VALUES (${scan_id}, ${url}, ${mode}, ${scan_mode}, 'running', 0)
     `;
 
-    await queue.add('scan', { scan_id, url, mode });
+    await queue.add('scan', { scan_id, url, mode, scan_mode });
     logger.info('SITE_CHECK', `Scan ${scan_id} queued for ${url}`);
     return reply.status(200).send({ scan_id, status: 'running' });
   });
@@ -152,7 +161,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Params: { scanId: string } }>('/result/:scanId', async (req, reply) => {
     const { scanId } = req.params;
     const rows = await sql<Array<any>>`
-      SELECT id, url, mode, status, progress_pct, theme, is_spa,
+      SELECT id, url, mode, scan_mode, status, progress_pct, theme, is_spa,
              scores, issues, competitors, keywords, minus_words,
              seo_data, result, error_message, created_at
       FROM site_check_scans
@@ -216,6 +225,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       result,
       raw_scores: scores,
 
+      scan_mode: row.scan_mode ?? 'basic',
       is_spa: row.is_spa ?? false,
       error_message: row.error_message ?? null,
       created_at: row.created_at,
