@@ -48,7 +48,7 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           WHERE id = ${scan_id}
         `;
       },
-      OPENAI_API_KEY,
+      API_KEY,
       dbRules,
     );
 
