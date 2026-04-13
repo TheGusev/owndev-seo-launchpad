@@ -204,7 +204,7 @@ const SiteCheckResult = () => {
               />
             </ResultAccordion>
           )}
-          {!directAdSuggestion && directReadinessScore !== null && (
+          {!directAdSuggestion && directReadinessScore !== null && !isBasic && (
             <ResultAccordion title="Готовность к Яндекс.Директ" defaultOpen={false}>
               <DirectAdPreview
                 adSuggestion={{ headline1: '', headline2: '', ad_text: '', sitelinks: [], callouts: [] }}
@@ -212,6 +212,13 @@ const SiteCheckResult = () => {
                 url={data.url}
               />
             </ResultAccordion>
+          )}
+          {isBasic && !directAdSuggestion && (
+            <PaywallCTA
+              title="Рекомендации для Яндекс.Директ"
+              features={["AI-генерация объявления", "Оценка готовности к рекламе", "Заголовки, быстрые ссылки, уточнения"]}
+              onUnlock={handleUnlock}
+            />
           )}
 
           {/* 4. Tech Passport */}
@@ -235,16 +242,23 @@ const SiteCheckResult = () => {
           )}
 
           {/* 6. AI-видимость */}
-          {llmJudge && (
+          {llmJudge && !isBasic && (
             <ResultAccordion title="AI-видимость: проверка нейросетями" defaultOpen={false}>
               <LlmJudgeSection data={llmJudge} />
             </ResultAccordion>
           )}
-          {llmJudgeLoading && !llmJudge && (
+          {llmJudgeLoading && !llmJudge && !isBasic && (
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">
               <Loader2 className="w-4 h-4 text-primary animate-spin" />
               <p className="text-xs text-muted-foreground">Опрашиваем нейросети...</p>
             </div>
+          )}
+          {isBasic && (
+            <PaywallCTA
+              title="AI-видимость"
+              features={["Проверка упоминаний в ChatGPT и Gemini", "Процент цитирования", "Сравнение с конкурентами"]}
+              onUnlock={handleUnlock}
+            />
           )}
 
           {/* 7. Competitors */}
@@ -253,10 +267,12 @@ const SiteCheckResult = () => {
               <CompetitorsTable competitors={competitors} comparisonTable={comparisonTable} directMeta={directMeta} userUrl={data.url} />
             </ResultAccordion>
           )}
-          {data?.competitors && competitors.length === 0 && rawCompetitors.length > 0 && (
-            <ResultAccordion title="Конкуренты (raw)" defaultOpen={false}>
-              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(rawCompetitors.slice(0, 3), null, 2)}</pre>
-            </ResultAccordion>
+          {isBasic && competitors.length === 0 && (
+            <PaywallCTA
+              title="Конкуренты в AI-выдаче"
+              features={["Топ-10 конкурентов по теме", "Сравнительная таблица метрик", "Анализ сильных и слабых сторон"]}
+              onUnlock={handleUnlock}
+            />
           )}
 
           {/* 8. Keywords */}
@@ -265,10 +281,12 @@ const SiteCheckResult = () => {
               <KeywordsSection keywords={keywords} />
             </ResultAccordion>
           )}
-          {data?.keywords && keywords.length === 0 && (
-            <ResultAccordion title="Ключевые слова (raw)" defaultOpen={false}>
-              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(Array.isArray(data.keywords) ? data.keywords.slice(0, 5) : data.keywords, null, 2)}</pre>
-            </ResultAccordion>
+          {isBasic && keywords.length === 0 && (
+            <PaywallCTA
+              title="Ключевые слова для продвижения"
+              features={["200+ целевых запросов с частотностью", "Кластеризация по намерению", "Рекомендации по посадочным страницам"]}
+              onUnlock={handleUnlock}
+            />
           )}
 
           {/* 9. Minus words */}
@@ -277,10 +295,12 @@ const SiteCheckResult = () => {
               <MinusWordsSection minusWords={minusWords} />
             </ResultAccordion>
           )}
-          {data?.minus_words && minusWords.length === 0 && (
-            <ResultAccordion title="Минус-фразы (raw)" defaultOpen={false}>
-              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(Array.isArray(data.minus_words) ? data.minus_words.slice(0, 5) : data.minus_words, null, 2)}</pre>
-            </ResultAccordion>
+          {isBasic && minusWords.length === 0 && (
+            <PaywallCTA
+              title="Минус-фразы для Директа"
+              features={["Автоматический подбор минус-слов", "Фильтрация нецелевого трафика", "Экспорт для загрузки в Директ"]}
+              onUnlock={handleUnlock}
+            />
           )}
 
           {/* 10. GEO Rating */}
@@ -302,6 +322,7 @@ const SiteCheckResult = () => {
             keywords={keywords} minusWords={minusWords} competitors={competitors}
             scanDate={data.created_at} seoData={data.seo_data}
             comparisonTable={comparisonTable} directMeta={directMeta}
+            isBasic={isBasic}
           />
         </div>
       </main>
