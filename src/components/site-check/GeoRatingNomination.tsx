@@ -27,18 +27,17 @@ interface Props {
 
 const GeoRatingNomination = ({ totalScore, url, scanId }: Props) => {
   const { toast } = useToast();
-    
-  // HOTFIX: Guard against undefined/invalid URL to prevent crash
-  if (!url || typeof url !== 'string') return null;
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [brandName, setBrandName] = useState(() => {
-    try { return new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace("www.", ""); } catch { return url; }
+    try { return new URL((url || '').startsWith("http") ? url : `https://${url}`).hostname.replace("www.", ""); } catch { return url || ''; }
   });
   const [category, setCategory] = useState("Другое");
   const [email, setEmail] = useState("");
 
+  // Guards AFTER all hooks
+  if (!url || typeof url !== 'string') return null;
   if (totalScore < 70 || sent) return null;
 
   const domain = (() => {
