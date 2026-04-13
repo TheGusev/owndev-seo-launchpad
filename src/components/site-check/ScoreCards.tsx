@@ -79,15 +79,15 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
 
   return (
     <>
-      {/* Mobile: 3+2 grid, Desktop: 5 columns */}
-      <div className="grid grid-cols-3 gap-2 md:grid-cols-5 md:gap-3">
+      {/* Mobile: total full-width + 2x2, Desktop: 5 columns */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
         {keys.map((key, i) => {
           const val = scores?.[key] ?? 0;
           return (
             <div
               key={key}
               className={`rounded-xl border p-3 text-center ${getScoreColor(val)} ${
-                i >= 3 ? "col-span-1" : ""
+                i === 0 ? "col-span-2 md:col-span-1" : "col-span-1"
               }`}
             >
               <CircleScore score={val} />
@@ -105,13 +105,6 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
           );
         })}
       </div>
-      {/* Center last 2 items on mobile via CSS: on 3-col grid, items 4-5 naturally flow to row 2 */}
-      <style>{`
-        @media (max-width: 767px) {
-          .grid.grid-cols-3 > :nth-child(4) { grid-column-start: 1; }
-          .grid.grid-cols-3 > :nth-child(5) { grid-column-start: 2; }
-        }
-      `}</style>
 
       {activeModal && (
         <ScoreDetailsModal
