@@ -36,23 +36,23 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
   const [headline1, setHeadline1] = useState(adSuggestion.headline1);
   const [headline2, setHeadline2] = useState(adSuggestion.headline2);
   const [adText, setAdText] = useState(adSuggestion.ad_text);
-  const [sitelinks, setSitelinks] = useState([...adSuggestion.sitelinks]);
-  const [callouts, setCallouts] = useState([...adSuggestion.callouts]);
+  const [sitelinks, setSitelinks] = useState([...(adSuggestion.sitelinks ?? [])]);
+  const [callouts, setCallouts] = useState([...(adSuggestion.callouts ?? [])]);
 
   const currentAd = {
     headline1: isEditing ? headline1 : adSuggestion.headline1,
     headline2: isEditing ? headline2 : adSuggestion.headline2,
     ad_text: isEditing ? adText : adSuggestion.ad_text,
-    sitelinks: isEditing ? sitelinks : adSuggestion.sitelinks,
-    callouts: isEditing ? callouts : adSuggestion.callouts,
+    sitelinks: isEditing ? sitelinks : (adSuggestion.sitelinks ?? []),
+    callouts: isEditing ? callouts : (adSuggestion.callouts ?? []),
   };
 
   const startEdit = () => {
     setHeadline1(adSuggestion.headline1);
     setHeadline2(adSuggestion.headline2);
     setAdText(adSuggestion.ad_text);
-    setSitelinks([...adSuggestion.sitelinks]);
-    setCallouts([...adSuggestion.callouts]);
+    setSitelinks([...(adSuggestion.sitelinks ?? [])]);
+    setCallouts([...(adSuggestion.callouts ?? [])]);
     setIsEditing(true);
   };
 
