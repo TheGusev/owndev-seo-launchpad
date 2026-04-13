@@ -1,53 +1,52 @@
 
 
-## FullReportView — улучшение читаемости на мобиле
+## Восстановление блоков отчёта SiteCheckResult
 
-### Изменения — 1 файл: `src/components/site-check/FullReportView.tsx`
+### Изменения — 2 файла
 
-IssueCard.tsx **не трогаем** — он используется в других местах. Вся логика уже внутри FullReportView в компоненте `IssueRow`.
+#### 1. `src/pages/SiteCheckResult.tsx`
 
-### 1. Статистика в одну строку (новый блок сверху)
-
-Добавить компактную строку над фильтрами:
+**a) Расширить поиск directAdMeta (строка 115):**
+```ts
+const directAdMeta = rawCompetitors.find((c: any) => 
+  c._type === 'direct_ad_meta' || 
+  c._direct_meta === true || 
+  c.ad_suggestion != null ||
+  c.readiness_score != null
+);
 ```
-🔴 Критично (3) · 🟠 Важно (5) · 🟡 Средне (8) · ⚪ Мелко (2)
-```
-Данные из уже существующего `severityCounts`. Каждый элемент кликабельный — устанавливает `severityFilter`.
 
-### 2. Фильтры — горизонтальный скролл на мобиле
+**b) Добавить raw-fallback для keywords, minusWords, competitors** — если маппинг дал пустой массив, но raw-данные есть, показать JSON-превью для отладки.
 
-Оба ряда чипсов (severity + category) обернуть в:
-```
-overflow-x-auto whitespace-nowrap flex-nowrap scrollbar-hide
-```
-Убрать `flex-wrap`. Добавить CSS-класс `scrollbar-hide` через inline style (`msOverflowStyle: 'none', scrollbarWidth: 'none'`).
+**c) Переупорядочить блоки по новому порядку:**
+1. Header
+2. ScoreCards
+3. Яндекс.Директ (DirectAdPreview + DirectMeta) — сразу после scores, `defaultOpen=false`
+4. Технический паспорт — `defaultOpen=false`
+5. План исправления — `defaultOpen=true`
+6. AI-видимость (LlmJudge) — `defaultOpen=false`
+7. Конкуренты — `defaultOpen=false`
+8. Ключевые запросы — `defaultOpen=false`
+9. Минус-фразы — `defaultOpen=false`
+10. GeoRatingNomination
+11. llms.txt кнопка
+12. DownloadButtons
 
-Активный чип — заливка цветом (`font-semibold ring-1 ring-current`), неактивный — `bg-muted/20 text-muted-foreground`.
+**d) DirectAdPreview accordion:** изменить `defaultOpen` с `true` на `false`.
 
-### 3. Карточки с цветной левой полоской по severity
+#### 2. `src/components/site-check/TechPassport.tsx`
 
-Заменить текущий `border-b border-border/10` на карточки с:
-- `border-l-[3px]` + severity-цвет (`border-l-red-500`, `border-l-orange-500`, `border-l-yellow-500`, `border-l-border`)
-- Лёгкий фон: `bg-red-500/5`, `bg-orange-500/5`, `bg-yellow-500/5`, `bg-muted/5`
-- `rounded-lg mb-2 p-0` — визуальное разделение между карточками
-- Убрать severity-бейдж из строки (полоска уже показывает severity) — оставить только category-бейдж, название, impact score, стрелку
+Расширить интерфейс `TechData` и добавить секции:
 
-### 4. Accordion-поведение
+- **Технологии**: cms, framework, language, server, php_version, wordpress_version — все через Badge chips
+- **Сервер / Геолокация**: country_flag + country_code + city, hosting
+- **Аналитика**: оставить как есть
+- **Мета**: любые дополнительные поля tech (php_version, wordpress_version и т.п.)
 
-Уже реализовано через `expandedId` state — только одна карточка открыта. Не трогаем.
-
-### 5. Прогресс-бар с цветом
-
-Обернуть `<Progress>` в div с динамическим CSS-классом:
-- `>= 50%` — зелёный (`[&>div]:bg-green-500`)
-- `< 50%` — оранжевый (`[&>div]:bg-orange-500`)
-
-Добавить процент в текст: `"Исправлено: X из Y (Z%)"`.
+Каждая секция с заголовком `text-xs text-muted-foreground uppercase tracking-wider`. Пустые секции не рендерятся.
 
 ### Не меняем
-- Типы `IssueCard`, `IssueSeverity`, `IssueModule`
-- Логику фильтрации (`filteredIssues`, `severityCounts`, `categoryCounts`)
-- Логику чекбоксов (`useIssueTracker`, `isResolved`, `toggleIssue`)
-- `IssueCard.tsx` (отдельный компонент)
-- Expanded content (why_it_matters, how_to_fix, example_fix, AutoFixGenerator, docs_url)
+- API вызовы, useEffect, useState, getFullScan, judgeLlm, getTechPassport
+- Логику маппинга keywords/minusWords (только добавляем raw-fallback)
+- Компоненты KeywordsSection, MinusWordsSection, CompetitorsTable, FullReportView
 
