@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -14,6 +14,7 @@ import LlmJudgeSection from "@/components/site-check/LlmJudgeSection";
 import GeoRatingNomination from "@/components/site-check/GeoRatingNomination";
 import TechPassport from "@/components/site-check/TechPassport";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
+import { PaywallCTA } from "@/components/site-check/PaywallCTA";
 import { getFullScan } from "@/lib/site-check-api";
 import { judgeLlm, getTechPassport } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
@@ -24,6 +25,7 @@ import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
 
 const SiteCheckResult = () => {
+  const navigate = useNavigate();
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
@@ -48,7 +50,7 @@ const SiteCheckResult = () => {
         setData(d);
         if (d && scanId) addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
         if (d?.llm_judge) setLlmJudge(d.llm_judge);
-        else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme);
+        else if (d?.url && d?.status === 'done' && d?.scan_mode !== 'basic') triggerLlmJudge(scanId, d.url, d.theme);
         if (d?.url) triggerTechPassport(d.url);
       })
       .catch((e) => {
