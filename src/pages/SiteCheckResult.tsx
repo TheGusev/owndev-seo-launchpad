@@ -36,6 +36,7 @@ const SiteCheckResult = () => {
   const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
   const [techPassport, setTechPassport] = useState<any>(null);
   const [techPassportLoading, setTechPassportLoading] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const previousScores = useMemo(() => {
     if (!data?.url || !scanId) return undefined;
@@ -140,7 +141,6 @@ const SiteCheckResult = () => {
   });
 
   const isBasic = data.scan_mode === 'basic';
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const handleUnlock = () => setPaymentModalOpen(true);
 
   // Tech passport summary badges for accordion header
