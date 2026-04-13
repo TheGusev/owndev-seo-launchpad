@@ -17,11 +17,28 @@ Node.js backend для GEO/AEO платформы OWNDEV.
 
 ```bash
 cp .env.example .env
-# Заполнить .env
+# Заполнить .env (см. раздел "Переменные окружения")
 
 npm install
 npm run dev     # dev-сервер с hot reload (tsx)
 ```
+
+## Переменные окружения
+
+| Переменная | Обязательная | Описание |
+|---|---|---|
+| `DATABASE_URL` | да | PostgreSQL connection string |
+| `REDIS_URL` | да | Redis connection string |
+| `API_KEY_SECRET` | да | Секрет для X-API-Key аутентификации |
+| `LOVABLE_API_KEY` | да | Ключ Lovable AI Gateway для LLM-вызовов |
+| `LLM_PROVIDER` | нет | `lovable` (по умолчанию) или `openai` |
+| `PORT` | нет | Порт сервера (по умолчанию 3001) |
+| `PUPPETEER_TIMEOUT` | нет | Таймаут Puppeteer в мс (по умолчанию 15000) |
+| `MAX_CONCURRENT_AUDITS` | нет | Макс. параллельных аудитов (по умолчанию 3) |
+| `SITE_CHECK_CONCURRENCY` | нет | Параллельность site-check (по умолчанию 10) |
+| `MAX_CONCURRENT_SITE_CHECKS` | нет | Макс. параллельных site-check (по умолчанию 5) |
+
+> **OpenAI API Key не нужен.** Все LLM-вызовы идут через Lovable AI Gateway по умолчанию. Для переключения на OpenAI установите `LLM_PROVIDER=openai` и добавьте `OPENAI_API_KEY` (не рекомендуется).
 
 ## Сборка
 
@@ -35,13 +52,14 @@ npm start       # node dist/index.js
 ```
 src/
 ├── api/            # Fastify сервер, routes, middleware
-│   ├── routes/     # health, audit, monitor
+│   ├── routes/     # health, audit, monitor, siteCheck
 │   └── middleware/  # auth (API-key), rateLimit (Redis)
 ├── services/       # Бизнес-логика
 │   ├── AuditService    # Оркестрация аудита
 │   ├── CrawlerService  # Puppeteer рендеринг
 │   ├── SchemaService   # Валидация JSON-LD
 │   ├── LlmsService     # Проверка llms.txt / robots.txt
+│   ├── SiteCheckPipeline # Пайплайн проверки сайта (basic/full)
 │   └── MonitorService  # Cron-задачи
 ├── workers/        # BullMQ workers
 ├── db/             # PostgreSQL: client, migrations, queries
@@ -62,6 +80,8 @@ src/
 | GET | `/api/v1/audit/:id` | Получить результат аудита |
 | POST | `/api/v1/monitor` | Начать мониторинг `{ url }` |
 | GET | `/api/v1/monitor/:domain` | История аудитов домена |
+| POST | `/api/v1/site-check` | Запустить проверку `{ url, mode }` |
+| GET | `/api/v1/site-check/result/:id` | Результат проверки |
 
 ## Миграции
 
