@@ -1,103 +1,115 @@
 
 
-## LLM Provider Abstraction: OpenAI → Lovable AI Gateway
+## Basic / Full режим проверки — разделение pipeline
 
-### Summary
+### Обзор
 
-All LLM calls in the backend are in `SiteCheckPipeline.ts` via two low-level functions (`llmCall`, `llmToolCall`). The simplest and safest approach: make these two functions switchable by env var, without touching any business logic above them.
+Разделить скан на два режима: `basic` (быстрый, без LLM-вызовов) и `full` (полный, как сейчас). Backend пропускает LLM-шаги для basic. Frontend показывает PaywallCTA для заблокированных блоков.
 
-### Architecture
+### Backend — 3 файла
 
-The Lovable AI Gateway (`https://ai.gateway.lovable.dev/v1/chat/completions`) is **OpenAI-compatible** — same request/response format. So switching providers means changing only: URL, auth header, and model name.
+#### 1. `owndev-backend/src/api/routes/siteCheck.ts`
 
-```text
-┌─────────────────────────────────┐
-│  SiteCheckPipeline.ts           │
-│  detectTheme / extractKeywords  │
-│  generateMinusWords / etc.      │
-│         │                       │
-│    llmCall() / llmToolCall()    │  ← These two functions are the ONLY change point
-│         │                       │
-│  ┌──────┴──────┐                │
-│  │ LLM_PROVIDER │               │
-│  │ = lovable?   │               │
-│  └──┬──────┬───┘                │
-│     │      │                    │
-│  Lovable  OpenAI                │
-│  Gateway  API                   │
-└─────────────────────────────────┘
+**a) Колонка `scan_mode`** — добавить в CREATE TABLE и ALTER:
+```sql
+ALTER TABLE site_check_scans ADD COLUMN IF NOT EXISTS scan_mode TEXT DEFAULT 'basic';
+```
+Название `scan_mode` вместо `mode` потому что `mode` уже используется (page/site).
+
+**b) POST `/start`** — принимать `scan_mode` из body, дефолт `'basic'`, сохранять в БД и передавать в очередь.
+
+**c) GET `/result/:scanId`** — добавить `scan_mode` в SELECT и в ответ.
+
+**d) Кеш-проверка** — для basic и full считать отдельно (full не блокируется basic-кешем того же домена):
+```ts
+const cached = await sql`
+  SELECT id FROM site_check_scans
+  WHERE url LIKE ${'%' + hostname + '%'}
+    AND status = 'done'
+    AND scan_mode = ${scan_mode}
+    AND created_at::date = ${today}::date
+  ORDER BY created_at DESC LIMIT 1
+`;
 ```
 
-### Changes — 3 files
+#### 2. `owndev-backend/src/services/SiteCheckPipeline.ts`
 
-#### 1. `owndev-backend/src/services/SiteCheckPipeline.ts`
+**a) `runPipeline` получает `scan_mode`** — добавить параметр. Если `scan_mode === 'basic'`:
+- Пропустить `detectTheme` LLM-вызов (вернуть 'Общая тематика')
+- Пропустить `competitorAnalysis` (вернуть пустой результат)
+- Пропустить `extractKeywords` (вернуть `[]`)
+- Пропустить `generateMinusWords` (вернуть `[]`)
+- Пропустить `generateDirectAd` (вернуть `null`)
+- НЕ пропускать: HTML-краулинг, technicalAudit, contentAudit, directAudit, schemaAudit, aiAudit, calcScores, extractSeoData
 
-Replace `llmCall` and `llmToolCall` (lines 292-342) to read env vars and route accordingly:
-
-```typescript
-const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
-
-function getLlmConfig(apiKey: string) {
-  if (LLM_PROVIDER === 'lovable') {
-    const lovableKey = process.env.LOVABLE_API_KEY || apiKey;
-    return {
-      url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
-      authHeader: `Bearer ${lovableKey}`,
-      defaultModel: 'google/gemini-2.5-flash',
-    };
-  }
-  return {
-    url: 'https://api.openai.com/v1/chat/completions',
-    authHeader: `Bearer ${apiKey}`,
-    defaultModel: 'gpt-4o-mini',
-  };
-}
+**b) Конкретная реализация** — обернуть LLM-шаги в условия:
+```ts
+const theme = scanMode === 'basic' ? 'Общая тематика' : await detectTheme(html, url, apiKey);
+// ...
+const compResult = scanMode === 'basic'
+  ? { competitors: [], gap_issues: [], directMeta: null, comparisonTable: null }
+  : await competitorAnalysis(...);
+const keywords = scanMode === 'basic' ? [] : await extractKeywords(...);
+const minusWords = scanMode === 'basic' ? [] : await generateMinusWords(...);
+const adSuggestionPromise = scanMode === 'basic' ? Promise.resolve(null) : generateDirectAd(...);
 ```
 
-Then `llmCall` and `llmToolCall` use `getLlmConfig(apiKey)` instead of hardcoded URL/model. All callers (`detectTheme`, `extractKeywords`, `generateMinusWords`, `generateDirectAd`, `competitorAnalysis`) pass `'gpt-4o-mini'` as model — this gets overridden by `config.defaultModel` when provider is lovable.
+#### 3. `owndev-backend/src/workers/SiteCheckWorker.ts`
 
-**No other code changes in this file.** All prompts, parsing, return types stay identical.
+Передать `job.data.scan_mode` в `runPipeline`.
 
-#### 2. `owndev-backend/src/workers/SiteCheckWorker.ts`
+### Frontend — 5 файлов
 
-Line 13: also read `LOVABLE_API_KEY` as fallback:
-```typescript
-const API_KEY = process.env.OPENAI_API_KEY || process.env.LOVABLE_API_KEY || '';
-```
+#### 4. `src/lib/api/scan.ts`
 
-Pass this to `runPipeline` as before. The `llmCall`/`llmToolCall` inside will pick the right URL based on `LLM_PROVIDER`.
+`startScan` — принимать `scanMode?: 'basic' | 'full'`, передавать в body как `scan_mode`.
 
-#### 3. `owndev-backend/.env.example`
+#### 5. `src/components/site-check/ScanForm.tsx`
 
-Add:
-```
-LLM_PROVIDER=lovable
-LOVABLE_API_KEY=your_lovable_api_key_here
-```
+Две кнопки вместо одной:
+- "Быстрая проверка" (secondary) → `onSubmit(url, "site", "basic")`
+- "Полный GEO-аудит" (hero/primary) → `onSubmit(url, "site", "full")`
+  с подписью: "Ключевые слова, конкуренты, Яндекс.Директ"
 
-### Model choice for Lovable
+Обновить `ScanFormProps.onSubmit` сигнатуру: добавить `scanMode`.
 
-Using `google/gemini-2.5-flash` as default — good balance of speed and quality for structured JSON extraction (keywords, minus-words, competitors, ad copy). Tool calling is supported.
+#### 6. `src/pages/SiteCheck.tsx`
 
-### What does NOT change
+Передать `scanMode` из ScanForm → `startScan(url, mode, scanMode)`. Поддержать `?mode=full` из query params.
 
-- All pipeline business logic (steps 0-8)
-- All return types (`PipelineResult`, `Issue`, `KeywordEntry`, `MinusWord`, etc.)
-- All prompts (system + user)
-- Worker DB writes (scores, issues, competitors, keywords, minus_words, seo_data)
-- API endpoints and response format
-- Frontend components
-- Edge functions (they have their own LLM integration)
+#### 7. `src/components/site-check/PaywallCTA.tsx`
 
-### Verification after implementation
+Полностью переработать — новый "locked" блок:
+- Props: `title: string`, `features: string[]`, `onUnlock: () => void`
+- Визуал: dashed border, Lock иконка, заголовок, 3 фичи, кнопка "Запустить полный аудит", подпись "Бесплатно · 30-60 сек"
 
-- Build check: `cd owndev-backend && npx tsc --noEmit`
-- Log output to confirm Lovable Gateway is being called
-- Data format stays identical — frontend displays without changes
+#### 8. `src/pages/SiteCheckResult.tsx`
 
-### Risk mitigation
+**a) Читать `data.scan_mode`**, определить `isBasic = data.scan_mode === 'basic'`
 
-- If Lovable Gateway returns different JSON structure in tool_calls — the existing `safeParseJson` handles edge cases
-- If LOVABLE_API_KEY is missing — falls back to empty string, same as current OpenAI behavior (returns empty results gracefully)
-- Switching back: just set `LLM_PROVIDER=openai` in env
+**b) Badge режима** в шапке:
+- basic → серый Badge "Базовый"
+- full → зелёный Badge "Полный"
+
+**c) PaywallCTA** для заблокированных блоков (когда `isBasic` И данные пустые):
+- Keywords → PaywallCTA с title "Ключевые слова" и 3 фичами
+- MinusWords → PaywallCTA
+- Competitors → PaywallCTA
+- DirectAd → PaywallCTA
+- LlmJudge → не вызывать `triggerLlmJudge` при basic, показать PaywallCTA
+
+**d) `onUnlock`** — `navigate(\`/tools/site-check?url=${data.url}&mode=full\`)`
+
+**e) Убрать raw-fallback блоки** — заменить на PaywallCTA для basic.
+
+#### 9. `src/components/site-check/DownloadButtons.tsx`
+
+Принять проп `isBasic?: boolean`. Если basic — кнопки PDF/Word/CSV заблокированы (disabled + тултип). llms.txt — доступен всегда.
+
+### Не меняем
+- Логику scores/issues — работают в обоих режимах
+- GeoRating auto-upsert в worker — работает в обоих режимах
+- Tech passport — работает в обоих режимах (не LLM)
+- Типы IssueCard, KeywordEntry, MinusWord
+- Существующие API-контракты (только добавляем поле `scan_mode`)
 
