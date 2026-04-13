@@ -288,22 +288,12 @@ interface DbRule {
   example_fix: string; score_weight: number; visible_in_preview: boolean; active: boolean;
 }
 
-// ─── LLM provider config ───
-const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
-
+// ─── LLM config (Lovable AI Gateway only) ───
 function getLlmConfig(apiKey: string) {
-  if (LLM_PROVIDER === 'lovable') {
-    const lovableKey = process.env.LOVABLE_API_KEY || apiKey;
-    return {
-      url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
-      authHeader: `Bearer ${lovableKey}`,
-      defaultModel: 'google/gemini-2.5-flash',
-    };
-  }
   return {
-    url: 'https://api.openai.com/v1/chat/completions',
-    authHeader: `Bearer ${apiKey}`,
-    defaultModel: 'gpt-4o-mini',
+    url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+    authHeader: `Bearer ${process.env.LOVABLE_API_KEY || apiKey}`,
+    defaultModel: 'google/gemini-2.5-flash',
   };
 }
 
