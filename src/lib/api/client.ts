@@ -1,33 +1,39 @@
 /**
  * Unified API client for OWNDEV.
  * 
- * - invokeFunction: wrapper over supabase.functions.invoke (most tools)
- * - request: raw fetch for path-based Edge Function endpoints (site-check-scan, site-check-report)
+ * - invokeFunction: POST to /api/v1/{functionName}
+ * - request: fetch with sub-path routing (e.g. site-check-scan/start)
  */
 
-import { supabase } from "@/integrations/supabase/client";
-import { edgeFunctionUrl, edgeFunctionHeaders } from "./config";
+import { apiUrl, apiHeaders } from "./config";
 
 /**
- * Invoke a Supabase Edge Function by name.
- * Handles both supabase SDK errors and application-level { error } responses.
+ * Invoke a backend endpoint by name (POST).
  */
 export async function invokeFunction<T = any>(
   functionName: string,
   body?: object
 ): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(functionName, {
-    body: body ?? {},
+  const resp = await fetch(apiUrl(`/${functionName}`), {
+    method: 'POST',
+    headers: apiHeaders(),
+    body: JSON.stringify(body ?? {}),
   });
 
-  if (error) {
-    if (/unauthorized|forbidden/i.test(error.message)) {
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+
+    if (resp.status === 401 || resp.status === 403) {
       console.error(`[OWNDEV API] ${functionName}: unauthorized`);
       throw new Error('Требуется авторизация');
     }
-    console.error(`[OWNDEV API] ${functionName}:`, error.message);
-    throw error;
+
+    const msg = data.error || `Ошибка ${resp.status}`;
+    console.error(`[OWNDEV API] ${functionName}:`, msg);
+    throw new Error(msg);
   }
+
+  const data = await resp.json();
 
   if (data?.error) {
     const msg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
@@ -39,7 +45,7 @@ export async function invokeFunction<T = any>(
 }
 
 /**
- * Raw fetch to a path-based Edge Function endpoint.
+ * Raw fetch to a path-based endpoint.
  * Used for endpoints with sub-routing (e.g. site-check-scan/start, site-check-report/create).
  */
 export async function request<T = any>(
@@ -47,12 +53,12 @@ export async function request<T = any>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
-  const url = edgeFunctionUrl(functionName, path);
+  const url = apiUrl(`/${functionName}${path}`);
 
   const resp = await fetch(url, {
     ...options,
     headers: {
-      ...edgeFunctionHeaders(),
+      ...apiHeaders(),
       ...(options?.headers || {}),
     },
   });
