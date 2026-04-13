@@ -2,10 +2,9 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CreditCard, Shield, Loader2 } from "lucide-react";
+import { CreditCard, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface PaymentModalProps {
   open: boolean;
@@ -14,41 +13,14 @@ interface PaymentModalProps {
   url: string;
 }
 
-export function PaymentModal({ open, onOpenChange, scanId, url }: PaymentModalProps) {
+export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
-  const handlePay = async () => {
-    if (!email || !email.includes("@")) {
-      toast({ title: "Укажите email", description: "Нужен корректный email для получения отчёта", variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("yukassa-create-payment", {
-        body: { scan_id: scanId, email, url },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      if (data?.payment_url) {
-        window.location.href = data.payment_url;
-      } else {
-        throw new Error("Не получена ссылка на оплату");
-      }
-    } catch (err: any) {
-      console.error("Payment error:", err);
-      toast({
-        title: "Ошибка оплаты",
-        description: err.message || "Попробуйте снова позже",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handlePay = () => {
+    toast.info("Оплата временно недоступна", {
+      description: "Сайт проходит проверку в платёжной системе. Напишите нам в Telegram @one_help для получения полного аудита.",
+      duration: 8000,
+    });
   };
 
   return (
@@ -62,13 +34,11 @@ export function PaymentModal({ open, onOpenChange, scanId, url }: PaymentModalPr
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Price */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
             <span className="text-sm text-muted-foreground">Стоимость</span>
             <span className="text-xl font-bold text-foreground">1 490 ₽</span>
           </div>
 
-          {/* What's included */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Включено:</p>
             <ul className="text-sm text-muted-foreground space-y-1">
@@ -81,7 +51,6 @@ export function PaymentModal({ open, onOpenChange, scanId, url }: PaymentModalPr
             </ul>
           </div>
 
-          {/* Email */}
           <div className="space-y-1.5">
             <label htmlFor="payment-email" className="text-sm font-medium text-foreground">
               Email для получения отчёта
@@ -92,32 +61,28 @@ export function PaymentModal({ open, onOpenChange, scanId, url }: PaymentModalPr
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
             />
           </div>
 
-          {/* Pay button */}
           <Button
             variant="hero"
             className="w-full gap-2"
             onClick={handlePay}
-            disabled={loading || !email}
+            disabled={!email}
           >
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <CreditCard className="w-4 h-4" />
-            )}
-            {loading ? "Перенаправляем..." : "Оплатить 1 490 ₽"}
+            <CreditCard className="w-4 h-4" />
+            Оплатить 1 490 ₽
           </Button>
 
-          {/* Payment methods */}
+          <p className="text-center text-xs text-muted-foreground">
+            ⏳ Подключение платёжной системы в процессе
+          </p>
+
           <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
             <Shield className="w-3.5 h-3.5" />
             <span>Visa · MasterCard · МИР · SBP</span>
           </div>
 
-          {/* Legal links */}
           <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground">
             <Link to="/offer" className="hover:underline">Оферта</Link>
             <span>·</span>
