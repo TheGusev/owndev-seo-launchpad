@@ -294,15 +294,20 @@ function getLlmConfig(apiKey: string) {
   if (proxyUrl) {
     return {
       url: proxyUrl,
-      authHeader: process.env.EDGE_FUNCTION_SECRET || '',
+      headers: {
+        'x-proxy-secret': process.env.EDGE_FUNCTION_SECRET || '',
+        'Content-Type': 'application/json',
+      },
       defaultModel: 'google/gemini-2.5-flash',
-      useProxySecret: true,
     };
   }
   // Fallback: direct gateway (local dev only)
   return {
     url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
-    authHeader: `Bearer ${process.env.LOVABLE_API_KEY || apiKey}`,
+    headers: {
+      Authorization: `Bearer ${process.env.LOVABLE_API_KEY || apiKey}`,
+      'Content-Type': 'application/json',
+    },
     defaultModel: 'google/gemini-2.5-flash',
   };
 }
@@ -313,7 +318,7 @@ async function llmCall(apiKey: string, _model: string, systemPrompt: string, use
   try {
     const resp = await fetch(config.url, {
       method: 'POST',
-      headers: { Authorization: config.authHeader, 'Content-Type': 'application/json' },
+      headers: config.headers,
       body: JSON.stringify({
         model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         max_tokens: maxTokens, temperature, top_p: 0.85,
@@ -337,7 +342,7 @@ async function llmToolCall(apiKey: string, _model: string, systemPrompt: string,
   try {
     const resp = await fetch(config.url, {
       method: 'POST',
-      headers: { Authorization: config.authHeader, 'Content-Type': 'application/json' },
+      headers: config.headers,
       body: JSON.stringify({
         model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         tools: [tool], tool_choice: { type: 'function', function: { name: tool.function.name } },
