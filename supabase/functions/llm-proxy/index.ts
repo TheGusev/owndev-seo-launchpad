@@ -1,6 +1,6 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-proxy-secret',
 }
 
 const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions'
@@ -18,10 +18,11 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Auth check
+  // Auth check — use x-proxy-secret header
   const secret = Deno.env.get('EDGE_FUNCTION_SECRET')
-  const authHeader = req.headers.get('authorization') || ''
-  const token = authHeader.replace(/^Bearer\s+/i, '')
+  const token = req.headers.get('x-proxy-secret') || ''
+  console.log(`auth-debug secret-set=${!!secret} secret-len=${secret?.length || 0} token-len=${token.length} match=${token === secret}`)
+
 
   if (!secret || token !== secret) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
