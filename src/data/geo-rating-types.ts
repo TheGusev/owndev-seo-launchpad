@@ -56,9 +56,12 @@ export function mapDbRowToEntry(
     issuesCount: row.errors_count,
     topErrors: (() => {
       try {
-        if (Array.isArray(row.top_errors)) return row.top_errors;
-        if (typeof row.top_errors === "string") return JSON.parse(row.top_errors);
-        return [];
+        let arr: any = row.top_errors;
+        if (typeof arr === "string") arr = JSON.parse(arr);
+        if (!Array.isArray(arr)) return [];
+        return arr.map((e: any) =>
+          typeof e === 'string' ? e : (e?.title ?? String(e))
+        );
       } catch { return []; }
     })(),
     verifiedAt: row.last_checked_at,

@@ -64,9 +64,12 @@ const GeoRating = () => {
         top_errors:
           (() => {
             try {
-              if (Array.isArray(r.top_errors)) return r.top_errors;
-              if (typeof r.top_errors === "string") return JSON.parse(r.top_errors);
-              return [];
+              let arr: any = r.top_errors;
+              if (typeof arr === "string") arr = JSON.parse(arr);
+              if (!Array.isArray(arr)) return [];
+              return arr.map((e: any) =>
+                typeof e === 'string' ? e : (e?.title ?? String(e))
+              );
             } catch { return []; }
           })(),
       }))
@@ -266,9 +269,9 @@ const GeoRating = () => {
                           <div className="mb-4">
                             <div className="text-xs font-medium text-muted-foreground/70 mb-1.5">Основные проблемы:</div>
                             <ul className="space-y-1">
-                              {(entry.topErrors ?? []).slice(0, 3).map((e: string, i: number) => (
+                              {(entry.topErrors ?? []).slice(0, 3).map((e: any, i: number) => (
                                 <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                                  <AlertTriangle className="w-3 h-3 text-yellow-400 mt-0.5 shrink-0" />{e}
+                                  <AlertTriangle className="w-3 h-3 text-yellow-400 mt-0.5 shrink-0" />{typeof e === 'string' ? e : (e?.title ?? String(e))}
                                 </li>
                               ))}
                             </ul>

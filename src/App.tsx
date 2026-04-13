@@ -65,7 +65,7 @@ const App = () => (
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/geo-audit" element={<GeoAudit />} />
-            <Route path="/geo-rating" element={<GeoRating />} />
+            <Route path="/geo-rating" element={<ErrorBoundary><GeoRating /></ErrorBoundary>} />
             <Route path="/geo-rating/methodology" element={<GeoRatingMethodology />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/site-check" element={<SiteCheck />} />
