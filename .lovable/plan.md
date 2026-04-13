@@ -1,115 +1,134 @@
 
 
-## Basic / Full режим проверки — разделение pipeline
+## Интеграция ЮKassa + обновление юридических документов
 
 ### Обзор
 
-Разделить скан на два режима: `basic` (быстрый, без LLM-вызовов) и `full` (полный, как сейчас). Backend пропускает LLM-шаги для basic. Frontend показывает PaywallCTA для заблокированных блоков.
+Три блока работ:
+1. **Edge function для ЮKassa** — создание платежа и обработка webhook
+2. **Frontend** — PaywallCTA → модал оплаты → перенаправление на ЮKassa
+3. **Юридические страницы** — обновление с ИНН 511007293446, данными ИП, ShopID 1308372
 
-### Backend — 3 файла
+### Данные продавца (используются во всех документах)
 
-#### 1. `owndev-backend/src/api/routes/siteCheck.ts`
-
-**a) Колонка `scan_mode`** — добавить в CREATE TABLE и ALTER:
-```sql
-ALTER TABLE site_check_scans ADD COLUMN IF NOT EXISTS scan_mode TEXT DEFAULT 'basic';
 ```
-Название `scan_mode` вместо `mode` потому что `mode` уже используется (page/site).
-
-**b) POST `/start`** — принимать `scan_mode` из body, дефолт `'basic'`, сохранять в БД и передавать в очередь.
-
-**c) GET `/result/:scanId`** — добавить `scan_mode` в SELECT и в ответ.
-
-**d) Кеш-проверка** — для basic и full считать отдельно (full не блокируется basic-кешем того же домена):
-```ts
-const cached = await sql`
-  SELECT id FROM site_check_scans
-  WHERE url LIKE ${'%' + hostname + '%'}
-    AND status = 'done'
-    AND scan_mode = ${scan_mode}
-    AND created_at::date = ${today}::date
-  ORDER BY created_at DESC LIMIT 1
-`;
+ИП — ИНН 511007293446
+Email: west-centro@mail.ru
+Телефон: +7 993 928-94-88
+Telegram: @one_help
+Сайт: owndev.ru
+Платёжная система: ЮKassa (ShopID: 1308372)
 ```
 
-#### 2. `owndev-backend/src/services/SiteCheckPipeline.ts`
+---
 
-**a) `runPipeline` получает `scan_mode`** — добавить параметр. Если `scan_mode === 'basic'`:
-- Пропустить `detectTheme` LLM-вызов (вернуть 'Общая тематика')
-- Пропустить `competitorAnalysis` (вернуть пустой результат)
-- Пропустить `extractKeywords` (вернуть `[]`)
-- Пропустить `generateMinusWords` (вернуть `[]`)
-- Пропустить `generateDirectAd` (вернуть `null`)
-- НЕ пропускать: HTML-краулинг, technicalAudit, contentAudit, directAudit, schemaAudit, aiAudit, calcScores, extractSeoData
+### Backend — 2 edge functions
 
-**b) Конкретная реализация** — обернуть LLM-шаги в условия:
-```ts
-const theme = scanMode === 'basic' ? 'Общая тематика' : await detectTheme(html, url, apiKey);
-// ...
-const compResult = scanMode === 'basic'
-  ? { competitors: [], gap_issues: [], directMeta: null, comparisonTable: null }
-  : await competitorAnalysis(...);
-const keywords = scanMode === 'basic' ? [] : await extractKeywords(...);
-const minusWords = scanMode === 'basic' ? [] : await generateMinusWords(...);
-const adSuggestionPromise = scanMode === 'basic' ? Promise.resolve(null) : generateDirectAd(...);
-```
+#### 1. `supabase/functions/yukassa-create-payment/index.ts`
 
-#### 3. `owndev-backend/src/workers/SiteCheckWorker.ts`
+Создаёт платёж через ЮKassa API:
+- Принимает: `scan_id`, `email`, `url` (сайт для проверки)
+- Создаёт запись в `reports` с `payment_status = 'pending'`
+- Вызывает `https://api.yookassa.ru/v3/payments` с Basic Auth (ShopID + Secret Key)
+- Сумма: 1490.00 RUB
+- `confirmation.type = "redirect"`, `return_url` = страница результата
+- `metadata`: `report_id`, `scan_id`, `email`
+- Возвращает `payment_url` (confirmation.confirmation_url)
 
-Передать `job.data.scan_mode` в `runPipeline`.
+Секрет `YUKASSA_SECRET_KEY` — нужно будет добавить после получения ключа от ЮKassa. Пока функция будет готова, но вернёт ошибку если ключ не задан.
 
-### Frontend — 5 файлов
+#### 2. `supabase/functions/yukassa-webhook/index.ts`
 
-#### 4. `src/lib/api/scan.ts`
+Webhook для получения уведомлений от ЮKassa:
+- Принимает POST от ЮKassa (event `payment.succeeded`)
+- Проверяет `payment.status === 'succeeded'`
+- Обновляет `reports.payment_status = 'paid'`, `payment_id = payment.id`
+- Запускает full scan для `scan_id` (если ещё не запущен)
+- Отправляет уведомление в Telegram
 
-`startScan` — принимать `scanMode?: 'basic' | 'full'`, передавать в body как `scan_mode`.
+Важно: `verify_jwt = false` для webhook (ЮKassa не шлёт JWT).
 
-#### 5. `src/components/site-check/ScanForm.tsx`
+#### 3. Обновить `supabase/functions/site-check-report/index.ts`
 
-Две кнопки вместо одной:
-- "Быстрая проверка" (secondary) → `onSubmit(url, "site", "basic")`
-- "Полный GEO-аудит" (hero/primary) → `onSubmit(url, "site", "full")`
-  с подписью: "Ключевые слова, конкуренты, Яндекс.Директ"
+- Убрать stub `payment_status: 'paid'`
+- При создании ставить `payment_status: 'pending'`
+- Вместо stub payment_url — вызывать `yukassa-create-payment`
 
-Обновить `ScanFormProps.onSubmit` сигнатуру: добавить `scanMode`.
+---
 
-#### 6. `src/pages/SiteCheck.tsx`
+### Frontend — 3 файла
 
-Передать `scanMode` из ScanForm → `startScan(url, mode, scanMode)`. Поддержать `?mode=full` из query params.
+#### 4. `src/components/site-check/PaymentModal.tsx` (новый)
 
-#### 7. `src/components/site-check/PaywallCTA.tsx`
+Модал оплаты перед полным аудитом:
+- Поле email (обязательное)
+- Стоимость: 1 490 ₽
+- Кнопка "Оплатить через ЮKassa"
+- При клике: вызвать edge function `yukassa-create-payment` → редирект на `payment_url`
+- Логотипы: Visa, MasterCard, МИР, SBP
+- Ссылки внизу: Оферта, Политика возврата
 
-Полностью переработать — новый "locked" блок:
-- Props: `title: string`, `features: string[]`, `onUnlock: () => void`
-- Визуал: dashed border, Lock иконка, заголовок, 3 фичи, кнопка "Запустить полный аудит", подпись "Бесплатно · 30-60 сек"
+#### 5. `src/components/site-check/PaywallCTA.tsx` (обновить)
 
-#### 8. `src/pages/SiteCheckResult.tsx`
+- Изменить текст кнопки: "Получить полный аудит — 1 490 ₽"
+- Убрать "Бесплатно · 30-60 сек"
+- `onUnlock` теперь открывает `PaymentModal` вместо прямого перезапуска скана
+- Добавить подпись: "Оплата через ЮKassa · Visa, МИР, SBP"
 
-**a) Читать `data.scan_mode`**, определить `isBasic = data.scan_mode === 'basic'`
+#### 6. `src/pages/SiteCheckResult.tsx` (обновить)
 
-**b) Badge режима** в шапке:
-- basic → серый Badge "Базовый"
-- full → зелёный Badge "Полный"
+- Добавить state для PaymentModal (open/close)
+- `handleUnlock` → открывать PaymentModal с `url={data.url}`, `scanId={scanId}`
+- После успешной оплаты (возврат с ЮKassa) — показать full-результат
 
-**c) PaywallCTA** для заблокированных блоков (когда `isBasic` И данные пустые):
-- Keywords → PaywallCTA с title "Ключевые слова" и 3 фичами
-- MinusWords → PaywallCTA
-- Competitors → PaywallCTA
-- DirectAd → PaywallCTA
-- LlmJudge → не вызывать `triggerLlmJudge` при basic, показать PaywallCTA
+---
 
-**d) `onUnlock`** — `navigate(\`/tools/site-check?url=${data.url}&mode=full\`)`
+### Юридические страницы — 4 файла
 
-**e) Убрать raw-fallback блоки** — заменить на PaywallCTA для basic.
+#### 7. `src/pages/Privacy.tsx` — полная переработка
 
-#### 9. `src/components/site-check/DownloadButtons.tsx`
+Обновить:
+- Оператор: ИП, ИНН 511007293446
+- Добавить раздел про обработку данных через ЮKassa (платёжные данные обрабатывает ЮKassa, не Оператор)
+- Добавить раздел про cookies и аналитику (Яндекс.Метрика)
+- Обновить дату вступления в силу
+- Привести в соответствие с ФЗ-152
 
-Принять проп `isBasic?: boolean`. Если basic — кнопки PDF/Word/CSV заблокированы (disabled + тултип). llms.txt — доступен всегда.
+#### 8. `src/pages/Terms.tsx` — обновить реквизиты
+
+- Раздел 13 "Реквизиты": добавить ИНН 511007293446
+- Раздел 6 "Оплата": добавить оплату через ЮKassa для онлайн-услуг (полный аудит 1490 ₽)
+- Обновить раздел 3 "Услуги": добавить "Полный GEO-аудит сайта (онлайн-услуга)"
+
+#### 9. `src/pages/Offer.tsx` — обновить
+
+- Добавить реквизиты ИП с ИНН
+- Обновить пункт 3 (стоимость): 1 490 ₽, оплата через ЮKassa
+- Уточнить, что платёжные данные обрабатывает ЮKassa (НБД «Банк»)
+- Обновить дату
+
+#### 10. `src/pages/Refund.tsx` — обновить
+
+- Добавить: возврат через ЮKassa в течение 10 рабочих дней (по закону о защите прав потребителей)
+- Указать ИП и ИНН
+- Обновить контакты
+
+---
+
+### Секреты
+
+Нужно будет добавить секрет `YUKASSA_SECRET_KEY` после получения ключа от ЮKassa. ShopID (1308372) будет захардкожен в коде edge function (это не секрет).
 
 ### Не меняем
-- Логику scores/issues — работают в обоих режимах
-- GeoRating auto-upsert в worker — работает в обоих режимах
-- Tech passport — работает в обоих режимах (не LLM)
-- Типы IssueCard, KeywordEntry, MinusWord
-- Существующие API-контракты (только добавляем поле `scan_mode`)
+
+- Backend pipeline (SiteCheckPipeline.ts, SiteCheckWorker.ts)
+- API контракты существующих эндпоинтов
+- Логику basic/full scan mode
+- Существующие компоненты (KeywordsSection, CompetitorsTable и др.)
+
+### Порядок реализации
+
+1. Edge functions (yukassa-create-payment, yukassa-webhook)
+2. Frontend (PaymentModal, PaywallCTA, SiteCheckResult)
+3. Юридические страницы (Privacy, Terms, Offer, Refund)
 
