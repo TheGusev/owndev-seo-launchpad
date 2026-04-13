@@ -10,7 +10,7 @@ interface SiteCheckJobData {
   mode: string;
 }
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const API_KEY = process.env.OPENAI_API_KEY || process.env.LOVABLE_API_KEY || '';
 
 async function loadDbRules(): Promise<any[]> {
   try {
