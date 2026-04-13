@@ -1,48 +1,10 @@
 /**
  * Unified API client for OWNDEV.
  * 
- * - invokeFunction: POST to /api/v1/{functionName}
  * - request: fetch with sub-path routing (e.g. site-check-scan/start)
  */
 
 import { apiUrl, apiHeaders } from "./config";
-
-/**
- * Invoke a backend endpoint by name (POST).
- */
-export async function invokeFunction<T = any>(
-  functionName: string,
-  body?: object
-): Promise<T> {
-  const resp = await fetch(apiUrl(`/${functionName}`), {
-    method: 'POST',
-    headers: apiHeaders(),
-    body: JSON.stringify(body ?? {}),
-  });
-
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
-
-    if (resp.status === 401 || resp.status === 403) {
-      console.error(`[OWNDEV API] ${functionName}: unauthorized`);
-      throw new Error('Требуется авторизация');
-    }
-
-    const msg = data.error || `Ошибка ${resp.status}`;
-    console.error(`[OWNDEV API] ${functionName}:`, msg);
-    throw new Error(msg);
-  }
-
-  const data = await resp.json();
-
-  if (data?.error) {
-    const msg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
-    console.error(`[OWNDEV API] ${functionName}:`, msg);
-    throw new Error(msg);
-  }
-
-  return data as T;
-}
 
 /**
  * Raw fetch to a path-based endpoint.
