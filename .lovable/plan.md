@@ -1,51 +1,32 @@
 
 
-## Полный переход на Lovable API — убираем OpenAI
+## Обновление README backend
 
-### Что сейчас
+### Что делаем — 1 файл
 
-Код уже готов на 95%. В `SiteCheckPipeline.ts` есть `getLlmConfig()` с поддержкой двух провайдеров. Единственное место, где упоминается `OPENAI_API_KEY` — строка 14 в `SiteCheckWorker.ts`:
+#### `owndev-backend/README.md`
 
-```ts
-const API_KEY = process.env.OPENAI_API_KEY || process.env.LOVABLE_API_KEY || '';
-```
+Добавить раздел **"Переменные окружения"** после "Быстрый старт" с таблицей всех env-переменных из `.env.example`:
 
-### Что делаем — 2 файла
+| Переменная | Обязательная | Описание |
+|---|---|---|
+| `PORT` | нет | Порт сервера (по умолчанию 3001) |
+| `DATABASE_URL` | да | PostgreSQL connection string |
+| `REDIS_URL` | да | Redis connection string |
+| `API_KEY_SECRET` | да | Секрет для X-API-Key аутентификации |
+| `LOVABLE_API_KEY` | да | Ключ Lovable AI Gateway для LLM-вызовов |
+| `LLM_PROVIDER` | нет | `lovable` (по умолчанию) или `openai` |
+| `PUPPETEER_TIMEOUT` | нет | Таймаут Puppeteer в мс (по умолчанию 15000) |
+| `MAX_CONCURRENT_AUDITS` | нет | Макс. параллельных аудитов (по умолчанию 3) |
+| `SITE_CHECK_CONCURRENCY` | нет | Параллельность site-check (по умолчанию 10) |
+| `MAX_CONCURRENT_SITE_CHECKS` | нет | Макс. параллельных site-check (по умолчанию 5) |
 
-#### 1. `owndev-backend/src/workers/SiteCheckWorker.ts`
+Плюс добавить примечание:
 
-Убрать `OPENAI_API_KEY`:
-```ts
-const API_KEY = process.env.LOVABLE_API_KEY || '';
-```
+> **OpenAI API Key не нужен.** Все LLM-вызовы идут через Lovable AI Gateway. Для переключения на OpenAI установите `LLM_PROVIDER=openai` и добавьте `OPENAI_API_KEY` (не рекомендуется).
 
-#### 2. `owndev-backend/src/services/SiteCheckPipeline.ts`
+Также добавить в таблицу API эндпоинты site-check:
 
-Изменить дефолт провайдера с `'openai'` на `'lovable'`:
-```ts
-const LLM_PROVIDER = process.env.LLM_PROVIDER || 'lovable';
-```
-
-Код `getLlmConfig` для `openai` оставляем — на случай если когда-то нужно будет вернуться (переключается через `LLM_PROVIDER=openai` в env).
-
-#### 3. `owndev-backend/.env.example`
-
-Убрать `OPENAI_API_KEY`, оставить:
-```
-LOVABLE_API_KEY=your_lovable_api_key_here
-LLM_PROVIDER=lovable
-```
-
-### Итог
-
-На сервере нужно только:
-- `LOVABLE_API_KEY` — ключ от Lovable AI Gateway
-- `LLM_PROVIDER=lovable` (или вообще не указывать — это дефолт)
-- `OPENAI_API_KEY` можно удалить из `.env` на сервере
-
-### Не меняем
-- Всю логику `llmCall`, `llmToolCall`, `getLlmConfig` — работает как есть
-- Frontend — никаких изменений
-- Basic/Full режимы — без изменений
-- Pipeline — без изменений (только дефолт провайдера)
+| POST | `/api/v1/site-check` | Запустить проверку `{ url, mode }` |
+| GET | `/api/v1/site-check/result/:id` | Результат проверки |
 
