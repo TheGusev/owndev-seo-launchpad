@@ -1,22 +1,54 @@
 
 
-## Полное удаление OpenAI из бэкенда
+## Edge Function прокси для LLM-вызовов
 
 ### Суть
 
-`LOVABLE_API_KEY` уже настроен в Cloud как secret — он автоматически доступен в Edge Functions. Но ваш Node.js бэкенд — это **не** Edge Function, он работает на вашем сервере. Поэтому `LOVABLE_API_KEY` нужен в `.env` на сервере (одна строка, один раз).
+Создаём Edge Function `llm-proxy`, которая принимает запросы от Node.js бэкенда и проксирует их в AI Gateway, используя внутренний `LOVABLE_API_KEY`. На сервере нужны только `EDGE_FUNCTION_URL` и `EDGE_FUNCTION_SECRET`.
 
-Хорошая новость: код уже на 95% готов. Осталось убрать последние упоминания OpenAI.
+### Архитектура
 
-### Изменения — 2 файла
+```text
+[Node.js сервер]                    [Lovable Cloud]                [AI Gateway]
+     │                                    │                              │
+     │── POST /functions/v1/llm-proxy ──→ │                              │
+     │   Auth: Bearer EDGE_FUNCTION_SECRET│                              │
+     │   Body: {messages, tools, ...}     │── POST /v1/chat/completions→ │
+     │                                    │   Auth: Bearer LOVABLE_API_KEY│
+     │←── JSON (OpenAI-compatible) ──────│←── JSON response ────────────│
+```
 
-#### 1. `owndev-backend/src/services/SiteCheckPipeline.ts` (строки 291-308)
+### Изменения — 3 файла
 
-Убрать OpenAI fallback из `getLlmConfig`. Оставить только Lovable:
+#### 1. Новый: `supabase/functions/llm-proxy/index.ts`
+
+Edge Function, которая:
+- Проверяет `Authorization: Bearer EDGE_FUNCTION_SECRET` (из Deno.env) → 401 если не совпадает
+- Проверяет размер body ≤ 50KB → 413 если превышен
+- Принимает тело в формате OpenAI API: `{ model, messages, tools?, tool_choice?, max_tokens?, temperature? }`
+- Проксирует запрос в `https://ai.gateway.lovable.dev/v1/chat/completions` с `LOVABLE_API_KEY`
+- Возвращает ответ as-is (тот же JSON что вернул Gateway)
+- При ошибке Gateway → 502 с деталями
+- CORS headers для совместимости
+- НЕ логирует payload, только статусы и ошибки
+
+Важно: прокси работает на уровне OpenAI-совместимого API (messages/tools), а НЕ на уровне task/payload. Это проще и не требует менять промпты — `llmCall` и `llmToolCall` просто меняют URL.
+
+#### 2. Изменить: `owndev-backend/src/services/SiteCheckPipeline.ts`
+
+Только функция `getLlmConfig` (строки 291-298):
 
 ```typescript
-// ─── LLM config (Lovable AI Gateway only) ───
 function getLlmConfig(apiKey: string) {
+  const proxyUrl = process.env.EDGE_FUNCTION_URL;
+  if (proxyUrl) {
+    return {
+      url: proxyUrl,
+      authHeader: `Bearer ${process.env.EDGE_FUNCTION_SECRET || ''}`,
+      defaultModel: 'google/gemini-2.5-flash',
+    };
+  }
+  // Fallback: direct gateway (for local dev if needed)
   return {
     url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
     authHeader: `Bearer ${process.env.LOVABLE_API_KEY || apiKey}`,
@@ -25,39 +57,51 @@ function getLlmConfig(apiKey: string) {
 }
 ```
 
-Удалить строку `const LLM_PROVIDER = ...` и все ветки `if (LLM_PROVIDER === ...)`.
+Также убрать `LLM_PROVIDER` из логов (заменить на `'llm-proxy'`).
 
-#### 2. `owndev-backend/src/workers/SiteCheckWorker.ts` (строка 13)
+`llmCall` и `llmToolCall` — без изменений, они уже шлют стандартный OpenAI-формат.
 
-Заменить:
-```typescript
-const API_KEY = process.env.OPENAI_API_KEY || process.env.LOVABLE_API_KEY || '';
+#### 3. Изменить: `owndev-backend/.env.example`
+
 ```
-На:
-```typescript
-const API_KEY = process.env.LOVABLE_API_KEY || '';
+EDGE_FUNCTION_URL=https://chrsibijgyihualqlabm.supabase.co/functions/v1/llm-proxy
+EDGE_FUNCTION_SECRET=owndev-llm-proxy-secret-2024
 ```
 
-#### 3. `owndev-backend/.env.example`
+Убрать `LOVABLE_API_KEY` (больше не нужен на сервере).
 
-Убрать `OPENAI_API_KEY`, `LLM_PROVIDER`. Оставить:
+### Secrets в Lovable Cloud
+
+Добавить один новый secret:
+- `EDGE_FUNCTION_SECRET` = `owndev-llm-proxy-secret-2024` (или другое значение по вашему выбору)
+
+`LOVABLE_API_KEY` уже есть — Edge Function использует его автоматически.
+
+### На сервере в .env
+
 ```
-LOVABLE_API_KEY=your_lovable_api_key_here
+EDGE_FUNCTION_URL=https://chrsibijgyihualqlabm.supabase.co/functions/v1/llm-proxy
+EDGE_FUNCTION_SECRET=owndev-llm-proxy-secret-2024
 ```
 
-### Что нужно на сервере
-
-Одна переменная в `.env`:
-```
-LOVABLE_API_KEY=<значение из Lovable Cloud>
-```
-
-Чтобы узнать значение ключа: откройте проект в Lovable → Cloud → секция Secrets → скопируйте значение `LOVABLE_API_KEY`.
+Больше ничего LLM-связанного.
 
 ### Что НЕ меняем
-- Промпты, парсинг JSON, типы результатов
-- Worker логику записи в БД
-- API endpoints
+
+- `llmCall` / `llmToolCall` — формат запросов и парсинг ответов остаётся
+- `SiteCheckWorker.ts` — передаёт apiKey как раньше (он просто не используется если есть EDGE_FUNCTION_URL)
+- Промпты, типы, pipeline логику
 - Frontend
-- Edge Functions (у них свой LOVABLE_API_KEY через Cloud)
+- Другие Edge Functions
+
+### Тест после деплоя
+
+```bash
+curl -X POST https://chrsibijgyihualqlabm.supabase.co/functions/v1/llm-proxy \
+  -H "Authorization: Bearer owndev-llm-proxy-secret-2024" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"google/gemini-2.5-flash","messages":[{"role":"user","content":"Скажи привет"}],"max_tokens":50}'
+```
+
+200 + JSON с `choices` → работает. 401 → секрет не совпадает. 502 → Gateway недоступен.
 
