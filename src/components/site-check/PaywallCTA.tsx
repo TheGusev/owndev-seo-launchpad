@@ -1,4 +1,4 @@
-import { Lock, CheckCircle2, Zap } from "lucide-react";
+import { Lock, CheckCircle2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PaywallCTAProps {
@@ -36,11 +36,11 @@ export function PaywallCTA({ title, features, onUnlock }: PaywallCTAProps) {
           className="w-full gap-2"
           onClick={onUnlock}
         >
-          <Zap className="w-3.5 h-3.5" />
-          Запустить полный аудит
+          <CreditCard className="w-3.5 h-3.5" />
+          Получить полный аудит — 1 490 ₽
         </Button>
         <p className="text-[10px] text-muted-foreground text-center">
-          Бесплатно · Занимает 30–60 сек
+          Оплата через ЮKassa · Visa, МИР, SBP
         </p>
       </div>
     </div>
