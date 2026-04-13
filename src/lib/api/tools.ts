@@ -1,10 +1,9 @@
 /**
  * High-level API functions for all OWNDEV tools.
- * All tools go through Supabase Edge Functions via invokeFunction().
+ * All tools go through the own backend via fetch + apiUrl/apiHeaders.
  */
 
-import { invokeFunction } from "./client";
-import { apiUrl } from "./config";
+import { apiUrl, apiHeaders } from "./config";
 
 // ── Helpers ──
 
@@ -14,24 +13,37 @@ export function ensureProtocol(url: string): string {
   return `https://${trimmed}`;
 }
 
-// ── Audit (Edge Function) ──
-
-export async function auditSite(url: string, options?: { toolId?: string }) {
-  return invokeFunction("seo-audit", { url });
+async function post<T = any>(path: string, body: object): Promise<T> {
+  const resp = await fetch(apiUrl(path), {
+    method: 'POST',
+    headers: apiHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+    throw new Error(data.error || `Ошибка ${resp.status}`);
+  }
+  return resp.json();
 }
 
-// ── Edge Function tools ──
+// ── Audit ──
+
+export async function auditSite(url: string, options?: { toolId?: string }) {
+  return post("/site-check/audit", { url });
+}
+
+// ── Tools ──
 
 export async function checkIndexation(url: string) {
-  return invokeFunction("check-indexation", { url });
+  return post("/tools/check-indexation", { url });
 }
 
 export async function generateSemanticCore(topic: string) {
-  return invokeFunction("generate-semantic-core", { topic });
+  return post("/tools/semantic-core", { topic });
 }
 
 export async function generateText(type: string, topic: string, keywords: string) {
-  return invokeFunction("generate-text", { type, topic, keywords });
+  return post("/tools/generate-text", { type, topic, keywords });
 }
 
 export async function generateContentBrief(
@@ -39,7 +51,7 @@ export async function generateContentBrief(
   url?: string,
   contentType?: string,
 ) {
-  return invokeFunction("generate-content-brief", {
+  return post("/tools/content-brief", {
     query,
     url: url || undefined,
     contentType,
@@ -47,11 +59,11 @@ export async function generateContentBrief(
 }
 
 export async function checkInternalLinks(url: string) {
-  return invokeFunction("check-internal-links", { url });
+  return post("/tools/internal-links", { url });
 }
 
 export async function analyzeCompetitors(url1: string, url2: string) {
-  return invokeFunction("competitor-analysis", { url1, url2 });
+  return post("/tools/competitors", { url1, url2 });
 }
 
 export async function trackBrand(
@@ -59,7 +71,7 @@ export async function trackBrand(
   prompts: string[],
   aiSystems: string[],
 ) {
-  return invokeFunction("brand-tracker", { brand, prompts, aiSystems });
+  return post("/tools/brand-tracker", { brand, prompts, aiSystems });
 }
 
 export async function generateAutofix(
@@ -68,7 +80,7 @@ export async function generateAutofix(
   title?: string,
   description?: string,
 ) {
-  return invokeFunction("generate-autofix", {
+  return post("/tools/autofix", {
     issueType,
     url,
     title,
@@ -84,7 +96,7 @@ export async function generateGeoContent(
   urlFormat?: string,
   customInstructions?: string,
 ) {
-  return invokeFunction("generate-geo-content", {
+  return post("/tools/geo-content", {
     pages,
     niche,
     region,
@@ -95,16 +107,13 @@ export async function generateGeoContent(
 }
 
 export async function sendTelegram(body: object) {
-  return invokeFunction("send-telegram", body);
+  return post("/tools/send-telegram", body);
 }
 
 export async function judgeLlm(scanId: string, url: string, theme?: string) {
-  const params = new URLSearchParams({ url });
-  if (scanId) params.set('scan_id', scanId);
-  if (theme) params.set('theme', theme);
   const resp = await fetch(apiUrl(`/site-check/llm-judge`), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders(),
     body: JSON.stringify({ scan_id: scanId, url, theme }),
   });
   if (!resp.ok) return null;
@@ -113,7 +122,9 @@ export async function judgeLlm(scanId: string, url: string, theme?: string) {
 
 export async function getTechPassport(url: string) {
   const params = new URLSearchParams({ url });
-  const resp = await fetch(apiUrl(`/site-check/tech-passport?${params}`));
+  const resp = await fetch(apiUrl(`/site-check/tech-passport?${params}`), {
+    headers: apiHeaders(),
+  });
   if (!resp.ok) return null;
   return resp.json();
 }
