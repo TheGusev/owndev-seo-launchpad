@@ -1,22 +1,51 @@
 
 
-## Заглушка для оплаты (пока ЮKassa не подключена)
+## Полный переход на Lovable API — убираем OpenAI
 
-Пока сайт не прошёл проверку в ЮKassa и секретный ключ не получен, нужно поставить заглушку — чтобы кнопка оплаты не вызывала ошибку, а показывала понятное сообщение.
+### Что сейчас
 
-### Что меняем — 1 файл
+Код уже готов на 95%. В `SiteCheckPipeline.ts` есть `getLlmConfig()` с поддержкой двух провайдеров. Единственное место, где упоминается `OPENAI_API_KEY` — строка 14 в `SiteCheckWorker.ts`:
 
-#### `src/components/site-check/PaymentModal.tsx`
+```ts
+const API_KEY = process.env.OPENAI_API_KEY || process.env.LOVABLE_API_KEY || '';
+```
 
-Вместо вызова edge function `yukassa-create-payment`, показывать toast с сообщением:
+### Что делаем — 2 файла
 
-> "Оплата временно недоступна. Сайт проходит проверку в платёжной системе. Напишите нам в Telegram @one_help для получения полного аудита."
+#### 1. `owndev-backend/src/workers/SiteCheckWorker.ts`
 
-Конкретно:
-- Заменить `handlePay` — вместо `supabase.functions.invoke(...)` просто показать toast с информацией и ссылкой на Telegram
-- Текст кнопки изменить на: "Оплатить 1 490 ₽" (оставить как есть)
-- Добавить под кнопкой мелкий текст: "⏳ Подключение платёжной системы в процессе"
-- Убрать `loading` состояние (нет реального запроса)
+Убрать `OPENAI_API_KEY`:
+```ts
+const API_KEY = process.env.LOVABLE_API_KEY || '';
+```
 
-Когда ЮKassa будет подключена — просто вернём вызов edge function обратно.
+#### 2. `owndev-backend/src/services/SiteCheckPipeline.ts`
+
+Изменить дефолт провайдера с `'openai'` на `'lovable'`:
+```ts
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'lovable';
+```
+
+Код `getLlmConfig` для `openai` оставляем — на случай если когда-то нужно будет вернуться (переключается через `LLM_PROVIDER=openai` в env).
+
+#### 3. `owndev-backend/.env.example`
+
+Убрать `OPENAI_API_KEY`, оставить:
+```
+LOVABLE_API_KEY=your_lovable_api_key_here
+LLM_PROVIDER=lovable
+```
+
+### Итог
+
+На сервере нужно только:
+- `LOVABLE_API_KEY` — ключ от Lovable AI Gateway
+- `LLM_PROVIDER=lovable` (или вообще не указывать — это дефолт)
+- `OPENAI_API_KEY` можно удалить из `.env` на сервере
+
+### Не меняем
+- Всю логику `llmCall`, `llmToolCall`, `getLlmConfig` — работает как есть
+- Frontend — никаких изменений
+- Basic/Full режимы — без изменений
+- Pipeline — без изменений (только дефолт провайдера)
 
