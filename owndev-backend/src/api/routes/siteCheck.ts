@@ -178,7 +178,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       result = row.result ?? null;
     }
 
-    const issues = result?.issues ?? [];
+    const issues = result?.issues ?? (typeof row.issues === 'string' ? JSON.parse(row.issues) : (row.issues ?? []));
     const blocks = result?.blocks ?? [];
     const summary = result?.summary ?? null;
 
@@ -216,6 +216,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       result,
       raw_scores: scores,
 
+      is_spa: row.is_spa ?? false,
       error_message: row.error_message ?? null,
       created_at: row.created_at,
     });
