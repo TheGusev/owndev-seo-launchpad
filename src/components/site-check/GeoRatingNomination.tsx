@@ -64,6 +64,7 @@ const resp = await fetch(apiUrl('/site-check/nomination'), {
         const body = await resp.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${resp.status}`);
       }
+      setSent(true);
       setOpen(false);
       toast({ title: "Заявка отправлена!", description: "Мы проверим ваш сайт и добавим в рейтинг." });
     } catch (e: any) {

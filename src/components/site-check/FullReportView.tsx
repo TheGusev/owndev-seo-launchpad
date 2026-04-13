@@ -69,8 +69,8 @@ const IssueRow = ({ issue, resolved, onToggle, url, onExpand, isExpanded }: {
       >
         <Checkbox
           checked={resolved}
-          onCheckedChange={(e) => { e && onToggle(); }}
-          onClick={(e) => { e.stopPropagation(); onToggle(); }}
+          onCheckedChange={() => onToggle()}
+          onClick={(e) => e.stopPropagation()}
           className="shrink-0"
         />
         <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${sev.badgeClass}`}>
