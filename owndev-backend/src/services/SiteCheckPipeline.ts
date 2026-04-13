@@ -288,44 +288,65 @@ interface DbRule {
   example_fix: string; score_weight: number; visible_in_preview: boolean; active: boolean;
 }
 
+// ─── LLM provider config ───
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'openai';
+
+function getLlmConfig(apiKey: string) {
+  if (LLM_PROVIDER === 'lovable') {
+    const lovableKey = process.env.LOVABLE_API_KEY || apiKey;
+    return {
+      url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+      authHeader: `Bearer ${lovableKey}`,
+      defaultModel: 'google/gemini-2.5-flash',
+    };
+  }
+  return {
+    url: 'https://api.openai.com/v1/chat/completions',
+    authHeader: `Bearer ${apiKey}`,
+    defaultModel: 'gpt-4o-mini',
+  };
+}
+
 // ─── LLM helper ───
-async function llmCall(apiKey: string, model: string, systemPrompt: string, userPrompt: string, maxTokens = 4000, temperature = 0.1): Promise<string> {
+async function llmCall(apiKey: string, _model: string, systemPrompt: string, userPrompt: string, maxTokens = 4000, temperature = 0.1): Promise<string> {
+  const config = getLlmConfig(apiKey);
   try {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetch(config.url, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: config.authHeader, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+        model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         max_tokens: maxTokens, temperature, top_p: 0.85,
       }),
     });
     if (!resp.ok) {
       const errText = await resp.text();
-      logger.error('PIPELINE', `LLM HTTP ${resp.status}: ${errText.slice(0, 300)}`);
+      logger.error('PIPELINE', `LLM HTTP ${resp.status} [${LLM_PROVIDER}]: ${errText.slice(0, 300)}`);
       return '';
     }
     const data = await resp.json();
     return data.choices?.[0]?.message?.content?.trim() || '';
   } catch (e: any) {
-    logger.error('PIPELINE', `LLM call failed: ${e.message}`);
+    logger.error('PIPELINE', `LLM call failed [${LLM_PROVIDER}]: ${e.message}`);
     return '';
   }
 }
 
-async function llmToolCall(apiKey: string, model: string, systemPrompt: string, userPrompt: string, tool: any): Promise<any> {
+async function llmToolCall(apiKey: string, _model: string, systemPrompt: string, userPrompt: string, tool: any): Promise<any> {
+  const config = getLlmConfig(apiKey);
   try {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetch(config.url, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: config.authHeader, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+        model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         tools: [tool], tool_choice: { type: 'function', function: { name: tool.function.name } },
         temperature: 0.4,
       }),
     });
     if (!resp.ok) {
       const errText = await resp.text();
-      logger.error('PIPELINE', `LLM tool HTTP ${resp.status}: ${errText.slice(0, 300)}`);
+      logger.error('PIPELINE', `LLM tool HTTP ${resp.status} [${LLM_PROVIDER}]: ${errText.slice(0, 300)}`);
       return null;
     }
     const data = await resp.json();
@@ -336,7 +357,7 @@ async function llmToolCall(apiKey: string, model: string, systemPrompt: string, 
     }
     return typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments;
   } catch (e: any) {
-    logger.error('PIPELINE', `LLM tool call failed: ${e.message}`);
+    logger.error('PIPELINE', `LLM tool call failed [${LLM_PROVIDER}]: ${e.message}`);
     return null;
   }
 }
