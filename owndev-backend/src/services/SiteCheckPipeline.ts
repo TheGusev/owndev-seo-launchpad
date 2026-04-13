@@ -294,8 +294,9 @@ function getLlmConfig(apiKey: string) {
   if (proxyUrl) {
     return {
       url: proxyUrl,
-      authHeader: `Bearer ${process.env.EDGE_FUNCTION_SECRET || ''}`,
+      authHeader: process.env.EDGE_FUNCTION_SECRET || '',
       defaultModel: 'google/gemini-2.5-flash',
+      useProxySecret: true,
     };
   }
   // Fallback: direct gateway (local dev only)
