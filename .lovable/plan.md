@@ -1,59 +1,56 @@
 
 
-## Починка GEO-аудита + GEO-рейтинга + ошибок сборки
+## Миграция GEO Rating из Supabase → локальный Postgres
 
-### Найденные проблемы
+### Что делаем
 
-**Ошибки сборки (7 штук):**
+Создаём одноразовый скрипт миграции (Вариант A) и npm-скрипт для запуска.
 
-1. **Edge Functions** — 6 функций используют `error.message` где `error` имеет тип `unknown`. Нужно `(error as Error).message`.
-2. **`AutoFixGenerator.tsx`** — использует `size="xs"`, но Button не имеет такого варианта. Нужно `size="sm"`.
-3. **`AutoFixGenerator.tsx`** — интерфейс `AutoFixGeneratorProps` ожидает `templateKey` + `generated`, но вызывается с `issueTitle` + `url`. Нужно обновить интерфейс.
-4. **`TechPassport.tsx`** — импортирует из `@/types/site-check`, которого не существует. Нужно определить тип inline.
-5. **`SiteCheckResult.tsx`** — передаёт `data={techPassport}` в TechPassport, а тот ожидает `tech` + `geoip`.
+### Файлы
 
-**Функциональные проблемы:**
+**1. Создать `owndev-backend/scripts/migrate-geo-rating-from-supabase.ts`**
 
-6. **SiteCheckPipeline.ts** — LLM-вызовы идут на `ai.gateway.lovable.dev` с `LOVABLE_API_KEY`. На продакшн-сервере этот ключ не работает. Нужно заменить на `https://api.openai.com/v1/chat/completions` + `OPENAI_API_KEY`.
-7. **SiteCheckWorker.ts** — читает `LOVABLE_API_KEY`, нужно `OPENAI_API_KEY`.
-8. **Модели** — используются `google/gemini-*` алиасы, которых нет в OpenAI. Нужно заменить на `gpt-4o-mini`.
+Скрипт:
+- Загружает `dotenv/config`
+- Проверяет наличие `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (или `SUPABASE_ANON_KEY`), `DATABASE_URL` в env
+- Fetch все строки из `${SUPABASE_URL}/rest/v1/geo_rating?select=*` с Authorization header
+- Перед созданием unique index — проверяет дубли: `SELECT domain, count(*) FROM geo_rating GROUP BY domain HAVING count(*) > 1`
+- Если дубли найдены — выводит список и количество, завершается с exit(1)
+- Если дублей нет — `CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)`
+- UPSERT каждой строки: `INSERT INTO geo_rating (...15 полей...) VALUES (...) ON CONFLICT (domain) DO UPDATE SET display_name=EXCLUDED.display_name, category=..., llm_score=..., seo_score=..., schema_score=..., direct_score=..., has_llms_txt=..., has_faqpage=..., has_schema=..., errors_count=..., top_errors=..., last_checked_at=..., created_at=...`
+- Логирует: `Fetched N rows from Supabase`, `Upserted N rows`, `Done`
+- Использует `postgres` из `../src/db/client.js` (тот же клиент что и runtime)
 
----
+**2. Изменить `owndev-backend/package.json`**
 
-### План изменений
+Добавить в scripts:
+```
+"migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts"
+```
 
-#### 1. `owndev-backend/src/services/SiteCheckPipeline.ts`
-- Заменить `https://ai.gateway.lovable.dev/v1/chat/completions` → `https://api.openai.com/v1/chat/completions` (2 вхождения)
-- Заменить все модели `google/gemini-2.5-flash-lite` и `google/gemini-2.5-flash` → `gpt-4o-mini`
-- Добавить логирование HTTP-статуса и тела ответа при ошибке LLM
+### Колонки (полное совпадение Supabase ↔ локальная)
 
-#### 2. `owndev-backend/src/workers/SiteCheckWorker.ts`
-- `LOVABLE_API_KEY` → `OPENAI_API_KEY`
+id, domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at, created_at
 
-#### 3. `src/components/site-check/AutoFixGenerator.tsx`
-- Обновить интерфейс: `templateKey` → `issueTitle: string; url: string; pageTitle?: string; pageDescription?: string`
-- `size="xs"` → `size="sm"`
+### Не трогаем
 
-#### 4. `src/components/site-check/TechPassport.tsx`
-- Убрать импорт `@/types/site-check`, определить тип `TechPassportData` inline
-- Обновить интерфейс: добавить проп `data` который разворачивается в `tech` + `geoip`
+- Runtime route `/geo-rating`
+- Никакие другие файлы
 
-#### 5. `src/pages/SiteCheckResult.tsx`
-- Исправить передачу пропсов в `<TechPassport>`: `data={techPassport}` → прокидывать как ожидает компонент
+### Запуск на сервере
 
-#### 6. Edge Functions (6 файлов) — исправить `error.message` → `(error as Error).message`:
-- `check-indexation/index.ts`
-- `generate-text/index.ts`
-- `generate-semantic-core/index.ts`
-- `competitor-analysis/index.ts`
-- `send-telegram/index.ts`
-- `seo-audit/index.ts`
+```bash
+cd /var/www/owndev.ru/owndev-backend
+npm run migrate:geo-rating
+```
 
----
+### Ожидаемый результат
 
-### Как проверить
-
-1. **Сборка** — все TS-ошибки исчезнут
-2. **GEO-аудит** — запустить проверку сайта, прогресс должен дойти до 100%, LLM-поля (theme, keywords, competitors, minus_words) должны быть заполнены
-3. **GEO-рейтинг** — страница /geo-rating должна отображать таблицу с данными
+```
+Fetched 80 rows from Supabase
+No duplicates in local geo_rating — safe to proceed
+Created unique index on domain
+Upserted 80 rows into local geo_rating
+Done!
+```
 
