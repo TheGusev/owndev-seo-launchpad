@@ -3,8 +3,7 @@ import { Check, Copy, Plug, Search, FileCode, Code2, Terminal, Zap, Bot } from "
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
-const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-const MCP_URL = `https://${PROJECT_ID}.supabase.co/functions/v1/mcp-server/mcp`;
+const MCP_URL = `${import.meta.env.VITE_API_BASE_URL || '/api'}/v1/mcp-server/mcp`;
 
 const configJson = `{
   "mcpServers": {
