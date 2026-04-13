@@ -1,36 +1,32 @@
 
 
-## Баг: DirectAdPreview крашит страницу при отсутствии sitelinks/callouts
+## ScoreCards: мобильная сетка + проверка модала
 
-### A. Root cause
+### Анализ
 
-`DirectAdPreview` на строках 39-40 делает:
-```tsx
-const [sitelinks, setSitelinks] = useState([...adSuggestion.sitelinks]);
-const [callouts, setCallouts] = useState([...adSuggestion.callouts]);
-```
+Код уже корректен по логике:
+- `breakdown` передаётся из `SiteCheckResult.tsx` → `ScoreCards` → `ScoreDetailsModal`
+- Модал показывает таблицу критериев или формулу для "Общий"
+- Fallback "Детализация недоступна" уже есть
 
-Если API вернул `ad_suggestion` без `sitelinks` или `callouts` (т.е. они `undefined`/`null`), spread `[...undefined]` бросает `TypeError: undefined is not iterable` — React крашит весь компонент и всю страницу.
+Единственная реальная проблема — **мобильная сетка**. Сейчас `grid-cols-3` с хаком через `<style>` для позиционирования 4-5 элементов. По ТЗ нужно: "Общий" на полную ширину, остальные 4 — сетка 2×2.
 
-Та же проблема в `startEdit()` (строки 54-55) и в `currentAd` (строки 46-47), где обращаемся к `adSuggestion.sitelinks` / `adSuggestion.callouts` без fallback.
+### Изменения — 1 файл
 
-### B. Почему раньше работало
+**`src/components/site-check/ScoreCards.tsx`**
 
-Когда Директ-блок только добавили, API всегда возвращал полный объект. После изменений в backend pipeline некоторые результаты стали возвращать `ad_suggestion` с `headline1`/`headline2`/`ad_text`, но без `sitelinks`/`callouts`.
+1. **Мобильная сетка**: заменить `grid-cols-3` + inline `<style>` на:
+   - Обёртка: `grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3`
+   - Карточка "Общий" (первая): `col-span-2 md:col-span-1` — на мобиле занимает всю ширину, на десктопе — 1 колонку
+   - Остальные 4 карточки: `col-span-1` — на мобиле 2×2, на десктопе 4 в ряд
 
-### C. Fix — 1 файл, 6 точек
+2. **Удалить inline `<style>`** (строки 108-114) — больше не нужен, CSS-классы решают задачу
 
-**`src/components/site-check/DirectAdPreview.tsx`** — добавить `?? []` fallback в 6 местах:
+3. Модал и breakdown — **не трогаем**, работает корректно
 
-1. **Строка 39**: `useState([...(adSuggestion.sitelinks ?? [])])`
-2. **Строка 40**: `useState([...(adSuggestion.callouts ?? [])])`
-3. **Строка 46**: `sitelinks: isEditing ? sitelinks : (adSuggestion.sitelinks ?? [])`
-4. **Строка 47**: `callouts: isEditing ? callouts : (adSuggestion.callouts ?? [])`
-5. **Строка 54**: `setSitelinks([...(adSuggestion.sitelinks ?? [])])`
-6. **Строка 55**: `setCallouts([...(adSuggestion.callouts ?? [])])`
-
-Больше ничего не меняем. Компонент станет null-safe и не будет крашить страницу.
-
-### D. Затронутые файлы
-1. `src/components/site-check/DirectAdPreview.tsx` — 6 точечных `?? []` fallback
+### Не меняем
+- Логику scores/breakdown/previousScores
+- ScoreDetailsModal
+- SiteCheckResult.tsx
+- CircleScore, DiffBadge компоненты
 
