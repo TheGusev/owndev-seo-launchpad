@@ -15,6 +15,7 @@ import GeoRatingNomination from "@/components/site-check/GeoRatingNomination";
 import TechPassport from "@/components/site-check/TechPassport";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
 import { PaywallCTA } from "@/components/site-check/PaywallCTA";
+import { PaymentModal } from "@/components/site-check/PaymentModal";
 import { getFullScan } from "@/lib/site-check-api";
 import { judgeLlm, getTechPassport } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
@@ -35,6 +36,7 @@ const SiteCheckResult = () => {
   const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
   const [techPassport, setTechPassport] = useState<any>(null);
   const [techPassportLoading, setTechPassportLoading] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const previousScores = useMemo(() => {
     if (!data?.url || !scanId) return undefined;
@@ -139,7 +141,7 @@ const SiteCheckResult = () => {
   });
 
   const isBasic = data.scan_mode === 'basic';
-  const handleUnlock = () => navigate(`/tools/site-check?url=${encodeURIComponent(data.url)}&mode=full`);
+  const handleUnlock = () => setPaymentModalOpen(true);
 
   // Tech passport summary badges for accordion header
   const techBadges = techPassport ? (
@@ -327,6 +329,15 @@ const SiteCheckResult = () => {
         </div>
       </main>
       <Footer />
+
+      {isBasic && scanId && (
+        <PaymentModal
+          open={paymentModalOpen}
+          onOpenChange={setPaymentModalOpen}
+          scanId={scanId}
+          url={data.url}
+        />
+      )}
     </>
   );
 };
