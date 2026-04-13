@@ -112,7 +112,12 @@ const SiteCheckResult = () => {
   const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor');
   const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table') || null;
   const directMeta = rawCompetitors.find((c: any) => c._type === 'direct_meta') || null;
-  const directAdMeta = rawCompetitors.find((c: any) => c._type === 'direct_ad_meta' || c._direct_meta);
+  const directAdMeta = rawCompetitors.find((c: any) =>
+    c._type === 'direct_ad_meta' ||
+    c._direct_meta === true ||
+    c.ad_suggestion != null ||
+    c.readiness_score != null
+  );
   const directAdSuggestion = directAdMeta?.ad_suggestion || null;
   const directReadinessScore = directAdMeta?.readiness_score ?? null;
   const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
@@ -148,7 +153,7 @@ const SiteCheckResult = () => {
       <Header />
       <main className="min-h-screen pt-24 pb-16">
         <div className="container max-w-4xl mx-auto px-3 md:px-4 space-y-4">
-          {/* 1. Header — always visible */}
+          {/* 1. Header */}
           <div>
             <div className="flex items-center gap-3 mb-3">
               <Link to="/tools/site-check" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -175,68 +180,13 @@ const SiteCheckResult = () => {
             {data.theme && <p className="text-xs text-muted-foreground mt-1">Тематика: {data.theme}</p>}
           </div>
 
-          {/* 2. Scores — always visible */}
+          {/* 2. Scores */}
           {scores && <ScoreCards scores={scores} previousScores={previousScores} breakdown={breakdown} />}
 
-          {/* 3. Tech Passport — accordion, collapsed */}
-          {techPassport && (
-            <ResultAccordion title="Технический паспорт" badge={techBadges} defaultOpen={false}>
-              <TechPassport data={techPassport} />
-            </ResultAccordion>
-          )}
-          {techPassportLoading && !techPassport && (
-            <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">
-              <Loader2 className="w-4 h-4 text-primary animate-spin" />
-              <p className="text-xs text-muted-foreground">Определяем технический стек...</p>
-            </div>
-          )}
-
-          {/* 4. Issues / Fix plan — accordion, open by default */}
-          {issues.length > 0 && (
-            <ResultAccordion title={`План исправления (${issues.length})`} defaultOpen={true}>
-              <FullReportView issues={issues} url={data.url} />
-            </ResultAccordion>
-          )}
-
-          {/* 5. Keywords — accordion, collapsed */}
-          {keywords.length > 0 && (
-            <ResultAccordion title={`Ключевые запросы (${keywords.length})`} defaultOpen={false}>
-              <KeywordsSection keywords={keywords} />
-            </ResultAccordion>
-          )}
-
-          {/* 6. Minus words — accordion, collapsed */}
-          {minusWords.length > 0 && (
-            <ResultAccordion title={`Минус-фразы (${minusWords.length})`} defaultOpen={false}>
-              <MinusWordsSection minusWords={minusWords} />
-            </ResultAccordion>
-          )}
-
-          {/* 7. LLM Judge — accordion, collapsed */}
-          {llmJudge && (
-            <ResultAccordion title="AI-видимость: проверка нейросетями" defaultOpen={false}>
-              <LlmJudgeSection data={llmJudge} />
-            </ResultAccordion>
-          )}
-          {llmJudgeLoading && !llmJudge && (
-            <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">
-              <Loader2 className="w-4 h-4 text-primary animate-spin" />
-              <p className="text-xs text-muted-foreground">Опрашиваем нейросети...</p>
-            </div>
-          )}
-
-          {/* 8. Competitors — accordion, collapsed */}
-          {competitors.length > 0 && (
-            <ResultAccordion title={`Конкуренты в AI-выдаче (${competitors.length})`} defaultOpen={false}>
-              <CompetitorsTable competitors={competitors} comparisonTable={comparisonTable} directMeta={directMeta} userUrl={data.url} />
-            </ResultAccordion>
-          )}
-
+          {/* 3. Яндекс.Директ */}
           {directAdMeta && <DirectMeta data={directAdMeta} />}
-
-          {/* Direct Ad Preview */}
           {directAdSuggestion && (
-            <ResultAccordion title="Объявление для Яндекс.Директ" defaultOpen={true}>
+            <ResultAccordion title="Объявление для Яндекс.Директ" defaultOpen={false}>
               <DirectAdPreview
                 adSuggestion={directAdSuggestion}
                 readinessScore={directReadinessScore ?? 0}
@@ -254,10 +204,79 @@ const SiteCheckResult = () => {
             </ResultAccordion>
           )}
 
-          {/* GEO Rating nomination */}
+          {/* 4. Tech Passport */}
+          {techPassport && (
+            <ResultAccordion title="Технический паспорт" badge={techBadges} defaultOpen={false}>
+              <TechPassport data={techPassport} />
+            </ResultAccordion>
+          )}
+          {techPassportLoading && !techPassport && (
+            <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+              <p className="text-xs text-muted-foreground">Определяем технический стек...</p>
+            </div>
+          )}
+
+          {/* 5. Issues / Fix plan */}
+          {issues.length > 0 && (
+            <ResultAccordion title={`План исправления (${issues.length})`} defaultOpen={true}>
+              <FullReportView issues={issues} url={data.url} />
+            </ResultAccordion>
+          )}
+
+          {/* 6. AI-видимость */}
+          {llmJudge && (
+            <ResultAccordion title="AI-видимость: проверка нейросетями" defaultOpen={false}>
+              <LlmJudgeSection data={llmJudge} />
+            </ResultAccordion>
+          )}
+          {llmJudgeLoading && !llmJudge && (
+            <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+              <p className="text-xs text-muted-foreground">Опрашиваем нейросети...</p>
+            </div>
+          )}
+
+          {/* 7. Competitors */}
+          {competitors.length > 0 && (
+            <ResultAccordion title={`Конкуренты в AI-выдаче (${competitors.length})`} defaultOpen={false}>
+              <CompetitorsTable competitors={competitors} comparisonTable={comparisonTable} directMeta={directMeta} userUrl={data.url} />
+            </ResultAccordion>
+          )}
+          {data?.competitors && competitors.length === 0 && rawCompetitors.length > 0 && (
+            <ResultAccordion title="Конкуренты (raw)" defaultOpen={false}>
+              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(rawCompetitors.slice(0, 3), null, 2)}</pre>
+            </ResultAccordion>
+          )}
+
+          {/* 8. Keywords */}
+          {keywords.length > 0 && (
+            <ResultAccordion title={`Ключевые запросы (${keywords.length})`} defaultOpen={false}>
+              <KeywordsSection keywords={keywords} />
+            </ResultAccordion>
+          )}
+          {data?.keywords && keywords.length === 0 && (
+            <ResultAccordion title="Ключевые слова (raw)" defaultOpen={false}>
+              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(Array.isArray(data.keywords) ? data.keywords.slice(0, 5) : data.keywords, null, 2)}</pre>
+            </ResultAccordion>
+          )}
+
+          {/* 9. Minus words */}
+          {minusWords.length > 0 && (
+            <ResultAccordion title={`Минус-фразы (${minusWords.length})`} defaultOpen={false}>
+              <MinusWordsSection minusWords={minusWords} />
+            </ResultAccordion>
+          )}
+          {data?.minus_words && minusWords.length === 0 && (
+            <ResultAccordion title="Минус-фразы (raw)" defaultOpen={false}>
+              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(Array.isArray(data.minus_words) ? data.minus_words.slice(0, 5) : data.minus_words, null, 2)}</pre>
+            </ResultAccordion>
+          )}
+
+          {/* 10. GEO Rating */}
           {scores && <GeoRatingNomination totalScore={scores.total} url={data.url} scanId={scanId} />}
 
-          {/* Download llms.txt */}
+          {/* 11. llms.txt */}
           <div className="flex justify-start">
             <button
               onClick={() => { import('@/utils/generateLlmsTxt').then(({ downloadLlmsTxt }) => { downloadLlmsTxt({ url: data.url, theme: data.theme, keywords }); }); }}
@@ -267,7 +286,7 @@ const SiteCheckResult = () => {
             </button>
           </div>
 
-          {/* Export buttons */}
+          {/* 12. Export */}
           <DownloadButtons
             url={data.url} theme={data.theme} scores={scores} issues={issues}
             keywords={keywords} minusWords={minusWords} competitors={competitors}
