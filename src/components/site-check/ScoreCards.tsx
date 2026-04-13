@@ -105,13 +105,6 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
           );
         })}
       </div>
-      {/* Center last 2 items on mobile via CSS: on 3-col grid, items 4-5 naturally flow to row 2 */}
-      <style>{`
-        @media (max-width: 767px) {
-          .grid.grid-cols-3 > :nth-child(4) { grid-column-start: 1; }
-          .grid.grid-cols-3 > :nth-child(5) { grid-column-start: 2; }
-        }
-      `}</style>
 
       {activeModal && (
         <ScoreDetailsModal
