@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "migrate": "node dist/db/migrate.js"
+    "migrate": "node dist/db/migrate.js",
+    "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts"
   },
   "dependencies": {
     "fastify": "^5.1.0",
