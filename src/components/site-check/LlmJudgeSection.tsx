@@ -1,5 +1,6 @@
-import { Brain, CheckCircle, XCircle, Users, Trophy, AlertTriangle, Info } from "lucide-react";
+import { Brain, CheckCircle, XCircle, Users, Trophy, AlertTriangle, Info, Loader2, RefreshCw } from "lucide-react";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
+import { Button } from "@/components/ui/button";
 
 interface PromptResult {
   prompt: string;
@@ -20,7 +21,10 @@ interface LlmJudgeData {
 }
 
 interface LlmJudgeSectionProps {
-  data: LlmJudgeData;
+  data: LlmJudgeData | null;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 function getRecommendation(citedCount: number): { text: string; variant: 'success' | 'warning' | 'destructive' } {
@@ -64,7 +68,49 @@ const ScoreCard = ({ label, value, icon: Icon, color }: { label: string; value: 
   );
 };
 
-const LlmJudgeSection = ({ data }: LlmJudgeSectionProps) => {
+const LlmJudgeSection = ({ data, loading, error, onRetry }: LlmJudgeSectionProps) => {
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 gap-3">
+        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+        <p className="text-sm text-muted-foreground">Опрашиваем нейросети...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3">
+        <div className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="w-5 h-5" />
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+        {onRetry && (
+          <Button variant="outline" size="sm" onClick={onRetry} className="gap-2">
+            <RefreshCw className="w-3.5 h-3.5" /> Повторить
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!data || data.total_prompts === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3">
+        <Brain className="w-8 h-8 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">AI-аудит пока недоступен</p>
+        {onRetry && (
+          <Button variant="outline" size="sm" onClick={onRetry} className="gap-2">
+            <Brain className="w-3.5 h-3.5" /> Запустить AI-проверку
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   const rec = getRecommendation(data.cited_count);
 
   return (

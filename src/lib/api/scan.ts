@@ -27,6 +27,10 @@ async function apiFetch<T = any>(path: string, options?: RequestInit): Promise<T
     const msg = body.error || `\u041e\u0448\u0438\u0431\u043a\u0430 ${resp.status}`;
     throw new Error(msg);
   }
+  const ct = resp.headers.get('content-type') || '';
+  if (!ct.includes('application/json') && !ct.includes('text/json')) {
+    throw new Error('Сервер вернул не JSON, возможно он недоступен');
+  }
   return resp.json() as Promise<T>;
 }
 

@@ -233,7 +233,7 @@ const GeoRating = () => {
                       <div className="md:hidden flex items-center gap-2.5">
                         <span className="text-xs text-muted-foreground/60 w-5 text-right">{entry.rank}</span>
                         <SiteBadge domain={entry.domain} brandName={entry.brandName} size={24} />
-                        <span className="font-medium text-sm truncate">{entry.brandName}</span>
+                        <span className="font-medium text-sm truncate">{entry.domain}</span>
                         <Badge className={`ml-auto text-[10px] shrink-0 ${entry.llmScore >= 71 ? "bg-emerald-500/20 text-emerald-400" : entry.llmScore >= 41 ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"}`}>{entry.llmScore}</Badge>
                       </div>
                       <div className="md:hidden flex items-center justify-end">
@@ -242,7 +242,7 @@ const GeoRating = () => {
                       <span className="hidden md:block text-sm text-muted-foreground/60">{entry.rank}</span>
                       <span className="hidden md:flex items-center gap-2 font-medium text-sm">
                         <SiteBadge domain={entry.domain} brandName={entry.brandName} />
-                        <span className="truncate">{entry.brandName} <span className="text-muted-foreground/50 text-xs font-normal">{entry.domain}</span></span>
+                        <span className="truncate">{entry.domain}{entry.brandName && entry.brandName !== entry.domain && <span className="text-muted-foreground/50 text-xs font-normal ml-1 max-w-[120px] truncate inline-block align-bottom">{entry.brandName}</span>}</span>
                       </span>
                       <span className="hidden md:block text-xs text-muted-foreground/60">{entry.category}</span>
                       <span className={`hidden md:block text-sm font-bold ${scoreColor(entry.llmScore)}`}>{entry.llmScore}</span>
