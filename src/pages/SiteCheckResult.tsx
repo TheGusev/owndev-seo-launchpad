@@ -31,6 +31,7 @@ const SiteCheckResult = () => {
   const [error, setError] = useState<string | null>(null);
   const [llmJudge, setLlmJudge] = useState<any>(null);
   const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
+  const [llmJudgeError, setLlmJudgeError] = useState<string | null>(null);
   const [techPassport, setTechPassport] = useState<any>(null);
   const [techPassportLoading, setTechPassportLoading] = useState(false);
 
@@ -60,10 +61,14 @@ const SiteCheckResult = () => {
 
   const triggerLlmJudge = async (id: string, url: string, theme?: string) => {
     setLlmJudgeLoading(true);
+    setLlmJudgeError(null);
     try {
       const result = await judgeLlm(id, url, theme);
       if (result) setLlmJudge(result);
-    } catch (e) { console.error('LLM Judge error:', e); }
+    } catch (e: any) {
+      console.error('LLM Judge error:', e);
+      setLlmJudgeError(e?.message || 'Не удалось запустить AI-аудит');
+    }
     finally { setLlmJudgeLoading(false); }
   };
 
@@ -105,7 +110,14 @@ const SiteCheckResult = () => {
   const rawScores = data.scores;
   const scores = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
     ? { ...defaultScores, ...(rawScores as any) } : null;
-  const breakdown = rawScores?.breakdown || rawScores?.seoBreakdown ? { seo: rawScores.seoBreakdown || rawScores.breakdown?.seo, ai: rawScores.breakdown?.ai, direct: rawScores.breakdown?.direct, schema: rawScores.breakdown?.schema } : undefined;
+  const breakdown = (rawScores?.breakdown || rawScores?.seoBreakdown)
+    ? {
+        seo: rawScores?.seoBreakdown || rawScores?.breakdown?.seo || null,
+        ai: rawScores?.breakdown?.ai || null,
+        direct: rawScores?.breakdown?.direct || null,
+        schema: rawScores?.breakdown?.schema || null,
+      }
+    : undefined;
 
   const issues = Array.isArray(data.issues) ? data.issues : [];
   const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
@@ -225,17 +237,14 @@ const SiteCheckResult = () => {
           )}
 
           {/* 6. AI-видимость */}
-          {llmJudge && (
-            <ResultAccordion title="AI-видимость: проверка нейросетями" defaultOpen={false}>
-              <LlmJudgeSection data={llmJudge} />
-            </ResultAccordion>
-          )}
-          {llmJudgeLoading && !llmJudge && (
-            <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">
-              <Loader2 className="w-4 h-4 text-primary animate-spin" />
-              <p className="text-xs text-muted-foreground">Опрашиваем нейросети...</p>
-            </div>
-          )}
+          <ResultAccordion title="AI-видимость: проверка нейросетями" defaultOpen={false}>
+            <LlmJudgeSection
+              data={llmJudge}
+              loading={llmJudgeLoading}
+              error={llmJudgeError}
+              onRetry={() => scanId && data?.url && triggerLlmJudge(scanId, data.url, data.theme)}
+            />
+          </ResultAccordion>
 
           {/* 7. Competitors */}
           {competitors.length > 0 && (
