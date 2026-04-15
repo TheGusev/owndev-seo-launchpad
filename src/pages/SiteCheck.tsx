@@ -7,7 +7,7 @@ import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
 import type { ScanMode } from "@/lib/site-check-types";
-import { ArrowRight, Globe, Trash2, Search, BrainCircuit, Target, Sparkles, Users, Key, Ban, ShieldCheck, FileText, Download } from "lucide-react";
+import { ArrowRight, Globe, Trash2, Search, BrainCircuit, Target, Sparkles, Users, Key, Ban, ShieldCheck, FileText, Download, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 import type { LucideIcon } from "lucide-react";
@@ -68,6 +68,7 @@ const SiteCheck = () => {
   const [progress, setProgress] = useState(0);
   const [scanError, setScanError] = useState<string | null>(null);
   const [limitScanId, setLimitScanId] = useState<string | null>(null);
+  const [limitUrl, setLimitUrl] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const mountedRef = useRef(true);
 
@@ -94,17 +95,19 @@ const SiteCheck = () => {
     setHistory([]);
   };
 
-  const handleSubmit = async (url: string, mode: ScanMode) => {
+  const handleSubmit = async (url: string, mode: ScanMode, force?: boolean) => {
     setScanning(true);
     setLimitScanId(null);
+    setLimitUrl(null);
     setScanError(null);
     try {
-      const result = await startScan(url, mode);
+      const result = await startScan(url, mode, { force });
       setScanId(result.scan_id);
       pollStatus(result.scan_id);
     } catch (e: any) {
       if (e.lastScanId) {
         setLimitScanId(e.lastScanId);
+        setLimitUrl(url);
       } else {
         toast({ title: "Ошибка", description: e.message, variant: "destructive" });
       }
@@ -165,15 +168,26 @@ const SiteCheck = () => {
           {limitScanId && (
             <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
               <p className="text-sm text-foreground flex-1">
-                Этот домен уже проверялся сегодня. Вы можете посмотреть результаты последней проверки.
+                Этот домен уже проверялся сегодня. Вы можете посмотреть результаты последней проверки или запустить новую.
               </p>
-              <button
-                onClick={() => navigate(`/tools/site-check/result/${limitScanId}`)}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
-              >
-                Смотреть результаты
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate(`/tools/site-check/result/${limitScanId}`)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                >
+                  Смотреть результаты
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                {limitUrl && (
+                  <button
+                    onClick={() => handleSubmit(limitUrl, "site", true)}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Перепроверить
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

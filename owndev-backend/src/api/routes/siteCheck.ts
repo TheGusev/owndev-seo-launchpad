@@ -76,8 +76,8 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   const queue = new Queue('site-check', { connection: redis });
 
   // POST /api/v1/site-check/start
-  app.post<{ Body: { url: string; mode?: string } }>('/start', async (req, reply) => {
-    const { url, mode = 'page' } = req.body as { url: string; mode?: string };
+  app.post<{ Body: { url: string; mode?: string; force?: boolean } }>('/start', async (req, reply) => {
+    const { url, mode = 'page', force = false } = req.body as { url: string; mode?: string; force?: boolean };
     if (!url) return reply.status(400).send({ success: false, error: 'url is required' });
 
     const [{ count }] = await sql<[{ count: number }]>`
@@ -93,26 +93,28 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         });
     }
 
-    // Check cache
-    let hostname = url;
-    try {
-      hostname = new URL(url).hostname;
-    } catch {}
-    const today = new Date().toISOString().slice(0, 10);
-    const cached = await sql<[{ id: string }?]>`
-      SELECT id FROM site_check_scans
-      WHERE url LIKE ${'%' + hostname + '%'}
-        AND status = 'done'
-        AND created_at::date = ${today}::date
-      ORDER BY created_at DESC LIMIT 1
-    `;
-    if (cached[0]) {
-      return reply.status(429).send({
-        success: false,
-        error: 'Этот домен уже проверялся сегодня.',
-        code: 'CONCURRENCY_LIMIT',
-        last_scan_id: cached[0].id,
-      });
+    // Check cache (skip if force=true)
+    if (!force) {
+      let hostname = url;
+      try {
+        hostname = new URL(url).hostname;
+      } catch {}
+      const today = new Date().toISOString().slice(0, 10);
+      const cached = await sql<[{ id: string }?]>`
+        SELECT id FROM site_check_scans
+        WHERE url LIKE ${'%' + hostname + '%'}
+          AND status = 'done'
+          AND created_at::date = ${today}::date
+        ORDER BY created_at DESC LIMIT 1
+      `;
+      if (cached[0]) {
+        return reply.status(429).send({
+          success: false,
+          error: 'Этот домен уже проверялся сегодня.',
+          code: 'CONCURRENCY_LIMIT',
+          last_scan_id: cached[0].id,
+        });
+      }
     }
 
     const scan_id = randomUUID();
@@ -200,6 +202,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         ai: scores?.ai ?? null,
         confidence: scores?.confidence ?? null,
         issues_count: scores?.issues_count ?? issues.length ?? null,
+        breakdown: scores?.breakdown ?? null,
         blocks: scores?.blocks ?? [],
       },
 

@@ -1,8 +1,10 @@
 /**
  * High-level API functions for all OWNDEV tools.
- * All tools go through the own backend via fetch + apiUrl/apiHeaders.
+ * Tools call Supabase Edge Functions directly via supabase.functions.invoke().
+ * Site-check endpoints go through the Node backend via apiUrl/apiHeaders.
  */
 
+import { supabase } from "@/integrations/supabase/client";
 import { apiUrl, apiHeaders } from "./config";
 
 // ── Helpers ──
@@ -13,37 +15,30 @@ export function ensureProtocol(url: string): string {
   return `https://${trimmed}`;
 }
 
-async function post<T = any>(path: string, body: object): Promise<T> {
-  const resp = await fetch(apiUrl(path), {
-    method: 'POST',
-    headers: apiHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
-    throw new Error(data.error || `Ошибка ${resp.status}`);
-  }
-  return resp.json();
+async function invokeFunction<T = any>(name: string, body: object): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body });
+  if (error) throw new Error(error.message || `Ошибка вызова ${name}`);
+  return data as T;
 }
 
 // ── Audit ──
 
 export async function auditSite(url: string, options?: { toolId?: string }) {
-  return post("/site-check/audit", { url });
+  return invokeFunction("seo-audit", { url });
 }
 
 // ── Tools ──
 
 export async function checkIndexation(url: string) {
-  return post("/tools/check-indexation", { url });
+  return invokeFunction("check-indexation", { url });
 }
 
 export async function generateSemanticCore(topic: string) {
-  return post("/tools/semantic-core", { topic });
+  return invokeFunction("generate-semantic-core", { topic });
 }
 
 export async function generateText(type: string, topic: string, keywords: string) {
-  return post("/tools/generate-text", { type, topic, keywords });
+  return invokeFunction("generate-text", { type, topic, keywords });
 }
 
 export async function generateContentBrief(
@@ -51,7 +46,7 @@ export async function generateContentBrief(
   url?: string,
   contentType?: string,
 ) {
-  return post("/tools/content-brief", {
+  return invokeFunction("generate-content-brief", {
     query,
     url: url || undefined,
     contentType,
@@ -59,11 +54,11 @@ export async function generateContentBrief(
 }
 
 export async function checkInternalLinks(url: string) {
-  return post("/tools/internal-links", { url });
+  return invokeFunction("check-internal-links", { url });
 }
 
 export async function analyzeCompetitors(url1: string, url2: string) {
-  return post("/tools/competitors", { url1, url2 });
+  return invokeFunction("competitor-analysis", { url1, url2 });
 }
 
 export async function trackBrand(
@@ -71,7 +66,7 @@ export async function trackBrand(
   prompts: string[],
   aiSystems: string[],
 ) {
-  return post("/tools/brand-tracker", { brand, prompts, aiSystems });
+  return invokeFunction("brand-tracker", { brand, prompts, aiSystems });
 }
 
 export async function generateAutofix(
@@ -80,7 +75,7 @@ export async function generateAutofix(
   title?: string,
   description?: string,
 ) {
-  return post("/tools/autofix", {
+  return invokeFunction("generate-autofix", {
     issueType,
     url,
     title,
@@ -96,7 +91,7 @@ export async function generateGeoContent(
   urlFormat?: string,
   customInstructions?: string,
 ) {
-  return post("/tools/geo-content", {
+  return invokeFunction("generate-geo-content", {
     pages,
     niche,
     region,
@@ -107,8 +102,10 @@ export async function generateGeoContent(
 }
 
 export async function sendTelegram(body: object) {
-  return post("/tools/send-telegram", body);
+  return invokeFunction("send-telegram", body);
 }
+
+// ── Site-check specific (Node backend) ──
 
 export async function judgeLlm(scanId: string, url: string, theme?: string) {
   const resp = await fetch(apiUrl(`/site-check/llm-judge`), {
