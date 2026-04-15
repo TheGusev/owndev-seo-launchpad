@@ -140,7 +140,7 @@ const Footer = () => {
         <div className="mt-10 pt-6 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-muted-foreground text-sm text-center md:text-left">
-              © {new Date().getFullYear()} OWNDEV.ru · Первый GEO и AI-ready аудит в Рунете · © {new Date().getFullYear()} OWNDEV.ru · Первый GEO и AI-ready аудит в Рунете · Сделано ❤️ в России 🇷🇺
+              © {new Date().getFullYear()} OWNDEV.ru · Первый GEO и AI-ready аудит в Рунете · Сделано ❤️ в России 🇷🇺
             </p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <Link to="/privacy" className="hover:text-foreground transition-colors">Конфиденциальность</Link>
