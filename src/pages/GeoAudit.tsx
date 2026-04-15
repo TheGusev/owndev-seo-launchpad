@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { FileCheck, Star, Code2, Brain, BookOpen, Sparkles, ArrowRight, BarChart3, BrainCircuit, Rocket, LucideIcon } from "lucide-react";
+import BrandHeroTitle from "@/components/ui/BrandHeroTitle";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -112,11 +113,11 @@ const GeoAudit = () => {
             <Badge variant="outline" className="mb-6 border-primary/30 text-primary">
               GEO — Generative Engine Optimization
             </Badge>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-serif mb-6 leading-tight">
-              Ваш сайт невидим{" "}
-              <br className="hidden sm:block" />
-              для <span className="text-gradient">нейросетей</span>?
-            </h1>
+            <BrandHeroTitle
+              prefix="Ваш сайт невидим для"
+              highlight="нейросетей"
+              suffix="?"
+            />
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10">
               ChatGPT, Яндекс Нейро, Perplexity и Claude отвечают на вопросы пользователей — но не цитируют ваш сайт.
               GEO-аудит OWNDEV покажет почему и как это исправить.
