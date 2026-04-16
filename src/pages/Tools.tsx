@@ -189,7 +189,6 @@ const Tools = () => {
               </motion.section>
             );
           })()}
-          )}
 
           {/* Grouped sections */}
           {TOOL_GROUPS.map((group) => {
