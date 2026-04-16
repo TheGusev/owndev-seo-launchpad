@@ -180,7 +180,7 @@ const GeoAudit = () => {
               6 направлений проверки AI-готовности вашего сайта
             </p>
             <p className="text-xs text-muted-foreground/70 text-center mb-12">
-              Для попадания в <span className="text-primary font-medium">GEO Рейтинг</span> сайт должен набрать <span className="text-primary font-semibold">90+ баллов</span> по итогам аудита
+              Для попадания в <Link to="/geo-rating" className="text-primary font-medium underline underline-offset-2 hover:text-primary/80">GEO Рейтинг</Link> сайт должен набрать <span className="text-primary font-semibold">90+ баллов</span> по итогам аудита
             </p>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
               {auditCards.map((card) => (
