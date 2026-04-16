@@ -38,7 +38,7 @@ const GeoRatingNomination = ({ totalScore, url, scanId }: Props) => {
 
   // Guards AFTER all hooks
   if (!url || typeof url !== 'string') return null;
-  if (totalScore < 70 || sent) return null;
+  if (totalScore < 90 || sent) return null;
 
   const domain = (() => {
     try { return new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace("www.", ""); } catch { return url; }
@@ -83,7 +83,7 @@ const resp = await fetch(apiUrl('/site-check/nomination'), {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground">
-            Ваш сайт набрал {totalScore}/100 — это уровень ТОП-рейтинга!
+            Ваш сайт набрал {totalScore}/100 — вы в ТОП-10% по AI-готовности!
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             Добавьте сайт в{" "}
