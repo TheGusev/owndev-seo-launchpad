@@ -1,0 +1,136 @@
+{
+  "version": "1.0.0",
+  "checksum": "sf-template-v1-2026",
+  "meta": {
+    "product": "OwnDev Site Formula",
+    "description": "Blueprint report template contract"
+  },
+  "preview_fields": [
+    "project_class",
+    "project_class_reason",
+    "key_layers",
+    "page_count_estimate",
+    "primary_risks"
+  ],
+  "sections": [
+    {
+      "id": "executive_summary",
+      "title": "Резюме проекта",
+      "always_active": true,
+      "order": 1,
+      "fields": ["project_class", "project_class_reason", "formula_components", "key_decisions"]
+    },
+    {
+      "id": "demand_map",
+      "title": "Карта спроса",
+      "activation": { "layer": "demand_map" },
+      "order": 2,
+      "fields": ["demand_overview", "intent_types", "search_entities"]
+    },
+    {
+      "id": "intent_layers",
+      "title": "Слои интентов",
+      "activation": { "layer": "intent_layers" },
+      "order": 3,
+      "fields": ["commercial_intents", "informational_intents", "navigational_intents", "transactional_intents"]
+    },
+    {
+      "id": "page_roles",
+      "title": "Роли страниц",
+      "activation": { "layer": "page_roles" },
+      "order": 4,
+      "fields": ["page_type_map", "indexability_tiers", "url_governance_rules"]
+    },
+    {
+      "id": "geo_architecture",
+      "title": "Географическая архитектура",
+      "activation": { "layer": "geo_pages" },
+      "order": 5,
+      "fields": ["geo_page_structure", "geo_url_pattern", "geo_interlinking"]
+    },
+    {
+      "id": "city_segmentation",
+      "title": "Сегментация по городам",
+      "activation": { "layer": "city_segmentation" },
+      "order": 6,
+      "fields": ["city_subdomain_strategy", "city_content_requirements", "city_canonical_rules"]
+    },
+    {
+      "id": "trust_compliance",
+      "title": "Доверие и соответствие",
+      "activation": { "blocks": ["trust_signals", "compliance_pages", "eeat_structure"] },
+      "order": 7,
+      "fields": ["trust_page_list", "compliance_requirements", "eeat_implementation"]
+    },
+    {
+      "id": "paid_separation",
+      "title": "Разделение SEO и рекламы",
+      "activation": { "layer": "paid_landing_separation" },
+      "order": 8,
+      "fields": ["seo_landing_rules", "paid_landing_rules", "noindex_policy"]
+    },
+    {
+      "id": "indexation_policy",
+      "title": "Политика индексации",
+      "always_active": true,
+      "order": 9,
+      "fields": ["indexable_core", "indexable_support", "noindex_utility", "sitemap_rules", "canonical_strategy"]
+    },
+    {
+      "id": "internal_linking",
+      "title": "Система перелинковки",
+      "activation": { "layer": "internal_linking_system" },
+      "order": 10,
+      "fields": ["linking_topology", "hub_pages", "utility_isolation"]
+    },
+    {
+      "id": "conversion_system",
+      "title": "Система конверсии",
+      "activation": { "layer": "conversion_system" },
+      "order": 11,
+      "fields": ["conversion_points", "cta_strategy", "form_requirements"]
+    },
+    {
+      "id": "restructuring",
+      "title": "План реструктуризации",
+      "activation": { "blocks": ["restructuring_plan"] },
+      "order": 12,
+      "fields": ["current_state_assessment", "migration_steps", "redirect_plan", "risk_mitigation"]
+    },
+    {
+      "id": "migration_checklist",
+      "title": "Чек-лист миграции",
+      "activation": { "blocks": ["migration_checklist"] },
+      "order": 13,
+      "fields": ["pre_migration", "during_migration", "post_migration"]
+    },
+    {
+      "id": "analytics_integration",
+      "title": "Аналитика и рекламные интеграции",
+      "activation": { "layer": "analytics_ads_integration" },
+      "order": 14,
+      "fields": ["analytics_setup", "conversion_tracking", "ad_integration"]
+    },
+    {
+      "id": "safe_scale",
+      "title": "Безопасное масштабирование",
+      "activation": { "checks": ["thin_content_risk", "cannibalization_risk", "doorway_risk"] },
+      "order": 15,
+      "fields": ["thin_content_assessment", "cannibalization_prevention", "doorway_prevention", "verification_protocol"]
+    },
+    {
+      "id": "technical_stability",
+      "title": "Техническая стабильность",
+      "always_active": true,
+      "order": 16,
+      "fields": ["rendering_strategy", "performance_requirements", "security_basics"]
+    },
+    {
+      "id": "next_steps",
+      "title": "Следующие шаги",
+      "always_active": true,
+      "order": 17,
+      "fields": ["implementation_priority", "timeline_estimate", "verification_checkpoints"]
+    }
+  ]
+}
