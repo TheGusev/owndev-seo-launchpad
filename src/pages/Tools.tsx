@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 const FLAGSHIP_SLUG = "site-check";
+const FORMULA_SLUG = "site-formula";
 
 const TOOL_GROUPS = [
   {
@@ -145,8 +146,49 @@ const Tools = () => {
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </GradientButton>
                 </div>
-              </Link>
+            </Link>
             </motion.section>
+          )}
+
+          {/* Section 1b — Site Formula */}
+          {(() => {
+            const formula = getToolBySlug(FORMULA_SLUG);
+            if (!formula) return null;
+            return (
+              <motion.section
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="mb-12"
+              >
+                <Link to="/site-formula" className="block glass rounded-2xl p-8 md:p-10 border border-violet-500/30 hover:border-violet-500/60 transition-all group">
+                  <div className="flex flex-col md:flex-row md:items-center gap-6">
+                    <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center shrink-0">
+                      <formula.icon className="w-7 h-7 text-violet-400" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h2 className="text-2xl md:text-3xl font-bold font-serif text-foreground group-hover:text-violet-400 transition-colors">
+                          {formula.name}
+                        </h2>
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-violet-500/10 text-violet-400 text-xs font-semibold">
+                          NEW
+                        </span>
+                      </div>
+                      <p className="text-muted-foreground text-lg">
+                        {formula.shortDesc}
+                      </p>
+                    </div>
+                    <GradientButton size="lg" className="shrink-0">
+                      Начать
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </GradientButton>
+                  </div>
+                </Link>
+              </motion.section>
+            );
+          })()}
           )}
 
           {/* Grouped sections */}
@@ -190,7 +232,7 @@ const Tools = () => {
                         viewport={{ once: true }}
                         transition={{ duration: 0.4, delay: i * 0.06 }}
                       >
-                        <Link to={`/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group block h-full">
+                        <Link to={tool.customPath || `/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group block h-full">
                           <div className="flex items-start gap-4">
                             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                               <tool.icon className="w-5 h-5 text-primary" />
