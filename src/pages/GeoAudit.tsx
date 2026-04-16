@@ -176,8 +176,11 @@ const GeoAudit = () => {
             <h2 className="text-2xl md:text-3xl font-bold font-serif mb-4 text-center">
               Что проверяет <span className="text-gradient">GEO-аудит</span>
             </h2>
-            <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto text-sm">
+            <p className="text-muted-foreground text-center mb-4 max-w-2xl mx-auto text-sm">
               6 направлений проверки AI-готовности вашего сайта
+            </p>
+            <p className="text-xs text-muted-foreground/70 text-center mb-12">
+              Для попадания в <span className="text-primary font-medium">GEO Рейтинг</span> сайт должен набрать <span className="text-primary font-semibold">90+ баллов</span> по итогам аудита
             </p>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto">
               {auditCards.map((card) => (
