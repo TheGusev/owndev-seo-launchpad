@@ -1,0 +1,416 @@
+{
+  "version": "1.0.0",
+  "checksum": "sf-rules-v1-2026",
+  "meta": {
+    "product": "OwnDev Site Formula",
+    "description": "Priority-based ruleset for service-site architecture decision engine"
+  },
+  "questions": [
+    {
+      "id": "q_services",
+      "step": 1,
+      "label": "Сколько направлений (услуг) у вашего бизнеса?",
+      "type": "single",
+      "options": [
+        { "value": "single", "label": "Одно направление" },
+        { "value": "few", "label": "2–4 направления" },
+        { "value": "many", "label": "5 и более" }
+      ],
+      "engine_dimension": "service_count"
+    },
+    {
+      "id": "q_geo",
+      "step": 1,
+      "label": "Какой у вас географический охват?",
+      "type": "single",
+      "options": [
+        { "value": "single_city", "label": "Один город" },
+        { "value": "city_districts", "label": "Город + районы" },
+        { "value": "multi_city", "label": "Несколько городов / сеть" },
+        { "value": "national", "label": "Вся Россия / без привязки" }
+      ],
+      "engine_dimension": "geo_scope"
+    },
+    {
+      "id": "q_traffic_sources",
+      "step": 2,
+      "label": "Откуда приходят ваши клиенты?",
+      "type": "multi",
+      "options": [
+        { "value": "seo", "label": "Поисковые системы (SEO)" },
+        { "value": "paid", "label": "Реклама (Яндекс.Директ и др.)" },
+        { "value": "social", "label": "Соцсети" },
+        { "value": "referral", "label": "Рекомендации / агрегаторы" },
+        { "value": "direct", "label": "Прямые заходы" }
+      ],
+      "engine_dimension": "traffic_sources"
+    },
+    {
+      "id": "q_niche",
+      "step": 2,
+      "label": "К какой сфере относится ваш бизнес?",
+      "type": "single",
+      "options": [
+        { "value": "general", "label": "Обычный бизнес" },
+        { "value": "medical", "label": "Медицина / здоровье" },
+        { "value": "legal", "label": "Юриспруденция / финансы" },
+        { "value": "education", "label": "Образование / курсы" },
+        { "value": "ecommerce", "label": "Интернет-магазин" }
+      ],
+      "engine_dimension": "niche_type"
+    },
+    {
+      "id": "q_current_site",
+      "step": 3,
+      "label": "Как выглядит ваш текущий сайт?",
+      "type": "single",
+      "options": [
+        { "value": "none", "label": "Сайта ещё нет" },
+        { "value": "landing", "label": "Одностраничник / лендинг" },
+        { "value": "small_site", "label": "Небольшой сайт (до 20 страниц)" },
+        { "value": "large_site", "label": "Большой сайт (20+ страниц)" },
+        { "value": "chaotic", "label": "Есть сайт, но он запущен / хаотичный" }
+      ],
+      "engine_dimension": "current_site_state"
+    },
+    {
+      "id": "q_conversion",
+      "step": 3,
+      "label": "Какой основной способ получения заявок?",
+      "type": "multi",
+      "options": [
+        { "value": "form", "label": "Форма на сайте" },
+        { "value": "phone", "label": "Звонок" },
+        { "value": "chat", "label": "Чат / мессенджер" },
+        { "value": "booking", "label": "Онлайн-запись" },
+        { "value": "cart", "label": "Корзина / заказ" }
+      ],
+      "engine_dimension": "conversion_channels"
+    },
+    {
+      "id": "q_growth_plan",
+      "step": 4,
+      "label": "Какие планы по развитию сайта?",
+      "type": "single",
+      "options": [
+        { "value": "maintain", "label": "Поддерживать как есть" },
+        { "value": "grow_content", "label": "Добавлять контент и страницы" },
+        { "value": "expand_geo", "label": "Расширять географию" },
+        { "value": "full_scale", "label": "Масштабировать всё (услуги + гео + контент)" }
+      ],
+      "engine_dimension": "growth_plan"
+    },
+    {
+      "id": "q_legacy_migration",
+      "step": 4,
+      "label": "Нужно ли переносить контент со старого сайта?",
+      "type": "single",
+      "options": [
+        { "value": "no", "label": "Нет" },
+        { "value": "partial", "label": "Частично" },
+        { "value": "full", "label": "Да, полный перенос" }
+      ],
+      "engine_dimension": "legacy_migration"
+    }
+  ],
+  "question_mapping": {
+    "service_count": {
+      "single": { "service_breadth": 1 },
+      "few": { "service_breadth": 2 },
+      "many": { "service_breadth": 3 }
+    },
+    "geo_scope": {
+      "single_city": { "geo_complexity": 1 },
+      "city_districts": { "geo_complexity": 2 },
+      "multi_city": { "geo_complexity": 3 },
+      "national": { "geo_complexity": 2 }
+    },
+    "traffic_sources": {
+      "_multi_map": {
+        "seo": { "seo_weight": 1 },
+        "paid": { "paid_weight": 1 },
+        "social": { "social_weight": 1 },
+        "referral": { "referral_weight": 1 },
+        "direct": { "direct_weight": 1 }
+      }
+    },
+    "niche_type": {
+      "general": { "trust_requirement": 0 },
+      "medical": { "trust_requirement": 3 },
+      "legal": { "trust_requirement": 3 },
+      "education": { "trust_requirement": 1 },
+      "ecommerce": { "trust_requirement": 1 }
+    },
+    "current_site_state": {
+      "none": { "restructuring_need": 0, "existing_complexity": 0 },
+      "landing": { "restructuring_need": 1, "existing_complexity": 1 },
+      "small_site": { "restructuring_need": 1, "existing_complexity": 2 },
+      "large_site": { "restructuring_need": 2, "existing_complexity": 3 },
+      "chaotic": { "restructuring_need": 3, "existing_complexity": 3 }
+    },
+    "conversion_channels": {
+      "_multi_map": {
+        "form": { "conversion_complexity": 1 },
+        "phone": { "conversion_complexity": 0 },
+        "chat": { "conversion_complexity": 1 },
+        "booking": { "conversion_complexity": 2 },
+        "cart": { "conversion_complexity": 2 }
+      }
+    },
+    "growth_plan": {
+      "maintain": { "scale_ambition": 0 },
+      "grow_content": { "scale_ambition": 1 },
+      "expand_geo": { "scale_ambition": 2 },
+      "full_scale": { "scale_ambition": 3 }
+    },
+    "legacy_migration": {
+      "no": { "migration_burden": 0 },
+      "partial": { "migration_burden": 1 },
+      "full": { "migration_burden": 2 }
+    }
+  },
+  "derived_scores": {
+    "indexation_safety": {
+      "formula": "max(0, 10 - (geo_complexity * 2 + service_breadth + restructuring_need))",
+      "description": "How safe the indexation strategy is (higher = safer)"
+    },
+    "scale_readiness": {
+      "formula": "service_breadth + geo_complexity + scale_ambition",
+      "description": "Overall scale complexity"
+    },
+    "architectural_complexity": {
+      "formula": "service_breadth + geo_complexity + existing_complexity + conversion_complexity + trust_requirement",
+      "description": "Total architectural complexity"
+    },
+    "restructuring_risk": {
+      "formula": "restructuring_need + migration_burden + existing_complexity",
+      "description": "Risk from restructuring"
+    }
+  },
+  "project_class_thresholds": {
+    "start": {
+      "max_scale_readiness": 3,
+      "max_architectural_complexity": 5
+    },
+    "growth": {
+      "min_scale_readiness": 3,
+      "max_scale_readiness": 7,
+      "min_architectural_complexity": 4,
+      "max_architectural_complexity": 10
+    },
+    "scale": {
+      "min_scale_readiness": 7,
+      "min_architectural_complexity": 8
+    }
+  },
+  "hard_triggers": {
+    "force_growth": [
+      { "condition": "geo_complexity >= 2 AND paid_weight >= 1", "reason": "Geo + paid traffic demands growth-level routing" },
+      { "condition": "trust_requirement >= 3", "reason": "Regulated niche requires growth-level trust architecture" }
+    ],
+    "force_scale": [
+      { "condition": "geo_complexity >= 3 AND service_breadth >= 2 AND scale_ambition >= 2", "reason": "Multi-city + multi-service + growth plan demands scale architecture" }
+    ]
+  },
+  "rules": [
+    {
+      "id": "P0_ONE_URL_ONE_ENTITY",
+      "priority": "P0",
+      "type": "guardrail",
+      "condition": "always",
+      "effect": {
+        "set_flag": "one_url_one_entity",
+        "value": true
+      },
+      "reason_human": "Каждый URL на сайте должен соответствовать одной уникальной сущности с отдельной поисковой ценностью."
+    },
+    {
+      "id": "P0_UTILITY_NOINDEX",
+      "priority": "P0",
+      "type": "guardrail",
+      "condition": "always",
+      "effect": {
+        "set_flag": "utility_always_noindex",
+        "value": true
+      },
+      "reason_human": "Служебные и платные страницы всегда закрыты от индексации и не попадают в sitemap."
+    },
+    {
+      "id": "P0_UTILITY_NO_SITEMAP",
+      "priority": "P0",
+      "type": "guardrail",
+      "condition": "always",
+      "effect": {
+        "set_flag": "utility_excluded_from_sitemap",
+        "value": true
+      },
+      "reason_human": "Служебные страницы полностью исключены из карты сайта."
+    },
+    {
+      "id": "P0_UTILITY_NO_SEO_LINKING",
+      "priority": "P0",
+      "type": "guardrail",
+      "condition": "always",
+      "effect": {
+        "set_flag": "utility_excluded_from_seo_linking",
+        "value": true
+      },
+      "reason_human": "Служебные страницы не участвуют в SEO-перелинковке."
+    },
+    {
+      "id": "P0_CENTRALIZED_ROUTING",
+      "priority": "P0",
+      "type": "guardrail",
+      "condition": "always",
+      "effect": {
+        "set_flag": "centralized_routing",
+        "value": true
+      },
+      "reason_human": "Маршрутизация, canonical и карта сайта управляются централизованно."
+    },
+    {
+      "id": "P0_VERIFICATION_ON_SCALE",
+      "priority": "P0",
+      "type": "guardrail",
+      "condition": "project_class == 'scale' OR restructuring_risk >= 5",
+      "effect": {
+        "set_flag": "verification_required",
+        "value": true
+      },
+      "reason_human": "При масштабировании или высоком риске реструктуризации требуется верификационный проход."
+    },
+    {
+      "id": "P1_DEMAND_MAP",
+      "priority": "P1",
+      "type": "layer_activation",
+      "condition": "always",
+      "effect": {
+        "activate_layer": "demand_map",
+        "description": "Карта спроса — основа архитектуры"
+      },
+      "reason_human": "Сначала нужно составить карту реального спроса: какие запросы существуют и по каким направлениям."
+    },
+    {
+      "id": "P1_INTENT_SEPARATION",
+      "priority": "P1",
+      "type": "layer_activation",
+      "condition": "always",
+      "effect": {
+        "activate_layer": "intent_layers",
+        "description": "Разделение интентов по типам страниц"
+      },
+      "reason_human": "Каждый тип пользовательского намерения должен обслуживаться отдельным типом страницы."
+    },
+    {
+      "id": "P1_PAGE_ROLES",
+      "priority": "P1",
+      "type": "layer_activation",
+      "condition": "always",
+      "effect": {
+        "activate_layer": "page_roles",
+        "description": "Назначение ролей страницам"
+      },
+      "reason_human": "Каждая страница получает чёткую роль: конверсионная, информационная, навигационная или служебная."
+    },
+    {
+      "id": "P2_GEO_PAGES",
+      "priority": "P2",
+      "type": "conditional_activation",
+      "condition": "geo_complexity >= 2",
+      "effect": {
+        "activate_layer": "geo_pages",
+        "description": "Географические посадочные страницы"
+      },
+      "reason_human": "При работе в нескольких районах или городах необходимы отдельные гео-страницы."
+    },
+    {
+      "id": "P2_CITY_SEGMENTATION",
+      "priority": "P2",
+      "type": "conditional_activation",
+      "condition": "geo_complexity >= 3",
+      "effect": {
+        "activate_layer": "city_segmentation",
+        "description": "Сегментация по городам"
+      },
+      "reason_human": "Сеть из нескольких городов требует полноценной сегментации с отдельными поддоменами или разделами."
+    },
+    {
+      "id": "P2_TRUST_COMPLIANCE",
+      "priority": "P2",
+      "type": "conditional_activation",
+      "condition": "trust_requirement >= 3",
+      "effect": {
+        "activate_layer": "trust_compliance",
+        "activate_blocks": ["trust_signals", "compliance_pages", "eeat_structure"],
+        "description": "Блоки доверия и соответствия"
+      },
+      "reason_human": "В регулируемых нишах (медицина, юриспруденция) обязательны страницы доверия, лицензии и E-E-A-T структура."
+    },
+    {
+      "id": "P2_PAID_LANDING_SEPARATION",
+      "priority": "P2",
+      "type": "conditional_activation",
+      "condition": "paid_weight >= 1",
+      "effect": {
+        "activate_layer": "paid_landing_separation",
+        "description": "Разделение SEO и рекламных посадочных"
+      },
+      "reason_human": "Рекламный трафик направляется на отдельные страницы, чтобы не размывать SEO-архитектуру."
+    },
+    {
+      "id": "P3_INTERNAL_LINKING",
+      "priority": "P3",
+      "type": "layer_activation",
+      "condition": "service_breadth >= 2 OR geo_complexity >= 2",
+      "effect": {
+        "activate_layer": "internal_linking_system",
+        "description": "Модульная система перелинковки"
+      },
+      "reason_human": "При нескольких услугах или гео-разделах нужна продуманная система внутренних ссылок."
+    },
+    {
+      "id": "P3_CONVERSION_SYSTEM",
+      "priority": "P3",
+      "type": "layer_activation",
+      "condition": "conversion_complexity >= 2",
+      "effect": {
+        "activate_layer": "conversion_system",
+        "description": "Централизованная система конверсии"
+      },
+      "reason_human": "Несколько каналов конверсии (запись, корзина) требуют единой системы обработки заявок."
+    },
+    {
+      "id": "P3_RESTRUCTURING_NOTES",
+      "priority": "P3",
+      "type": "conditional_activation",
+      "condition": "restructuring_need >= 2 OR migration_burden >= 2",
+      "effect": {
+        "activate_blocks": ["restructuring_plan", "migration_checklist"],
+        "description": "Заметки по реструктуризации"
+      },
+      "reason_human": "Текущий сайт требует реструктуризации — нужен план переноса и контрольный список."
+    },
+    {
+      "id": "P4_SAFE_SCALE_FILTER",
+      "priority": "P4",
+      "type": "scale_filter",
+      "condition": "project_class == 'scale'",
+      "effect": {
+        "activate_checks": ["thin_content_risk", "cannibalization_risk", "doorway_risk"],
+        "description": "Фильтры безопасного масштабирования"
+      },
+      "reason_human": "Перед масштабированием проверяем риски: тонкий контент, каннибализация, дорвеи."
+    },
+    {
+      "id": "P4_ANALYTICS_INTEGRATION",
+      "priority": "P4",
+      "type": "layer_activation",
+      "condition": "paid_weight >= 1 OR seo_weight >= 1",
+      "effect": {
+        "activate_layer": "analytics_ads_integration",
+        "description": "Интеграция аналитики и рекламы"
+      },
+      "reason_human": "При наличии SEO или рекламного трафика необходима настройка аналитики и рекламных интеграций."
+    }
+  ]
+}
