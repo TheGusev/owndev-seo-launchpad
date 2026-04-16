@@ -36,6 +36,8 @@ export async function startServer() {
   await app.register(monitorRoutes);
   await app.register(eventRoutes);
     await app.register(siteCheckRoutes, { prefix: '/api/v1/site-check' });
+    const { siteFormulaRoutes } = await import('./routes/siteFormula.js');
+    await app.register(siteFormulaRoutes, { prefix: '/api/v1/site-formula' });
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
