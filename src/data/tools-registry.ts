@@ -18,6 +18,8 @@ export interface ToolDef {
   seoTitle?: string;
   seoDescription?: string;
   seoH1?: string;
+  /** Custom route path (overrides default /tools/:slug) */
+  customPath?: string;
 }
 
 export const categories = [
@@ -28,6 +30,21 @@ export const categories = [
 ];
 
 export const tools: ToolDef[] = [
+  // ===== SITE FORMULA =====
+  {
+    id: "site-formula", slug: "site-formula",
+    name: "Site Formula",
+    shortDesc: "Архитектурный blueprint для service-site: структура, индексация, масштабирование — на основе вашего бизнеса",
+    category: "analysis", icon: LayoutTemplate,
+    component: lazy(() => import("@/pages/SiteFormula")),
+    gradient: "bg-gradient-to-br from-primary/20 to-violet-950/40",
+    useCases: ["Проектирование структуры сайта", "Стратегия индексации и масштабирования", "Архитектурный blueprint под ваш бизнес"],
+    geoEnabled: false, status: "active",
+    customPath: "/site-formula",
+    seoTitle: "Site Formula — архитектурный blueprint сайта | OWNDEV",
+    seoDescription: "Получите архитектурный blueprint для service-сайта: структура, индексация, масштабирование — персонализированный план на основе вашего бизнеса.",
+    seoH1: "Site Formula — архитектурный blueprint вашего сайта",
+  },
   // ===== FLAGSHIP =====
   {
     id: "site-check", slug: "site-check",
