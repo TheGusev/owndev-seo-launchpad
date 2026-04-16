@@ -148,8 +148,11 @@ const GeoRating = () => {
             <h1 className="text-3xl md:text-4xl font-bold mb-3">
               GEO Рейтинг <span className="text-primary">Рунета 2026</span>
             </h1>
-            <p className="text-muted-foreground text-base max-w-xl mx-auto mb-6">
+            <p className="text-muted-foreground text-base max-w-xl mx-auto mb-4">
               AI-готовность популярных сайтов России — аналитический snapshot на основе автоматического аудита OWNDEV.
+            </p>
+            <p className="text-xs text-muted-foreground/70 mb-6">
+              Для попадания в рейтинг сайт должен набрать <span className="text-primary font-semibold">90+ баллов</span> по итогам GEO-аудита.
             </p>
 
             <div className="flex flex-wrap justify-center gap-3 mb-6">
