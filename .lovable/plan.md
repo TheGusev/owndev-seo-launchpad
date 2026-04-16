@@ -1,16 +1,10 @@
 
 
-## Добавить подсказку о пороге 90 баллов на страницу GEO Аудита
+## Обернуть "GEO Рейтинг" в ссылку на `/geo-rating`
 
-**Файл:** `src/pages/GeoAudit.tsx`
+**Файл:** `src/pages/GeoAudit.tsx`, строка 183
 
-В секции "Что проверяет GEO-аудит" (после подзаголовка "6 направлений проверки", строка ~149) добавить строку аналогичную той, что уже есть на странице GEO Рейтинга:
+Заменить `<span className="text-primary font-medium">GEO Рейтинг</span>` на `<Link to="/geo-rating" className="text-primary font-medium underline underline-offset-2 hover:text-primary/80">GEO Рейтинг</Link>`.
 
-```tsx
-<p className="text-xs text-muted-foreground/70 text-center mb-12">
-  Для попадания в <span className="text-primary font-medium">GEO Рейтинг</span> сайт должен набрать <span className="text-primary font-semibold">90+ баллов</span> по итогам аудита
-</p>
-```
-
-Вставляется после существующего `<p>` с текстом "6 направлений проверки" и перед grid с карточками. Один блок, один файл.
+`Link` из `react-router-dom` уже импортирован в файле — дополнительных импортов не нужно.
 
