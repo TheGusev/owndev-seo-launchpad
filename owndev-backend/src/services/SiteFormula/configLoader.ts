@@ -6,7 +6,9 @@ import type { RulesConfig, TemplateConfig } from '../../types/siteFormula.js';
 import { logger } from '../../utils/logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CONFIG_DIR = resolve(__dirname, '../../../config');
+// Use cwd-based path so it works for both `tsx watch src/index.ts` (dev)
+// and `node dist/index.js` (prod) — both run from owndev-backend root.
+const CONFIG_DIR = resolve(process.cwd(), 'config');
 
 let cachedRules: RulesConfig | null = null;
 let cachedTemplate: TemplateConfig | null = null;
