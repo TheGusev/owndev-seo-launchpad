@@ -1,135 +1,76 @@
 
 
-## Итерация 3 + критический фикс backend
+## План фикса: Site Formula — пустой body в POST-запросах
 
-### Проблема backend (root cause)
+### Root cause
 
-`tsconfig.json` имеет `rootDir: "src"` и `outDir: "dist"`. После `npm run build` файл `configLoader.ts` оказывается в `dist/services/SiteFormula/configLoader.js`. В нём CONFIG_DIR резолвится как `../../../config` от расположения файла — это `owndev-backend/config/` от `src/`, но от `dist/services/SiteFormula/` это **корень проекта**, не `owndev-backend/config/`. Плюс `tsc` **не копирует** JSON файлы в `dist`. Результат: backend падает на старте/первом запросе.
+Fastify по умолчанию требует наличие body, если в запросе есть `Content-Type: application/json`. Наш `apiHeaders()` в `src/lib/api/config.ts` всегда добавляет `Content-Type: application/json`, даже когда мы шлём `POST` без тела. Endpoints `POST /sessions`, `POST /sessions/:id/run`, `POST /sessions/:id/unlock` тела не передают — Fastify отбивает их с 400 `Body cannot be empty when content-type is set to 'application/json'`. Из-за этого:
+- сессия создаётся, но кнопка "Создать" может молчаливо падать на повторе
+- `runEngine` падает, фронт показывает ошибку  
+- иногда `raw_answers` сохранены, но engine не запускается → следующий retry даёт `answers must be a non-null object`
 
-Также в `siteFormulaRoutes` на строке 12 идёт `await sql\`CREATE TABLE...\`` **до регистрации route handlers** — если таблиц нет и БД недоступна на момент регистрации плагина, сервер падает.
+### Фикс — frontend (одна правка)
 
-### Фикс backend
+**`src/lib/api/siteFormula.ts`** — для POST без body отправлять пустой JSON-объект `{}`:
 
-**`owndev-backend/src/services/SiteFormula/configLoader.ts`** — исправить путь:
 ```ts
-// Резолвим от корня проекта owndev-backend (за 2 уровня от src/dist + services + SiteFormula = 3)
-// Правильно: от dist/services/SiteFormula → ../../../ = owndev-backend root
-// Файл уже корректен по относительным путям, но JSON не копируется → добавить копирование
+export async function createSession() {
+  return sfRequest('/sessions', { method: 'POST', body: '{}' });
+}
+
+export async function runEngine(sessionId: string) {
+  return sfRequest(`/sessions/${sessionId}/run`, { method: 'POST', body: '{}' });
+}
+
+export async function unlockReport(sessionId: string) {
+  return sfRequest(`/sessions/${sessionId}/unlock`, { method: 'POST', body: '{}' });
+}
 ```
 
-Точное решение: использовать `process.cwd()` + явный относительный путь, **не зависящий от dist/src**:
+Это совместимо с backend: handlers `_req`/без чтения `req.body` — игнорируют тело.
+
+### Дополнительная защита — frontend hook
+
+**`src/hooks/useSiteFormulaSession.ts`** — в `executeEngine` добавить guard: не запускать engine, если `answers` пустой объект, и явно дождаться успеха `saveAnswers` перед `runEngine` (сейчас уже последовательно, но нет проверки что answers не пустые):
+
 ```ts
-const CONFIG_DIR = resolve(process.cwd(), 'config');
+const executeEngine = useCallback(async () => {
+  if (!sessionId) return;
+  if (!answers || Object.keys(answers).length === 0) {
+    setError('Заполните все шаги перед запуском');
+    return;
+  }
+  // ... остальное как есть
+});
 ```
-Это работает и для `tsx watch` (dev) и для `node dist/index.js` (prod), так как `cwd` всегда `owndev-backend/`.
 
-**`owndev-backend/package.json`** — добавить копирование config в build:
-```json
-"build": "tsc && cp -r config dist/config"
-```
-(на всякий случай, для будущей поддержки `__dirname`-based путей)
+### Что НЕ трогаем
 
-**`owndev-backend/src/api/routes/siteFormula.ts`** — обернуть `CREATE TABLE` в try/catch и вынести из плагина (или сделать non-blocking warning), чтобы регистрация плагина не валила сервер.
+- Backend остаётся как есть — никаких изменений в `siteFormula.ts`, `server.ts`, `runtimeValidator.ts`. Текущее поведение Fastify (требовать body при `Content-Type: application/json`) — это правильная защита, ломать её не надо.
+- `apiHeaders()` не меняем — он используется десятками других мест (audit, monitor, siteCheck), где body всегда есть.
+- Существующие сессии в БД с `status='error'` останутся, новые сессии будут работать корректно.
 
-### Iteration 3: фронтенд
+### Изменяемые файлы
 
-#### 1. Бесплатный unlock (на время теста)
+- ✏️ `src/lib/api/siteFormula.ts` — добавить `body: '{}'` в 3 POST-вызова
+- ✏️ `src/hooks/useSiteFormulaSession.ts` — guard на пустые answers в `executeEngine`
 
-В `src/components/site-formula/UnlockCTA.tsx` поменять текст: "Бесплатно в бета-версии" → крупно вынести "Beta — бесплатно", заменить иконку Lock на Sparkles. Backend уже разрешает unlock без оплаты (строка 184 `siteFormula.ts`: `// TODO: payment verification`), так что менять backend не нужно.
+### Команда деплоя после фикса
 
-#### 2. Export PDF/Word для blueprint
-
-Создать `src/lib/generateSiteFormulaPdf.ts` и `src/lib/generateSiteFormulaWord.ts`:
-- Используют `jsPDF` + `Roboto` (как существующий `generatePdfReport.ts`)
-- Принимают `FullReportPayload`
-- Рендерят: заголовок, project_class бейдж, метаданные, все 17 sections с их title/content (текст + списки), decision_trace summary в конце
-- Стиль: тот же `PRINT_COLORS` из `reportHelpers.ts` (тёмный отчёт OWNDEV)
-- Word — через `docx` библиотеку (уже стоит в `bun.lock`? проверим — если нет, добавить через `npm install docx`)
-
-Создать `src/components/site-formula/BlueprintExportButtons.tsx` — кнопки Export PDF / Export Word.
-
-Подключить в `src/pages/SiteFormulaReport.tsx` — кнопка Download уже есть в импорте (строка 11), но не используется. Заменить на полноценные ExportButtons.
-
-#### 3. Mobile-first адаптация
-
-Аудит и правки в:
-- `SiteFormula.tsx` — hero title clamp, layers grid `sm:grid-cols-2 lg:grid-cols-3` уже ок, проверить padding
-- `SiteFormulaWizard.tsx` — увеличить touch targets (radio/checkbox), убедиться что navigation buttons stack на мобиле
-- `SiteFormulaPreview.tsx` — PreviewCard и UnlockCTA компактнее на мобиле
-- `SiteFormulaReport.tsx` — accordion sections без horizontal overflow, BlueprintSection content render с `prose-sm sm:prose-base`
-- `WizardStepRenderer.tsx` — option cards full-width на мобиле, multi-column на ≥sm
-
-#### 4. Loading skeletons
-
-Создать `src/components/site-formula/SiteFormulaSkeletons.tsx` с 3 экспортами:
-- `WizardSkeleton` — placeholder для шага: progress bar + 3 option cards
-- `PreviewSkeleton` — карточка с заглушками для project class + scores + reasons
-- `BlueprintSkeleton` — header + 5 collapsed accordion-секций
-
-Заменить голые `<Loader2 spin>` в:
-- `SiteFormulaWizard.tsx` (строка 78) → WizardSkeleton
-- `SiteFormulaPreview.tsx` (строка 76) → PreviewSkeleton
-- `SiteFormulaReport.tsx` → BlueprintSkeleton
-
-#### 5. Error/empty states
-
-В `SiteFormulaReport.tsx` уже есть базовый error state — улучшить: добавить иконку, кнопку "Пройти wizard заново".
-
-### Команда деплоя (обновлённая)
+Только фронт, backend перекомпилировать не нужно:
 
 ```bash
 cd /var/www/owndev.ru && \
 git pull origin main && \
-cd /var/www/owndev.ru/owndev-backend && \
-npm install && \
-npm run build && \
-psql "$DATABASE_URL" -f src/db/migrations/002_site_formula.sql && \
-pm2 restart owndev-backend && \
-cd /var/www/owndev.ru && \
-npm install && \
 npm run build && \
 pm2 status
 ```
 
-Добавлен `npm install` в backend (для новых зависимостей если будут) и проверка миграции.
-
-### Создаваемые/изменяемые файлы
-
-**Backend (фикс):**
-- ✏️ `owndev-backend/src/services/SiteFormula/configLoader.ts`
-- ✏️ `owndev-backend/package.json` (build script)
-- ✏️ `owndev-backend/src/api/routes/siteFormula.ts` (защитить CREATE TABLE)
-
-**Frontend (Iteration 3):**
-- 🆕 `src/lib/generateSiteFormulaPdf.ts`
-- 🆕 `src/lib/generateSiteFormulaWord.ts`
-- 🆕 `src/components/site-formula/BlueprintExportButtons.tsx`
-- 🆕 `src/components/site-formula/SiteFormulaSkeletons.tsx`
-- ✏️ `src/components/site-formula/UnlockCTA.tsx` (бесплатный режим)
-- ✏️ `src/pages/SiteFormulaReport.tsx` (export buttons + skeleton)
-- ✏️ `src/pages/SiteFormulaPreview.tsx` (skeleton)
-- ✏️ `src/pages/SiteFormulaWizard.tsx` (skeleton + mobile)
-- ✏️ `src/pages/SiteFormula.tsx` (mobile полировка)
-- ✏️ `src/components/site-formula/WizardStepRenderer.tsx` (mobile-first)
-- ✏️ `src/components/site-formula/BlueprintSection.tsx` (mobile content)
-- ✏️ `src/components/site-formula/PreviewCard.tsx` (mobile)
-
-**Зависимости:** `docx` для Word-экспорта (если ещё нет).
-
-### Что НЕ ломаем
-
-- Header/Footer/мобильное меню — не трогаем
-- Существующие routes (audit, monitor, siteCheck) — не трогаем
-- DB миграция уже применена, изменений нет
-- Логика engine (rules.v1.json, services/SiteFormula/*) — не меняем, только configLoader.ts путь
-- Paywall открывается бесплатно через текущий unlock flow, **никаких новых endpoints не нужно**
-
 ### Self-check
 
-- ✅ Бизнес-логика остаётся на backend, frontend только рендерит payload
-- ✅ Export PDF/Word — это рендеринг payload в другой формат, не принятие решений
-- ✅ Бесплатный unlock — это только UI текст, backend уже идемпотентен и не требует токена
-- ✅ Mobile-first не меняет flow, только стили
-- ✅ Skeletons — только UX улучшение
-- ✅ Backend fix решает root cause (cwd-based path + защита от падения на CREATE TABLE)
+- ✅ Root cause найден в логах (`Body cannot be empty`)  
+- ✅ Изменение минимальное и точечное (5 строк в одном файле + guard в хуке)
+- ✅ Никаких изменений в backend → не ломаем engine, миграции, другие routes
+- ✅ После фикса исчезнут оба типа ошибок в логах: и `Body cannot be empty`, и `answers must be a non-null object`
+- ✅ Существующие модули (audit/monitor/siteCheck) не затронуты — там body всегда передаётся
 
