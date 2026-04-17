@@ -1,188 +1,135 @@
 
 
-# OwnDev Site Formula — План внедрения
+## Итерация 3 + критический фикс backend
 
-## Суть модуля
+### Проблема backend (root cause)
 
-Backend-driven decision engine, который принимает ответы пользователя через wizard и генерирует архитектурный blueprint для service-site system. Вся бизнес-логика на backend, frontend только собирает ответы и рендерит payload.
+`tsconfig.json` имеет `rootDir: "src"` и `outDir: "dist"`. После `npm run build` файл `configLoader.ts` оказывается в `dist/services/SiteFormula/configLoader.js`. В нём CONFIG_DIR резолвится как `../../../config` от расположения файла — это `owndev-backend/config/` от `src/`, но от `dist/services/SiteFormula/` это **корень проекта**, не `owndev-backend/config/`. Плюс `tsc` **не копирует** JSON файлы в `dist`. Результат: backend падает на старте/первом запросе.
 
-## Текущее состояние
+Также в `siteFormulaRoutes` на строке 12 идёт `await sql\`CREATE TABLE...\`` **до регистрации route handlers** — если таблиц нет и БД недоступна на момент регистрации плагина, сервер падает.
 
-- Модуля Site Formula **не существует** — начинаем с нуля
-- Backend: Fastify + postgres.js + BullMQ + Redis на собственном сервере
-- Frontend: React 18 + Vite + Tailwind, тёмная тема с cyan/purple акцентами
-- Существующие паттерны: routes в `owndev-backend/src/api/routes/`, сервисы в `services/`, типы в `types/`
+### Фикс backend
 
-## Архитектура
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  FRONTEND (React)                                    │
-│  /site-formula         — product landing             │
-│  /site-formula/wizard  — wizard (steps)              │
-│  /site-formula/preview — preview result              │
-│  /site-formula/report  — full blueprint (gated)      │
-│                                                      │
-│  State: sessionId + answers in localStorage          │
-│  API calls → POST/GET /api/v1/site-formula/*         │
-│  Renders only server payload, no business logic      │
-└──────────────────────┬──────────────────────────────┘
-                       │ HTTP (proxied via Vite / nginx)
-┌──────────────────────▼──────────────────────────────┐
-│  BACKEND (Fastify)                                   │
-│                                                      │
-│  Routes: owndev-backend/src/api/routes/siteFormula   │
-│  Service: owndev-backend/src/services/SiteFormula/   │
-│    ├─ configLoader.ts                                │
-│    ├─ answerNormalizer.ts                             │
-│    ├─ engineStateFactory.ts                           │
-│    ├─ priorityRuleExecutor.ts                        │
-│    ├─ derivedScoreCalculator.ts                      │
-│    ├─ projectClassifier.ts                           │
-│    ├─ decisionTraceBuilder.ts                        │
-│    ├─ reportBlockActivator.ts                        │
-│    ├─ previewPayloadBuilder.ts                       │
-│    ├─ fullReportPayloadBuilder.ts                    │
-│    └─ runtimeValidator.ts                            │
-│                                                      │
-│  Config: config/rules.v1.json                        │
-│          config/blueprint-template.v1.json           │
-│                                                      │
-│  DB: blueprint_sessions, blueprint_reports           │
-└─────────────────────────────────────────────────────┘
+**`owndev-backend/src/services/SiteFormula/configLoader.ts`** — исправить путь:
+```ts
+// Резолвим от корня проекта owndev-backend (за 2 уровня от src/dist + services + SiteFormula = 3)
+// Правильно: от dist/services/SiteFormula → ../../../ = owndev-backend root
+// Файл уже корректен по относительным путям, но JSON не копируется → добавить копирование
 ```
 
-## Поэтапный план реализации
+Точное решение: использовать `process.cwd()` + явный относительный путь, **не зависящий от dist/src**:
+```ts
+const CONFIG_DIR = resolve(process.cwd(), 'config');
+```
+Это работает и для `tsx watch` (dev) и для `node dist/index.js` (prod), так как `cwd` всегда `owndev-backend/`.
 
-Из-за масштаба задачи — разбиваем на **4 итерации** (каждая — отдельный approve):
+**`owndev-backend/package.json`** — добавить копирование config в build:
+```json
+"build": "tsc && cp -r config dist/config"
+```
+(на всякий случай, для будущей поддержки `__dirname`-based путей)
 
----
+**`owndev-backend/src/api/routes/siteFormula.ts`** — обернуть `CREATE TABLE` в try/catch и вынести из плагина (или сделать non-blocking warning), чтобы регистрация плагина не валила сервер.
 
-### Итерация 1: Backend Runtime Engine + DB + API
+### Iteration 3: фронтенд
 
-**Создаваемые файлы:**
+#### 1. Бесплатный unlock (на время теста)
 
-**Config (JSON source of truth):**
-- `owndev-backend/config/rules.v1.json` — полный ruleset с P0-P4 rules, thresholds, hard triggers, question mappings
-- `owndev-backend/config/blueprint-template.v1.json` — template contract для report blocks
+В `src/components/site-formula/UnlockCTA.tsx` поменять текст: "Бесплатно в бета-версии" → крупно вынести "Beta — бесплатно", заменить иконку Lock на Sparkles. Backend уже разрешает unlock без оплаты (строка 184 `siteFormula.ts`: `// TODO: payment verification`), так что менять backend не нужно.
 
-**Backend service modules (`owndev-backend/src/services/SiteFormula/`):**
-- `configLoader.ts` — загрузка + checksum validation JSON конфигов
-- `answerNormalizer.ts` — нормализация raw ответов wizard
-- `engineStateFactory.ts` — создание initial engine state из normalized answers
-- `questionMapper.ts` — маппинг вопросов wizard → engine dimensions
-- `priorityRuleExecutor.ts` — применение rules P0→P4, conflict logging
-- `derivedScoreCalculator.ts` — расчёт composite scores (indexation_safety, scale_readiness и т.д.)
-- `projectClassifier.ts` — определение project_class (start/growth/scale) через thresholds + hard triggers
-- `decisionTraceBuilder.ts` — формирование decision_trace с rule_id, priority, effect, reason_human
-- `reportBlockActivator.ts` — активация блоков blueprint на основе engine state
-- `previewPayloadBuilder.ts` — сборка preview payload (project_class, key layers, reasons)
-- `fullReportPayloadBuilder.ts` — сборка полного report payload из activated blocks
-- `runtimeValidator.ts` — валидация payload contracts, version check
-- `index.ts` — orchestrator: run(answers) → engine state → payload
+#### 2. Export PDF/Word для blueprint
 
-**DB migration:**
-- `owndev-backend/src/db/migrations/002_site_formula.sql` — таблицы: `blueprint_sessions`, `blueprint_reports`
+Создать `src/lib/generateSiteFormulaPdf.ts` и `src/lib/generateSiteFormulaWord.ts`:
+- Используют `jsPDF` + `Roboto` (как существующий `generatePdfReport.ts`)
+- Принимают `FullReportPayload`
+- Рендерят: заголовок, project_class бейдж, метаданные, все 17 sections с их title/content (текст + списки), decision_trace summary в конце
+- Стиль: тот же `PRINT_COLORS` из `reportHelpers.ts` (тёмный отчёт OWNDEV)
+- Word — через `docx` библиотеку (уже стоит в `bun.lock`? проверим — если нет, добавить через `npm install docx`)
 
-**Types:**
-- `owndev-backend/src/types/siteFormula.ts` — все TypeScript типы модуля
+Создать `src/components/site-formula/BlueprintExportButtons.tsx` — кнопки Export PDF / Export Word.
 
-**API routes:**
-- `owndev-backend/src/api/routes/siteFormula.ts` — 6 endpoints:
-  - `POST /sessions` — создать сессию
-  - `POST /sessions/:id/answers` — сохранить ответы шага
-  - `POST /sessions/:id/run` — запустить engine
-  - `POST /sessions/:id/unlock` — разблокировать полный отчёт
-  - `GET /sessions/:id` — получить сессию с preview/full payload
-  - `GET /sessions/:id/debug-trace` — admin-only debug
+Подключить в `src/pages/SiteFormulaReport.tsx` — кнопка Download уже есть в импорте (строка 11), но не используется. Заменить на полноценные ExportButtons.
 
-**Изменяемые файлы:**
-- `owndev-backend/src/api/server.ts` — регистрация нового route plugin
-- `owndev-backend/src/index.ts` — без изменений (server.ts подтянет автоматически)
+#### 3. Mobile-first адаптация
 
----
+Аудит и правки в:
+- `SiteFormula.tsx` — hero title clamp, layers grid `sm:grid-cols-2 lg:grid-cols-3` уже ок, проверить padding
+- `SiteFormulaWizard.tsx` — увеличить touch targets (radio/checkbox), убедиться что navigation buttons stack на мобиле
+- `SiteFormulaPreview.tsx` — PreviewCard и UnlockCTA компактнее на мобиле
+- `SiteFormulaReport.tsx` — accordion sections без horizontal overflow, BlueprintSection content render с `prose-sm sm:prose-base`
+- `WizardStepRenderer.tsx` — option cards full-width на мобиле, multi-column на ≥sm
 
-### Итерация 2: Frontend — Product Page + Wizard + Session
+#### 4. Loading skeletons
 
-**Создаваемые файлы:**
+Создать `src/components/site-formula/SiteFormulaSkeletons.tsx` с 3 экспортами:
+- `WizardSkeleton` — placeholder для шага: progress bar + 3 option cards
+- `PreviewSkeleton` — карточка с заглушками для project class + scores + reasons
+- `BlueprintSkeleton` — header + 5 collapsed accordion-секций
 
-**Pages:**
-- `src/pages/SiteFormula.tsx` — product landing page
-- `src/pages/SiteFormulaWizard.tsx` — wizard page (step-based)
-- `src/pages/SiteFormulaPreview.tsx` — preview result page
-- `src/pages/SiteFormulaReport.tsx` — full blueprint page (gated)
+Заменить голые `<Loader2 spin>` в:
+- `SiteFormulaWizard.tsx` (строка 78) → WizardSkeleton
+- `SiteFormulaPreview.tsx` (строка 76) → PreviewSkeleton
+- `SiteFormulaReport.tsx` → BlueprintSkeleton
 
-**Components (`src/components/site-formula/`):**
-- `WizardStepRenderer.tsx` — рендер текущего шага
-- `WizardProgress.tsx` — прогресс-бар
-- `WizardNavigation.tsx` — next/back buttons с валидацией
-- `PreviewCard.tsx` — карточка preview результата
-- `PreviewReasons.tsx` — human-readable объяснения решений
-- `BlueprintSection.tsx` — секция полного отчёта
-- `UnlockCTA.tsx` — paywall/unlock block
-- `FormulaProductHero.tsx` — hero секция product page
+#### 5. Error/empty states
 
-**Hooks/API:**
-- `src/lib/api/siteFormula.ts` — API client для site-formula endpoints
-- `src/hooks/useSiteFormulaSession.ts` — hook для управления сессией
+В `SiteFormulaReport.tsx` уже есть базовый error state — улучшить: добавить иконку, кнопку "Пройти wizard заново".
 
-**Изменяемые файлы:**
-- `src/App.tsx` — добавить 4 новых Route
-- `src/data/tools-registry.ts` — добавить Site Formula в реестр инструментов
+### Команда деплоя (обновлённая)
 
----
+```bash
+cd /var/www/owndev.ru && \
+git pull origin main && \
+cd /var/www/owndev.ru/owndev-backend && \
+npm install && \
+npm run build && \
+psql "$DATABASE_URL" -f src/db/migrations/002_site_formula.sql && \
+pm2 restart owndev-backend && \
+cd /var/www/owndev.ru && \
+npm install && \
+npm run build && \
+pm2 status
+```
 
-### Итерация 3: Full Blueprint Rendering + Export + Paywall
+Добавлен `npm install` в backend (для новых зависимостей если будут) и проверка миграции.
 
-- Рендер полного blueprint документа из server payload
-- Export PDF/Word (аналогично существующему `generatePdfReport.ts`)
-- Paywall flow (unlock → показ полного отчёта)
-- Mobile-first адаптация всех страниц
-- Loading skeletons, error states, empty states
+### Создаваемые/изменяемые файлы
 
----
+**Backend (фикс):**
+- ✏️ `owndev-backend/src/services/SiteFormula/configLoader.ts`
+- ✏️ `owndev-backend/package.json` (build script)
+- ✏️ `owndev-backend/src/api/routes/siteFormula.ts` (защитить CREATE TABLE)
 
-### Итерация 4: Admin/Debug Layer + QA + Hardening
+**Frontend (Iteration 3):**
+- 🆕 `src/lib/generateSiteFormulaPdf.ts`
+- 🆕 `src/lib/generateSiteFormulaWord.ts`
+- 🆕 `src/components/site-formula/BlueprintExportButtons.tsx`
+- 🆕 `src/components/site-formula/SiteFormulaSkeletons.tsx`
+- ✏️ `src/components/site-formula/UnlockCTA.tsx` (бесплатный режим)
+- ✏️ `src/pages/SiteFormulaReport.tsx` (export buttons + skeleton)
+- ✏️ `src/pages/SiteFormulaPreview.tsx` (skeleton)
+- ✏️ `src/pages/SiteFormulaWizard.tsx` (skeleton + mobile)
+- ✏️ `src/pages/SiteFormula.tsx` (mobile полировка)
+- ✏️ `src/components/site-formula/WizardStepRenderer.tsx` (mobile-first)
+- ✏️ `src/components/site-formula/BlueprintSection.tsx` (mobile content)
+- ✏️ `src/components/site-formula/PreviewCard.tsx` (mobile)
 
-- Admin debug trace UI (internal only)
-- 15+ scenario tests
-- Race condition protection (repeated run/unlock)
-- Config checksum validation
-- Rule conflict logging
-- Smoke tests
-- QA report
+**Зависимости:** `docx` для Word-экспорта (если ещё нет).
 
----
+### Что НЕ ломаем
 
-## Архитектурные риски и защита
+- Header/Footer/мобильное меню — не трогаем
+- Существующие routes (audit, monitor, siteCheck) — не трогаем
+- DB миграция уже применена, изменений нет
+- Логика engine (rules.v1.json, services/SiteFormula/*) — не меняем, только configLoader.ts путь
+- Paywall открывается бесплатно через текущий unlock flow, **никаких новых endpoints не нужно**
 
-| Риск | Защита |
-|------|--------|
-| Бизнес-логика утечёт на frontend | Frontend получает готовый payload, не имеет rules.v1.json |
-| Template начнёт принимать решения | Template только описывает структуру блоков, активация — на backend |
-| P0 guardrails обойдут | P0 применяются первыми, их effects immutable для нижних приоритетов |
-| Utility pages попадут в sitemap | Page `/site-formula/report` — noindex; sitemap plugin не включает динамические пути |
-| Повторный run/unlock сломает state | Backend: idempotent run, unlock с проверкой статуса |
-| Сломает существующий проект | Модуль изолирован: отдельные routes, отдельные DB таблицы, отдельные компоненты |
-| Поврежденный JSON config | configLoader валидирует schema + checksum при загрузке |
+### Self-check
 
-## Что НЕ меняем
-
-- Header.tsx / mobile drawer (memory constraint)
-- Существующие API routes (audit, monitor, siteCheck)
-- Существующие DB таблицы
-- src/integrations/supabase/client.ts и types.ts
-- .env
-
-## Технические детали
-
-- JSON configs (`rules.v1.json`, `blueprint-template.v1.json`) будут содержать полное описание вопросов wizard, rules с приоритетами, thresholds для project_class, template blocks
-- Backend runtime детерминирован: одинаковые ответы → одинаковый результат
-- Все решения traceability: каждый effect привязан к rule_id в decision_trace
-- Frontend wizard: 5-7 шагов, вопросы на бизнес-языке (не SEO-термины)
-- Session persistence: localStorage (sessionId) + server-side storage (answers, state)
-
-## Запрос на подтверждение
-
-Предлагаю начать с **Итерации 1** (Backend Runtime Engine + DB + API). После её завершения и проверки — перейдём к frontend. Это гарантирует, что engine работает корректно до подключения UI.
+- ✅ Бизнес-логика остаётся на backend, frontend только рендерит payload
+- ✅ Export PDF/Word — это рендеринг payload в другой формат, не принятие решений
+- ✅ Бесплатный unlock — это только UI текст, backend уже идемпотентен и не требует токена
+- ✅ Mobile-first не меняет flow, только стили
+- ✅ Skeletons — только UX улучшение
+- ✅ Backend fix решает root cause (cwd-based path + защита от падения на CREATE TABLE)
 
