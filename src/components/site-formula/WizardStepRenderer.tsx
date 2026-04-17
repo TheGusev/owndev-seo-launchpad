@@ -10,11 +10,11 @@ interface WizardStepRendererProps {
 
 export default function WizardStepRenderer({ questions, answers, onAnswer }: WizardStepRendererProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {questions.map((q) => (
         <div key={q.id} className="space-y-3">
-          <h3 className="text-lg font-semibold text-foreground">{q.label}</h3>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <h3 className="text-base sm:text-lg font-semibold text-foreground">{q.label}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {q.options.map((opt) => {
               const selected = q.type === 'multi'
                 ? (Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).includes(opt.value) : false)
