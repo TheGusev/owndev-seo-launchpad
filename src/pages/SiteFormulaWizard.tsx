@@ -8,8 +8,8 @@ import { fetchQuestions, type WizardQuestion } from '@/lib/api/siteFormula';
 import WizardProgress from '@/components/site-formula/WizardProgress';
 import WizardStepRenderer from '@/components/site-formula/WizardStepRenderer';
 import WizardNavigation from '@/components/site-formula/WizardNavigation';
-import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { WizardSkeleton } from '@/components/site-formula/SiteFormulaSkeletons';
 
 export default function SiteFormulaWizard() {
   const nav = useNavigate();
@@ -74,8 +74,10 @@ export default function SiteFormulaWizard() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-background pt-20 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <main className="min-h-screen bg-background pt-20">
+          <div className="container mx-auto max-w-2xl px-4 py-10">
+            <WizardSkeleton />
+          </div>
         </main>
         <Footer />
       </>

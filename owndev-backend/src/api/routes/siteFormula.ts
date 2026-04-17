@@ -8,30 +8,38 @@ import type { RequestUser } from '../middleware/auth.js';
 
 export async function siteFormulaRoutes(app: FastifyInstance): Promise<void> {
 
-  // Ensure tables exist
-  await sql`
-    CREATE TABLE IF NOT EXISTS blueprint_sessions (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      status VARCHAR(20) NOT NULL DEFAULT 'draft',
-      raw_answers JSONB,
-      engine_state JSONB,
-      preview_payload JSONB,
-      full_report_payload JSONB,
-      rules_version VARCHAR(20) NOT NULL DEFAULT '1.0.0',
-      template_version VARCHAR(20) NOT NULL DEFAULT '1.0.0',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS blueprint_reports (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      session_id UUID NOT NULL REFERENCES blueprint_sessions(id) ON DELETE CASCADE,
-      status VARCHAR(20) NOT NULL DEFAULT 'locked',
-      unlock_token VARCHAR(64),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
+  // Ensure tables exist (non-blocking — never crash plugin registration on DB hiccups).
+  // Run async after registration; if DB is temporarily unavailable, individual endpoints will surface errors.
+  void (async () => {
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS blueprint_sessions (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          status VARCHAR(20) NOT NULL DEFAULT 'draft',
+          raw_answers JSONB,
+          engine_state JSONB,
+          preview_payload JSONB,
+          full_report_payload JSONB,
+          rules_version VARCHAR(20) NOT NULL DEFAULT '1.0.0',
+          template_version VARCHAR(20) NOT NULL DEFAULT '1.0.0',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS blueprint_reports (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          session_id UUID NOT NULL REFERENCES blueprint_sessions(id) ON DELETE CASCADE,
+          status VARCHAR(20) NOT NULL DEFAULT 'locked',
+          unlock_token VARCHAR(64),
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+      logger.info('SITE_FORMULA', 'Tables blueprint_sessions / blueprint_reports ensured');
+    } catch (err: any) {
+      logger.error('SITE_FORMULA', `Table ensure failed (non-fatal): ${err.message}`);
+    }
+  })();
 
   // ─── POST /sessions — create session ───
   app.post('/sessions', async (_req, reply) => {

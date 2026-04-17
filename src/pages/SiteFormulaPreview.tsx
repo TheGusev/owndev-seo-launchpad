@@ -7,7 +7,8 @@ import PreviewCard from '@/components/site-formula/PreviewCard';
 import UnlockCTA from '@/components/site-formula/UnlockCTA';
 import { getSession, unlockReport, type PreviewPayload, type FullReportPayload } from '@/lib/api/siteFormula';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { PreviewSkeleton } from '@/components/site-formula/SiteFormulaSkeletons';
 
 export default function SiteFormulaPreview() {
   const [params] = useSearchParams();
@@ -71,11 +72,7 @@ export default function SiteFormulaPreview() {
 
           <h1 className="text-2xl font-bold text-foreground">Результат анализа</h1>
 
-          {loading && (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          )}
+          {loading && <PreviewSkeleton />}
 
           {error && (
             <div className="text-center py-12 space-y-4">

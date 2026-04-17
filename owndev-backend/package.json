@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && cp -r config dist/config",
     "start": "node dist/index.js",
     "migrate": "node dist/db/migrate.js",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts"
