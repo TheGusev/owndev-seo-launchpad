@@ -16,7 +16,7 @@ export default function PreviewCard({ payload }: PreviewCardProps) {
   const cls = CLASS_LABELS[payload.project_class] || CLASS_LABELS.start;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Project Class */}
       <div className="text-center space-y-3">
         <Badge className={`text-lg px-4 py-2 ${cls.color} border font-bold`}>
@@ -36,7 +36,7 @@ export default function PreviewCard({ payload }: PreviewCardProps) {
         <h3 className="flex items-center gap-2 font-semibold text-foreground">
           <Layers className="h-4 w-4 text-primary" /> Ключевые слои архитектуры
         </h3>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {payload.key_layers.map((layer) => (
             <div
               key={layer.id}

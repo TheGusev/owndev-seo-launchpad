@@ -37,8 +37,8 @@ export default function WizardStepRenderer({ questions, answers, onAnswer }: Wiz
                     }
                   }}
                   className={cn(
-                    'relative flex items-center gap-3 rounded-lg border p-4 text-left transition-all duration-200',
-                    'hover:border-primary/50 hover:bg-primary/5',
+                    'relative flex items-center gap-3 rounded-lg border p-4 sm:p-4 text-left transition-all duration-200 min-h-[56px]',
+                    'hover:border-primary/50 hover:bg-primary/5 active:scale-[0.99]',
                     selected
                       ? 'border-primary bg-primary/10 shadow-[0_0_12px_hsl(var(--primary)/0.15)]'
                       : 'border-border bg-card'
