@@ -132,6 +132,7 @@ const SiteCheckResult = () => {
   );
   const directAdSuggestion = directAdMeta?.ad_suggestion || null;
   const directReadinessScore = directAdMeta?.readiness_score ?? null;
+  const directChecks = directAdMeta?.direct_checks || data?.seo_data?.direct_checks || null;
   const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
     keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
     volume: kw.frequency ?? kw.volume ?? 0,
