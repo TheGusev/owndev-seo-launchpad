@@ -520,8 +520,18 @@ function contentAudit(html: string, theme: string): Issue[] {
 
 // ═══ STEP 3: Direct Audit ═══
 interface DirectAdSuggestion { headline1: string; headline2: string; ad_text: string; sitelinks: { title: string; description: string }[]; callouts: string[]; }
+interface DirectCheck { key: string; label: string; description: string; weight: number; status: 'pass' | 'fail'; reason: string; }
 
-function directAudit(html: string, theme: string): { issues: Issue[]; ad_headline: string; autotargeting_categories: Record<string, boolean>; readiness_score: number } {
+const DIRECT_CHECKS_META = [
+  { key: 'h1TitleMatch', label: 'Title ↔ тематика', weight: 20 },
+  { key: 'h1Specificity', label: 'Конкретность H1', weight: 20 },
+  { key: 'textCoherence', label: 'Объём контента', weight: 15 },
+  { key: 'commercialSignals', label: 'Коммерческие сигналы (CTA)', weight: 15 },
+  { key: 'noMixedTopics', label: 'Яндекс.Метрика установлена', weight: 15 },
+  { key: 'adHeadlineReady', label: 'Адаптация под мобильные', weight: 15 },
+];
+
+function directAudit(html: string, theme: string): { issues: Issue[]; ad_headline: string; autotargeting_categories: Record<string, boolean>; readiness_score: number; checks: DirectCheck[] } {
   const issues: Issue[] = [];
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
@@ -533,51 +543,70 @@ function directAudit(html: string, theme: string): { issues: Issue[]; ad_headlin
   const themeWords = theme.toLowerCase().split(/[\s,—–\-]+/).filter(w => w.length > 3);
   const genericH1 = /^(главная|home|добро пожаловать|welcome)/i;
 
-  let passedChecks = 0;
-  const checkWeights: number[] = [];
+  const checks: DirectCheck[] = [];
+  const addCheck = (key: string, status: 'pass' | 'fail', reason: string) => {
+    const meta = DIRECT_CHECKS_META.find(m => m.key === key)!;
+    checks.push({ key, label: meta.label, description: reason, weight: meta.weight, status, reason });
+  };
 
-  // 1. Title alignment with theme
+  // 1. Title alignment with theme  → h1TitleMatch
   const titleLower = (title || '').toLowerCase();
-  if (themeWords.length > 0 && !themeWords.some(tw => titleLower.includes(tw))) {
+  const titleOk = themeWords.length === 0 || themeWords.some(tw => titleLower.includes(tw));
+  if (!titleOk) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Title не релевантен тематике для Директа', found: `Title: "${title}"\nТема: "${theme}"`, location: '<title>', why_it_matters: 'Автотаргетинг Директа использует Title для подбора запросов', how_to_fix: 'Включите ключевое слово тематики в Title', example_fix: `<title>${theme} — услуги | Бренд</title>`, impact_score: 12, visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1.5); }
+    addCheck('h1TitleMatch', 'fail', `Title "${title.slice(0, 60)}" не содержит ключевых слов темы "${theme}"`);
+  } else {
+    addCheck('h1TitleMatch', 'pass', `Title содержит ключевые слова темы "${theme}"`);
+  }
 
-  // 2. H1 quality
-  if (!h1 || genericH1.test(h1.trim())) {
+  // 2. H1 quality → h1Specificity
+  const h1Ok = h1 && !genericH1.test(h1.trim());
+  if (!h1Ok) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'H1 не подходит для автотаргетинга Директа', found: `H1: "${h1 || '(отсутствует)'}"`, location: '<h1>', why_it_matters: 'Общий или отсутствующий H1 не даёт Директу сигналов о теме', how_to_fix: 'Напишите конкретный H1 с ключевым словом', example_fix: `<h1>${theme} — профессиональный подход</h1>`, visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1); }
+    addCheck('h1Specificity', 'fail', h1 ? `H1 "${h1}" слишком общий` : 'H1 отсутствует на странице');
+  } else {
+    addCheck('h1Specificity', 'pass', `H1 "${h1}" — конкретный и содержательный`);
+  }
 
-  // 3. Content volume
+  // 3. Content volume → textCoherence
   if (wordCount < 200) {
     issues.push(makeIssue({ module: 'direct', severity: 'medium', title: 'Слишком мало текста для автотаргетинга', found: `${wordCount} слов`, location: 'Контент', why_it_matters: 'Мало текста = мало сигналов для автотаргетинга', how_to_fix: 'Расширьте контент до 500+ слов', example_fix: 'Добавьте описания, FAQ, преимущества', visible_in_preview: false }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1); }
+    addCheck('textCoherence', 'fail', `Только ${wordCount} слов — недостаточно для автотаргетинга (нужно 200+)`);
+  } else {
+    addCheck('textCoherence', 'pass', `${wordCount} слов — достаточно для автотаргетинга`);
+  }
 
-  // 4. CTA
+  // 4. CTA → commercialSignals
   const ctaPattern = /заказ|купи|оставь|запис|получи|звони|консультац|заявк|корзин|добавить в/i;
-  if (!ctaPattern.test(html)) {
+  const ctaOk = ctaPattern.test(html);
+  if (!ctaOk) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Нет CTA (призыва к действию)', found: 'Не найдены кнопки заказа или формы', location: 'Контент', why_it_matters: 'Без CTA посетители из Директа уходят', how_to_fix: 'Добавьте кнопку CTA', example_fix: `<button>Заказать ${theme.toLowerCase()}</button>`, impact_score: 11, visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1); }
+    addCheck('commercialSignals', 'fail', 'Не найдены коммерческие CTA (заказать, купить, оставить заявку и т.д.)');
+  } else {
+    addCheck('commercialSignals', 'pass', 'Найдены коммерческие CTA на странице');
+  }
 
-  // 5. Яндекс.Метрика
+  // 5. Яндекс.Метрика → noMixedTopics (re-используем как "трекинг")
   const hasMetrika = /mc\.yandex\.ru\/metrika\/tag\.js|mc\.yandex\.ru\/watch\/|ym\(\s*\d+/i.test(html);
   if (!hasMetrika) {
     issues.push(makeIssue({ module: 'direct', severity: 'critical', title: 'Нет Яндекс.Метрики', found: 'Счётчик не найден', location: 'Скрипты', why_it_matters: 'Без Метрики невозможно отследить конверсии', how_to_fix: 'Установите счётчик Яндекс.Метрики', example_fix: 'Создайте счётчик на metrika.yandex.ru', impact_score: 15, visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1.5); }
+    addCheck('noMixedTopics', 'fail', 'Счётчик Яндекс.Метрики не найден — невозможно отслеживать конверсии');
+  } else {
+    addCheck('noMixedTopics', 'pass', 'Яндекс.Метрика установлена и отслеживает конверсии');
+  }
 
-  // 6. Viewport
-  if (!/<meta[^>]*name=["']viewport["']/i.test(html)) {
+  // 6. Viewport → adHeadlineReady (мобильная адаптация)
+  const viewportOk = /<meta[^>]*name=["']viewport["']/i.test(html);
+  if (!viewportOk) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Страница не адаптирована для мобильного', found: 'viewport не найден', location: '<head>', why_it_matters: '60-70% трафика из Директа — мобильные', how_to_fix: 'Добавьте meta viewport', example_fix: '<meta name="viewport" content="width=device-width, initial-scale=1">', visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1); }
+    addCheck('adHeadlineReady', 'fail', 'Страница не адаптирована для мобильных устройств (нет viewport)');
+  } else {
+    addCheck('adHeadlineReady', 'pass', 'Страница адаптирована для мобильных устройств');
+  }
 
-  const maxWeight = checkWeights.length > 0 ? checkWeights.reduce((a, b) => a + Math.max(b, 1), 0) : 6;
-  const earnedWeight = checkWeights.reduce((a, b) => a + b, 0);
-  const readiness_score = Math.round((earnedWeight / maxWeight) * 10);
+  const totalWeight = checks.reduce((s, c) => s + c.weight, 0);
+  const earnedWeight = checks.filter(c => c.status === 'pass').reduce((s, c) => s + c.weight, 0);
+  const readiness_score = Math.round((earnedWeight / totalWeight) * 10);
 
   let ad_headline = (h1 || title || theme).replace(/<[^>]+>/g, '').replace(/[|—–\-].*$/, '').trim();
   if (ad_headline.length > 35) {
@@ -590,7 +619,7 @@ function directAudit(html: string, theme: string): { issues: Issue[]; ad_headlin
   const hasNarrowFocus = h1 && !genericH1.test(h1.trim()) && themeWords.some(tw => h1.toLowerCase().includes(tw));
   const autotargeting_categories: Record<string, boolean> = { 'Целевые': true, 'Узкие': !!hasNarrowFocus, 'Альтернативные': false, 'Сопутствующие': false, 'Брендовые': /бренд|brand/i.test(bodyText) };
 
-  return { issues, ad_headline, autotargeting_categories, readiness_score };
+  return { issues, ad_headline, autotargeting_categories, readiness_score, checks };
 }
 
 // ═══ STEP 3b: AI Direct Ad ═══
