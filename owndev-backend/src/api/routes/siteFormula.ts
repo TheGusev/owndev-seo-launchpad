@@ -121,9 +121,9 @@ export async function siteFormulaRoutes(app: FastifyInstance): Promise<void> {
 
         await sql`
           UPDATE blueprint_sessions
-          SET engine_state = ${JSON.stringify(result.engine_state)}::jsonb,
-              preview_payload = ${JSON.stringify(result.preview_payload)}::jsonb,
-              full_report_payload = ${JSON.stringify(result.full_report_payload)}::jsonb,
+          SET engine_state = ${sql.json(result.engine_state as any)},
+              preview_payload = ${sql.json(result.preview_payload as any)},
+              full_report_payload = ${sql.json(result.full_report_payload as any)},
               status = 'preview_ready',
               rules_version = ${result.full_report_payload.metadata.rules_version},
               template_version = ${result.full_report_payload.metadata.template_version},
