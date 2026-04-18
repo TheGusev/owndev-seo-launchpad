@@ -72,7 +72,7 @@ export async function siteFormulaRoutes(app: FastifyInstance): Promise<void> {
 
       await sql`
         UPDATE blueprint_sessions
-        SET raw_answers = ${JSON.stringify(answers)}::jsonb,
+        SET raw_answers = ${sql.json(answers)},
             status = 'answers_saved',
             updated_at = NOW()
         WHERE id = ${id}
