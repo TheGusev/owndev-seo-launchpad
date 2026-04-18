@@ -65,6 +65,13 @@ export function useSiteFormulaSession(): UseSiteFormulaSession {
     setLoading(true);
     try {
       const session = await getSession(storedId);
+
+      // Drop broken sessions — start fresh next time
+      if (session.status === 'error') {
+        localStorage.removeItem(STORAGE_KEY);
+        return false;
+      }
+
       setSessionId(session.id);
       setAnswers(session.raw_answers || {});
       setPreviewPayload(session.preview_payload);
