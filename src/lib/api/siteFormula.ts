@@ -77,7 +77,7 @@ export async function fetchQuestions(): Promise<{ questions: WizardQuestion[]; t
 }
 
 export async function createSession(): Promise<{ session_id: string; status: string }> {
-  return sfRequest('/sessions', { method: 'POST' });
+  return sfRequest('/sessions', { method: 'POST', body: '{}' });
 }
 
 export async function saveAnswers(sessionId: string, answers: Record<string, any>): Promise<{ success: boolean }> {
@@ -88,7 +88,7 @@ export async function saveAnswers(sessionId: string, answers: Record<string, any
 }
 
 export async function runEngine(sessionId: string): Promise<{ success: boolean; status: string; preview_payload: PreviewPayload }> {
-  return sfRequest(`/sessions/${sessionId}/run`, { method: 'POST' });
+  return sfRequest(`/sessions/${sessionId}/run`, { method: 'POST', body: '{}' });
 }
 
 export async function unlockReport(sessionId: string): Promise<{
@@ -97,7 +97,7 @@ export async function unlockReport(sessionId: string): Promise<{
   full_report_payload: FullReportPayload;
   unlock_token: string;
 }> {
-  return sfRequest(`/sessions/${sessionId}/unlock`, { method: 'POST' });
+  return sfRequest(`/sessions/${sessionId}/unlock`, { method: 'POST', body: '{}' });
 }
 
 export async function getSession(sessionId: string): Promise<SessionData> {
