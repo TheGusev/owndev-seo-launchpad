@@ -1,55 +1,106 @@
 
 
-## План: фикс TS-ошибок компиляции backend
+## План: фикс "Invalid URL" + защита worker от мусорного ввода
 
-### Root cause
+### Что произошло — анализ логов
 
-При прошлом рефакторинге `getLlmConfig()` в `owndev-backend/src/services/SiteCheckPipeline.ts`:
+```
+2026-04-18T18:31:55Z Scan failed: Invalid URL
+2026-04-18T18:32:17Z Scan failed: Invalid URL
+URL: https://СЭС -изи.рф (с пробелом и кириллицей)
+```
 
-1. Удалил константу `LLM_PROVIDER`, но 4 ссылки на неё остались в `logger.error(...)` (строки 336, 342, 361, 372).
-2. `getLlmConfig()` возвращает union двух объектов с разными optional-полями (`x-proxy-secret?` vs `Authorization?`). TypeScript считает что `Authorization` может быть `undefined`, а `Record<string, string>` запрещает `undefined`.
+Билд бэка прошёл, рестарт ок, новые сканы стартуют. Но кто-то (возможно бот или сам пользователь) вбил `СЭС -изи.рф`. Frontend `ensureProtocol()` просто добавил `https://`, не закодировав пробелы и не сконвертировав кириллицу в punycode. Backend получил `https://СЭС -изи.рф` → `new URL()` падает с `Invalid URL` → 10 сканов подряд упали + `geo_rating upsert failed`.
 
-### Фикс (один файл, ~10 строк)
+### Root causes (3 шт.)
 
-**`owndev-backend/src/services/SiteCheckPipeline.ts`**:
+**1. Frontend `ensureProtocol()` не нормализует URL** — пропускает пробелы и кириллические домены без конверсии в IDN/punycode. Backend потом падает.
 
-1. Вернуть константу `LLM_PROVIDER` рядом с `getLlmConfig()`:
-   ```ts
-   const LLM_PROVIDER = process.env.EDGE_FUNCTION_URL ? 'proxy' : 'gateway';
-   ```
+**2. Backend `siteCheck.ts /start`** — принимает `url` без валидации. Если URL невалиден, всё равно ставит в очередь → worker падает на `new URL()`.
 
-2. Привести return-тип `getLlmConfig()` к единой форме `Record<string, string>` для headers — явно типизировать:
-   ```ts
-   function getLlmConfig(apiKey: string): { url: string; headers: Record<string, string>; defaultModel: string } {
-     // ... тело без изменений
-   }
-   ```
-   Это уберёт union-проблему, потому что TypeScript перестанет выводить взаимоисключающие optional-ключи и просто увидит общий `Record<string, string>`.
+**3. Worker `SiteCheckWorker.ts`** — при упавшем сканe `geo_rating upsert` тоже падает (потому что `new URL(url).hostname` бросает) и логирует ошибку, но это уже followup.
 
-### Что НЕ меняем
+### Фикс (3 точечных правки)
 
-- Никакой бизнес-логики — ни LLM-calls, ни pipeline scoring, ни breakdown.
-- Frontend не трогаем вообще.
-- Engine, Site Formula, миграции — не трогаем.
+#### A. Frontend — `src/lib/api/tools.ts` 
 
-### Команда деплоя (только бэк)
+Расширить `ensureProtocol()`: trim, replace всех whitespace, конверсия кириллицы в punycode через `URL` API (браузер сам конвертирует hostname в `xn--...`):
+
+```ts
+export function ensureProtocol(url: string): string {
+  let trimmed = url.trim().replace(/\s+/g, '');
+  if (!trimmed) return '';
+  if (!/^https?:\/\//i.test(trimmed)) trimmed = `https://${trimmed}`;
+  try {
+    const parsed = new URL(trimmed);
+    // hostname в браузере автоматически конвертируется в IDN/punycode
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    return trimmed; // fallback — пусть backend отобьёт с понятной ошибкой
+  }
+}
+```
+
+#### B. Backend — `owndev-backend/src/api/routes/siteCheck.ts /start`
+
+Перед `INSERT` валидировать URL и нормализовать через существующий `normalizeUrl()` из `utils/url.ts`. Если невалиден — 400, не ставим в очередь:
+
+```ts
+import { isValidUrl, normalizeUrl } from '../../utils/url.js';
+
+// внутри handler:
+let normalizedUrl: string;
+try {
+  normalizedUrl = normalizeUrl(url);
+  if (!isValidUrl(normalizedUrl)) throw new Error();
+} catch {
+  return reply.status(400).send({
+    success: false,
+    error: 'Некорректный URL. Проверьте написание адреса.',
+  });
+}
+// дальше используем normalizedUrl вместо url
+```
+
+#### C. Backend worker — `owndev-backend/src/workers/SiteCheckWorker.ts`
+
+Обернуть `new URL(url).hostname` в try/catch чтобы `geo_rating upsert` не валился если URL по какой-то причине всё-таки невалидный:
+
+```ts
+let hostname: string | null = null;
+try { hostname = new URL(url).hostname; } catch { hostname = null; }
+if (hostname) {
+  // существующий upsert
+}
+```
+
+### Что НЕ ломаем
+
+- Все остальные tools (SEOAuditor, IndexationChecker и т.д.) тоже выиграют — они используют тот же `ensureProtocol()`.
+- API контракт `/start` совместимый: добавляется только 400 на мусор, валидные URL работают как раньше.
+- `normalizeUrl` уже существует в `utils/url.ts`, ничего нового не пишем.
+- Site Formula, engine, миграции — не трогаем.
+
+### Команда деплоя
 
 ```bash
 cd /var/www/owndev.ru && git pull origin main && \
 cd /var/www/owndev.ru/owndev-backend && npm run build && pm2 restart owndev-backend && \
+cd /var/www/owndev.ru && npm run build && \
 pm2 status && pm2 logs owndev-backend --lines 30 --nostream
 ```
 
-Фронт пересобирать не нужно — он уже собрался в прошлом раунде до падения бэка.
+### Изменяемые файлы
 
-Также хорошо бы выкинуть старый stash (если он не нужен):
-```bash
-cd /var/www/owndev.ru && git stash drop
-```
+- ✏️ `src/lib/api/tools.ts` — расширить `ensureProtocol`
+- ✏️ `owndev-backend/src/api/routes/siteCheck.ts` — валидация в `/start`
+- ✏️ `owndev-backend/src/workers/SiteCheckWorker.ts` — защита `geo_rating upsert`
 
 ### Self-check
 
-- ✅ TS6 ошибок: 4 на `LLM_PROVIDER` → возвращаем константу; 2 на `config.headers` → явный тип.
-- ✅ Логика LLM-calls идентична — только типы.
-- ✅ Билд пройдёт, pm2 рестартанёт чисто.
+- ✅ Root cause: `Invalid URL` из-за `https://СЭС -изи.рф` с пробелом + кириллицей
+- ✅ 3 уровня защиты: фронт нормализует → бэк валидирует → worker устойчив к ошибкам
+- ✅ Никаких изменений в Site Formula, edge functions, миграциях
+- ✅ После фикса исчезнут оба типа ошибок: `Scan failed: Invalid URL` и `geo_rating upsert failed: Invalid URL`
+- ✅ Site Formula POST-фиксы из прошлых раундов уже задеплоены (`Body cannot be empty` записи в логах от 16-18 апр — до релиза)
 
