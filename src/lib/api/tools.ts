@@ -10,9 +10,16 @@ import { apiUrl, apiHeaders } from "./config";
 // ── Helpers ──
 
 export function ensureProtocol(url: string): string {
-  const trimmed = url.trim();
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `https://${trimmed}`;
+  let trimmed = url.trim().replace(/\s+/g, '');
+  if (!trimmed) return '';
+  if (!/^https?:\/\//i.test(trimmed)) trimmed = `https://${trimmed}`;
+  try {
+    const parsed = new URL(trimmed);
+    // hostname в браузере автоматически конвертируется в IDN/punycode
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    return trimmed; // fallback — пусть backend отобьёт с понятной ошибкой
+  }
 }
 
 async function invokeFunction<T = any>(name: string, body: object): Promise<T> {

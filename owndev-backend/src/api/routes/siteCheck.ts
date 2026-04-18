@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { Queue } from 'bullmq';
 import { redis } from '../../cache/redis.js';
 import { logger } from '../../utils/logger.js';
+import { isValidUrl, normalizeUrl } from '../../utils/url.js';
 
 const CONCURRENCY_LIMIT = Number(process.env.SITE_CHECK_CONCURRENCY ?? 10);
 
@@ -80,6 +81,19 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     const { url, mode = 'page', force = false } = req.body as { url: string; mode?: string; force?: boolean };
     if (!url) return reply.status(400).send({ success: false, error: 'url is required' });
 
+    // Normalize and validate URL — protect worker from invalid input
+    let normalizedUrl: string;
+    try {
+      normalizedUrl = normalizeUrl(url);
+      if (!isValidUrl(normalizedUrl)) throw new Error('invalid');
+      new URL(normalizedUrl);
+    } catch {
+      return reply.status(400).send({
+        success: false,
+        error: 'Некорректный URL. Проверьте написание адреса.',
+      });
+    }
+
     const [{ count }] = await sql<[{ count: number }]>`
       SELECT COUNT(*)::int AS count FROM site_check_scans WHERE status = 'running'
     `;
@@ -95,9 +109,9 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 
     // Check cache (skip if force=true)
     if (!force) {
-      let hostname = url;
+      let hostname = normalizedUrl;
       try {
-        hostname = new URL(url).hostname;
+        hostname = new URL(normalizedUrl).hostname;
       } catch {}
       const today = new Date().toISOString().slice(0, 10);
       const cached = await sql<[{ id: string }?]>`
@@ -120,11 +134,11 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     const scan_id = randomUUID();
     await sql`
       INSERT INTO site_check_scans (id, url, mode, status, progress_pct)
-      VALUES (${scan_id}, ${url}, ${mode}, 'running', 0)
+      VALUES (${scan_id}, ${normalizedUrl}, ${mode}, 'running', 0)
     `;
 
-    await queue.add('scan', { scan_id, url, mode });
-    logger.info('SITE_CHECK', `Scan ${scan_id} queued for ${url}`);
+    await queue.add('scan', { scan_id, url: normalizedUrl, mode });
+    logger.info('SITE_CHECK', `Scan ${scan_id} queued for ${normalizedUrl}`);
     return reply.status(200).send({ scan_id, status: 'running' });
   });
 

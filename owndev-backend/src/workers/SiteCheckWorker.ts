@@ -73,55 +73,64 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
 
     // Auto-upsert into geo_rating
     try {
-      const hostname = new URL(url).hostname;
-      await sql`
-        CREATE TABLE IF NOT EXISTS geo_rating (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          domain TEXT NOT NULL,
-          display_name TEXT NOT NULL,
-          category TEXT NOT NULL DEFAULT 'Сервисы',
-          llm_score INTEGER NOT NULL DEFAULT 0,
-          seo_score INTEGER NOT NULL DEFAULT 0,
-          schema_score INTEGER NOT NULL DEFAULT 0,
-          direct_score INTEGER NOT NULL DEFAULT 0,
-          has_llms_txt BOOLEAN NOT NULL DEFAULT false,
-          has_faqpage BOOLEAN NOT NULL DEFAULT false,
-          has_schema BOOLEAN NOT NULL DEFAULT false,
-          errors_count INTEGER NOT NULL DEFAULT 0,
-          top_errors JSONB DEFAULT '[]'::jsonb,
-          last_checked_at TIMESTAMPTZ DEFAULT NOW(),
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `;
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)`;
+      let hostname: string | null = null;
+      try {
+        hostname = new URL(url).hostname;
+      } catch {
+        hostname = null;
+      }
+      if (!hostname) {
+        logger.error('SITE_CHECK_WORKER', `geo_rating upsert skipped: invalid URL ${url}`);
+      } else {
+        await sql`
+          CREATE TABLE IF NOT EXISTS geo_rating (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            domain TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'Сервисы',
+            llm_score INTEGER NOT NULL DEFAULT 0,
+            seo_score INTEGER NOT NULL DEFAULT 0,
+            schema_score INTEGER NOT NULL DEFAULT 0,
+            direct_score INTEGER NOT NULL DEFAULT 0,
+            has_llms_txt BOOLEAN NOT NULL DEFAULT false,
+            has_faqpage BOOLEAN NOT NULL DEFAULT false,
+            has_schema BOOLEAN NOT NULL DEFAULT false,
+            errors_count INTEGER NOT NULL DEFAULT 0,
+            top_errors JSONB DEFAULT '[]'::jsonb,
+            last_checked_at TIMESTAMPTZ DEFAULT NOW(),
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          )
+        `;
+        await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)`;
 
-      const scores = result.scores;
-      const displayName = result.seo_data?.title?.trim() || hostname;
-      const hasLlmsTxtIssue = (result.issues || []).some((i: any) => /llms\.txt/i.test(i.title || ''));
-      const hasSchemaIssue = (result.issues || []).some((i: any) => i.module === 'schema' && /JSON-LD не найден/i.test(i.title || ''));
-      const hasFaqIssue = (result.issues || []).some((i: any) => /faqpage/i.test(i.found || ''));
-      const topErrors = (result.issues || [])
-        .filter((i: any) => i.severity === 'critical' || i.severity === 'high')
-        .slice(0, 5)
-        .map((i: any) => i.title);
+        const scores = result.scores;
+        const displayName = result.seo_data?.title?.trim() || hostname;
+        const hasLlmsTxtIssue = (result.issues || []).some((i: any) => /llms\.txt/i.test(i.title || ''));
+        const hasSchemaIssue = (result.issues || []).some((i: any) => i.module === 'schema' && /JSON-LD не найден/i.test(i.title || ''));
+        const hasFaqIssue = (result.issues || []).some((i: any) => /faqpage/i.test(i.found || ''));
+        const topErrors = (result.issues || [])
+          .filter((i: any) => i.severity === 'critical' || i.severity === 'high')
+          .slice(0, 5)
+          .map((i: any) => i.title);
 
-      await sql`
-        INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)
-        VALUES (${hostname}, ${displayName}, ${'Сервисы'}, ${scores.ai ?? 0}, ${scores.seo ?? 0}, ${scores.schema ?? 0}, ${scores.direct ?? 0}, ${!hasLlmsTxtIssue}, ${!hasFaqIssue}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
-        ON CONFLICT (domain) DO UPDATE SET
-          display_name = EXCLUDED.display_name,
-          llm_score = EXCLUDED.llm_score,
-          seo_score = EXCLUDED.seo_score,
-          schema_score = EXCLUDED.schema_score,
-          direct_score = EXCLUDED.direct_score,
-          has_llms_txt = EXCLUDED.has_llms_txt,
-          has_faqpage = EXCLUDED.has_faqpage,
-          has_schema = EXCLUDED.has_schema,
-          errors_count = EXCLUDED.errors_count,
-          top_errors = EXCLUDED.top_errors,
-          last_checked_at = NOW()
-      `;
-      logger.info('SITE_CHECK_WORKER', `Upserted ${hostname} into geo_rating`);
+        await sql`
+          INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)
+          VALUES (${hostname}, ${displayName}, ${'Сервисы'}, ${scores.ai ?? 0}, ${scores.seo ?? 0}, ${scores.schema ?? 0}, ${scores.direct ?? 0}, ${!hasLlmsTxtIssue}, ${!hasFaqIssue}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
+          ON CONFLICT (domain) DO UPDATE SET
+            display_name = EXCLUDED.display_name,
+            llm_score = EXCLUDED.llm_score,
+            seo_score = EXCLUDED.seo_score,
+            schema_score = EXCLUDED.schema_score,
+            direct_score = EXCLUDED.direct_score,
+            has_llms_txt = EXCLUDED.has_llms_txt,
+            has_faqpage = EXCLUDED.has_faqpage,
+            has_schema = EXCLUDED.has_schema,
+            errors_count = EXCLUDED.errors_count,
+            top_errors = EXCLUDED.top_errors,
+            last_checked_at = NOW()
+        `;
+        logger.info('SITE_CHECK_WORKER', `Upserted ${hostname} into geo_rating`);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       logger.error('SITE_CHECK_WORKER', `geo_rating upsert failed: ${msg}`);
