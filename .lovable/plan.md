@@ -1,106 +1,118 @@
 
+Статус по этому деплою хороший: оба билда прошли, `pm2` поднял backend, фронт собрался без blocking-ошибок.
 
-## План: фикс "Invalid URL" + защита worker от мусорного ввода
+### Что видно по логам сейчас
 
-### Что произошло — анализ логов
+**1. Backend живой**
+- `tsc` прошёл
+- `pm2 restart owndev-backend` успешный
+- после рестарта есть нормальный boot:
+  - `PostgreSQL connected`
+  - `Listening on :3001`
+  - `AUDIT_WORKER Started`
+  - `MONITOR_WORKER Started`
 
+**2. Frontend тоже собрался**
+- `vite build` завершился успешно
+- предупреждения только non-blocking:
+  - dynamic import / static import overlap
+  - large chunk warning
+  - browserslist outdated
+- это не причина падения функционала
+
+**3. В error.log сейчас нет доказательства новых падений**
+Последние ошибки в tail — старые:
+- `Body cannot be empty...` — 16–18 апреля
+- `Invalid URL` — 18:32
+- после этого видно уже новые рестарты в `19:49` и `19:55`, и после них новых ошибок в tail нет
+
+То есть по этим логам вывод такой:
+- фиксы задеплоены
+- сервер стартует чисто
+- показанные ошибки — исторические, не обязательно текущие
+
+### Что уже подтверждается кодом
+
+Я сверил актуальные файлы:
+
+- `src/lib/api/tools.ts` — URL теперь чистится через `trim + replace whitespace + new URL()`
+- `owndev-backend/src/api/routes/siteCheck.ts` — `/start` теперь валидирует и нормализует URL до постановки в очередь
+- `owndev-backend/src/workers/SiteCheckWorker.ts` — `geo_rating` upsert защищён от невалидного URL
+- `src/hooks/useSiteFormulaSession.ts` — broken session со `status === 'error'` сбрасывается
+- `src/lib/api/siteFormula.ts` — POST-эндпоинты Site Formula теперь отправляют `{}` body, а не пустой body
+
+Это значит, что оба прошлых критических класса ошибок уже реально закрыты в коде:
+- `Body cannot be empty`
+- `Invalid URL` на мусорных доменах
+
+### Что делать дальше
+
+Сейчас нужен не новый фикс вслепую, а **живая проверка после деплоя**.
+
+#### Шаг 1. Проверить, появляются ли новые ошибки уже после 19:55
+Нужно смотреть только новые записи после последнего рестарта, а не старый хвост логов.
+
+#### Шаг 2. Прогнать 3 критичных user flow вручную
+1. **Site Formula**
+   - открыть wizard
+   - пройти шаги
+   - получить preview
+   - убедиться, что больше нет вечного зависания/ошибки resume
+
+2. **Site Check / GEO-аудит**
+   - ввести валидный домен
+   - убедиться, что scan стартует
+   - открыть result page
+   - проверить, что Direct Readiness имеет детализацию, а не только число
+
+3. **Geo Rating**
+   - после нового скана вернуться в рейтинг
+   - нажать `Обновить`
+   - убедиться, что домен обновил реальные значения и позицию
+
+#### Шаг 3. Отдельно проверить мусорный URL
+Проверочный кейс:
+```text
+СЭС -изи.рф
 ```
-2026-04-18T18:31:55Z Scan failed: Invalid URL
-2026-04-18T18:32:17Z Scan failed: Invalid URL
-URL: https://СЭС -изи.рф (с пробелом и кириллицей)
-```
+Ожидаемое поведение теперь:
+- либо фронт нормализует
+- либо backend сразу вернёт понятную 400-ошибку
+- но worker больше не должен падать и плодить `Invalid URL` в очереди
 
-Билд бэка прошёл, рестарт ок, новые сканы стартуют. Но кто-то (возможно бот или сам пользователь) вбил `СЭС -изи.рф`. Frontend `ensureProtocol()` просто добавил `https://`, не закодировав пробелы и не сконвертировав кириллицу в punycode. Backend получил `https://СЭС -изи.рф` → `new URL()` падает с `Invalid URL` → 10 сканов подряд упали + `geo_rating upsert failed`.
+#### Шаг 4. Если после живой проверки что-то ещё падает
+Тогда следующий раунд уже точечный:
+- либо Site Formula frontend/backend contract
+- либо Site Check result payload
+- либо Geo Rating refresh/data mapping
+- либо edge functions tools
 
-### Root causes (3 шт.)
+### Технические замечания
 
-**1. Frontend `ensureProtocol()` не нормализует URL** — пропускает пробелы и кириллические домены без конверсии в IDN/punycode. Backend потом падает.
+- `error.log` tail у PM2 не означает “это случилось сейчас”, он просто показывает последние строки файла
+- warning про chunk size не ломает сайт, но потом стоит отдельно оптимизировать bundle
+- `apiHeaders()` всё ещё всегда добавляет `Content-Type: application/json`; для текущих фикснутых POST это уже не критично, потому что Site Formula теперь шлёт `{}`. Но это остаётся архитектурным долгом, который лучше потом аккуратно закрыть
 
-**2. Backend `siteCheck.ts /start`** — принимает `url` без валидации. Если URL невалиден, всё равно ставит в очередь → worker падает на `new URL()`.
+### Следующий план работ
 
-**3. Worker `SiteCheckWorker.ts`** — при упавшем сканe `geo_rating upsert` тоже падает (потому что `new URL(url).hostname` бросает) и логирует ошибку, но это уже followup.
+1. Не делать новые фиксы вслепую
+2. Провести live smoke test после текущего деплоя
+3. По результатам уже добить оставшийся рассинхрон
+4. Отдельным этапом можно заняться:
+   - bundle splitting
+   - cleanup API header helper
+   - очисткой/ротацией PM2 логов для более понятной диагностики
 
-### Фикс (3 точечных правки)
+### Команда для следующей ручной проверки на сервере
 
-#### A. Frontend — `src/lib/api/tools.ts` 
-
-Расширить `ensureProtocol()`: trim, replace всех whitespace, конверсия кириллицы в punycode через `URL` API (браузер сам конвертирует hostname в `xn--...`):
-
-```ts
-export function ensureProtocol(url: string): string {
-  let trimmed = url.trim().replace(/\s+/g, '');
-  if (!trimmed) return '';
-  if (!/^https?:\/\//i.test(trimmed)) trimmed = `https://${trimmed}`;
-  try {
-    const parsed = new URL(trimmed);
-    // hostname в браузере автоматически конвертируется в IDN/punycode
-    return parsed.toString().replace(/\/$/, '');
-  } catch {
-    return trimmed; // fallback — пусть backend отобьёт с понятной ошибкой
-  }
-}
-```
-
-#### B. Backend — `owndev-backend/src/api/routes/siteCheck.ts /start`
-
-Перед `INSERT` валидировать URL и нормализовать через существующий `normalizeUrl()` из `utils/url.ts`. Если невалиден — 400, не ставим в очередь:
-
-```ts
-import { isValidUrl, normalizeUrl } from '../../utils/url.js';
-
-// внутри handler:
-let normalizedUrl: string;
-try {
-  normalizedUrl = normalizeUrl(url);
-  if (!isValidUrl(normalizedUrl)) throw new Error();
-} catch {
-  return reply.status(400).send({
-    success: false,
-    error: 'Некорректный URL. Проверьте написание адреса.',
-  });
-}
-// дальше используем normalizedUrl вместо url
-```
-
-#### C. Backend worker — `owndev-backend/src/workers/SiteCheckWorker.ts`
-
-Обернуть `new URL(url).hostname` в try/catch чтобы `geo_rating upsert` не валился если URL по какой-то причине всё-таки невалидный:
-
-```ts
-let hostname: string | null = null;
-try { hostname = new URL(url).hostname; } catch { hostname = null; }
-if (hostname) {
-  // существующий upsert
-}
-```
-
-### Что НЕ ломаем
-
-- Все остальные tools (SEOAuditor, IndexationChecker и т.д.) тоже выиграют — они используют тот же `ensureProtocol()`.
-- API контракт `/start` совместимый: добавляется только 400 на мусор, валидные URL работают как раньше.
-- `normalizeUrl` уже существует в `utils/url.ts`, ничего нового не пишем.
-- Site Formula, engine, миграции — не трогаем.
-
-### Команда деплоя
-
+После ручного клика по функционалу смотреть только свежие записи:
 ```bash
-cd /var/www/owndev.ru && git pull origin main && \
-cd /var/www/owndev.ru/owndev-backend && npm run build && pm2 restart owndev-backend && \
-cd /var/www/owndev.ru && npm run build && \
-pm2 status && pm2 logs owndev-backend --lines 30 --nostream
+pm2 logs owndev-backend --lines 80 --nostream
 ```
 
-### Изменяемые файлы
+Если после ручного прогона там не появятся новые:
+- `Body cannot be empty`
+- `Invalid URL`
+- `SITE_FORMULA Engine error`
 
-- ✏️ `src/lib/api/tools.ts` — расширить `ensureProtocol`
-- ✏️ `owndev-backend/src/api/routes/siteCheck.ts` — валидация в `/start`
-- ✏️ `owndev-backend/src/workers/SiteCheckWorker.ts` — защита `geo_rating upsert`
-
-### Self-check
-
-- ✅ Root cause: `Invalid URL` из-за `https://СЭС -изи.рф` с пробелом + кириллицей
-- ✅ 3 уровня защиты: фронт нормализует → бэк валидирует → worker устойчив к ошибкам
-- ✅ Никаких изменений в Site Formula, edge functions, миграциях
-- ✅ После фикса исчезнут оба типа ошибок: `Scan failed: Invalid URL` и `geo_rating upsert failed: Invalid URL`
-- ✅ Site Formula POST-фиксы из прошлых раундов уже задеплоены (`Body cannot be empty` записи в логах от 16-18 апр — до релиза)
-
+значит текущий деплой по этим двум критическим блокам действительно успешен.
