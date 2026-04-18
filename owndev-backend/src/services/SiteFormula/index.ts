@@ -30,7 +30,16 @@ export interface RunResult {
  * Main orchestrator: takes raw wizard answers, runs the full engine pipeline,
  * returns deterministic results.
  */
-export function runEngine(rawAnswers: RawAnswers): RunResult {
+export function runEngine(rawAnswers: RawAnswers | string): RunResult {
+  // 0. Defensive: if a previously-broken session stored raw_answers as a JSON string, rescue it.
+  if (typeof rawAnswers === 'string') {
+    try {
+      rawAnswers = JSON.parse(rawAnswers) as RawAnswers;
+    } catch {
+      throw new RuntimeError('raw_answers is corrupt JSON string');
+    }
+  }
+
   // 1. Validate inputs
   validateRawAnswers(rawAnswers);
 
@@ -77,6 +86,9 @@ export function runEngine(rawAnswers: RawAnswers): RunResult {
 }
 
 export function getConfigVersions() {
+  // Warm up caches so versions aren't 'unknown' on first call.
+  loadRules();
+  loadTemplate();
   return {
     rules_version: getRulesVersion(),
     template_version: getTemplateVersion(),
