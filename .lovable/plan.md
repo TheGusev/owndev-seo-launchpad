@@ -1,118 +1,115 @@
 
-Статус по этому деплою хороший: оба билда прошли, `pm2` поднял backend, фронт собрался без blocking-ошибок.
 
-### Что видно по логам сейчас
+## Root cause найден точно
 
-**1. Backend живой**
-- `tsc` прошёл
-- `pm2 restart owndev-backend` успешный
-- после рестарта есть нормальный boot:
-  - `PostgreSQL connected`
-  - `Listening on :3001`
-  - `AUDIT_WORKER Started`
-  - `MONITOR_WORKER Started`
+Делал реальный live-прогон Site Formula API на проде:
 
-**2. Frontend тоже собрался**
-- `vite build` завершился успешно
-- предупреждения только non-blocking:
-  - dynamic import / static import overlap
-  - large chunk warning
-  - browserslist outdated
-- это не причина падения функционала
+1. `POST /sessions` → ok, session создаётся
+2. `POST /sessions/:id/answers` → возвращает `{success:true, status:"answers_saved"}`
+3. `POST /sessions/:id/run` → **500 `"answers must be a non-null object"`**
+4. `GET /sessions/:id` показывает критичное:
+   ```json
+   "raw_answers": "{\"q_services\":\"single\",...}"
+   ```
+   — то есть `raw_answers` сохранился как **строка JSON**, а не как объект JSONB.
 
-**3. В error.log сейчас нет доказательства новых падений**
-Последние ошибки в tail — старые:
-- `Body cannot be empty...` — 16–18 апреля
-- `Invalid URL` — 18:32
-- после этого видно уже новые рестарты в `19:49` и `19:55`, и после них новых ошибок в tail нет
+Дополнительно `template_version: "unknown"` подтверждает, что engine падает на **первой же строке** `runEngine` — `validateRawAnswers`, до `loadTemplate()`.
 
-То есть по этим логам вывод такой:
-- фиксы задеплоены
-- сервер стартует чисто
-- показанные ошибки — исторические, не обязательно текущие
+### Почему так
 
-### Что уже подтверждается кодом
+В `owndev-backend/src/api/routes/siteFormula.ts`:
 
-Я сверил актуальные файлы:
-
-- `src/lib/api/tools.ts` — URL теперь чистится через `trim + replace whitespace + new URL()`
-- `owndev-backend/src/api/routes/siteCheck.ts` — `/start` теперь валидирует и нормализует URL до постановки в очередь
-- `owndev-backend/src/workers/SiteCheckWorker.ts` — `geo_rating` upsert защищён от невалидного URL
-- `src/hooks/useSiteFormulaSession.ts` — broken session со `status === 'error'` сбрасывается
-- `src/lib/api/siteFormula.ts` — POST-эндпоинты Site Formula теперь отправляют `{}` body, а не пустой body
-
-Это значит, что оба прошлых критических класса ошибок уже реально закрыты в коде:
-- `Body cannot be empty`
-- `Invalid URL` на мусорных доменах
-
-### Что делать дальше
-
-Сейчас нужен не новый фикс вслепую, а **живая проверка после деплоя**.
-
-#### Шаг 1. Проверить, появляются ли новые ошибки уже после 19:55
-Нужно смотреть только новые записи после последнего рестарта, а не старый хвост логов.
-
-#### Шаг 2. Прогнать 3 критичных user flow вручную
-1. **Site Formula**
-   - открыть wizard
-   - пройти шаги
-   - получить preview
-   - убедиться, что больше нет вечного зависания/ошибки resume
-
-2. **Site Check / GEO-аудит**
-   - ввести валидный домен
-   - убедиться, что scan стартует
-   - открыть result page
-   - проверить, что Direct Readiness имеет детализацию, а не только число
-
-3. **Geo Rating**
-   - после нового скана вернуться в рейтинг
-   - нажать `Обновить`
-   - убедиться, что домен обновил реальные значения и позицию
-
-#### Шаг 3. Отдельно проверить мусорный URL
-Проверочный кейс:
-```text
-СЭС -изи.рф
+```ts
+SET raw_answers = ${JSON.stringify(answers)}::jsonb
 ```
-Ожидаемое поведение теперь:
-- либо фронт нормализует
-- либо backend сразу вернёт понятную 400-ошибку
-- но worker больше не должен падать и плодить `Invalid URL` в очереди
 
-#### Шаг 4. Если после живой проверки что-то ещё падает
-Тогда следующий раунд уже точечный:
-- либо Site Formula frontend/backend contract
-- либо Site Check result payload
-- либо Geo Rating refresh/data mapping
-- либо edge functions tools
+Это антипаттерн для `postgres.js`. Драйвер отправляет stringified JSON как **text-параметр**, и хотя там приписан `::jsonb`, при последующем `SELECT raw_answers` он возвращается уже как **строка** (двойная сериализация: JS-объект → JSON-string → text-параметр → jsonb-text → возврат как string).
 
-### Технические замечания
+Правильный паттерн `postgres.js` — передавать **сам объект**, драйвер сериализует его и пометит как jsonb автоматически:
 
-- `error.log` tail у PM2 не означает “это случилось сейчас”, он просто показывает последние строки файла
-- warning про chunk size не ломает сайт, но потом стоит отдельно оптимизировать bundle
-- `apiHeaders()` всё ещё всегда добавляет `Content-Type: application/json`; для текущих фикснутых POST это уже не критично, потому что Site Formula теперь шлёт `{}`. Но это остаётся архитектурным долгом, который лучше потом аккуратно закрыть
+```ts
+SET raw_answers = ${sql.json(answers)}
+// или просто
+SET raw_answers = ${answers}
+```
 
-### Следующий план работ
+То же самое надо в `INSERT/UPDATE` для `engine_state`, `preview_payload`, `full_report_payload`.
 
-1. Не делать новые фиксы вслепую
-2. Провести live smoke test после текущего деплоя
-3. По результатам уже добить оставшийся рассинхрон
-4. Отдельным этапом можно заняться:
-   - bundle splitting
-   - cleanup API header helper
-   - очисткой/ротацией PM2 логов для более понятной диагностики
+Дальше `runEngine(session.raw_answers)` получает строку → `typeof !== 'object'` → `ValidationError: "answers must be a non-null object"` → 500.
 
-### Команда для следующей ручной проверки на сервере
+## Что чинить (1 файл, точечно)
 
-После ручного клика по функционалу смотреть только свежие записи:
+`owndev-backend/src/api/routes/siteFormula.ts` — заменить **все** `${JSON.stringify(x)}::jsonb` на правильную передачу объекта.
+
+Конкретно 4 места:
+1. `UPDATE ... SET raw_answers = ${JSON.stringify(answers)}::jsonb` → `${sql.json(answers)}`
+2. `engine_state = ${JSON.stringify(result.engine_state)}::jsonb` → `${sql.json(result.engine_state)}`
+3. `preview_payload = ${JSON.stringify(result.preview_payload)}::jsonb` → `${sql.json(result.preview_payload)}`
+4. `full_report_payload = ${JSON.stringify(result.full_report_payload)}::jsonb` → `${sql.json(result.full_report_payload)}`
+
+Плюс defensive guard в `runEngine`: если на вход пришла строка, попытаться распарсить и продолжить — это спасёт **уже существующие битые сессии в БД**, чтобы не тащить миграцию данных.
+
+```ts
+export function runEngine(rawAnswers: RawAnswers | string): RunResult {
+  if (typeof rawAnswers === 'string') {
+    try { rawAnswers = JSON.parse(rawAnswers); }
+    catch { throw new ValidationError('raw_answers is corrupt JSON string'); }
+  }
+  validateRawAnswers(rawAnswers);
+  ...
+}
+```
+
+Это закрывает не только новые сессии, но и старые битые.
+
+## Бонус: `template_version: "unknown"`
+
+Сейчас `getConfigVersions()` зовёт `getTemplateVersion()`, а `loadTemplate()` ещё не вызывался → возвращает `'unknown'`. И при создании сессии в `INSERT` пишется `template_version='unknown'`. Это второстепенно, но косметически фиксится прогревом в самом `getConfigVersions`:
+
+```ts
+export function getConfigVersions() {
+  loadRules();
+  loadTemplate();
+  return { rules_version: getRulesVersion(), template_version: getTemplateVersion() };
+}
+```
+
+## Что НЕ трогаем
+
+- Engine code (`SiteFormula/*`) — он корректен, проблема исключительно в DB-сериализации.
+- Frontend — он шлёт объект правильно, проблема на бэке.
+- Миграции БД — колонка JSONB, это правильно. Менять не нужно.
+- Site Check, Geo Rating, edge-функции, конфиги rules.v1.json / template — вне scope.
+
+## Файлы
+
+| Файл | Что меняется |
+|---|---|
+| `owndev-backend/src/api/routes/siteFormula.ts` | 4 места `JSON.stringify(x)::jsonb` → корректная передача через postgres.js |
+| `owndev-backend/src/services/SiteFormula/index.ts` | defensive: парсить string в `runEngine` |
+| `owndev-backend/src/services/SiteFormula/index.ts` | прогрев `loadTemplate()` в `getConfigVersions` |
+
+## Команда деплоя (после approve)
+
 ```bash
-pm2 logs owndev-backend --lines 80 --nostream
+cd /var/www/owndev.ru && git stash && git pull origin main && \
+cd /var/www/owndev.ru/owndev-backend && npm run build && pm2 restart owndev-backend && \
+echo "--- live test ---" && \
+SID=$(curl -s -X POST https://owndev.ru/api/v1/site-formula/sessions -H "Content-Type: application/json" -d '{}' | python3 -c "import sys,json;print(json.load(sys.stdin)['session_id'])") && \
+curl -s -X POST "https://owndev.ru/api/v1/site-formula/sessions/$SID/answers" -H "Content-Type: application/json" -d '{"answers":{"q_services":"single","q_geo":"single_city","q_traffic_sources":["seo"],"q_niche":"general","q_current_site":"none","q_conversion":["form"],"q_growth_plan":"maintain","q_legacy_migration":"no"}}' && \
+echo "" && \
+curl -s -X POST "https://owndev.ru/api/v1/site-formula/sessions/$SID/run" -H "Content-Type: application/json" -d '{}' | head -c 400
 ```
 
-Если после ручного прогона там не появятся новые:
-- `Body cannot be empty`
-- `Invalid URL`
-- `SITE_FORMULA Engine error`
+Если последний `run` вернёт `"success":true,"status":"preview_ready"` — Site Formula окончательно работает end-to-end.
 
-значит текущий деплой по этим двум критическим блокам действительно успешен.
+## Self-check
+
+- ✅ Проблема не предположена, а **доказана через прод-API**: сохранение возвращает success, но `raw_answers` хранится как escaped string
+- ✅ Объяснён механизм двойной сериализации в `postgres.js`
+- ✅ Фикс корневой (правильная передача jsonb), а не маскировка
+- ✅ Defensive parse спасает уже сломанные сессии без миграции
+- ✅ Бизнес-логику engine не трогаем, контракт API не меняется
+- ✅ Frontend менять не нужно
+- ✅ Бонус-фикс `template_version: "unknown"` в одном месте
+
