@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import {
   ChevronDown, ChevronUp, ExternalLink, Share2, Copy, Search,
-  AlertTriangle, CheckCircle2, XCircle,
+  AlertTriangle, CheckCircle2, XCircle, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SiteBadge from "@/components/ui/site-badge";
@@ -46,13 +46,15 @@ const GeoRating = () => {
   const [sortKey, setSortKey] = useState<"llmScore" | "seoScore" | "brandName">("llmScore");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const { data: rawRows = [], isLoading } = useQuery({
+  const { data: rawRows = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["geo-rating"],
     queryFn: async () => {
       const resp = await fetch(apiUrl('/site-check/geo-rating'), { headers: apiHeaders() });
       if (!resp.ok) throw new Error('Failed to fetch geo-rating');
       return resp.json();
     },
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   // Map to typed entries and apply filters/sort
@@ -181,6 +183,10 @@ const GeoRating = () => {
               </Button>
               <Button variant="outline" size="lg" onClick={handleShare}>
                 <Share2 className="w-4 h-4 mr-2" />Поделиться
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => refetch()} disabled={isFetching}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+                {isFetching ? 'Обновляем...' : 'Обновить'}
               </Button>
             </div>
           </div>

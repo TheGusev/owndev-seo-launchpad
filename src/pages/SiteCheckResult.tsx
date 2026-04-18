@@ -132,6 +132,7 @@ const SiteCheckResult = () => {
   );
   const directAdSuggestion = directAdMeta?.ad_suggestion || null;
   const directReadinessScore = directAdMeta?.readiness_score ?? null;
+  const directChecks = directAdMeta?.direct_checks || data?.seo_data?.direct_checks || null;
   const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
     keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
     volume: kw.frequency ?? kw.volume ?? 0,
@@ -203,24 +204,30 @@ const SiteCheckResult = () => {
                 adSuggestion={directAdSuggestion}
                 readinessScore={directReadinessScore ?? 0}
                 url={data.url}
+                checks={directChecks}
               />
             </ResultAccordion>
           )}
           {!directAdSuggestion && directReadinessScore !== null && (
-            <ResultAccordion title="Готовность к Яндекс.Директ" defaultOpen={false}>
+            <ResultAccordion title="Готовность к Яндекс.Директ" defaultOpen={true}>
               <DirectAdPreview
                 adSuggestion={{ headline1: '', headline2: '', ad_text: '', sitelinks: [], callouts: [] }}
                 readinessScore={directReadinessScore}
                 url={data.url}
+                checks={directChecks}
               />
             </ResultAccordion>
           )}
 
-          {/* 4. Tech Passport */}
+          {/* 4. Tech Passport — full width */}
           {techPassport && (
-            <ResultAccordion title="Технический паспорт" badge={techBadges} defaultOpen={false}>
+            <div className="rounded-xl border border-border/50 bg-card/40 p-4 md:p-5 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h2 className="text-base font-semibold text-foreground">Технический паспорт</h2>
+                {techBadges}
+              </div>
               <TechPassport data={techPassport} />
-            </ResultAccordion>
+            </div>
           )}
           {techPassportLoading && !techPassport && (
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">

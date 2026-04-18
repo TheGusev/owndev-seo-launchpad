@@ -209,7 +209,29 @@ const ISSUE_TO_LLM_CRITERION: [RegExp, string][] = [
 
 interface CriterionResult { key: string; weight: number; earned: number; status: 'pass' | 'fail' | 'partial'; }
 
-function calcScoresWeighted(issues: Issue[], dbRules: DbRule[]) {
+// Direct & Schema criteria (must match frontend src/utils/scoreCalculation.ts)
+const DIRECT_WEIGHTS: Record<string, number> = {
+  h1Specificity: 20, h1TitleMatch: 20, textCoherence: 15,
+  noMixedTopics: 15, commercialSignals: 15, adHeadlineReady: 15,
+};
+const SCHEMA_WEIGHTS: Record<string, number> = {
+  hasJsonLd: 25, orgSchema: 20, breadcrumb: 15, faqSchema: 20, productOrService: 20,
+};
+
+function buildSchemaBreakdown(html: string): CriterionResult[] {
+  const jsonBlocks = (html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || []).join(' ');
+  const hasJsonLd = jsonBlocks.length > 0;
+  const hasOrg = /"@type"\s*:\s*"(Organization|LocalBusiness|Corporation)"/i.test(jsonBlocks);
+  const hasCrumb = /"@type"\s*:\s*"BreadcrumbList"/i.test(jsonBlocks);
+  const hasFaq = /"@type"\s*:\s*"FAQPage"/i.test(jsonBlocks);
+  const hasProd = /"@type"\s*:\s*"(Product|Service|Offer)"/i.test(jsonBlocks);
+  const map: Record<string, boolean> = { hasJsonLd, orgSchema: hasOrg, breadcrumb: hasCrumb, faqSchema: hasFaq, productOrService: hasProd };
+  return Object.entries(SCHEMA_WEIGHTS).map(([key, weight]) => ({
+    key, weight, earned: map[key] ? weight : 0, status: map[key] ? 'pass' as const : 'fail' as const,
+  }));
+}
+
+function calcScoresWeighted(issues: Issue[], dbRules: DbRule[], directChecks?: { key: string; status: 'pass' | 'fail' }[], html?: string) {
   const failedSeo = new Set<string>();
   const failedLlm = new Set<string>();
   for (const issue of issues) {
@@ -231,54 +253,39 @@ function calcScoresWeighted(issues: Issue[], dbRules: DbRule[]) {
     return { key, weight, earned: failed ? 0 : weight, status: failed ? 'fail' as const : 'pass' as const };
   });
 
+  const directBreakdown: CriterionResult[] = directChecks
+    ? Object.entries(DIRECT_WEIGHTS).map(([key, weight]) => {
+        const c = directChecks.find(x => x.key === key);
+        const passed = c ? c.status === 'pass' : true;
+        return { key, weight, earned: passed ? weight : 0, status: passed ? 'pass' as const : 'fail' as const };
+      })
+    : Object.entries(DIRECT_WEIGHTS).map(([key, weight]) => ({ key, weight, earned: weight, status: 'pass' as const }));
+
+  const schemaBreakdown: CriterionResult[] = html
+    ? buildSchemaBreakdown(html)
+    : Object.entries(SCHEMA_WEIGHTS).map(([key, weight]) => ({ key, weight, earned: weight, status: 'pass' as const }));
+
   const seoMax = Object.values(SEO_WEIGHTS).reduce((a, b) => a + b, 0);
   const llmMax = Object.values(LLM_WEIGHTS).reduce((a, b) => a + b, 0);
   const seoEarned = seoBreakdown.reduce((s, c) => s + c.earned, 0);
   const llmEarned = llmBreakdown.reduce((s, c) => s + c.earned, 0);
 
-  let seo = Math.round((seoEarned / seoMax) * 100);
-  let ai = Math.round((llmEarned / llmMax) * 100);
+  const seo = Math.round((seoEarned / seoMax) * 100);
+  const ai = Math.round((llmEarned / llmMax) * 100);
 
-  const moduleScores: Record<string, { totalWeight: number; passedWeight: number }> = {};
-  const scoreModuleMap: Record<string, string> = { 'technical': 'seo', 'content': 'seo', 'direct': 'direct', 'schema': 'schema', 'ai': 'ai' };
-  for (const rule of dbRules) {
-    const scoreKey = scoreModuleMap[rule.module] || rule.module;
-    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
-    if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 0, passedWeight: 0 };
-    moduleScores[scoreKey].totalWeight += rule.score_weight;
-    moduleScores[scoreKey].passedWeight += rule.score_weight;
-  }
-  const issueRuleIds = new Set(issues.map(i => i.rule_id).filter(Boolean));
-  for (const rule of dbRules) {
-    const scoreKey = scoreModuleMap[rule.module] || rule.module;
-    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
-    if (issueRuleIds.has(rule.rule_id) && moduleScores[scoreKey]) {
-      moduleScores[scoreKey].passedWeight -= rule.score_weight;
-    }
-  }
-  for (const issue of issues) {
-    if (issue.rule_id) continue;
-    const scoreKey = scoreModuleMap[issue.module] || issue.module;
-    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
-    if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 100, passedWeight: 100 };
-    const w = issue.severity === 'critical' ? 15 : issue.severity === 'high' ? 8 : issue.severity === 'medium' ? 4 : 2;
-    moduleScores[scoreKey].passedWeight -= w;
-  }
+  const directMax = Object.values(DIRECT_WEIGHTS).reduce((a, b) => a + b, 0);
+  const directEarned = directBreakdown.reduce((s, c) => s + c.earned, 0);
+  const direct = Math.round((directEarned / directMax) * 100);
 
-  const getModScore = (key: string) => {
-    const m = moduleScores[key];
-    if (!m || m.totalWeight === 0) return 100;
-    return Math.max(0, Math.min(100, Math.round((m.passedWeight / m.totalWeight) * 100)));
-  };
-
-  let direct = getModScore('direct');
-  let schema = getModScore('schema');
-  const hasNoJsonLd = issues.some(i => i.module === 'schema' && /JSON-LD не найден/i.test(i.found || i.title || ''));
-  const hasMicrodata = issues.some(i => i.module === 'schema' && /microdata|rdfa/i.test(i.found || ''));
-  if (hasNoJsonLd) { schema = hasMicrodata ? Math.min(schema, 30) : 0; }
+  const schemaMax = Object.values(SCHEMA_WEIGHTS).reduce((a, b) => a + b, 0);
+  const schemaEarned = schemaBreakdown.reduce((s, c) => s + c.earned, 0);
+  const schema = Math.round((schemaEarned / schemaMax) * 100);
 
   const total = Math.round(seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25);
-  return { total, seo, direct, schema, ai, breakdown: { seo: seoBreakdown, ai: llmBreakdown } };
+  return {
+    total, seo, direct, schema, ai,
+    breakdown: { seo: seoBreakdown, ai: llmBreakdown, direct: directBreakdown, schema: schemaBreakdown },
+  };
 }
 
 // ─── DB Rule type ───
@@ -520,8 +527,18 @@ function contentAudit(html: string, theme: string): Issue[] {
 
 // ═══ STEP 3: Direct Audit ═══
 interface DirectAdSuggestion { headline1: string; headline2: string; ad_text: string; sitelinks: { title: string; description: string }[]; callouts: string[]; }
+interface DirectCheck { key: string; label: string; description: string; weight: number; status: 'pass' | 'fail'; reason: string; }
 
-function directAudit(html: string, theme: string): { issues: Issue[]; ad_headline: string; autotargeting_categories: Record<string, boolean>; readiness_score: number } {
+const DIRECT_CHECKS_META = [
+  { key: 'h1TitleMatch', label: 'Title ↔ тематика', weight: 20 },
+  { key: 'h1Specificity', label: 'Конкретность H1', weight: 20 },
+  { key: 'textCoherence', label: 'Объём контента', weight: 15 },
+  { key: 'commercialSignals', label: 'Коммерческие сигналы (CTA)', weight: 15 },
+  { key: 'noMixedTopics', label: 'Яндекс.Метрика установлена', weight: 15 },
+  { key: 'adHeadlineReady', label: 'Адаптация под мобильные', weight: 15 },
+];
+
+function directAudit(html: string, theme: string): { issues: Issue[]; ad_headline: string; autotargeting_categories: Record<string, boolean>; readiness_score: number; checks: DirectCheck[] } {
   const issues: Issue[] = [];
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
@@ -533,51 +550,70 @@ function directAudit(html: string, theme: string): { issues: Issue[]; ad_headlin
   const themeWords = theme.toLowerCase().split(/[\s,—–\-]+/).filter(w => w.length > 3);
   const genericH1 = /^(главная|home|добро пожаловать|welcome)/i;
 
-  let passedChecks = 0;
-  const checkWeights: number[] = [];
+  const checks: DirectCheck[] = [];
+  const addCheck = (key: string, status: 'pass' | 'fail', reason: string) => {
+    const meta = DIRECT_CHECKS_META.find(m => m.key === key)!;
+    checks.push({ key, label: meta.label, description: reason, weight: meta.weight, status, reason });
+  };
 
-  // 1. Title alignment with theme
+  // 1. Title alignment with theme  → h1TitleMatch
   const titleLower = (title || '').toLowerCase();
-  if (themeWords.length > 0 && !themeWords.some(tw => titleLower.includes(tw))) {
+  const titleOk = themeWords.length === 0 || themeWords.some(tw => titleLower.includes(tw));
+  if (!titleOk) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Title не релевантен тематике для Директа', found: `Title: "${title}"\nТема: "${theme}"`, location: '<title>', why_it_matters: 'Автотаргетинг Директа использует Title для подбора запросов', how_to_fix: 'Включите ключевое слово тематики в Title', example_fix: `<title>${theme} — услуги | Бренд</title>`, impact_score: 12, visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1.5); }
+    addCheck('h1TitleMatch', 'fail', `Title "${title.slice(0, 60)}" не содержит ключевых слов темы "${theme}"`);
+  } else {
+    addCheck('h1TitleMatch', 'pass', `Title содержит ключевые слова темы "${theme}"`);
+  }
 
-  // 2. H1 quality
-  if (!h1 || genericH1.test(h1.trim())) {
+  // 2. H1 quality → h1Specificity
+  const h1Ok = h1 && !genericH1.test(h1.trim());
+  if (!h1Ok) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'H1 не подходит для автотаргетинга Директа', found: `H1: "${h1 || '(отсутствует)'}"`, location: '<h1>', why_it_matters: 'Общий или отсутствующий H1 не даёт Директу сигналов о теме', how_to_fix: 'Напишите конкретный H1 с ключевым словом', example_fix: `<h1>${theme} — профессиональный подход</h1>`, visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1); }
+    addCheck('h1Specificity', 'fail', h1 ? `H1 "${h1}" слишком общий` : 'H1 отсутствует на странице');
+  } else {
+    addCheck('h1Specificity', 'pass', `H1 "${h1}" — конкретный и содержательный`);
+  }
 
-  // 3. Content volume
+  // 3. Content volume → textCoherence
   if (wordCount < 200) {
     issues.push(makeIssue({ module: 'direct', severity: 'medium', title: 'Слишком мало текста для автотаргетинга', found: `${wordCount} слов`, location: 'Контент', why_it_matters: 'Мало текста = мало сигналов для автотаргетинга', how_to_fix: 'Расширьте контент до 500+ слов', example_fix: 'Добавьте описания, FAQ, преимущества', visible_in_preview: false }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1); }
+    addCheck('textCoherence', 'fail', `Только ${wordCount} слов — недостаточно для автотаргетинга (нужно 200+)`);
+  } else {
+    addCheck('textCoherence', 'pass', `${wordCount} слов — достаточно для автотаргетинга`);
+  }
 
-  // 4. CTA
+  // 4. CTA → commercialSignals
   const ctaPattern = /заказ|купи|оставь|запис|получи|звони|консультац|заявк|корзин|добавить в/i;
-  if (!ctaPattern.test(html)) {
+  const ctaOk = ctaPattern.test(html);
+  if (!ctaOk) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Нет CTA (призыва к действию)', found: 'Не найдены кнопки заказа или формы', location: 'Контент', why_it_matters: 'Без CTA посетители из Директа уходят', how_to_fix: 'Добавьте кнопку CTA', example_fix: `<button>Заказать ${theme.toLowerCase()}</button>`, impact_score: 11, visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1); }
+    addCheck('commercialSignals', 'fail', 'Не найдены коммерческие CTA (заказать, купить, оставить заявку и т.д.)');
+  } else {
+    addCheck('commercialSignals', 'pass', 'Найдены коммерческие CTA на странице');
+  }
 
-  // 5. Яндекс.Метрика
+  // 5. Яндекс.Метрика → noMixedTopics (re-используем как "трекинг")
   const hasMetrika = /mc\.yandex\.ru\/metrika\/tag\.js|mc\.yandex\.ru\/watch\/|ym\(\s*\d+/i.test(html);
   if (!hasMetrika) {
     issues.push(makeIssue({ module: 'direct', severity: 'critical', title: 'Нет Яндекс.Метрики', found: 'Счётчик не найден', location: 'Скрипты', why_it_matters: 'Без Метрики невозможно отследить конверсии', how_to_fix: 'Установите счётчик Яндекс.Метрики', example_fix: 'Создайте счётчик на metrika.yandex.ru', impact_score: 15, visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1.5); }
+    addCheck('noMixedTopics', 'fail', 'Счётчик Яндекс.Метрики не найден — невозможно отслеживать конверсии');
+  } else {
+    addCheck('noMixedTopics', 'pass', 'Яндекс.Метрика установлена и отслеживает конверсии');
+  }
 
-  // 6. Viewport
-  if (!/<meta[^>]*name=["']viewport["']/i.test(html)) {
+  // 6. Viewport → adHeadlineReady (мобильная адаптация)
+  const viewportOk = /<meta[^>]*name=["']viewport["']/i.test(html);
+  if (!viewportOk) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Страница не адаптирована для мобильного', found: 'viewport не найден', location: '<head>', why_it_matters: '60-70% трафика из Директа — мобильные', how_to_fix: 'Добавьте meta viewport', example_fix: '<meta name="viewport" content="width=device-width, initial-scale=1">', visible_in_preview: true }));
-    checkWeights.push(0);
-  } else { passedChecks++; checkWeights.push(1); }
+    addCheck('adHeadlineReady', 'fail', 'Страница не адаптирована для мобильных устройств (нет viewport)');
+  } else {
+    addCheck('adHeadlineReady', 'pass', 'Страница адаптирована для мобильных устройств');
+  }
 
-  const maxWeight = checkWeights.length > 0 ? checkWeights.reduce((a, b) => a + Math.max(b, 1), 0) : 6;
-  const earnedWeight = checkWeights.reduce((a, b) => a + b, 0);
-  const readiness_score = Math.round((earnedWeight / maxWeight) * 10);
+  const totalWeight = checks.reduce((s, c) => s + c.weight, 0);
+  const earnedWeight = checks.filter(c => c.status === 'pass').reduce((s, c) => s + c.weight, 0);
+  const readiness_score = Math.round((earnedWeight / totalWeight) * 10);
 
   let ad_headline = (h1 || title || theme).replace(/<[^>]+>/g, '').replace(/[|—–\-].*$/, '').trim();
   if (ad_headline.length > 35) {
@@ -590,7 +626,7 @@ function directAudit(html: string, theme: string): { issues: Issue[]; ad_headlin
   const hasNarrowFocus = h1 && !genericH1.test(h1.trim()) && themeWords.some(tw => h1.toLowerCase().includes(tw));
   const autotargeting_categories: Record<string, boolean> = { 'Целевые': true, 'Узкие': !!hasNarrowFocus, 'Альтернативные': false, 'Сопутствующие': false, 'Брендовые': /бренд|brand/i.test(bodyText) };
 
-  return { issues, ad_headline, autotargeting_categories, readiness_score };
+  return { issues, ad_headline, autotargeting_categories, readiness_score, checks };
 }
 
 // ═══ STEP 3b: AI Direct Ad ═══
@@ -1130,7 +1166,7 @@ export async function runPipeline(
     example_fix: issue.example_fix || '',
   }));
 
-  const scores = calcScoresWeighted(allIssues, dbRules);
+  const scores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
   await onProgress(60, { scores, issues: allIssues });
 
   // STEP 4: Competitors
@@ -1148,7 +1184,7 @@ export async function runPipeline(
   // STEP 6: Minus words
   const minusWords = await generateMinusWords(theme, keywords, apiKey);
 
-  const finalScores = calcScoresWeighted(allIssues, dbRules);
+  const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
 
   // Await ad suggestion
   const adSuggestion = await adSuggestionPromise;
@@ -1162,6 +1198,7 @@ export async function runPipeline(
       ad_headline: directResult.ad_headline,
       autotargeting_categories: directResult.autotargeting_categories,
       readiness_score: directResult.readiness_score,
+      direct_checks: directResult.checks,
       ad_suggestion: adSuggestion,
     },
   ].filter(Boolean);
@@ -1177,6 +1214,6 @@ export async function runPipeline(
     competitors: competitorsData,
     keywords,
     minus_words: minusWords,
-    seo_data: seoData,
+    seo_data: { ...seoData, direct_checks: directResult.checks },
   };
 }

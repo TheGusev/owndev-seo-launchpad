@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, ExternalLink, Gauge, Download, Pencil, X, Save, Plus, Trash2 } from "lucide-react";
+import { Copy, Check, ExternalLink, Gauge, Download, Pencil, X, Save, Plus, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +14,20 @@ interface DirectAdSuggestion {
   callouts: string[];
 }
 
+interface DirectCheck {
+  key: string;
+  label: string;
+  weight: number;
+  status: 'pass' | 'fail';
+  reason?: string;
+  description?: string;
+}
+
 interface DirectAdPreviewProps {
   adSuggestion: DirectAdSuggestion;
   readinessScore: number;
   url: string;
+  checks?: DirectCheck[];
 }
 
 const LIMITS = { headline1: 35, headline2: 30, ad_text: 81 };
@@ -28,7 +38,7 @@ const CharCount = ({ current, max }: { current: number; max: number }) => (
   </span>
 );
 
-const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewProps) => {
+const DirectAdPreview = ({ adSuggestion, readinessScore, url, checks }: DirectAdPreviewProps) => {
   const { toast } = useToast();
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -171,7 +181,29 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewP
         </div>
       </div>
 
-      {/* Ad Preview */}
+      {/* Direct readiness checks breakdown */}
+      {checks && checks.length > 0 && (
+        <div className="rounded-xl border border-border/50 bg-card/40 p-4 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Что проверено ({checks.filter(c => c.status === 'pass').length}/{checks.length} ✓)</p>
+          <div className="space-y-2">
+            {checks.map((c, i) => (
+              <div key={i} className="flex items-start gap-2.5 text-sm">
+                {c.status === 'pass'
+                  ? <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                  : <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground">{c.label}</p>
+                  {(c.reason || c.description) && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{c.reason || c.description}</p>
+                  )}
+                </div>
+                <span className="text-[10px] text-muted-foreground/60 shrink-0">{c.weight}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {currentAd.headline1 && (
         <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
           <div className="px-4 py-2.5 bg-muted/30 border-b border-border/30 flex items-center justify-between gap-2 flex-wrap">
