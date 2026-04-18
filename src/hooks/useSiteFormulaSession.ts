@@ -112,6 +112,10 @@ export function useSiteFormulaSession(): UseSiteFormulaSession {
 
   const executeEngine = useCallback(async () => {
     if (!sessionId) return;
+    if (!answers || Object.keys(answers).length === 0) {
+      setError('Заполните все шаги перед запуском');
+      return;
+    }
     setLoading(true);
     setError(null);
     setPhase('running');
