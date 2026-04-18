@@ -38,7 +38,7 @@ const CharCount = ({ current, max }: { current: number; max: number }) => (
   </span>
 );
 
-const DirectAdPreview = ({ adSuggestion, readinessScore, url }: DirectAdPreviewProps) => {
+const DirectAdPreview = ({ adSuggestion, readinessScore, url, checks }: DirectAdPreviewProps) => {
   const { toast } = useToast();
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
