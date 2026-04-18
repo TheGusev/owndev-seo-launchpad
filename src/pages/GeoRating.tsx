@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import {
   ChevronDown, ChevronUp, ExternalLink, Share2, Copy, Search,
-  AlertTriangle, CheckCircle2, XCircle,
+  AlertTriangle, CheckCircle2, XCircle, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SiteBadge from "@/components/ui/site-badge";
@@ -183,6 +183,10 @@ const GeoRating = () => {
               </Button>
               <Button variant="outline" size="lg" onClick={handleShare}>
                 <Share2 className="w-4 h-4 mr-2" />Поделиться
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => refetch()} disabled={isFetching}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+                {isFetching ? 'Обновляем...' : 'Обновить'}
               </Button>
             </div>
           </div>
