@@ -46,13 +46,15 @@ const GeoRating = () => {
   const [sortKey, setSortKey] = useState<"llmScore" | "seoScore" | "brandName">("llmScore");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const { data: rawRows = [], isLoading } = useQuery({
+  const { data: rawRows = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["geo-rating"],
     queryFn: async () => {
       const resp = await fetch(apiUrl('/site-check/geo-rating'), { headers: apiHeaders() });
       if (!resp.ok) throw new Error('Failed to fetch geo-rating');
       return resp.json();
     },
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   // Map to typed entries and apply filters/sort
