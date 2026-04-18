@@ -296,7 +296,9 @@ interface DbRule {
 }
 
 // ─── LLM config (Edge Function proxy → Lovable AI Gateway) ───
-function getLlmConfig(apiKey: string) {
+const LLM_PROVIDER = process.env.EDGE_FUNCTION_URL ? 'proxy' : 'gateway';
+
+function getLlmConfig(apiKey: string): { url: string; headers: Record<string, string>; defaultModel: string } {
   const proxyUrl = process.env.EDGE_FUNCTION_URL;
   if (proxyUrl) {
     return {
