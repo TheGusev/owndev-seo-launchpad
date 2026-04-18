@@ -36,7 +36,7 @@ export function runEngine(rawAnswers: RawAnswers | string): RunResult {
     try {
       rawAnswers = JSON.parse(rawAnswers) as RawAnswers;
     } catch {
-      throw new RuntimeError('raw_answers is corrupt JSON string');
+      throw new RuntimeError('raw_answers is corrupt JSON string', 'CORRUPT_JSON_STRING');
     }
   }
 
