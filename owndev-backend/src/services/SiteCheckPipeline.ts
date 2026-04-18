@@ -1166,7 +1166,7 @@ export async function runPipeline(
     example_fix: issue.example_fix || '',
   }));
 
-  const scores = calcScoresWeighted(allIssues, dbRules);
+  const scores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
   await onProgress(60, { scores, issues: allIssues });
 
   // STEP 4: Competitors
@@ -1184,7 +1184,7 @@ export async function runPipeline(
   // STEP 6: Minus words
   const minusWords = await generateMinusWords(theme, keywords, apiKey);
 
-  const finalScores = calcScoresWeighted(allIssues, dbRules);
+  const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
 
   // Await ad suggestion
   const adSuggestion = await adSuggestionPromise;
@@ -1198,6 +1198,7 @@ export async function runPipeline(
       ad_headline: directResult.ad_headline,
       autotargeting_categories: directResult.autotargeting_categories,
       readiness_score: directResult.readiness_score,
+      direct_checks: directResult.checks,
       ad_suggestion: adSuggestion,
     },
   ].filter(Boolean);
@@ -1213,6 +1214,6 @@ export async function runPipeline(
     competitors: competitorsData,
     keywords,
     minus_words: minusWords,
-    seo_data: seoData,
+    seo_data: { ...seoData, direct_checks: directResult.checks },
   };
 }
