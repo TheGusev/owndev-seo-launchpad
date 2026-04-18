@@ -209,7 +209,29 @@ const ISSUE_TO_LLM_CRITERION: [RegExp, string][] = [
 
 interface CriterionResult { key: string; weight: number; earned: number; status: 'pass' | 'fail' | 'partial'; }
 
-function calcScoresWeighted(issues: Issue[], dbRules: DbRule[]) {
+// Direct & Schema criteria (must match frontend src/utils/scoreCalculation.ts)
+const DIRECT_WEIGHTS: Record<string, number> = {
+  h1Specificity: 20, h1TitleMatch: 20, textCoherence: 15,
+  noMixedTopics: 15, commercialSignals: 15, adHeadlineReady: 15,
+};
+const SCHEMA_WEIGHTS: Record<string, number> = {
+  hasJsonLd: 25, orgSchema: 20, breadcrumb: 15, faqSchema: 20, productOrService: 20,
+};
+
+function buildSchemaBreakdown(html: string): CriterionResult[] {
+  const jsonBlocks = (html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || []).join(' ');
+  const hasJsonLd = jsonBlocks.length > 0;
+  const hasOrg = /"@type"\s*:\s*"(Organization|LocalBusiness|Corporation)"/i.test(jsonBlocks);
+  const hasCrumb = /"@type"\s*:\s*"BreadcrumbList"/i.test(jsonBlocks);
+  const hasFaq = /"@type"\s*:\s*"FAQPage"/i.test(jsonBlocks);
+  const hasProd = /"@type"\s*:\s*"(Product|Service|Offer)"/i.test(jsonBlocks);
+  const map: Record<string, boolean> = { hasJsonLd, orgSchema: hasOrg, breadcrumb: hasCrumb, faqSchema: hasFaq, productOrService: hasProd };
+  return Object.entries(SCHEMA_WEIGHTS).map(([key, weight]) => ({
+    key, weight, earned: map[key] ? weight : 0, status: map[key] ? 'pass' as const : 'fail' as const,
+  }));
+}
+
+function calcScoresWeighted(issues: Issue[], dbRules: DbRule[], directChecks?: { key: string; status: 'pass' | 'fail' }[], html?: string) {
   const failedSeo = new Set<string>();
   const failedLlm = new Set<string>();
   for (const issue of issues) {
@@ -231,54 +253,39 @@ function calcScoresWeighted(issues: Issue[], dbRules: DbRule[]) {
     return { key, weight, earned: failed ? 0 : weight, status: failed ? 'fail' as const : 'pass' as const };
   });
 
+  const directBreakdown: CriterionResult[] = directChecks
+    ? Object.entries(DIRECT_WEIGHTS).map(([key, weight]) => {
+        const c = directChecks.find(x => x.key === key);
+        const passed = c ? c.status === 'pass' : true;
+        return { key, weight, earned: passed ? weight : 0, status: passed ? 'pass' as const : 'fail' as const };
+      })
+    : Object.entries(DIRECT_WEIGHTS).map(([key, weight]) => ({ key, weight, earned: weight, status: 'pass' as const }));
+
+  const schemaBreakdown: CriterionResult[] = html
+    ? buildSchemaBreakdown(html)
+    : Object.entries(SCHEMA_WEIGHTS).map(([key, weight]) => ({ key, weight, earned: weight, status: 'pass' as const }));
+
   const seoMax = Object.values(SEO_WEIGHTS).reduce((a, b) => a + b, 0);
   const llmMax = Object.values(LLM_WEIGHTS).reduce((a, b) => a + b, 0);
   const seoEarned = seoBreakdown.reduce((s, c) => s + c.earned, 0);
   const llmEarned = llmBreakdown.reduce((s, c) => s + c.earned, 0);
 
-  let seo = Math.round((seoEarned / seoMax) * 100);
-  let ai = Math.round((llmEarned / llmMax) * 100);
+  const seo = Math.round((seoEarned / seoMax) * 100);
+  const ai = Math.round((llmEarned / llmMax) * 100);
 
-  const moduleScores: Record<string, { totalWeight: number; passedWeight: number }> = {};
-  const scoreModuleMap: Record<string, string> = { 'technical': 'seo', 'content': 'seo', 'direct': 'direct', 'schema': 'schema', 'ai': 'ai' };
-  for (const rule of dbRules) {
-    const scoreKey = scoreModuleMap[rule.module] || rule.module;
-    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
-    if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 0, passedWeight: 0 };
-    moduleScores[scoreKey].totalWeight += rule.score_weight;
-    moduleScores[scoreKey].passedWeight += rule.score_weight;
-  }
-  const issueRuleIds = new Set(issues.map(i => i.rule_id).filter(Boolean));
-  for (const rule of dbRules) {
-    const scoreKey = scoreModuleMap[rule.module] || rule.module;
-    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
-    if (issueRuleIds.has(rule.rule_id) && moduleScores[scoreKey]) {
-      moduleScores[scoreKey].passedWeight -= rule.score_weight;
-    }
-  }
-  for (const issue of issues) {
-    if (issue.rule_id) continue;
-    const scoreKey = scoreModuleMap[issue.module] || issue.module;
-    if (scoreKey !== 'direct' && scoreKey !== 'schema') continue;
-    if (!moduleScores[scoreKey]) moduleScores[scoreKey] = { totalWeight: 100, passedWeight: 100 };
-    const w = issue.severity === 'critical' ? 15 : issue.severity === 'high' ? 8 : issue.severity === 'medium' ? 4 : 2;
-    moduleScores[scoreKey].passedWeight -= w;
-  }
+  const directMax = Object.values(DIRECT_WEIGHTS).reduce((a, b) => a + b, 0);
+  const directEarned = directBreakdown.reduce((s, c) => s + c.earned, 0);
+  const direct = Math.round((directEarned / directMax) * 100);
 
-  const getModScore = (key: string) => {
-    const m = moduleScores[key];
-    if (!m || m.totalWeight === 0) return 100;
-    return Math.max(0, Math.min(100, Math.round((m.passedWeight / m.totalWeight) * 100)));
-  };
-
-  let direct = getModScore('direct');
-  let schema = getModScore('schema');
-  const hasNoJsonLd = issues.some(i => i.module === 'schema' && /JSON-LD не найден/i.test(i.found || i.title || ''));
-  const hasMicrodata = issues.some(i => i.module === 'schema' && /microdata|rdfa/i.test(i.found || ''));
-  if (hasNoJsonLd) { schema = hasMicrodata ? Math.min(schema, 30) : 0; }
+  const schemaMax = Object.values(SCHEMA_WEIGHTS).reduce((a, b) => a + b, 0);
+  const schemaEarned = schemaBreakdown.reduce((s, c) => s + c.earned, 0);
+  const schema = Math.round((schemaEarned / schemaMax) * 100);
 
   const total = Math.round(seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25);
-  return { total, seo, direct, schema, ai, breakdown: { seo: seoBreakdown, ai: llmBreakdown } };
+  return {
+    total, seo, direct, schema, ai,
+    breakdown: { seo: seoBreakdown, ai: llmBreakdown, direct: directBreakdown, schema: schemaBreakdown },
+  };
 }
 
 // ─── DB Rule type ───
