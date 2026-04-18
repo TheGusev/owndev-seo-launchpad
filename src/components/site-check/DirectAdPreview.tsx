@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, ExternalLink, Gauge, Download, Pencil, X, Save, Plus, Trash2 } from "lucide-react";
+import { Copy, Check, ExternalLink, Gauge, Download, Pencil, X, Save, Plus, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +14,20 @@ interface DirectAdSuggestion {
   callouts: string[];
 }
 
+interface DirectCheck {
+  key: string;
+  label: string;
+  weight: number;
+  status: 'pass' | 'fail';
+  reason?: string;
+  description?: string;
+}
+
 interface DirectAdPreviewProps {
   adSuggestion: DirectAdSuggestion;
   readinessScore: number;
   url: string;
+  checks?: DirectCheck[];
 }
 
 const LIMITS = { headline1: 35, headline2: 30, ad_text: 81 };
