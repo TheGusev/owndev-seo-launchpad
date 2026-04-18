@@ -86,6 +86,9 @@ export function runEngine(rawAnswers: RawAnswers | string): RunResult {
 }
 
 export function getConfigVersions() {
+  // Warm up caches so versions aren't 'unknown' on first call.
+  loadRules();
+  loadTemplate();
   return {
     rules_version: getRulesVersion(),
     template_version: getTemplateVersion(),
