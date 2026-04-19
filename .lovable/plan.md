@@ -1,83 +1,89 @@
 
 
-## Рефакторинг result-страницы + Phase 1 LLM (keyword_fit + competitor_gap)
+## PDF/Word экспорт + Score Breakdown modal для Marketplace Audit
 
-### Часть 1 — Frontend: разнос на компоненты
+### Часть 1 — Экспорт PDF/Word
 
-Создаю `src/components/marketplace/` и выношу секции один-в-один из текущей `MarketplaceAuditResult.tsx`. Никакой логики не меняем — только структура.
+**Создаю** `src/lib/generateMarketplaceReport.ts` — две функции в одном файле:
+- `generateMarketplacePdf(data)` — копия структуры `generatePdfReport`, адаптированная под marketplace-данные
+- `generateMarketplaceWord(data)` — то же, по образцу `generateWordReport`
 
-**Новые файлы:**
-- `MarketplaceHero.tsx` — фото + Badge платформы/категории + title + AI-summary
-- `MarketplaceScoreCards.tsx` — 5 карточек (Total + 4 sub-scores) + внутренний `ScoreCard`
-- `IssuesByImpact.tsx` — список top-8 issues, sort by impact desc, severity-бейдж, why/how/example
-- `RewriteSuggestions.tsx` — newTitle/newDescription с copy-to-clipboard, bullets, addKeywords/removeWords
-- `CompetitorGap.tsx` — новый блок: weakerThan / strongerThan / priorityAdds (Phase 1 LLM)
-- `KeywordCoverage.tsx` — donut-progress + chips covered/missing + бейдж source ('llm'/'naive')
-- `MarketplacePaywallCTA.tsx` — финальный блок CTA
-- `EmptyStates.tsx` — `MarketplaceLoadingCard`, `MarketplaceErrorCard` (вынесенные loading/error из page)
-- `index.ts` — barrel export
+Переиспользую `reportHelpers.ts` (PRINT_COLORS, getSeverityLabel, formatDate, truncate, шрифты Roboto). Для Word — те же стили `W` из `generateWordReport`.
 
-**Что меняется в `MarketplaceAuditResult.tsx`:**
-- Удаляются inline-секции и `ScoreCard`/`Label` хелперы
-- Page становится тонким composer'ом: `<Header/> → <Hero/> → <ScoreCards/> → <IssuesByImpact/> → <RewriteSuggestions/> → <CompetitorGap/> → <KeywordCoverage/> → <PaywallCTA/> → <Footer/>` с null-safe условиями
-- Loading/error → `<MarketplaceLoadingCard/>` / `<MarketplaceErrorCard/>`
+**Структура отчёта** (одинаково в PDF и Word):
+1. **Шапка** — OWNDEV · Аудит карточки {Платформа} · {дата}
+2. **Hero** — название товара, категория, ссылка/SKU, image (только PDF)
+3. **Total + 4 sub-scores** — таблица с весами (`Content 30% · Search 30% · Conversion 25% · Ads 15%`)
+4. **Score breakdown** — для каждого sub-score: список факторов (`name | weight | score | reason`)
+5. **AI summary** — текстовый блок
+6. **Issues по impact** — таблица (severity badge | title | found | how_to_fix)
+7. **Rewrite suggestions** — newTitle, newDescription, bullets, addKeywords, removeWords
+8. **Keyword coverage** — covered / missing chips, coveragePct
+9. **Competitor gap** — weakerThan / strongerThan / priorityAdds (если есть)
+10. **Footer** — `Сделано ❤️ в России 🇷🇺` (per memory)
 
-### Часть 2 — Backend: добавить 2 LLM-промпта (Phase 1)
+**Создаю** `src/components/marketplace/MarketplaceDownloadButtons.tsx` — по образцу `DownloadButtons` site-check:
+- 2 кнопки: PDF / Word
+- toast-уведомления "Генерируем..." → "Готово"
+- состояния `isGeneratingPdf`/`isGeneratingWord` с `Loader2`
+- имя файла: `owndev_marketplace_${platform}_${slug}.pdf`
 
-**`owndev-backend/src/services/MarketplaceAudit/llm/prompts.ts`** — добавить:
+**Меняю** `MarketplacePaywallCTA.tsx`:
+- Принимает опциональный `result?: ResultResponse`
+- Если result передан — рендерит `<MarketplaceDownloadButtons result={result} />` над текущими кнопками
+- Текст хедера меняется на "Скачать отчёт" (а нижние кнопки "Связаться с нами" / "Проверить ещё карточку" остаются)
 
-1. `buildKeywordFitMessages(p)` + `KEYWORD_FIT_TOOL`
-   - Вход: title, description, category, attributes
-   - Выход: `{ covered: string[], missing: string[], coveragePct: number, suggestedKeywords: string[] }`
-   - Цель: LLM знает специфику ниши и даёт реальные ключи категории
+**Меняю** `MarketplaceAuditResult.tsx`:
+- Передаю `result` в `<MarketplacePaywallCTA result={result} />`
 
-2. `buildCompetitorGapMessages(p, competitors)` + `COMPETITOR_GAP_TOOL`
-   - Вход: наша карточка (title/desc/attrs) + список manual competitor URL'ов (только URL — без скрейпа на этом этапе) ИЛИ список названий, если есть
-   - Выход: `{ weakerThan: [{aspect, evidence}], strongerThan: [{aspect, evidence}], priorityAdds: string[] }`
-   - Если конкурентов нет — секция вообще не запускается (фронт показывает empty state)
+### Часть 2 — Score Breakdown modal
 
-**`owndev-backend/src/types/marketplaceAudit.ts`** — расширить:
-- `CompetitorBlock` оставляем как есть (используется для списка URL)
-- Новый `CompetitorGapBlock { weakerThan: GapItem[]; strongerThan: GapItem[]; priorityAdds: string[]; source: 'llm'|'fallback' }`
-- В `MarketplaceAuditRow` добавить `competitor_gap_json` (или храним внутри `competitors_json` как `{ list: CompetitorBlock[]; gap: CompetitorGapBlock | null }`) — выберу второй вариант, чтобы не делать миграцию.
-- Расширить `KeywordsBlock` полем `source: 'llm'|'naive'` (опционально, default 'naive')
+**Создаю** `src/components/marketplace/MarketplaceScoreModal.tsx` — по образцу `ScoreDetailsModal`:
+- Принимает `{ type: 'total'|'content'|'search'|'conversion'|'ads', score, breakdown: BreakdownJson, onClose }`
+- Для `type='total'` — рендерит формулу:
+  ```
+  0.30·Content + 0.30·Search + 0.25·Conversion + 0.15·AdReadiness
+  ```
+  с табличкой Component × Weight = Earned, итог снизу
+- Для sub-score (`content`/`search`/`conversion`/`ads`) — таблица факторов из `breakdown[type].factors`:
+  - колонки: Фактор (name + reason) | Вес | Балл | статус-иконка (pass/partial/fail по score: ≥80 / 50–79 / <50)
+- Внизу: `missingData` — chips «Недостаточно данных: X»
+- Esc + клик по overlay для закрытия, mobile bottom-sheet (как в site-check)
 
-**`src/lib/marketplace-audit-types.ts`** — зеркалить эти изменения.
+**Меняю** `MarketplaceScoreCards.tsx`:
+- Каждая `ScoreCard` становится кликабельной (`role="button"`, hover-эффект, cursor-pointer)
+- Локальный state `const [openType, setOpenType] = useState<...|null>(null)`
+- При клике открываем `<MarketplaceScoreModal type={openType} score={...} breakdown={scores.breakdown} onClose={() => setOpenType(null)} />`
+- Добавляю tooltip-подсказку "Нажми, чтобы увидеть как рассчитано" под заголовком "Оценка карточки"
 
-**`owndev-backend/src/services/MarketplaceAudit/index.ts`** — обновить оркестратор:
-- После `content_audit` + до `rewrite` запустить параллельно `keyword_fit` и (если есть competitorUrls) `competitor_gap`
-- Если `keyword_fit` успешен → перезаписать `keywords` (covered/missing/coveragePct/source='llm') + добавить suggested в `search.missing` для последующего rewrite
-- Если `competitor_gap` успешен → положить в `competitors` структуру `{ list, gap }`
-- Все try/catch + best-effort (не валим аудит при сбое LLM)
-
-**`owndev-backend/src/db/queries/marketplaceAudits.ts`** + route `/result/:id`:
-- Поле `competitors_json` теперь хранит `{ list: CompetitorBlock[]; gap: CompetitorGapBlock | null }` — обратная совместимость через детект формы (если массив — старый формат, оборачиваем `{ list: ..., gap: null }`)
-
-### Часть 3 — Component tree (итог)
-
-```text
-MarketplaceAuditResult
-├── Header
-├── EmptyStates.MarketplaceErrorCard         (если error)
-├── EmptyStates.MarketplaceLoadingCard       (если !result)
-└── (result) :
-    ├── MarketplaceHero
-    ├── MarketplaceScoreCards
-    ├── IssuesByImpact          (если issues.length)
-    ├── RewriteSuggestions      (если recommendations.newTitle)
-    ├── CompetitorGap           (если competitors.gap || competitors.list)
-    ├── KeywordCoverage         (если keywords.* > 0)
-    ├── MarketplacePaywallCTA
-└── Footer
-```
-
-### Часть 4 — Что НЕ трогаю
-- Парсеры, scoring engine, rule engine, queue/worker, миграцию (всё работает)
-- Routing, App.tsx, Header
+### Часть 3 — Что НЕ трогаю
+- Backend (всё уже отдаёт `breakdown` в `scores_json`)
+- Парсеры, scoring engine, routes, worker, миграцию
 - Site Check / GEO Rating / Site Formula
-- Никаких новых таблиц / миграций — всё в существующих jsonb-полях
+- `Header.tsx`, mobile drawer
+- Существующие `generatePdfReport.ts` / `generateWordReport.ts` (только читаем как референс)
+- `reportHelpers.ts` — только импорты
 
-### Часть 5 — Деплой после approve
-1. Frontend live сразу (Lovable build)
-2. Backend требует `git pull && npm run build && pm2 restart owndev-backend` на сервере (как и в прошлый раз)
+### Файлы — итог
+
+**Создать (4):**
+- `src/lib/generateMarketplaceReport.ts`
+- `src/components/marketplace/MarketplaceDownloadButtons.tsx`
+- `src/components/marketplace/MarketplaceScoreModal.tsx`
+- (обновить) `src/components/marketplace/index.ts` — barrel
+
+**Править (3):**
+- `src/components/marketplace/MarketplacePaywallCTA.tsx`
+- `src/components/marketplace/MarketplaceScoreCards.tsx`
+- `src/pages/MarketplaceAuditResult.tsx`
+
+### Edge cases / null-safe
+- Если `result.scores.breakdown` пустой → modal показывает «Детальная разбивка недоступна»
+- Если `recommendations.newTitle` пустой → секция Rewrite в отчёте скрывается
+- Если `competitors.gap` отсутствует → секция Competitor Gap в отчёте скрывается
+- Все массивы через `?? []`, все строки через `?? ''`
+- В download-кнопках: try/catch + error toast
+
+### Без рефакторинга
+Никаких изменений в типах, API контрактах, БД. Используем существующий `ResultResponse` как есть.
 
