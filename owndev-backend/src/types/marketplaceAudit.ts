@@ -61,7 +61,6 @@ export interface RuleDef {
   how_to_fix: string;
   example_fix?: string;
   visible_in_preview: boolean;
-  // condition selectors (minimal MVP — we hardcode evaluators in ruleEngine.ts)
   check: string;
   threshold?: number;
 }
@@ -78,13 +77,14 @@ export interface ParsedProduct {
   reviewsCount?: number;
   rating?: number;
   url?: string;
-  sourceData?: Record<string, any>; // raw payload for debug
+  sourceData?: Record<string, any>;
 }
 
 export interface KeywordsBlock {
   covered: string[];
   missing: string[];
   coveragePct: number;
+  source?: 'llm' | 'naive';
 }
 
 export interface CompetitorBlock {
@@ -93,6 +93,23 @@ export interface CompetitorBlock {
   score: number;
   gap: string[];
 }
+
+export interface GapItem {
+  aspect: string;
+  evidence: string;
+}
+
+export interface CompetitorGapBlock {
+  weakerThan: GapItem[];
+  strongerThan: GapItem[];
+  priorityAdds: string[];
+  source: 'llm' | 'fallback';
+}
+
+/** Stored shape inside competitors_json — supports legacy + new structured form. */
+export type CompetitorsField =
+  | CompetitorBlock[]
+  | { list: CompetitorBlock[]; gap: CompetitorGapBlock | null };
 
 export interface RecommendationsBlock {
   newTitle: string;
@@ -125,7 +142,7 @@ export interface MarketplaceAuditRow {
   scores_json: ScoresJson | Record<string, never>;
   issues_json: MarketplaceIssue[];
   keywords_json: KeywordsBlock | Record<string, never>;
-  competitors_json: CompetitorBlock[];
+  competitors_json: CompetitorsField;
   recommendations_json: RecommendationsBlock | Record<string, never>;
   ai_summary: string | null;
   error_msg: string | null;
