@@ -8,10 +8,21 @@
  * - На owndev.ru и localhost → relative /api (через nginx / vite proxy)
  * - VITE_API_BASE_URL имеет приоритет, если задан явно
  */
-const DEFAULT_API_BASE =
-  typeof window !== 'undefined' && window.location.hostname.endsWith('.lovable.app')
-    ? 'https://owndev.ru/api'
-    : '/api';
+function detectApiBase(): string {
+  if (typeof window === 'undefined') return '/api';
+  const host = window.location.hostname;
+  // Lovable preview / sandbox / published — backend живёт на owndev.ru
+  if (
+    host.endsWith('.lovable.app') ||
+    host.endsWith('.lovableproject.com') ||
+    host.endsWith('.lovable.dev')
+  ) {
+    return 'https://owndev.ru/api';
+  }
+  return '/api';
+}
+
+const DEFAULT_API_BASE = detectApiBase();
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE;
 export const API_VERSION = 'v1';

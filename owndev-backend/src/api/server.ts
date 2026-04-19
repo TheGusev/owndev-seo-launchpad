@@ -13,6 +13,8 @@ const CORS_ORIGINS: (string | RegExp)[] = [
   'https://owndev.ru',
   'https://www.owndev.ru',
   /\.lovable\.app$/,
+  /\.lovableproject\.com$/,
+  /\.lovable\.dev$/,
   'http://localhost:5173',
   'http://localhost:8080',
   'http://localhost:3000',
