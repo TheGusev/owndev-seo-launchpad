@@ -1,0 +1,156 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "MA-C-001",
+      "module": "content",
+      "severity": "high",
+      "impact_score": 12,
+      "title": "Слишком короткий заголовок",
+      "check": "title_min_length",
+      "threshold": 40,
+      "why_it_matters": "Короткий title теряет ключевые слова и снижает шансы попасть в выдачу маркетплейса.",
+      "how_to_fix": "Расширьте заголовок до 60–100 символов: бренд + ключевая характеристика + назначение.",
+      "example_fix": "Куртка зимняя мужская водонепроницаемая на флисе, размеры S–XXL",
+      "visible_in_preview": true
+    },
+    {
+      "id": "MA-C-002",
+      "module": "content",
+      "severity": "high",
+      "impact_score": 10,
+      "title": "Слишком короткое описание",
+      "check": "description_min_length",
+      "threshold": 300,
+      "why_it_matters": "Описание < 300 символов не покрывает поисковые запросы и сценарии использования.",
+      "how_to_fix": "Опишите выгоды, материалы, размеры, сценарий использования, ответы на частые вопросы.",
+      "visible_in_preview": true
+    },
+    {
+      "id": "MA-C-003",
+      "module": "conversion",
+      "severity": "critical",
+      "impact_score": 18,
+      "title": "Недостаточно фотографий",
+      "check": "images_min_count",
+      "threshold": 3,
+      "why_it_matters": "Карточки с 1–2 фото проигрывают по конверсии в 2–3 раза.",
+      "how_to_fix": "Добавьте минимум 5 фото: главное, ракурсы, инфографика, размеры, lifestyle.",
+      "visible_in_preview": true
+    },
+    {
+      "id": "MA-C-004",
+      "module": "conversion",
+      "severity": "medium",
+      "impact_score": 7,
+      "title": "Мало фотографий для топа",
+      "check": "images_optimal_count",
+      "threshold": 7,
+      "why_it_matters": "У карточек в топе обычно 7+ фото. Меньше — вы выглядите слабее визуально.",
+      "how_to_fix": "Добавьте инфографику, видео, фото lifestyle и в использовании.",
+      "visible_in_preview": false
+    },
+    {
+      "id": "MA-C-005",
+      "module": "content",
+      "severity": "medium",
+      "impact_score": 6,
+      "title": "Мало заполненных характеристик",
+      "check": "attributes_min_count",
+      "threshold": 8,
+      "why_it_matters": "Маркетплейс использует характеристики для фильтров и поиска. Без них вас не найдут.",
+      "how_to_fix": "Заполните все доступные характеристики категории, особенно цвет, размер, материал, бренд.",
+      "visible_in_preview": true
+    },
+    {
+      "id": "MA-S-001",
+      "module": "search",
+      "severity": "high",
+      "impact_score": 15,
+      "title": "Категория не отражена в заголовке",
+      "check": "title_contains_category",
+      "why_it_matters": "Без названия категории в title карточка не попадает в категорийный поиск.",
+      "how_to_fix": "Добавьте в начало title название товара/категории (например, «Куртка», «Кроссовки»).",
+      "visible_in_preview": true
+    },
+    {
+      "id": "MA-S-002",
+      "module": "search",
+      "severity": "high",
+      "impact_score": 14,
+      "title": "Низкое покрытие ключевых слов",
+      "check": "keywords_coverage",
+      "threshold": 30,
+      "why_it_matters": "Менее 30% базовых ключей в title+описании = невидимость в поиске маркетплейса.",
+      "how_to_fix": "Добавьте 5–10 релевантных запросов в описание естественным языком.",
+      "visible_in_preview": true
+    },
+    {
+      "id": "MA-S-003",
+      "module": "search",
+      "severity": "medium",
+      "impact_score": 8,
+      "title": "Отсутствуют синонимы и варианты написания",
+      "check": "synonyms_present",
+      "why_it_matters": "Покупатели ищут одно и то же десятками формулировок. Без синонимов теряются показы.",
+      "how_to_fix": "Включите 2–3 синонима: «куртка / парка / пуховик», «кроссовки / кеды».",
+      "visible_in_preview": false
+    },
+    {
+      "id": "MA-K-001",
+      "module": "ads",
+      "severity": "low",
+      "impact_score": 5,
+      "title": "Дубли слов в заголовке",
+      "check": "title_duplicates",
+      "why_it_matters": "Повторы слов снижают релевантность и выглядят как спам для маркетплейса.",
+      "how_to_fix": "Уберите повторяющиеся слова, замените их синонимами.",
+      "visible_in_preview": false
+    },
+    {
+      "id": "MA-A-001",
+      "module": "ads",
+      "severity": "high",
+      "impact_score": 15,
+      "title": "Запрещённые рекламные слова",
+      "check": "forbidden_words",
+      "why_it_matters": "Слова «лучший», «№1», «гарантированно» нарушают правила рекламы и могут привести к блокировке.",
+      "how_to_fix": "Замените на проверяемые формулировки: «по отзывам покупателей», «в нашей категории».",
+      "visible_in_preview": true
+    },
+    {
+      "id": "MA-A-002",
+      "module": "ads",
+      "severity": "medium",
+      "impact_score": 6,
+      "title": "Title слишком длинный для рекламных форматов",
+      "check": "title_max_length",
+      "threshold": 120,
+      "why_it_matters": "Заголовки > 120 символов обрезаются в большинстве рекламных слотов.",
+      "how_to_fix": "Сократите до 100–120 символов, ключи переместите в начало.",
+      "visible_in_preview": false
+    },
+    {
+      "id": "MA-T-001",
+      "module": "technical",
+      "severity": "medium",
+      "impact_score": 8,
+      "title": "Нет видео в карточке",
+      "check": "video_present",
+      "why_it_matters": "Видео повышает конверсию на 20–40% и время на странице.",
+      "how_to_fix": "Добавьте короткое видео (15–30 сек) с обзором и ключевыми сценариями.",
+      "visible_in_preview": false
+    },
+    {
+      "id": "MA-T-002",
+      "module": "technical",
+      "severity": "low",
+      "impact_score": 4,
+      "title": "Описание без структуры (нет абзацев / маркеров)",
+      "check": "description_structured",
+      "why_it_matters": "Стена текста плохо читается. Покупатель не находит ответ и уходит.",
+      "how_to_fix": "Разбейте описание на блоки: преимущества, состав, размеры, рекомендации.",
+      "visible_in_preview": false
+    }
+  ]
+}
