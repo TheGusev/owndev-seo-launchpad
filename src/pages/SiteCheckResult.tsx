@@ -160,7 +160,7 @@ const SiteCheckResult = () => {
   return (
     <>
       <Helmet>
-        <title>Результат проверки - {data.url} | OwnDev</title>
+        <title>{`Результат проверки - ${data.url} | OwnDev`}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <Header />

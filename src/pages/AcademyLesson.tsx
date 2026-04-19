@@ -104,7 +104,7 @@ const AcademyLesson = () => {
   return (
     <>
       <Helmet>
-        <title>{lesson.title} — GEO Academy | OWNDEV</title>
+        <title>{`${lesson.title} — GEO Academy | OWNDEV`}</title>
         <meta name="description" content={lesson.description || `Урок ${lesson.lesson_number}: ${lesson.title}`} />
         <link rel="canonical" href={`https://owndev.ru/academy/${moduleSlug}/${lessonSlug}`} />
         <script type="application/ld+json">{JSON.stringify(lessonLd)}</script>
