@@ -53,7 +53,7 @@ export default function MarketplaceAuditResult() {
             <RewriteSuggestions recommendations={result.recommendations} />
             <CompetitorGap competitors={result.competitors} />
             <KeywordCoverage keywords={result.keywords} />
-            <MarketplacePaywallCTA />
+            <MarketplacePaywallCTA result={result} />
           </div>
         )}
       </main>
