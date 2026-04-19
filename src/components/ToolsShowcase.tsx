@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy } from "lucide-react";
+import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const tools = [
   { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check" },
+  { icon: ShoppingBag, name: "Аудит карточек WB / Ozon", description: "AI-аудит карточки маркетплейса: контент, поиск, конверсия и реклама", slug: "marketplace-audit", external: true },
   { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor" },
   { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis" },
   { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker" },
@@ -75,7 +76,9 @@ const ToolsShowcase = () => {
         })()}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-12">
-          {tools.slice(1).map((tool, i) => (
+          {tools.slice(1).map((tool, i) => {
+            const href = (tool as any).external ? `/${tool.slug}` : `/tools/${tool.slug}`;
+            return (
             <motion.div
               key={tool.slug}
               initial={{ opacity: 0, y: 30 }}
@@ -83,7 +86,7 @@ const ToolsShowcase = () => {
               transition={{ duration: 0.4, delay: 0.05 * i }}
             >
               <Link
-                to={`/tools/${tool.slug}`}
+                to={href}
                 className="glass rounded-2xl p-5 flex flex-col h-full card-hover block border border-transparent hover:border-primary/30 transition-colors duration-200"
               >
                 <div className="p-2.5 rounded-xl bg-card inline-block mb-3 self-start">
@@ -94,7 +97,8 @@ const ToolsShowcase = () => {
                 <span className="text-primary text-sm font-medium">Открыть →</span>
               </Link>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="text-center">
