@@ -51,7 +51,7 @@ export async function saveAuditResult(
     scores_json: any;
     issues_json: any[];
     keywords_json: any;
-    competitors_json: any[];
+    competitors_json: any;
     recommendations_json: any;
     ai_summary: string;
   },

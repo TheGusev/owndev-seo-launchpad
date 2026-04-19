@@ -69,6 +69,7 @@ export interface KeywordsBlock {
   covered: string[];
   missing: string[];
   coveragePct: number;
+  source?: 'llm' | 'naive';
 }
 
 export interface CompetitorBlock {
@@ -77,6 +78,26 @@ export interface CompetitorBlock {
   score: number;
   gap: string[];
 }
+
+export interface GapItem {
+  aspect: string;
+  evidence: string;
+}
+
+export interface CompetitorGapBlock {
+  weakerThan: GapItem[];
+  strongerThan: GapItem[];
+  priorityAdds: string[];
+  source: 'llm' | 'fallback';
+}
+
+/**
+ * Backend stores competitors_json either as legacy array (CompetitorBlock[])
+ * or as structured object { list, gap }. Frontend handles both.
+ */
+export type CompetitorsField =
+  | CompetitorBlock[]
+  | { list: CompetitorBlock[]; gap: CompetitorGapBlock | null };
 
 export interface RecommendationsBlock {
   newTitle: string;
@@ -126,7 +147,7 @@ export interface ResultResponse {
   scores: ScoresJson | Record<string, never>;
   issues: MarketplaceIssue[];
   keywords: KeywordsBlock;
-  competitors: CompetitorBlock[];
+  competitors: CompetitorsField;
   recommendations: RecommendationsBlock | Record<string, never>;
   ai_summary: string;
   meta: { created_at: string; updated_at: string; rules_version: string };

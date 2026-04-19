@@ -9,6 +9,18 @@ import {
 } from '../../db/queries/marketplaceAudits.js';
 import { logger } from '../../utils/logger.js';
 
+/** Backwards-compat: legacy rows store competitors as array; new ones as { list, gap }. */
+function normalizeCompetitorsField(raw: any): { list: any[]; gap: any | null } {
+  if (Array.isArray(raw)) return { list: raw, gap: null };
+  if (raw && typeof raw === 'object') {
+    return {
+      list: Array.isArray(raw.list) ? raw.list : [],
+      gap: raw.gap ?? null,
+    };
+  }
+  return { list: [], gap: null };
+}
+
 const StartSchema = z.object({
   platform: z.enum(['wb', 'ozon']),
   inputType: z.enum(['url', 'sku', 'manual']),
@@ -144,7 +156,7 @@ export async function marketplaceAuditRoutes(app: FastifyInstance): Promise<void
       scores: row.scores_json ?? {},
       issues: Array.isArray(row.issues_json) ? row.issues_json : [],
       keywords: row.keywords_json ?? { covered: [], missing: [], coveragePct: 0 },
-      competitors: Array.isArray(row.competitors_json) ? row.competitors_json : [],
+      competitors: normalizeCompetitorsField(row.competitors_json),
       recommendations: row.recommendations_json ?? {},
       ai_summary: row.ai_summary ?? '',
       meta: {

@@ -7,6 +7,8 @@ import type {
   MarketplaceIssue,
   KeywordsBlock,
   CompetitorBlock,
+  CompetitorGapBlock,
+  CompetitorsField,
   RecommendationsBlock,
 } from '../../types/marketplaceAudit.js';
 import { parseWb } from './parsers/wbParser.js';
@@ -24,6 +26,10 @@ import {
   CONTENT_AUDIT_TOOL,
   buildRewriteMessages,
   REWRITE_TOOL,
+  buildKeywordFitMessages,
+  KEYWORD_FIT_TOOL,
+  buildCompetitorGapMessages,
+  COMPETITOR_GAP_TOOL,
 } from './llm/prompts.js';
 import { buildManualCompetitors } from './competitorService.js';
 import { logger } from '../../utils/logger.js';
@@ -40,7 +46,7 @@ export interface OrchestratorResult {
   scores: ScoresJson;
   issues: MarketplaceIssue[];
   keywords: KeywordsBlock;
-  competitors: CompetitorBlock[];
+  competitors: CompetitorsField;
   recommendations: RecommendationsBlock;
   ai_summary: string;
   rules_version: string;
@@ -93,45 +99,108 @@ export async function runMarketplaceAudit(
   const scores = calcTotalScore({ content, search: search.sub, conversion, ads });
   let issues = runRuleEngine(product, { coveragePct: search.coveragePct });
 
-  const keywords: KeywordsBlock = {
+  let keywords: KeywordsBlock = {
     covered: search.covered,
     missing: search.missing,
     coveragePct: search.coveragePct,
+    source: 'naive',
   };
-  const competitors = buildManualCompetitors(input.manual?.competitorUrls);
+  const competitorList: CompetitorBlock[] = buildManualCompetitors(input.manual?.competitorUrls);
+  let competitorGap: CompetitorGapBlock | null = null;
 
-  // ─── LLM enrichment (best-effort, non-blocking on failure) ───
-  await onProgress?.('llm', 75);
-  let recommendations: RecommendationsBlock = fallbackRewrite(product, search.missing);
-  try {
-    const contentAudit = await callJsonLlm<{ issues: any[]; strengths: string[] }>({
+  // ─── LLM enrichment (best-effort, parallel) ───
+  await onProgress?.('llm', 70);
+
+  // Run content_audit + keyword_fit + (optionally) competitor_gap in parallel
+  const competitorUrls = input.manual?.competitorUrls?.filter(Boolean) ?? [];
+
+  const [contentAuditRes, keywordFitRes, competitorGapRes] = await Promise.allSettled([
+    callJsonLlm<{ issues: any[]; strengths: string[] }>({
       messages: buildContentAuditMessages(product),
       tool: CONTENT_AUDIT_TOOL,
       toolName: 'submit_content_audit',
       apiKey,
-    });
-    if (contentAudit?.issues?.length) {
-      const llmIssues: MarketplaceIssue[] = contentAudit.issues.map((it: any, idx: number) => ({
-        id: `MA-LLM-${String(idx + 1).padStart(3, '0')}`,
-        module: it.module ?? 'content',
-        severity: it.severity ?? 'medium',
-        title: String(it.title ?? 'AI-замечание'),
-        found: String(it.found ?? ''),
-        why_it_matters: String(it.why_it_matters ?? ''),
-        how_to_fix: String(it.how_to_fix ?? ''),
-        impact_score: Math.max(1, Math.min(20, Number(it.impact_score ?? 6))),
-        visible_in_preview: false,
-        source: 'llm',
-      }));
-      issues = [...issues, ...llmIssues];
-    }
-  } catch (e) {
-    logger.warn('MA_ORCH', `content audit LLM failed: ${(e as Error).message}`);
+    }),
+    callJsonLlm<{
+      covered: string[];
+      missing: string[];
+      coveragePct: number;
+      suggestedKeywords: string[];
+    }>({
+      messages: buildKeywordFitMessages(product),
+      tool: KEYWORD_FIT_TOOL,
+      toolName: 'submit_keyword_fit',
+      apiKey,
+    }),
+    competitorUrls.length > 0
+      ? callJsonLlm<{
+          weakerThan: { aspect: string; evidence: string }[];
+          strongerThan: { aspect: string; evidence: string }[];
+          priorityAdds: string[];
+        }>({
+          messages: buildCompetitorGapMessages(product, competitorUrls),
+          tool: COMPETITOR_GAP_TOOL,
+          toolName: 'submit_competitor_gap',
+          apiKey,
+        })
+      : Promise.resolve(null),
+  ]);
+
+  // content audit issues
+  if (contentAuditRes.status === 'fulfilled' && contentAuditRes.value?.issues?.length) {
+    const llmIssues: MarketplaceIssue[] = contentAuditRes.value.issues.map((it: any, idx: number) => ({
+      id: `MA-LLM-${String(idx + 1).padStart(3, '0')}`,
+      module: it.module ?? 'content',
+      severity: it.severity ?? 'medium',
+      title: String(it.title ?? 'AI-замечание'),
+      found: String(it.found ?? ''),
+      why_it_matters: String(it.why_it_matters ?? ''),
+      how_to_fix: String(it.how_to_fix ?? ''),
+      impact_score: Math.max(1, Math.min(20, Number(it.impact_score ?? 6))),
+      visible_in_preview: false,
+      source: 'llm',
+    }));
+    issues = [...issues, ...llmIssues];
+  } else if (contentAuditRes.status === 'rejected') {
+    logger.warn('MA_ORCH', `content audit LLM failed: ${(contentAuditRes.reason as Error)?.message}`);
   }
 
+  // keyword fit override
+  let mergedMissingForRewrite = search.missing;
+  if (keywordFitRes.status === 'fulfilled' && keywordFitRes.value) {
+    const kf = keywordFitRes.value;
+    const covered = Array.isArray(kf.covered) ? kf.covered.filter(Boolean).slice(0, 30) : [];
+    const missing = Array.isArray(kf.missing) ? kf.missing.filter(Boolean).slice(0, 30) : [];
+    const coveragePct = Number.isFinite(kf.coveragePct)
+      ? Math.max(0, Math.min(100, Math.round(kf.coveragePct)))
+      : (covered.length + missing.length > 0
+          ? Math.round((covered.length / (covered.length + missing.length)) * 100)
+          : 0);
+    keywords = { covered, missing, coveragePct, source: 'llm' };
+    const suggested = Array.isArray(kf.suggestedKeywords) ? kf.suggestedKeywords : [];
+    mergedMissingForRewrite = Array.from(new Set([...suggested, ...missing, ...search.missing])).slice(0, 16);
+  } else if (keywordFitRes.status === 'rejected') {
+    logger.warn('MA_ORCH', `keyword fit LLM failed: ${(keywordFitRes.reason as Error)?.message}`);
+  }
+
+  // competitor gap
+  if (competitorGapRes.status === 'fulfilled' && competitorGapRes.value) {
+    const cg = competitorGapRes.value;
+    competitorGap = {
+      weakerThan: Array.isArray(cg.weakerThan) ? cg.weakerThan.slice(0, 6) : [],
+      strongerThan: Array.isArray(cg.strongerThan) ? cg.strongerThan.slice(0, 6) : [],
+      priorityAdds: Array.isArray(cg.priorityAdds) ? cg.priorityAdds.slice(0, 8) : [],
+      source: 'llm',
+    };
+  } else if (competitorGapRes.status === 'rejected') {
+    logger.warn('MA_ORCH', `competitor gap LLM failed: ${(competitorGapRes.reason as Error)?.message}`);
+  }
+
+  // rewrite (sequential — depends on enriched issues + missing keywords)
+  let recommendations: RecommendationsBlock = fallbackRewrite(product, mergedMissingForRewrite);
   try {
     const rewrite = await callJsonLlm<RecommendationsBlock & { bullets?: string[] }>({
-      messages: buildRewriteMessages(product, issues, search.missing),
+      messages: buildRewriteMessages(product, issues, mergedMissingForRewrite),
       tool: REWRITE_TOOL,
       toolName: 'submit_rewrite',
       apiKey,
@@ -157,7 +226,7 @@ export async function runMarketplaceAudit(
     scores,
     issues,
     keywords,
-    competitors,
+    competitors: { list: competitorList, gap: competitorGap },
     recommendations,
     ai_summary: summarize(scores, issues.length),
     rules_version: getRulesVersion(),

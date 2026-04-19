@@ -88,3 +88,113 @@ export const REWRITE_TOOL = {
     },
   },
 };
+
+// ─────────────────────────────────────────────────────────────────
+// keyword_fit — реальные ключи ниши, покрытие текстом карточки
+// ─────────────────────────────────────────────────────────────────
+export function buildKeywordFitMessages(p: ParsedProduct) {
+  const userPrompt = [
+    `Платформа: ${p.platform.toUpperCase()}`,
+    `Категория: ${p.category || 'не указана'}`,
+    `Заголовок: ${p.title}`,
+    `Описание: ${p.description.slice(0, 1500)}`,
+    `Характеристики: ${JSON.stringify(p.attributes ?? {}).slice(0, 800)}`,
+    '',
+    'Задача: ты эксперт по этой нише на маркетплейсе. Сгенерируй до 20 РЕАЛЬНЫХ ключевых запросов,',
+    'которые покупатели вводят при поиске такого товара (учти синонимы, типы, сценарии, бренд-агностичные).',
+    'Для каждого запроса определи: covered=true если он явно встречается в title+description+attributes, иначе missing.',
+    'coveragePct = round(covered.length / (covered.length + missing.length) * 100).',
+    'suggestedKeywords — топ-8 самых важных недостающих ключей для добавления в карточку.',
+  ].join('\n');
+  return [
+    { role: 'system' as const, content: SYSTEM_PROMPT },
+    { role: 'user' as const, content: userPrompt },
+  ];
+}
+
+export const KEYWORD_FIT_TOOL = {
+  type: 'function' as const,
+  function: {
+    name: 'submit_keyword_fit',
+    description: 'Возвращает покрытие ключей ниши и приоритетные ключи к добавлению.',
+    parameters: {
+      type: 'object',
+      properties: {
+        covered: { type: 'array', items: { type: 'string' } },
+        missing: { type: 'array', items: { type: 'string' } },
+        coveragePct: { type: 'number' },
+        suggestedKeywords: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['covered', 'missing', 'coveragePct', 'suggestedKeywords'],
+      additionalProperties: false,
+    },
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────
+// competitor_gap — анализ относительно URL'ов конкурентов
+// ─────────────────────────────────────────────────────────────────
+export function buildCompetitorGapMessages(p: ParsedProduct, competitorUrls: string[]) {
+  const userPrompt = [
+    `Платформа: ${p.platform.toUpperCase()}`,
+    `Категория: ${p.category || 'не указана'}`,
+    `НАША карточка:`,
+    `  Заголовок: ${p.title}`,
+    `  Описание: ${p.description.slice(0, 1200)}`,
+    `  Характеристики: ${JSON.stringify(p.attributes ?? {}).slice(0, 600)}`,
+    `  Фото: ${p.images?.length ?? 0} шт`,
+    '',
+    `Ссылки на конкурентов в этой категории (${competitorUrls.length}):`,
+    ...competitorUrls.slice(0, 5).map((u, i) => `  ${i + 1}. ${u}`),
+    '',
+    'Задача: ты эксперт по нише. На основе ТИПИЧНЫХ карточек по таким URL и знаний о категории сделай gap-анализ:',
+    '- weakerThan: 2-4 аспекта где наша карточка слабее (заголовок/описание/атрибуты/визуал/доверие). aspect+evidence.',
+    '- strongerThan: 1-3 аспекта где наша карточка сильнее. aspect+evidence.',
+    '- priorityAdds: 3-6 конкретных элементов (атрибут, фраза, блок) которые срочно добавить.',
+    'Если данных мало — пиши осторожно, evidence без выдуманных цифр.',
+  ].join('\n');
+  return [
+    { role: 'system' as const, content: SYSTEM_PROMPT },
+    { role: 'user' as const, content: userPrompt },
+  ];
+}
+
+export const COMPETITOR_GAP_TOOL = {
+  type: 'function' as const,
+  function: {
+    name: 'submit_competitor_gap',
+    description: 'Возвращает gap-анализ относительно конкурентов.',
+    parameters: {
+      type: 'object',
+      properties: {
+        weakerThan: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              aspect: { type: 'string' },
+              evidence: { type: 'string' },
+            },
+            required: ['aspect', 'evidence'],
+            additionalProperties: false,
+          },
+        },
+        strongerThan: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              aspect: { type: 'string' },
+              evidence: { type: 'string' },
+            },
+            required: ['aspect', 'evidence'],
+            additionalProperties: false,
+          },
+        },
+        priorityAdds: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['weakerThan', 'strongerThan', 'priorityAdds'],
+      additionalProperties: false,
+    },
+  },
+};
