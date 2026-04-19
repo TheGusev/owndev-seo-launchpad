@@ -16,7 +16,7 @@ export interface RequestUser {
 const ANON_USER: RequestUser = {
   id: 'anon',
   email: '',
-  plan: 'free',
+  plan: 'anon',
   api_key: '',
   credits_used: 0,
   credits_limit: 5,

@@ -5,17 +5,30 @@ import type { Plan } from '../../types/user.js';
 const WINDOW_SEC = 60;
 
 const PLAN_LIMITS: Record<string, number> = {
-  anon: 10,
-  free: 20,
+  anon: 60,
+  free: 60,
   solo: 200,
   pro: 200,
-  agency: 200,
+  agency: 500,
 };
 
+// Read-only / static config endpoints — no point rate-limiting these
+const SKIP_PATHS = new Set<string>([
+  '/health',
+  '/api/v1/site-formula/questions',
+  '/api/v1/site-formula/config-version',
+]);
+
 export async function rateLimitMiddleware(req: FastifyRequest, reply: FastifyReply) {
+  // Strip query string for matching
+  const path = (req.url || '').split('?')[0];
+  if (SKIP_PATHS.has(path)) {
+    return;
+  }
+
   const user = (req as any).user;
-  const plan: Plan | 'anon' = user?.plan ?? 'anon';
-  const maxRequests = PLAN_LIMITS[plan] ?? 10;
+  const plan: Plan = user?.plan ?? 'anon';
+  const maxRequests = PLAN_LIMITS[plan] ?? 60;
 
   const key = `rl:${plan}:${req.ip}`;
   const current = await redis.incr(key);
