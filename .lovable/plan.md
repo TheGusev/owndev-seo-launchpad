@@ -1,65 +1,54 @@
 
 
-## Настройка VITE_API_BASE_URL для работы Preview с боевым backend
+## CORS работает корректно — backend готов к Preview
 
-### Проблема
+### Результаты проверки
 
-Сейчас `src/lib/api/config.ts` использует `import.meta.env.VITE_API_BASE_URL || '/api'`. В Lovable Preview переменная не задана, поэтому фронт бьёт в `/api/v1/...` — это relative URL внутри `*.lovable.app`, где никакого backend нет. Site Formula падает с "Failed to load questions".
+1. **`src/api/server.ts:15`** — `/\.lovable\.app$/` присутствует ✓
+2. **`dist/api/server.js:14`** — regex доехал до собранного кода ✓
+3. **CORS preflight** на `OPTIONS /api/v1/site-formula/questions` с Origin `id-preview--...lovable.app`:
+   - `HTTP/1.1 204 No Content` ✓
+   - `access-control-allow-origin: https://id-preview--94bce625-b0b6-4f86-92cc-6cf024c7f7a1.lovable.app` ✓
+   - `access-control-allow-credentials: true` ✓
+   - `access-control-allow-methods: GET,HEAD,PUT,PATCH,POST,DELETE` ✓
 
-В production (owndev.ru) тот же relative `/api` работает корректно, потому что nginx проксирует `/api` → `localhost:3001` (backend pm2).
+Backend полностью готов принимать запросы из Lovable Preview.
 
-### Ограничения
+### Что осталось — финальный smoke-test в Preview
 
-1. **`.env` нельзя править** — он автогенерируется Lovable Cloud (содержит только Supabase-переменные, перечислены в системных правилах).
-2. Lovable не имеет UI-секрета `VITE_API_BASE_URL` для фронта — секреты доступны только для edge functions, а `VITE_*` инлайнится в build на этапе Vite.
-3. Значит единственный надёжный путь — **захардкодить fallback в код**, не ломая прод.
-
-### Решение
-
-Изменить `src/lib/api/config.ts`:
-
-```ts
-const DEFAULT_API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('.lovable.app')
-  ? 'https://owndev.ru/api'
-  : '/api';
-
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE;
+Открыть в браузере:
+```
+https://id-preview--94bce625-b0b6-4f86-92cc-6cf024c7f7a1.lovable.app/site-formula/wizard
 ```
 
-Логика:
-- На `*.lovable.app` (preview / published) → бьём напрямую в `https://owndev.ru/api` (cross-origin)
-- На `owndev.ru` и localhost → relative `/api` (через nginx / vite proxy) — поведение прода не меняется
-- `VITE_API_BASE_URL` из env по-прежнему имеет приоритет, если кто-то задаст явно
+Что должно произойти:
+1. Wizard загружается без белого экрана
+2. В DevTools Network: `GET https://owndev.ru/api/v1/site-formula/questions` → `200 OK`
+3. Появляются 4 шага с вопросами
+4. Заполнить → "Собрать архитектуру" → редирект на `/site-formula/preview?session=...`
+5. PreviewCard рендерится с данными от backend
+6. В консоли — никаких ошибок CORS / Invariant Violation
 
-### Требование к backend (CORS)
+### Если что-то не так
 
-Чтобы запросы с `*.lovable.app` к `owndev.ru` проходили, на backend должны быть разрешены эти origin'ы в CORS. Нужно проверить `owndev-backend/src/api/server.ts` — текущий список allowed origins. Если `lovable.app` там нет, добавлю в том же шаге:
+Возможные точки отказа после деплоя:
+- **`401 Unauthorized`** на `/questions` — значит `authMiddleware` блокирует анонимные запросы. В этом случае нужно проверить, что роуты `site-formula/questions`, `site-formula/sessions` помечены как public (без обязательного токена).
+- **`Mixed Content` warning** — не должен возникать, т.к. оба домена `https`.
+- **Endpoint 404** — маршрут не зарегистрирован в `server.ts` (но мы видели `siteFormulaRoutes` в коде, должно быть ок).
 
-```ts
-const allowedOrigins = [
-  'https://owndev.ru',
-  'https://www.owndev.ru',
-  /\.lovable\.app$/,  // preview + published
-  'http://localhost:8080',
-];
-```
+### План действий
 
-После правки backend нужен будет деплой на сервер (`git pull && npm run build && pm2 restart owndev-backend`) — это пользователь сделает вручную как обычно.
-
-### Что делаю в default mode
-
-1. `code--view owndev-backend/src/api/server.ts` — посмотреть текущий CORS
-2. Правлю `src/lib/api/config.ts` — добавляю auto-detect для `*.lovable.app`
-3. Если в CORS нет `lovable.app` — добавляю regex
-4. Сообщаю команду для деплоя backend
+В default mode:
+1. Открыть Preview через `browser--navigate_to_sandbox` на `/site-formula/wizard`
+2. Через `browser--read_console_logs` и `browser--list_network_requests` проверить, что:
+   - Нет ошибок в консоли
+   - Запрос `GET /api/v1/site-formula/questions` идёт на `owndev.ru` и возвращает 200
+3. Сделать скриншот wizard'а для подтверждения
+4. Если всё ок — задача закрыта. Если есть проблемы (например `401` на public-endpoint) — отдельным фиксом разберёмся с auth-логикой.
 
 ### Что НЕ трогаем
 
-- `.env` (автогенерируется)
-- `vite.config.ts` proxy (нужен только для локальной разработки)
-- Любую другую логику API — изменение точечное
-
-### После применения
-
-В Lovable Preview открыть `/site-formula/wizard` → должны загрузиться вопросы (запрос пойдёт на `https://owndev.ru/api/v1/site-formula/questions`) → пройти wizard → preview сгенерируется без ошибок.
+- Backend (всё работает)
+- Фронт config (auto-detect lovable.app уже в проде через билд Lovable)
+- Auth-middleware (трогаем только если выяснится, что он блокирует public routes)
 
