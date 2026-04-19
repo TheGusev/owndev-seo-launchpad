@@ -121,7 +121,7 @@ const BlogPost = () => {
   return (
     <>
       <Helmet>
-        <title>{post.title} | OWNDEV</title>
+        <title>{`${post.title} | OWNDEV`}</title>
         <meta name="description" content={post.description} />
         <link rel="canonical" href={`https://owndev.ru/blog/${post.slug}`} />
         <meta property="og:title" content={`${post.title} | OWNDEV`} />
