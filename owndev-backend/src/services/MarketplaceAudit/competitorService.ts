@@ -1,4 +1,4 @@
-import type { CompetitorBlock } from '../../../src/types/marketplaceAudit.js';
+import type { CompetitorBlock } from '../../types/marketplaceAudit.js';
 
 /**
  * Phase 1 MVP: only manual competitor URLs are honored.
