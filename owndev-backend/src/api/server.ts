@@ -9,9 +9,12 @@ import { authMiddleware } from './middleware/auth.js';
 import { rateLimitMiddleware } from './middleware/rateLimit.js';
 import { logger } from '../utils/logger.js';
 
-const CORS_ORIGINS = [
+const CORS_ORIGINS: (string | RegExp)[] = [
   'https://owndev.ru',
+  'https://www.owndev.ru',
+  /\.lovable\.app$/,
   'http://localhost:5173',
+  'http://localhost:8080',
   'http://localhost:3000',
 ];
 
