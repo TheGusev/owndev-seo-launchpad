@@ -5,6 +5,7 @@ import { sql, testConnection } from './db/client.js';
 import { startAuditWorker } from './workers/AuditWorker.js';
 import { startMonitorWorker } from './workers/MonitorWorker.js';
 import { startSiteCheckWorker } from './workers/SiteCheckWorker.js';
+import { startMarketplaceAuditWorker } from './workers/MarketplaceAuditWorker.js';
 import { MonitorService } from './services/MonitorService.js';
 import { logger } from './utils/logger.js';
 
@@ -24,7 +25,8 @@ async function main() {
   // Start workers
   const auditWorker = startAuditWorker();
   const monitorWorker = startMonitorWorker();
-      const siteCheckWorker = startSiteCheckWorker();
+  const siteCheckWorker = startSiteCheckWorker();
+  const marketplaceAuditWorker = startMarketplaceAuditWorker();
 
   // Schedule all due monitors via BullMQ delayed jobs
   const monitorService = new MonitorService();
@@ -37,6 +39,7 @@ async function main() {
     await auditWorker.close();
     await monitorWorker.close();
     await siteCheckWorker.close();
+    await marketplaceAuditWorker.close();
     await redis.quit();
     await sql.end();
     logger.info('BOOT', 'Shutdown complete');

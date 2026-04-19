@@ -1,4 +1,4 @@
-import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye, ClipboardList, Plug, LayoutTemplate } from "lucide-react";
+import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye, ClipboardList, Plug, LayoutTemplate, ShoppingBag } from "lucide-react";
 import { lazy, type ComponentType } from "react";
 
 export type ToolStatus = "active" | "coming_soon";
@@ -30,6 +30,21 @@ export const categories = [
 ];
 
 export const tools: ToolDef[] = [
+  // ===== MARKETPLACE AUDIT =====
+  {
+    id: "marketplace-audit", slug: "marketplace-audit",
+    name: "Аудит карточек WB и Ozon",
+    shortDesc: "AI-аудит карточки товара: контент, поиск, конверсия, готовность к рекламе — за 30 секунд",
+    category: "analysis", icon: ShoppingBag,
+    component: lazy(() => import("@/pages/MarketplaceAudit")),
+    gradient: "bg-gradient-to-br from-primary/20 to-fuchsia-950/40",
+    useCases: ["Аудит карточки Wildberries", "Аудит карточки Ozon", "Поиск точек роста и переписывание текстов"],
+    geoEnabled: false, status: "active",
+    customPath: "/marketplace-audit",
+    seoTitle: "Аудит карточек Wildberries и Ozon — бесплатно | OWNDEV",
+    seoDescription: "AI-аудит карточек товаров на WB и Ozon: оценка контента, поиска, конверсии и готовности к рекламе. Рекомендации по переписыванию.",
+    seoH1: "Аудит карточек товаров WB и Ozon",
+  },
   // ===== SITE FORMULA =====
   {
     id: "site-formula", slug: "site-formula",

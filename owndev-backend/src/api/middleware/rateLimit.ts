@@ -19,11 +19,20 @@ const SKIP_PATHS = new Set<string>([
   '/api/v1/site-formula/config-version',
 ]);
 
+// Path prefixes that should skip rate limit (e.g. polling endpoints)
+const SKIP_PREFIXES = [
+  '/api/v1/marketplace-audit/preview/',
+  '/api/v1/marketplace-audit/result/',
+];
+
 export async function rateLimitMiddleware(req: FastifyRequest, reply: FastifyReply) {
   // Strip query string for matching
   const path = (req.url || '').split('?')[0];
   if (SKIP_PATHS.has(path)) {
     return;
+  }
+  for (const pref of SKIP_PREFIXES) {
+    if (path.startsWith(pref)) return;
   }
 
   const user = (req as any).user;
