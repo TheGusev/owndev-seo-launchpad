@@ -1,89 +1,80 @@
 
 
-## PDF/Word экспорт + Score Breakdown modal для Marketplace Audit
+## Деплой не прошёл — нужно найти реальные пути на сервере
 
-### Часть 1 — Экспорт PDF/Word
+Из вывода видно:
+- `/var/www/owndev-backend` — **не существует**
+- `/var/www/owndev-frontend` — **не существует**
+- PM2 процесс `owndev-backend` есть и работает (uptime restart #206) — значит код где-то есть, просто не там, где я предположил
+- `psql` упал, потому что роль `root` не существует — надо либо `sudo -u postgres psql`, либо креды из `.env`
 
-**Создаю** `src/lib/generateMarketplaceReport.ts` — две функции в одном файле:
-- `generateMarketplacePdf(data)` — копия структуры `generatePdfReport`, адаптированная под marketplace-данные
-- `generateMarketplaceWord(data)` — то же, по образцу `generateWordReport`
+Мне нужно сначала **найти реальные пути** на сервере, и только потом дать корректные команды. Это чисто диагностические команды — ничего не ломают.
 
-Переиспользую `reportHelpers.ts` (PRINT_COLORS, getSeverityLabel, formatDate, truncate, шрифты Roboto). Для Word — те же стили `W` из `generateWordReport`.
+### Шаг 1 — найди реальный путь к backend
 
-**Структура отчёта** (одинаково в PDF и Word):
-1. **Шапка** — OWNDEV · Аудит карточки {Платформа} · {дата}
-2. **Hero** — название товара, категория, ссылка/SKU, image (только PDF)
-3. **Total + 4 sub-scores** — таблица с весами (`Content 30% · Search 30% · Conversion 25% · Ads 15%`)
-4. **Score breakdown** — для каждого sub-score: список факторов (`name | weight | score | reason`)
-5. **AI summary** — текстовый блок
-6. **Issues по impact** — таблица (severity badge | title | found | how_to_fix)
-7. **Rewrite suggestions** — newTitle, newDescription, bullets, addKeywords, removeWords
-8. **Keyword coverage** — covered / missing chips, coveragePct
-9. **Competitor gap** — weakerThan / strongerThan / priorityAdds (если есть)
-10. **Footer** — `Сделано ❤️ в России 🇷🇺` (per memory)
+Запусти на сервере:
 
-**Создаю** `src/components/marketplace/MarketplaceDownloadButtons.tsx` — по образцу `DownloadButtons` site-check:
-- 2 кнопки: PDF / Word
-- toast-уведомления "Генерируем..." → "Готово"
-- состояния `isGeneratingPdf`/`isGeneratingWord` с `Loader2`
-- имя файла: `owndev_marketplace_${platform}_${slug}.pdf`
+```bash
+# Найти, откуда запущен PM2 процесс
+pm2 describe owndev-backend | grep -E "exec cwd|script path|pm_cwd"
 
-**Меняю** `MarketplacePaywallCTA.tsx`:
-- Принимает опциональный `result?: ResultResponse`
-- Если result передан — рендерит `<MarketplaceDownloadButtons result={result} />` над текущими кнопками
-- Текст хедера меняется на "Скачать отчёт" (а нижние кнопки "Связаться с нами" / "Проверить ещё карточку" остаются)
+# Альтернатива — через ps
+ps -ef | grep owndev | grep -v grep
+```
 
-**Меняю** `MarketplaceAuditResult.tsx`:
-- Передаю `result` в `<MarketplacePaywallCTA result={result} />`
+Один из этих способов покажет реальный путь (например `/root/owndev-backend`, `/home/owndev/backend`, или что-то ещё).
 
-### Часть 2 — Score Breakdown modal
+### Шаг 2 — найди путь к frontend
 
-**Создаю** `src/components/marketplace/MarketplaceScoreModal.tsx` — по образцу `ScoreDetailsModal`:
-- Принимает `{ type: 'total'|'content'|'search'|'conversion'|'ads', score, breakdown: BreakdownJson, onClose }`
-- Для `type='total'` — рендерит формулу:
-  ```
-  0.30·Content + 0.30·Search + 0.25·Conversion + 0.15·AdReadiness
-  ```
-  с табличкой Component × Weight = Earned, итог снизу
-- Для sub-score (`content`/`search`/`conversion`/`ads`) — таблица факторов из `breakdown[type].factors`:
-  - колонки: Фактор (name + reason) | Вес | Балл | статус-иконка (pass/partial/fail по score: ≥80 / 50–79 / <50)
-- Внизу: `missingData` — chips «Недостаточно данных: X»
-- Esc + клик по overlay для закрытия, mobile bottom-sheet (как в site-check)
+Frontend обычно отдаётся nginx из статической папки. Команды:
 
-**Меняю** `MarketplaceScoreCards.tsx`:
-- Каждая `ScoreCard` становится кликабельной (`role="button"`, hover-эффект, cursor-pointer)
-- Локальный state `const [openType, setOpenType] = useState<...|null>(null)`
-- При клике открываем `<MarketplaceScoreModal type={openType} score={...} breakdown={scores.breakdown} onClose={() => setOpenType(null)} />`
-- Добавляю tooltip-подсказку "Нажми, чтобы увидеть как рассчитано" под заголовком "Оценка карточки"
+```bash
+# Посмотреть конфиг nginx — найти root для owndev.ru
+grep -r "owndev" /etc/nginx/sites-enabled/ 2>/dev/null | grep -E "root|server_name"
 
-### Часть 3 — Что НЕ трогаю
-- Backend (всё уже отдаёт `breakdown` в `scores_json`)
-- Парсеры, scoring engine, routes, worker, миграцию
-- Site Check / GEO Rating / Site Formula
-- `Header.tsx`, mobile drawer
-- Существующие `generatePdfReport.ts` / `generateWordReport.ts` (только читаем как референс)
-- `reportHelpers.ts` — только импорты
+# Или сразу посмотреть основной конфиг
+cat /etc/nginx/sites-enabled/owndev* 2>/dev/null | grep -E "root|server_name"
+```
 
-### Файлы — итог
+Это покажет директиву `root /path/to/dist;` — оттуда отдаётся frontend.
 
-**Создать (4):**
-- `src/lib/generateMarketplaceReport.ts`
-- `src/components/marketplace/MarketplaceDownloadButtons.tsx`
-- `src/components/marketplace/MarketplaceScoreModal.tsx`
-- (обновить) `src/components/marketplace/index.ts` — barrel
+### Шаг 3 — пришли мне вывод обеих команд
 
-**Править (3):**
-- `src/components/marketplace/MarketplacePaywallCTA.tsx`
-- `src/components/marketplace/MarketplaceScoreCards.tsx`
-- `src/pages/MarketplaceAuditResult.tsx`
+После того как пришлёшь вывод — я дам **точные команды деплоя** с реальными путями, без догадок.
 
-### Edge cases / null-safe
-- Если `result.scores.breakdown` пустой → modal показывает «Детальная разбивка недоступна»
-- Если `recommendations.newTitle` пустой → секция Rewrite в отчёте скрывается
-- Если `competitors.gap` отсутствует → секция Competitor Gap в отчёте скрывается
-- Все массивы через `?? []`, все строки через `?? ''`
-- В download-кнопках: try/catch + error toast
+### Что параллельно стоит проверить (необязательно сейчас)
 
-### Без рефакторинга
-Никаких изменений в типах, API контрактах, БД. Используем существующий `ResultResponse` как есть.
+- Где лежит `.env` бэкенда (там DATABASE_URL для миграции) — узнаем из шага 1
+- Кто owner процесса PM2 (root / owndev / другой пользователь) — `pm2 ls` сверху уже показал, что запущено под root
+- Есть ли отдельный CI/CD (GitHub Actions deploy.yml уже есть в репозитории — возможно frontend катится автоматом и серверной пересборки вообще не нужно)
+
+### Почему я не даю сейчас "универсальные" команды
+
+Потому что если угадать путь неверно — есть риск:
+- сделать `git pull` не в той папке (например в `~`) и засрать home
+- запустить `npm run build` где-то не там и сломать сторонний проект
+- применить миграцию не в ту БД
+
+Лучше потратить 30 секунд на диагностику, чем потом разгребать.
+
+### Как только пришлёшь вывод — план будет такой
+
+1. `cd <реальный_путь_backend> && git pull`
+2. `npm install` (если изменился package.json — а он изменился: добавились зависимости для marketplace audit? проверим)
+3. Применить миграцию `003_marketplace_audit.sql` через креды из `.env`:
+   ```bash
+   set -a && . ./.env && set +a
+   psql "$DATABASE_URL" -f src/db/migrations/003_marketplace_audit.sql
+   ```
+4. `npm run build`
+5. `pm2 restart owndev-backend --update-env`
+6. `pm2 logs owndev-backend --lines 30 --nostream` — убедиться что MA_WORKER стартанул
+7. `curl -s http://localhost:3001/health`
+8. Frontend: либо через GitHub Actions (push уже в main — проверим вкладку Actions в репо), либо ручной `git pull && npm ci && npm run build` в реальной папке frontend и `rsync dist/ /var/www/<nginx_root>/`
+
+### Гарантия безопасности
+
+- Все команды диагностики выше — **только чтение** (`pm2 describe`, `ps`, `grep`, `cat`)
+- Ничего не меняют, ничего не удаляют
+- Если какая-то команда не сработает — просто не выведет результат, не сломает систему
 
