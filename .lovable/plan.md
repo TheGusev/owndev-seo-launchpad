@@ -1,48 +1,65 @@
 
 
-## Реальная причина "падения" Site Formula найдена
+## Настройка VITE_API_BASE_URL для работы Preview с боевым backend
 
-### Что произошло
+### Проблема
 
-Backend полностью рабочий (доказано прошлыми smoke-тестами). А фронт крашится в runtime прямо в момент рендера wizard:
+Сейчас `src/lib/api/config.ts` использует `import.meta.env.VITE_API_BASE_URL || '/api'`. В Lovable Preview переменная не задана, поэтому фронт бьёт в `/api/v1/...` — это relative URL внутри `*.lovable.app`, где никакого backend нет. Site Formula падает с "Failed to load questions".
 
-```
-Invariant Violation: Helmet expects a string as a child of <title>.
-Did you forget to wrap your children in braces? (<title>{``}</title>)
-```
+В production (owndev.ru) тот же relative `/api` работает корректно, потому что nginx проксирует `/api` → `localhost:3001` (backend pm2).
 
-Источник в `src/pages/SiteFormulaWizard.tsx:108`:
-```tsx
-<title>Site Formula — Шаг {currentStep} | OWNDEV</title>
-```
+### Ограничения
 
-JSX превращает это в массив children `["Site Formula — Шаг ", 1, " | OWNDEV"]`. `react-helmet-async` строго требует **одну строку** внутри `<title>`, иначе кидает `Invariant Violation`, и весь wizard падает (белый экран / ErrorBoundary).
+1. **`.env` нельзя править** — он автогенерируется Lovable Cloud (содержит только Supabase-переменные, перечислены в системных правилах).
+2. Lovable не имеет UI-секрета `VITE_API_BASE_URL` для фронта — секреты доступны только для edge functions, а `VITE_*` инлайнится в build на этапе Vite.
+3. Значит единственный надёжный путь — **захардкодить fallback в код**, не ломая прод.
 
-Из-за этого пользователь видел "Site Formula не работает", хотя backend отдавал `preview_ready` корректно.
+### Решение
 
-### Фикс — 1 строка
+Изменить `src/lib/api/config.ts`:
 
-`src/pages/SiteFormulaWizard.tsx:108` — обернуть в template literal:
+```ts
+const DEFAULT_API_BASE = typeof window !== 'undefined' && window.location.hostname.endsWith('.lovable.app')
+  ? 'https://owndev.ru/api'
+  : '/api';
 
-```tsx
-<title>{`Site Formula — Шаг ${currentStep} | OWNDEV`}</title>
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE;
 ```
 
-### Дополнительная проверка по проекту
+Логика:
+- На `*.lovable.app` (preview / published) → бьём напрямую в `https://owndev.ru/api` (cross-origin)
+- На `owndev.ru` и localhost → relative `/api` (через nginx / vite proxy) — поведение прода не меняется
+- `VITE_API_BASE_URL` из env по-прежнему имеет приоритет, если кто-то задаст явно
 
-Прогоню `code--search_files` по `<title>.*\{` во всех `src/pages/**` чтобы найти аналогичные опасные конкатенации (например в `SiteCheckResult`, `BlogPost`, `ToolPage`, `SiteFormulaPreview`). Любое место вида `<title>текст {переменная} текст</title>` починю тем же паттерном.
+### Требование к backend (CORS)
+
+Чтобы запросы с `*.lovable.app` к `owndev.ru` проходили, на backend должны быть разрешены эти origin'ы в CORS. Нужно проверить `owndev-backend/src/api/server.ts` — текущий список allowed origins. Если `lovable.app` там нет, добавлю в том же шаге:
+
+```ts
+const allowedOrigins = [
+  'https://owndev.ru',
+  'https://www.owndev.ru',
+  /\.lovable\.app$/,  // preview + published
+  'http://localhost:8080',
+];
+```
+
+После правки backend нужен будет деплой на сервер (`git pull && npm run build && pm2 restart owndev-backend`) — это пользователь сделает вручную как обычно.
+
+### Что делаю в default mode
+
+1. `code--view owndev-backend/src/api/server.ts` — посмотреть текущий CORS
+2. Правлю `src/lib/api/config.ts` — добавляю auto-detect для `*.lovable.app`
+3. Если в CORS нет `lovable.app` — добавляю regex
+4. Сообщаю команду для деплоя backend
 
 ### Что НЕ трогаем
 
-- Backend (работает)
-- localStorage logic / resumeSession (отдельная гипотеза, оказалась неверной)
-- Helmet в других местах, где внутри `<title>` уже одна строка
+- `.env` (автогенерируется)
+- `vite.config.ts` proxy (нужен только для локальной разработки)
+- Любую другую логику API — изменение точечное
 
-### Smoke-test после фикса
+### После применения
 
-После применения:
-1. Открыть `/site-formula/wizard` — wizard рендерится, не белый экран
-2. Заполнить шаги 1-4, нажать "Собрать архитектуру"
-3. Должен произойти редирект на `/site-formula/preview?session=...` с `PreviewCard`
-4. В консоли — НЕТ `Invariant Violation`
+В Lovable Preview открыть `/site-formula/wizard` → должны загрузиться вопросы (запрос пойдёт на `https://owndev.ru/api/v1/site-formula/questions`) → пройти wizard → preview сгенерируется без ошибок.
 
