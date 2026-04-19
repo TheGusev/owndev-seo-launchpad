@@ -21,7 +21,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function ScoreCard({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'primary' }) {
   const color =
-    value >= 80 ? 'text-emerald-400' : value >= 60 ? 'text-yellow-400' : value >= 40 ? 'text-orange-400' : 'text-red-400';
+    value >= 80 ? 'text-primary' : value >= 60 ? 'text-foreground' : value >= 40 ? 'text-muted-foreground' : 'text-destructive';
   return (
     <Card className={`p-5 ${tone === 'primary' ? 'border-primary/40 bg-primary/5' : ''}`}>
       <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{label}</div>
@@ -210,14 +210,14 @@ export default function MarketplaceAuditResult() {
                 <h2 className="text-lg font-semibold mb-3">Покрытие ключевых слов — {result.keywords.coveragePct}%</h2>
                 <Card className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-emerald-400">Найдены в карточке ({result.keywords.covered.length})</Label>
+                    <Label className="text-primary">Найдены в карточке ({result.keywords.covered.length})</Label>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {result.keywords.covered.map((k) => <Badge key={k} variant="secondary">{k}</Badge>)}
                       {result.keywords.covered.length === 0 && <p className="text-xs text-muted-foreground">Пока пусто</p>}
                     </div>
                   </div>
                   <div>
-                    <Label className="text-orange-400">Отсутствуют ({result.keywords.missing.length})</Label>
+                    <Label className="text-destructive">Отсутствуют ({result.keywords.missing.length})</Label>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {result.keywords.missing.map((k) => <Badge key={k} variant="outline">{k}</Badge>)}
                       {result.keywords.missing.length === 0 && <p className="text-xs text-muted-foreground">Все ключи покрыты</p>}
