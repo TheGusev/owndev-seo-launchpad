@@ -76,7 +76,9 @@ const ToolsShowcase = () => {
         })()}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-12">
-          {tools.slice(1).map((tool, i) => (
+          {tools.slice(1).map((tool, i) => {
+            const href = (tool as any).external ? `/${tool.slug}` : `/tools/${tool.slug}`;
+            return (
             <motion.div
               key={tool.slug}
               initial={{ opacity: 0, y: 30 }}
@@ -84,7 +86,7 @@ const ToolsShowcase = () => {
               transition={{ duration: 0.4, delay: 0.05 * i }}
             >
               <Link
-                to={`/tools/${tool.slug}`}
+                to={href}
                 className="glass rounded-2xl p-5 flex flex-col h-full card-hover block border border-transparent hover:border-primary/30 transition-colors duration-200"
               >
                 <div className="p-2.5 rounded-xl bg-card inline-block mb-3 self-start">
@@ -95,7 +97,8 @@ const ToolsShowcase = () => {
                 <span className="text-primary text-sm font-medium">Открыть →</span>
               </Link>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="text-center">
