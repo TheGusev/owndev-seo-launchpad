@@ -105,7 +105,7 @@ export default function SiteFormulaWizard() {
   return (
     <>
       <Helmet>
-        <title>Site Formula — Шаг {currentStep} | OWNDEV</title>
+        <title>{`Site Formula — Шаг ${currentStep} | OWNDEV`}</title>
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
       <Header />
