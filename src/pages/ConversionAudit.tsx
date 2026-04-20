@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, AlertTriangle, TrendingDown, DollarSign, Zap, Wrench, ArrowRight, Mail, Download } from "lucide-react";
+import { Loader2, AlertTriangle, TrendingDown, DollarSign, Zap, Wrench, ArrowRight, Mail, Download, Database } from "lucide-react";
 import { apiUrl } from "@/lib/api/config";
 import { generatePdfReport } from "@/lib/generatePdfReport";
 import type { ReportData } from "@/lib/reportHelpers";
@@ -39,6 +39,7 @@ interface ConversionResult {
     roi_months: number;
   };
   cta_recommendation: string;
+  cached?: boolean;
 }
 
 const goalOptions: { value: Goal; label: string }[] = [
@@ -307,6 +308,15 @@ const ConversionAudit = () => {
               <p className="mt-3 text-sm text-muted-foreground">
                 Конверсионный потенциал · {result.domain}
               </p>
+              {result.cached && (
+                <div
+                  className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60 border border-border text-xs text-muted-foreground"
+                  title="Результат загружен из кэша (моложе 7 дней). Для обновления свяжитесь с поддержкой."
+                >
+                  <Database className="w-3 h-3" />
+                  Из кэша
+                </div>
+              )}
             </div>
 
             {/* Money lost */}
