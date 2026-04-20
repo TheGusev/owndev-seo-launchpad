@@ -111,6 +111,20 @@ const Tools = () => {
             >
               Инструменты для SEO, AI‑видимости и конкурентного анализа
             </motion.p>
+            <motion.a
+              href="https://dialogs.yandex.ru/"
+              target="_blank"
+              rel="noopener noreferrer"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-full border border-[#7B68EE]/40 bg-[#7B68EE]/10 text-[#7B68EE] text-sm hover:bg-[#7B68EE]/20 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+              </svg>
+              Скажите Алисе: «Запусти OWNDEV»
+            </motion.a>
           </motion.div>
 
           {/* Section 1 — Flagship */}
