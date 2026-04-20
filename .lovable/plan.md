@@ -1,55 +1,43 @@
 
 
-## План: Финальная сквозная проверка системы (Промт #6)
+## План: Перенос всех инструментов /tools с Supabase Edge Functions на Node.js backend
 
-Сейчас я в режиме плана и не могу запускать браузер/curl. После одобрения переключусь в обычный режим и выполню полную проверку всех 4 модулей по чек-листу ниже.
+### Что будет сделано
 
-### Что буду проверять
+**Backend (owndev-backend)**
+1. **Создать `owndev-backend/src/api/routes/tools.ts`** — Fastify роутер с 11 endpoints:
+   - `/tools/seo-audit` — OpenAI анализ
+   - `/tools/check-indexation` — fetch + robots.txt
+   - `/tools/generate-semantic-core` — OpenAI
+   - `/tools/generate-text` — OpenAI
+   - `/tools/generate-content-brief` — OpenAI
+   - `/tools/check-internal-links` — fetch + parse HTML
+   - `/tools/competitor-analysis` — OpenAI
+   - `/tools/brand-tracker` — OpenAI
+   - `/tools/generate-autofix` — OpenAI
+   - `/tools/generate-geo-content` — OpenAI
+   - `/tools/send-telegram` — прямой вызов Telegram Bot API
+2. **Зарегистрировать роутер в `owndev-backend/src/api/server.ts`** — `app.register(toolsRoutes, { prefix: '/api/v1' })`.
 
-**1. Site Check (`/tools/site-check`)**
-- `navigate_to_sandbox` → `/tools/site-check`
-- Ввод `https://owndev.ru`, клик «Проверить»
-- Отслеживание `POST /api/v1/site-check/start` → должен вернуть 200/202 + `scan_id`
-- Polling `GET /api/v1/site-check/status/:id` до `status=done`
-- Переход на `/tools/site-check/result/:id`, проверка секций: SEO, Schema.org, LLM/AI, Скорость
+**Frontend**
+3. **Полностью переписать `src/lib/api/tools.ts`** — убрать `supabase.functions.invoke`, заменить на `fetch(apiUrl('/tools/...'))` через `apiHeaders()` из `config.ts`. Сохранить публичные сигнатуры функций (`auditSite`, `checkIndexation`, `generateSemanticCore`, `generateText`, `generateContentBrief`, `checkInternalLinks`, `analyzeCompetitors`, `trackBrand`, `generateAutofix`, `generateGeoContent`, `sendTelegram`, `judgeLlm`, `getTechPassport`, `ensureProtocol`), чтобы не сломать вызовы из 11 компонентов в `src/components/tools/*` и `src/components/site-check/*`.
 
-**2. Site Formula (`/site-formula`)**
-- Клик «Начать» → `/site-formula/wizard`
-- Прохождение всех 4 шагов с выбором ответов
-- Финальная кнопка → ожидание `POST /sessions/:id/answers` (200) и `POST /sessions/:id/run` (200)
-- Переход на `/site-formula/preview?session=...`
-- Проверка отображения: класс проекта, ключевые слои, риски
+### Что НЕ трогаю
+- Supabase edge functions в `supabase/functions/*` — оставляю на диске (можно удалить отдельным промтом). Frontend на них больше не ссылается.
+- `judgeLlm` и `getTechPassport` — уже идут на Node backend через `/site-check/...`, оставляю как есть (только переношу из старого файла, если они там были).
+- Компоненты в `src/components/tools/*` — публичный API сохранён, изменений не требуется.
 
-**3. Marketplace Audit (`/marketplace-audit`)**
-- Выбор WB, ввод тестового URL/SKU
-- Запуск аудита → `POST /api/v1/marketplace-audit/...`
-- Ожидание прогресса и результата
-- Проверка скоров (content, search, conversion, ads) и списка проблем
-- Допустимо: пустой AI Summary (если нет LLM ключа)
+### Проверки
+- Прочитаю `src/lib/api/tools.ts` и `src/lib/api/config.ts` → убедиться в актуальных сигнатурах и хелперах.
+- Прочитаю `owndev-backend/src/api/server.ts` → найти место регистрации роутов.
+- Грепом по `src/components/tools/` сверю, какие функции реально используются (нельзя случайно удалить экспорт).
+- После правок: `tsc --noEmit` для frontend (для backend — TS ошибки в sandbox ожидаемы из-за отсутствия `node_modules`, но синтаксис проверю).
+- Греп `supabase` в `src/lib/api/tools.ts` после правки → должен быть пустым.
 
-**4. Geo Rating (`/geo-rating`)**
-- Загрузка списка сайтов (Supabase `geo_rating`)
-- Проверка фильтров по категории и скору
+### Риски
+- Если в старом `tools.ts` есть экспорты, не упомянутые в новом коде (например, какие-нибудь утилиты), компоненты сломаются. Минимизирую через греп перед перезаписью.
+- `apiHeaders()` уже добавляет `Content-Type` — учту, чтобы не дублировать (в текущем `config.ts` Content-Type ставится только при наличии body — проверю и адаптирую).
 
-### Чек-лист консоли/сети для каждой страницы
-- Нет ошибок: `Body cannot be empty`, `Failed to fetch`, `401`, `404`, `500`
-- Все POST → 200/202
-- Заголовки: `x-api-key` присутствует если есть `owndev_token` в localStorage; `Content-Type: application/json` только в POST с body
-
-### Используемые инструменты
-- `browser--navigate_to_sandbox` / `browser--act` / `browser--observe` — для прохода по сценариям
-- `browser--list_network_requests` + `browser--get_network_request_details` — для проверки статусов и заголовков POST
-- `browser--read_console_logs` — для отлова ошибок
-- `supabase--read_query` — для проверки наполненности `geo_rating`
-
-### Формат отчёта
-По каждому модулю:
-- ✅/❌ статус
-- Если ❌ — точный текст ошибки, endpoint, HTTP-статус, скриншот при необходимости
-- Финальная сводка: что работает, что требует правки
-
-### Ограничения
-- Тесты идут на preview-окружении Lovable (`*.lovable.app`), backend — `https://owndev.ru/api`. Если backend недоступен из preview (CORS/cold-start), отмечу это и предложу проверить production напрямую.
-- Marketplace Audit без LLM ключа покажет пустой AI Summary — это ожидаемо, не баг.
-- Если найду баг, остановлюсь и сообщу до фиксов (по правилу из инструкций).
+### Формат финального ответа
+Короткое summary в `<final-text>` + предложения для тестирования.
 
