@@ -272,6 +272,16 @@ const SiteCheckResult = () => {
             />
           </ResultAccordion>
 
+          {/* AI Boost */}
+          <ResultAccordion title="🚀 AI Boost — план попадания в нейросети" defaultOpen={false}>
+            <AiBoostSection
+              items={aiBoost}
+              loading={aiBoostLoading}
+              error={aiBoostError}
+              onRetry={triggerAiBoost}
+            />
+          </ResultAccordion>
+
           {/* 7. Competitors */}
           {competitors.length > 0 && (
             <ResultAccordion title={`Конкуренты в AI-выдаче (${competitors.length})`} defaultOpen={false}>
