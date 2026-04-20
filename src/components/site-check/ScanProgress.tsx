@@ -144,6 +144,9 @@ const ScanProgress = ({ onComplete, realProgress, error, domain }: ScanProgressP
         <p className="text-xs text-muted-foreground text-center">
           Обычно проверка занимает 15–30 секунд
         </p>
+        <p className="text-sm text-muted-foreground text-center mt-2">
+          {currentStage.icon} {currentStage.label}... {Math.round(progress)}%
+        </p>
       </div>
     </div>
   );
