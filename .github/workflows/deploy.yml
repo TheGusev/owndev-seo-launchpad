@@ -19,6 +19,9 @@ jobs:
             cd /var/www/owndev.ru
 
             echo "=== git pull ==="
+            # Clean server-side conflicts before pull
+            git checkout -- . || true
+            git clean -fd --exclude='.env' --exclude='owndev-backend/.env' || true
             git pull origin main
 
             echo "=== backend build ==="
@@ -30,10 +33,13 @@ jobs:
             node -e "
               const fs=require('fs');
               const env={};
-              fs.readFileSync('.env','utf8').split('\n').forEach(line=>{
-                const m=line.match(/^([^#=]+)=(.*)/);
-                if(m) env[m[1].trim()]=m[2].trim();
-              });
+              const envPath='/var/www/owndev.ru/.env';
+              if(fs.existsSync(envPath)){
+                fs.readFileSync(envPath,'utf8').split('\n').forEach(line=>{
+                  const m=line.match(/^([^#=]+)=(.*)/);
+                  if(m) env[m[1].trim()]=m[2].trim();
+                });
+              } else { console.log('WARNING: .env not found at',envPath); }
               const config={apps:[{
                 name:'owndev-backend',
                 script:'dist/index.js',

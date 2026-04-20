@@ -178,7 +178,7 @@ const LlmJudgeSection: React.FC<LlmJudgeSectionProps> = ({ data, loading, error,
         <p className="text-xs text-muted-foreground">Средний GEO Score</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {data.systems.map((sys) => (
           <SystemCard key={sys.id} sys={sys} />
         ))}

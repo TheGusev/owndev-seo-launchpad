@@ -18,6 +18,7 @@ dist-ssr
 .env.*.local
 owndev-backend/.env
 owndev-backend/.env.local
+owndev-backend/package-lock.json
 
 # Editor directories and files
 .vscode/*
