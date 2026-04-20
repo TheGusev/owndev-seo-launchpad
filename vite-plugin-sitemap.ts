@@ -86,6 +86,8 @@ export default function sitemapPlugin(): Plugin {
       const staticUrls = [
         urlEntry(BASE, "1.0", "weekly"),
         urlEntry(`${BASE}/tools`, "0.9", "weekly"),
+        urlEntry(`${BASE}/tools/full-audit`, "1.0", "weekly"),
+        urlEntry(`${BASE}/tools/conversion-audit`, "0.9", "weekly"),
         urlEntry(`${BASE}/blog`, "0.8", "weekly"),
         urlEntry(`${BASE}/geo-audit`, "0.9", "weekly"),
         urlEntry(`${BASE}/privacy`, "0.3"),
