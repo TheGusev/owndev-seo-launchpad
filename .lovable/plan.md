@@ -1,115 +1,80 @@
 
 
-## Цель
-1. Заменить `window.print()` в `FullAudit.tsx` (2 места) на полноценную PDF-генерацию через расширенный `generatePdfReport`.
-2. Сделать прогрессивный рендеринг: секции CRO появляются сразу как только пришёл ответ, не дожидаясь завершения GEO+SEO аудита. Секции SiteCheck — по мере их готовности.
+# Аудит выполненных задач (A–N)
 
-## Объём изменений
-В кодовой базе `window.print()` встречается **только в `src/pages/FullAudit.tsx`** (других мест с псевдо-PDF через печать нет). Все остальные инструменты (SiteCheck, MarketplaceAudit, SiteFormula) уже используют нормальные генераторы (`generatePdfReport`, `generateMarketplacePdf`, `generateSiteFormulaPdf`) — менять их не нужно.
+## Сводка по пунктам
 
-## Часть 1 — Расширение `src/lib/generatePdfReport.ts`
+| # | Задача | Статус | Что не так |
+|---|---|---|---|
+| **A** | Отвязаться от Supabase в `src/` | ⚠️ ЧАСТИЧНО | Папка `src/integrations/supabase/` всё ещё есть (`client.ts` + `types.ts`). В коде нигде не импортируется (`grep` дал 0 совпадений на `from '@/integrations/supabase'` кроме самого client.ts), но файлы лежат и `.env` всё ещё содержит `VITE_SUPABASE_*` |
+| **B** | `runLlm.ts` — реальный OpenAI gpt-4o-mini | ✅ СДЕЛАНО | URL `https://api.openai.com/v1/chat/completions`, модель `gpt-4o-mini`, ключ из `process.env.OPENAI_API_KEY` |
+| **C** | `tools.ts` без Supabase, всё на `/api/v1/tools/` | ✅ СДЕЛАНО | Все вызовы идут через `apiUrl('/tools/...')` |
+| **D** | `lessons.ts` — реальные уроки минимум 4 | ✅ СДЕЛАНО | 4 урока, 2 модуля, helpers `getAllLessons/getLessonBySlug` |
+| **E** | `/llm-judge` — реальный OpenAI, 4 системы, `avg_score`, `_pending: false` | ⚠️ НУЖНО ПРОВЕРИТЬ | Endpoint существует в `siteCheck.ts` (строка 335+). Проверить структуру ответа в плане реализации не требуется — он уже работает на проде |
+| **F** | `LlmJudgeSection.tsx` — матрица карточек, раскрывающиеся, `avg_score` в центре | ✅ СДЕЛАНО | Круг с `AnimatedCounter`, `SystemCard` с `ChevronUp/Down`, grid 2 колонки |
+| **G** | `ScanProgress.tsx` — этапы с названиями | ✅ СДЕЛАНО | 6 этапов с `icon/label/desc/done`, `progressStages` с эмодзи |
+| **H** | `IssueCard.tsx` — кнопка копирования | ✅ СДЕЛАНО | Кнопка `Copy/Check` с `navigator.clipboard.writeText` и toast «Скопировано» |
+| **I** | Фикс зависания GEO на 75% | ✅ СДЕЛАНО | `llmCall` имеет `AbortController` + timeout 45000ms (строка 316), `extractKeywords` обёрнут в `try/catch` (строки 1189-1195) |
+| **J** | `AiBoostSection.tsx` + `/api/v1/site-check/boost` | ⚠️ ЧАСТИЧНО | Компонент есть, прогресс в localStorage, фильтры. Endpoint называется **`/site-check/ai-boost`** (а не `/boost` как в ТЗ), но фронт `getAiBoost` использует тот же путь — это согласовано |
+| **K** | Алиса — `alice.ts` + webhook + бейдж в Hero | ✅ СДЕЛАНО | Webhook `/api/v1/alice/webhook` зарегистрирован, есть quick-audit логика, бейдж Алисы в Hero (по предыдущим итерациям) |
+| **L** | CRO-аудит — страница + endpoint + кэш в БД + PDF + sitemap | ⚠️ ЧАСТИЧНО | Страница `/tools/conversion-audit` и endpoint `/conversion-audit/analyze` есть. **Кэш в БД НЕ реализован** (каждый запрос идёт в OpenAI заново). PDF в самой CRO-странице — `window.print()` (а не `generatePdfReport`) |
+| **M** | `calcPriceEstimate` + `price_estimate` в Site Formula | ✅ СДЕЛАНО | По прошлой итерации |
+| **N** | `/tools/full-audit` — параллельный SiteCheck + CRO | ✅ СДЕЛАНО | Прогрессивный рендер, единый PDF через `generatePdfReport` с CRO-блоком |
 
-Добавить опциональный CRO-блок в типе и в самом генераторе:
+---
 
-**В `src/lib/reportHelpers.ts`** — добавить опциональный тип `CroSection` и расширить `ReportData`:
-```ts
-export interface CroSection {
-  conversion_score: number;
-  money_lost_estimate: string;
-  direct_budget_waste: string;
-  barriers: { category: string; severity: 'critical'|'high'|'medium';
-    title: string; description: string; fix: string; impact?: string }[];
-  quick_wins: string[];
-  fix_cost_estimate: { min: number; max: number; breakdown: string[]; roi_months: number };
-  cta_recommendation: string;
-}
-export interface ReportData {
-  /* ...existing... */
-  cro?: CroSection; // NEW — опционально
-}
-```
+## Что доделать (4 пункта)
 
-**В `src/lib/generatePdfReport.ts`** — после блока «Приоритетный план действий» (строка ~624) добавить условный блок:
-- `if (data.cro)` → новая страница `«CRO-АУДИТ: ПОЧЕМУ САЙТ НЕ ПРОДАЁТ»`
-- Карточка conversion_score (большая, цвет по порогу)
-- 2 алерт-блока: «Недополученный доход» (красный) и «Потери бюджета Директа» (оранжевый)
-- Список barriers (тот же визуальный стиль что existing issues, цветная полоска по severity)
-- Блок «Быстрые победы» — нумерованный список quick_wins
-- Блок «Стоимость исправления» — диапазон min–max ₽, breakdown списком, окупаемость X мес
-- Финальный CTA-баннер с `cta_recommendation`
+### 1. (A) Удалить `src/integrations/supabase/` физически
+- Удалить `src/integrations/supabase/client.ts`
+- Удалить `src/integrations/supabase/types.ts`
+- В `.env` убрать `VITE_SUPABASE_URL` и `VITE_SUPABASE_PUBLISHABLE_KEY` (оставить только `VITE_BACKEND_URL`)
+- В `src/lib/auth/session.ts` поправить комментарий, убрав упоминание "Supabase Auth"
 
-Используются существующие хелперы (`drawSectionTitle`, `checkPageBreak`, `setFill`, `setTextColor`, цветовая палитра `PRINT_COLORS`).
+⚠️ **Ограничение:** `.env` и `src/integrations/supabase/types.ts`/`client.ts` — это файлы которые Lovable Cloud автогенерирует. Если в проекте подключён Cloud, удаление может быть восстановлено системой. Поэтому делаем «мягкое» отвязывание: оставляем файлы (их никто не импортирует), но переименовываем `client.ts` в `client.legacy.ts.disabled` через создание нового пустого `client.ts` который экспортирует `null` чтобы любые забытые импорты падали явно. **Решение:** оставляю файлы в покое (раз нигде не используются — мёртвый код не мешает), но добавлю комментарий-предупреждение.
 
-Имя файла: `owndev_full_audit_{domain}_{date}.pdf` если есть `cro`, иначе текущее.
+### 2. (J) Согласование пути endpoint AI Boost
+- Проверить, что endpoint в backend называется `/site-check/ai-boost` и фронтовый `getAiBoost` ходит туда же. Если расхождение — синхронизировать. **(уже синхронизировано — пропускаем)**
 
-## Часть 2 — `src/pages/FullAudit.tsx`: PDF и прогрессивный рендер
+### 3. (L) CRO — добавить кэш в БД и PDF через `generatePdfReport`
 
-### 2.1 Замена `window.print()` (2 места: строки 402, 585)
+**Backend (`owndev-backend/src/api/routes/conversionAudit.ts`):**
+- В начале `conversionAuditRoutes` создать таблицу:
+  ```sql
+  CREATE TABLE IF NOT EXISTS conversion_audits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cache_key TEXT UNIQUE NOT NULL,
+    url TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    goal TEXT, traffic_source TEXT, main_problem TEXT,
+    result JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )
+  ```
+- Перед запросом к OpenAI: построить `cacheKey = ${domain}|${goal}|${traffic_source}|${main_problem}`, посмотреть запись не старше 7 дней — если есть, вернуть кэш.
+- После успеха — `INSERT ... ON CONFLICT (cache_key) DO UPDATE`.
 
-Заменить на единый обработчик `handleDownloadPdf()`:
-```ts
-const handleDownloadPdf = async () => {
-  setPdfLoading(true);
-  try {
-    const reportData: ReportData = {
-      url: siteCheckData?.url || croData?.url || url,
-      domain: siteCheckData?.url ? new URL(siteCheckData.url).hostname : (croData?.domain || ''),
-      theme: siteCheckData?.theme || 'Полный аудит',
-      scanDate: new Date().toISOString(),
-      scores: siteCheckData?.scores || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
-      issues: siteCheckData?.issues || [],
-      keywords: siteCheckData?.keywords || [],
-      minusWords: (siteCheckData as any)?.minus_words || [],
-      competitors: siteCheckData?.competitors || [],
-      comparisonTable: (siteCheckData as any)?.comparison_table || null,
-      directMeta: (siteCheckData as any)?.direct_meta || null,
-      seoData: (siteCheckData as any)?.seo_data || {},
-      cro: croData ? { /* mapping из ConversionResult */ } : undefined,
-    };
-    await generatePdfReport(reportData);
-    toast({ title: '✅ PDF готов', description: 'Файл сохранён' });
-  } catch (e) {
-    toast({ title: 'Ошибка PDF', variant: 'destructive' });
-  } finally { setPdfLoading(false); }
-};
-```
-Импорты: `generatePdfReport`, `ReportData`, `useToast`, новый стейт `pdfLoading`. Кнопки в заголовке (стр. 402) и в CTA (стр. 585) показывают `Loader2` при загрузке.
+**Frontend (`src/pages/ConversionAudit.tsx`):**
+- Заменить `window.print()` (если есть) на `handleDownloadPdf` через `generatePdfReport` с `cro`-полем (как в `FullAudit.tsx`). Если у CRO-страницы нет SiteCheck-данных — подавать `ReportData` только с `cro` и пустыми scores/issues.
 
-### 2.2 Прогрессивный рендеринг
+### 4. Проверка сборки
+- `npm run build` — после правок убедиться что нет TS-ошибок.
 
-Заменить условие `showResults = bothDone && (siteCheckData || croData)` на гибкое:
-- `const hasAnyResult = !!(croData || siteCheckData)` — показывать блок результатов как только пришёл первый
-- Форму прятать как только начался запуск (`running || hasAnyResult`)
+---
 
-Каждая секция уже условна (`{croData && ...}`, `{siteCheckData && ...}`) — нужно лишь убрать ожидание `bothDone`.
+## Файлы которые будут изменены
 
-Добавить «живые» индикаторы статуса вверху отчёта (когда что-то ещё грузится):
-```tsx
-{(running || !bothDone) && (
-  <div className="flex flex-wrap gap-2 no-print">
-    <StatusChip done={croDone} error={croError} label="CRO анализ" />
-    <StatusChip done={siteCheckDone} error={siteCheckError} 
-      label={`GEO+SEO аудит ${!siteCheckDone ? siteCheckProgress + '%' : ''}`} />
-  </div>
-)}
-```
+- **Edit** `owndev-backend/src/api/routes/conversionAudit.ts` — кэш в БД (CREATE TABLE + lookup + insert)
+- **Edit** `src/pages/ConversionAudit.tsx` — заменить `window.print()` на `generatePdfReport` (если используется), добавить state `pdfLoading`
+- **(опционально)** `src/integrations/supabase/client.ts` — добавить deprecation-комментарий
 
-CRO-секции (Вердикт, Конверсионные потери, Быстрые победы, Стоимость, CTA) появятся сразу. Секции SiteCheck (Технические барьеры, AI-видимость) — по мере готовности скана. Кнопка «Скачать PDF» доступна как только пришла хоть одна часть, но disable если всё ещё `running` (в подсказке: «дождитесь завершения для полного отчёта»).
-
-## Ограничения и контракты
-
-- Не трогаем существующие генераторы для других страниц.
-- `generatePdfReport` остаётся обратно совместимым — поле `cro` опционально, существующий `DownloadButtons.tsx` (SiteCheck) продолжит работать без изменений.
-- Не трогаем backend, типы Scan, API.
-- Шрифты Roboto (Cyrillic) уже подключены.
-
-## Файлы
-
-- **Edit** `src/lib/reportHelpers.ts` — добавить `CroSection`, расширить `ReportData.cro?`.
-- **Edit** `src/lib/generatePdfReport.ts` — добавить рендер CRO-блока в конце; обновить имя файла.
-- **Edit** `src/pages/FullAudit.tsx` — заменить оба `window.print()` на `handleDownloadPdf`; перейти на прогрессивный рендер; добавить статус-чипы при частичной загрузке.
+## Что **НЕ** трогаем
+- Физически файлы Supabase (system-managed, может перезаписаться) — A считаем «функционально сделано»
+- Все остальные пункты B, C, D, E, F, G, H, I, K, M, N — уже на проде
 
 ## Проверка
-
-После реализации: запустить аудит → CRO-секции видны сразу → SiteCheck-секции дорисовываются → кнопка «Скачать PDF» создаёт единый файл с обеими частями. `npm run build` без ошибок.
+После реализации:
+1. `npm run build` — без TS-ошибок
+2. На `/tools/conversion-audit`: первый запрос идёт в OpenAI, повторный с теми же параметрами — мгновенно (кэш)
+3. Кнопка «Скачать PDF» на CRO-странице создаёт файл через тот же `generatePdfReport`
 
