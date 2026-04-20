@@ -312,15 +312,19 @@ function getLlmConfig(_apiKey: string): { url: string; headers: Record<string, s
 // ─── LLM helper ───
 async function llmCall(apiKey: string, _model: string, systemPrompt: string, userPrompt: string, maxTokens = 4000, temperature = 0.1): Promise<string> {
   const config = getLlmConfig(apiKey);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 сек таймаут
   try {
     const resp = await fetch(config.url, {
       method: 'POST',
       headers: config.headers,
+      signal: controller.signal,
       body: JSON.stringify({
         model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         max_tokens: maxTokens, temperature, top_p: 0.85,
       }),
     });
+    clearTimeout(timeoutId);
     if (!resp.ok) {
       const errText = await resp.text();
       logger.error('PIPELINE', `LLM HTTP ${resp.status} [${LLM_PROVIDER}]: ${errText.slice(0, 300)}`);
@@ -329,23 +333,32 @@ async function llmCall(apiKey: string, _model: string, systemPrompt: string, use
     const data = await resp.json();
     return data.choices?.[0]?.message?.content?.trim() || '';
   } catch (e: any) {
-    logger.error('PIPELINE', `LLM call failed [${LLM_PROVIDER}]: ${e.message}`);
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      logger.error('PIPELINE', `LLM call TIMEOUT after 45s [${LLM_PROVIDER}]`);
+    } else {
+      logger.error('PIPELINE', `LLM call failed [${LLM_PROVIDER}]: ${e.message}`);
+    }
     return '';
   }
 }
 
 async function llmToolCall(apiKey: string, _model: string, systemPrompt: string, userPrompt: string, tool: any): Promise<any> {
   const config = getLlmConfig(apiKey);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 сек таймаут
   try {
     const resp = await fetch(config.url, {
       method: 'POST',
       headers: config.headers,
+      signal: controller.signal,
       body: JSON.stringify({
         model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         tools: [tool], tool_choice: { type: 'function', function: { name: tool.function.name } },
         temperature: 0.4,
       }),
     });
+    clearTimeout(timeoutId);
     if (!resp.ok) {
       const errText = await resp.text();
       logger.error('PIPELINE', `LLM tool HTTP ${resp.status} [${LLM_PROVIDER}]: ${errText.slice(0, 300)}`);
@@ -359,7 +372,12 @@ async function llmToolCall(apiKey: string, _model: string, systemPrompt: string,
     }
     return typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments;
   } catch (e: any) {
-    logger.error('PIPELINE', `LLM tool call failed [${LLM_PROVIDER}]: ${e.message}`);
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      logger.error('PIPELINE', `LLM tool call TIMEOUT after 45s [${LLM_PROVIDER}]`);
+    } else {
+      logger.error('PIPELINE', `LLM tool call failed [${LLM_PROVIDER}]: ${e.message}`);
+    }
     return null;
   }
 }
@@ -928,16 +946,16 @@ async function extractKeywords(html: string, theme: string, url: string, competi
   const phrasesBlock = competitorPhrases.length > 0 ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}` : '';
 
   const allKeywords: KeywordEntry[] = [];
-  for (let batch = 0; batch < 3; batch++) {
+  for (let batch = 0; batch < 2; batch++) {
     const userPrompt = batch === 0
       ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
       : `Ещё 100 НОВЫХ запросов для "${theme}". Не дублируй: ${allKeywords.slice(0, 20).map(k => k.phrase).join(', ')}`;
     const content = await llmCall(apiKey, 'gpt-4o-mini',
-      `Ты — SEO-специалист для Рунета. Сгенерируй 150 ключевых запросов.\nТребования: реальные запросы Яндекса, 7 кластеров max, intent: commercial/informational/navigational/transactional, frequency: 50-50000.\nФормат: JSON-массив [{"phrase":"...","cluster":"...","intent":"commercial","frequency":2400,"landing_needed":false}].\nТолько JSON.`,
-      userPrompt, 16000, 0.1);
+      `Ты — SEO-специалист для Рунета. Сгенерируй 100 ключевых запросов.\nТребования: реальные запросы Яндекса, 7 кластеров max, intent: commercial/informational/navigational/transactional, frequency: 50-50000.\nФормат: JSON-массив [{"phrase":"...","cluster":"...","intent":"commercial","frequency":2400,"landing_needed":false}].\nТолько JSON.`,
+      userPrompt, 8000, 0.1);
     const parsed = safeParseJson<KeywordEntry[]>(content, []);
     allKeywords.push(...parsed);
-    if (allKeywords.length >= 300) break;
+    if (allKeywords.length >= 200) break;
   }
 
   // Deduplicate
@@ -1167,12 +1185,22 @@ export async function runPipeline(
 
   // STEP 5: Keywords
   const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
-  const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases, apiKey);
-
-  await onProgress(85, { keywords });
+  let keywords: KeywordEntry[] = [];
+  try {
+    keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases, apiKey);
+    await onProgress(85, { keywords });
+  } catch (e: any) {
+    logger.error('PIPELINE', `extractKeywords failed: ${e.message}`);
+    await onProgress(85, { keywords: [] });
+  }
 
   // STEP 6: Minus words
-  const minusWords = await generateMinusWords(theme, keywords, apiKey);
+  let minusWords: MinusWord[] = [];
+  try {
+    minusWords = await generateMinusWords(theme, keywords, apiKey);
+  } catch (e: any) {
+    logger.error('PIPELINE', `generateMinusWords failed: ${e.message}`);
+  }
 
   const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
 
