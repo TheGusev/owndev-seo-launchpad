@@ -15,6 +15,13 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /var/www/owndev.ru && git pull
-            cd owndev-backend && npm run build && pm2 restart owndev-backend
-            cd /var/www/owndev.ru && npm run build
+            set -e
+            cd /var/www/owndev.ru
+            git pull
+            cd owndev-backend
+            npm install --include=dev
+            npm run build
+            pm2 restart owndev-backend
+            cd /var/www/owndev.ru
+            npm install
+            npm run build
