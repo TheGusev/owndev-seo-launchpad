@@ -330,39 +330,6 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-
-  // GET /api/v1/site-check/tech-passport
-  app.get<{ Querystring: { url: string } }>(
-    '/tech-passport',
-    async (req, reply) => {
-      const { url } = req.query as { url: string };
-      if (!url) {
-        return reply.status(400).send({ success: false, error: 'url is required' });
-      }
-      let origin = url;
-      try {
-        origin = new URL(url).origin;
-      } catch {}
-      const [headersData, geoipData] = await Promise.allSettled([
-        fetch(url, {
-          method: 'HEAD',
-          signal: AbortSignal.timeout(8000),
-        })
-          .then((r) => ({
-            server: r.headers.get('server'),
-            poweredBy: r.headers.get('x-powered-by'),
-            cacheControl: r.headers.get('cache-control'),
-            contentType: r.headers.get('content-type'),
-            contentSecurityPolicy: r.headers.get('content-security-policy'),
-            strictTransportSecurity: r.headers.get('strict-transport-security'),
-            xContentTypeOptions: r.headers.get('x-content-type-options'),
-            xFrameOptions: r.headers.get('x-frame-options'),
-          }))
-          .catch(() => ({})),
-        fetch(`https://ipapi.co/${new URL(origin).hostname}/json/`, {
-          signal: AbortSignal.timeout(5000),
-        })
-          .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
       ]);
       const headers = headersData.status === 'fulfilled' ? headersData.value : {};
