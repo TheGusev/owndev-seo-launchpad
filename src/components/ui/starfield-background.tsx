@@ -16,10 +16,9 @@ interface StarfieldBackgroundProps {
   className?: string;
 }
 
-function generateStars(count: number, isMobile = false): Star[] {
+function generateStars(count: number): Star[] {
   return Array.from({ length: count }, () => {
-    const maxDistance = isMobile ? 30 : 45;
-    const distance = 5 + Math.random() * maxDistance;
+    const distance = 5 + Math.random() * 45;
     return {
       angle: Math.random() * 360,
       distance,
@@ -40,20 +39,18 @@ const colorMap = {
 
 const StarfieldBackground = ({ count = 100, className }: StarfieldBackgroundProps) => {
   const [starCount, setStarCount] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const mobile = window.innerWidth < 768;
-    setIsMobile(mobile);
-    setStarCount(mobile ? Math.min(count, 35) : count);
+    const isMobile = window.innerWidth < 768;
+    setStarCount(isMobile ? Math.min(count, 35) : count);
   }, [count]);
 
-  const stars = useMemo(() => generateStars(starCount, isMobile), [starCount, isMobile]);
+  const stars = useMemo(() => generateStars(starCount), [starCount]);
 
   if (starCount === 0) return null;
 
   return (
-    <div className={cn('pointer-events-none overflow-hidden', className)}>
+    <div className={cn('pointer-events-none', className)}>
       {stars.map((star, i) => {
         const rad = (star.angle * Math.PI) / 180;
         const x = 50 + star.distance * Math.cos(rad);

@@ -48,7 +48,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-[85vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-20 max-w-full w-full">
+    <section className="relative min-h-[85vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-20">
       <CornerDecorations size="lg" />
       <FloatingParticles count={15} className="absolute inset-0 z-[3] pointer-events-none" />
 
@@ -98,7 +98,7 @@ const Hero = () => {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="space-y-4"
           >
-            <h1 className="text-[clamp(1.75rem,7vw,4.5rem)] font-bold tracking-tight font-serif leading-[1.1] break-words hyphens-auto">
+            <h1 className="text-[clamp(2rem,7vw,4.5rem)] font-bold tracking-tight font-serif leading-[1.1]">
               Ваш сайт не попадает{" "}
               <br className="hidden sm:block" />
               в ответы <span className="brand-highlight">нейросетей</span>?
