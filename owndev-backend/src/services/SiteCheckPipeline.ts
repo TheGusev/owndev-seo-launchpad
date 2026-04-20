@@ -1185,12 +1185,22 @@ export async function runPipeline(
 
   // STEP 5: Keywords
   const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
-  const keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases, apiKey);
-
-  await onProgress(85, { keywords });
+  let keywords: KeywordEntry[] = [];
+  try {
+    keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases, apiKey);
+    await onProgress(85, { keywords });
+  } catch (e: any) {
+    logger.error('PIPELINE', `extractKeywords failed: ${e.message}`);
+    await onProgress(85, { keywords: [] });
+  }
 
   // STEP 6: Minus words
-  const minusWords = await generateMinusWords(theme, keywords, apiKey);
+  let minusWords: MinusWord[] = [];
+  try {
+    minusWords = await generateMinusWords(theme, keywords, apiKey);
+  } catch (e: any) {
+    logger.error('PIPELINE', `generateMinusWords failed: ${e.message}`);
+  }
 
   const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
 
