@@ -189,19 +189,19 @@ const ConversionAudit = () => {
             />
           </div>
 
-          <ChoiceGroup
+          <ChoiceGroup<Goal>
             label="Главная цель"
             value={goal}
             options={goalOptions}
             onChange={setGoal}
           />
-          <ChoiceGroup
+          <ChoiceGroup<TrafficSource>
             label="Откуда трафик"
             value={traffic}
             options={trafficOptions}
             onChange={setTraffic}
           />
-          <ChoiceGroup
+          <ChoiceGroup<MainProblem>
             label="Главная проблема"
             value={problem}
             options={problemOptions}
