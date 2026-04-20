@@ -17,11 +17,42 @@ jobs:
           script: |
             set -e
             cd /var/www/owndev.ru
-            git pull
+
+            echo "=== git pull ==="
+            git pull origin main
+
+            echo "=== backend build ==="
             cd owndev-backend
             npm install --include=dev
             npm run build
-            pm2 restart owndev-backend
+
+            echo "=== PM2 restart with env ==="
+            node -e "
+              const fs=require('fs');
+              const env={};
+              fs.readFileSync('.env','utf8').split('\n').forEach(line=>{
+                const m=line.match(/^([^#=]+)=(.*)/);
+                if(m) env[m[1].trim()]=m[2].trim();
+              });
+              const config={apps:[{
+                name:'owndev-backend',
+                script:'dist/index.js',
+                cwd:'/var/www/owndev.ru/owndev-backend',
+                instances:1,
+                autorestart:true,
+                env:env
+              }]};
+              fs.writeFileSync('ecosystem.config.cjs','module.exports='+JSON.stringify(config,null,2));
+              console.log('Ecosystem written. OPENAI key present:', !!env['OPENAI_API_KEY']);
+            "
+            pm2 delete owndev-backend || true
+            pm2 start ecosystem.config.cjs
+            pm2 save
+
+            echo "=== frontend build ==="
             cd /var/www/owndev.ru
             npm install
             npm run build
+
+            echo "=== done ==="
+            pm2 list
