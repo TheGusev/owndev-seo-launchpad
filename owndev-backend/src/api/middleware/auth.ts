@@ -24,7 +24,10 @@ const ANON_USER: RequestUser = {
 };
 
 export async function authMiddleware(req: FastifyRequest, reply: FastifyReply) {
-  const apiKey = req.headers['x-api-key'] as string | undefined;
+  const apiKey = (req.headers['x-api-key'] ||
+    (req.headers['authorization'] as string | undefined)?.replace(/^Bearer\s+/i, '')) as
+    | string
+    | undefined;
 
   if (!apiKey) {
     (req as any).user = ANON_USER;
