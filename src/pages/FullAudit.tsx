@@ -134,6 +134,7 @@ const FullAudit = () => {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [wordLoading, setWordLoading] = useState(false);
 
   const [siteCheckProgress, setSiteCheckProgress] = useState(0);
   const [siteCheckDone, setSiteCheckDone] = useState(false);
@@ -148,6 +149,68 @@ const FullAudit = () => {
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => () => { if (pollRef.current) window.clearInterval(pollRef.current); }, []);
+
+  // === Persistence: restore last full-audit session from localStorage on mount ===
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("owndev_full_audit_last");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        url?: string; goal?: Goal; traffic?: TrafficSource; problem?: MainProblem;
+        scanId?: string | null; siteCheckData?: Scan | null; croData?: ConversionResult | null;
+        siteCheckDone?: boolean; croDone?: boolean;
+        siteCheckError?: string | null; croError?: string | null;
+        savedAt?: number;
+      };
+      // Expire after 24h
+      if (saved.savedAt && Date.now() - saved.savedAt > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem("owndev_full_audit_last");
+        return;
+      }
+      if (saved.url) setUrl(saved.url);
+      if (saved.goal) setGoal(saved.goal);
+      if (saved.traffic) setTraffic(saved.traffic);
+      if (saved.problem) setProblem(saved.problem);
+      if (saved.scanId) setScanId(saved.scanId);
+      if (saved.siteCheckData) setSiteCheckData(saved.siteCheckData);
+      if (saved.croData) setCroData(saved.croData);
+      if (saved.siteCheckDone) setSiteCheckDone(true);
+      if (saved.croDone) setCroDone(true);
+      if (saved.siteCheckError) setSiteCheckError(saved.siteCheckError);
+      if (saved.croError) setCroError(saved.croError);
+      if (saved.siteCheckData?.scores) setSiteCheckProgress(100);
+    } catch {
+      // corrupted entry — ignore
+    }
+  }, []);
+
+  // Save snapshot whenever results change
+  useEffect(() => {
+    if (!siteCheckData && !croData) return;
+    try {
+      localStorage.setItem(
+        "owndev_full_audit_last",
+        JSON.stringify({
+          url, goal, traffic, problem,
+          scanId, siteCheckData, croData,
+          siteCheckDone, croDone,
+          siteCheckError, croError,
+          savedAt: Date.now(),
+        }),
+      );
+    } catch {
+      // quota exceeded — ignore
+    }
+  }, [siteCheckData, croData, scanId, siteCheckDone, croDone, siteCheckError, croError, url, goal, traffic, problem]);
+
+  const handleNewAudit = () => {
+    localStorage.removeItem("owndev_full_audit_last");
+    setUrl(""); setGoal(null); setTraffic(null); setProblem(null);
+    setSiteCheckData(null); setCroData(null);
+    setScanId(null); setSiteCheckDone(false); setCroDone(false);
+    setSiteCheckError(null); setCroError(null);
+    setSiteCheckProgress(0); setError(null);
+  };
 
   const canSubmit =
     !!url.trim() && !!goal && !!traffic && !!problem && !running;
