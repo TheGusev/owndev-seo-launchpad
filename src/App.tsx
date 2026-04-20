@@ -43,6 +43,7 @@ import SiteFormulaReport from "./pages/SiteFormulaReport";
 import MarketplaceAudit from "./pages/MarketplaceAudit";
 import MarketplaceAuditResult from "./pages/MarketplaceAuditResult";
 import ConversionAudit from "./pages/ConversionAudit";
+import FullAudit from "./pages/FullAudit";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,7 @@ const App = () => (
             <Route path="/marketplace-audit" element={<MarketplaceAudit />} />
             <Route path="/marketplace-audit/result/:id" element={<ErrorBoundary><MarketplaceAuditResult /></ErrorBoundary>} />
             <Route path="/tools/conversion-audit" element={<ConversionAudit />} />
+            <Route path="/tools/full-audit" element={<FullAudit />} />
             <Route path="/academy" element={<Academy />} />
             <Route path="/academy/:moduleSlug/:lessonSlug" element={<AcademyLesson />} />
             <Route path="/tools/site-check/result/:scanId" element={<ErrorBoundary><SiteCheckResult /></ErrorBoundary>} />

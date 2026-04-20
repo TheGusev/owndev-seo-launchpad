@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, TrendingDown } from "lucide-react";
+import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, TrendingDown, LayoutDashboard } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const tools = [
+  { icon: LayoutDashboard, name: "Полный аудит", description: "GEO + SEO + CRO в одном отчёте — технические проблемы, конверсионные барьеры, потери бюджета и стоимость исправления", slug: "full-audit", badge: "Новое", badge2: "Всё в одном" },
   { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check" },
   { icon: ShoppingBag, name: "Аудит карточек WB / Ozon", description: "AI-аудит карточки маркетплейса: контент, поиск, конверсия и реклама", slug: "marketplace-audit", external: true },
   { icon: TrendingDown, name: "CRO-аудит", description: "Почему сайт не продаёт — конверсионные барьеры, потери бюджета и расчёт стоимости исправления", slug: "conversion-audit", badge: "Новое" },
@@ -98,6 +99,11 @@ const ToolsShowcase = () => {
                   {(tool as any).badge && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold uppercase tracking-wide">
                       {(tool as any).badge}
+                    </span>
+                  )}
+                  {(tool as any).badge2 && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-accent/15 text-accent text-[10px] font-semibold uppercase tracking-wide">
+                      {(tool as any).badge2}
                     </span>
                   )}
                 </div>
