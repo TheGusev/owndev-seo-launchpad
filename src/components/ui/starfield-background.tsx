@@ -39,18 +39,20 @@ const colorMap = {
 
 const StarfieldBackground = ({ count = 100, className }: StarfieldBackgroundProps) => {
   const [starCount, setStarCount] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    setStarCount(isMobile ? Math.min(count, 35) : count);
+    const mobile = window.innerWidth < 768;
+    setIsMobile(mobile);
+    setStarCount(mobile ? Math.min(count, 35) : count);
   }, [count]);
 
-  const stars = useMemo(() => generateStars(starCount), [starCount]);
+  const stars = useMemo(() => generateStars(starCount, isMobile), [starCount, isMobile]);
 
   if (starCount === 0) return null;
 
   return (
-    <div className={cn('pointer-events-none', className)}>
+    <div className={cn('pointer-events-none overflow-hidden', className)}>
       {stars.map((star, i) => {
         const rad = (star.angle * Math.PI) / 180;
         const x = 50 + star.distance * Math.cos(rad);
