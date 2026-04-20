@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo } from "react";
+import { getAllLessons } from "@/data/academy/lessons";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
@@ -42,35 +42,25 @@ interface Module {
 
 const Academy = () => {
   const navigate = useNavigate();
-  const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase
-      .from("academy_lessons")
-      .select("*")
-      .order("module_number")
-      .order("lesson_number")
-      .then(({ data }) => {
-        if (!data) { setLoading(false); return; }
-        const grouped: Record<number, Lesson[]> = {};
-        (data as any[]).forEach((l) => {
-          if (!grouped[l.module_number]) grouped[l.module_number] = [];
-          grouped[l.module_number].push(l);
-        });
-        const mods: Module[] = Object.entries(grouped).map(([num, lessons]) => ({
-          number: Number(num),
-          slug: lessons[0].module_slug,
-          title: lessons[0].module_title,
-          icon: moduleIcons[(Number(num) - 1) % moduleIcons.length],
-          color: moduleColors[(Number(num) - 1) % moduleColors.length],
-          lessons,
-          totalTime: lessons.reduce((s, l) => s + l.reading_time_minutes, 0),
-        }));
-        setModules(mods);
-        setLoading(false);
-      });
+  const modules = useMemo<Module[]>(() => {
+    const all = getAllLessons();
+    const grouped: Record<number, Lesson[]> = {};
+    all.forEach((l) => {
+      if (!grouped[l.module_number]) grouped[l.module_number] = [];
+      grouped[l.module_number].push(l);
+    });
+    return Object.entries(grouped).map(([num, lessons]) => ({
+      number: Number(num),
+      slug: lessons[0].module_slug,
+      title: lessons[0].module_title,
+      icon: moduleIcons[(Number(num) - 1) % moduleIcons.length],
+      color: moduleColors[(Number(num) - 1) % moduleColors.length],
+      lessons,
+      totalTime: lessons.reduce((s, l) => s + l.reading_time_minutes, 0),
+    }));
   }, []);
+  const loading = false;
 
   const totalLessons = modules.reduce((s, m) => s + m.lessons.length, 0);
   const totalTime = modules.reduce((s, m) => s + m.totalTime, 0);
