@@ -24,6 +24,24 @@ async function loadDbRules(): Promise<any[]> {
 
 async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
   const { scan_id, url, mode } = job.data;
+
+  // Guard against invalid URLs that somehow ended up in the queue.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+    if (!parsedUrl.hostname || parsedUrl.hostname.length < 3 || !parsedUrl.hostname.includes('.')) {
+      throw new Error('hostname invalid');
+    }
+  } catch {
+    logger.error('SITE_CHECK_WORKER', `Invalid URL in job: ${url}`);
+    await sql`
+      UPDATE site_check_scans
+      SET status = 'error', error_message = 'Некорректный URL', updated_at = NOW()
+      WHERE id = ${scan_id}
+    `.catch(() => {});
+    return;
+  }
+
   logger.info('SITE_CHECK_WORKER', `Processing scan ${scan_id} for ${url}`);
 
   try {
