@@ -13,6 +13,15 @@ const steps = [
 
 const STEP_DELAYS = [2500, 3000, 3500, 3000, 2500, 2000];
 
+const progressStages = [
+  { min: 0,  max: 20,  label: 'Загрузка страницы',    icon: '🌐' },
+  { min: 20, max: 40,  label: 'Технический SEO',      icon: '⚙️' },
+  { min: 40, max: 60,  label: 'Schema.org анализ',    icon: '📋' },
+  { min: 60, max: 80,  label: 'E-E-A-T и контент',    icon: '✍️' },
+  { min: 80, max: 95,  label: 'AI Score расчёт',      icon: '🤖' },
+  { min: 95, max: 100, label: 'Формирование отчёта',  icon: '📊' },
+];
+
 interface ScanProgressProps {
   onComplete: () => void;
   realProgress?: number;
@@ -45,6 +54,9 @@ const ScanProgress = ({ onComplete, realProgress, error, domain }: ScanProgressP
   // If simulation finishes before API — just wait
   const currentStep = allDone ? steps.length : simStep;
   const progress = allDone ? 100 : realProgress ?? Math.min((currentStep / steps.length) * 100, 95);
+  const currentStage =
+    progressStages.find((s) => progress >= s.min && progress <= s.max) ??
+    progressStages[progressStages.length - 1];
 
   return (
     <div className="space-y-6 max-w-xl mx-auto">
