@@ -280,6 +280,7 @@ const SiteCheckResult = () => {
               loading={aiBoostLoading}
               error={aiBoostError}
               onRetry={triggerAiBoost}
+              scanId={scanId}
             />
           </ResultAccordion>
 

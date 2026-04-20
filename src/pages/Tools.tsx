@@ -19,6 +19,11 @@ const FORMULA_SLUG = "site-formula";
 
 const TOOL_GROUPS = [
   {
+    title: "Полный + CRO аудит",
+    emoji: "🚀",
+    slugs: ["full-audit", "conversion-audit"],
+  },
+  {
     title: "Аудит и анализ",
     emoji: "🔍",
     slugs: ["marketplace-audit", "seo-auditor", "competitor-analysis", "indexation-checker", "internal-links"],

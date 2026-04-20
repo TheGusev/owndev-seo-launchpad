@@ -21,7 +21,7 @@ async function ensureCacheTable(): Promise<void> {
     `;
     cacheTableReady = true;
   } catch (e: any) {
-    logger.error('CONVERSION_AUDIT', 'cache table init failed:', e?.message);
+    logger.error('CONVERSION_AUDIT', `cache table init failed: ${e?.message}`);
   }
 }
 
@@ -39,7 +39,8 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
     const apiKey = process.env.OPENAI_API_KEY || '';
     if (!apiKey) return reply.status(503).send({ error: 'OpenAI key not set' });
 
-    const domain = (() => { try { return new URL(url).hostname; } catch { return url; } })();
+    // Нормализуем домен и удаляем www. префикс для корректного кэш-ключа
+    const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
 
     // Cache lookup (7 days)
     await ensureCacheTable();
@@ -55,7 +56,7 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
         return reply.send({ success: true, url, domain, cached: true, ...rows[0].result });
       }
     } catch (e: any) {
-      logger.error('CONVERSION_AUDIT', 'cache read failed:', e?.message);
+      logger.error('CONVERSION_AUDIT', `cache read failed: ${e?.message}`);
     }
 
     // Fetch page HTML
@@ -155,12 +156,12 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
             created_at = NOW()
         `;
       } catch (e: any) {
-        logger.error('CONVERSION_AUDIT', 'cache write failed:', e?.message);
+        logger.error('CONVERSION_AUDIT', `cache write failed: ${e?.message}`);
       }
       return reply.send({ success: true, url, domain, cached: false, ...parsed });
     } catch (e: any) {
       clearTimeout(tid2);
-      logger.error('CONVERSION_AUDIT', e.message);
+      logger.error('CONVERSION_AUDIT', `Analysis failed: ${e?.message}`);
       return reply.status(500).send({ error: 'Не удалось выполнить анализ' });
     }
   });

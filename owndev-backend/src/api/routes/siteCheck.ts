@@ -119,7 +119,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         .send({
           success: false,
           error: 'Сервер загружен. Попробуйте через пару минут.',
-          code: 'CONCURRENCY_LIMIT',
+          code: 'RATE_LIMIT',
         });
     }
 
@@ -141,7 +141,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(429).send({
           success: false,
           error: 'Этот домен уже проверялся сегодня.',
-          code: 'CONCURRENCY_LIMIT',
+          code: 'ALREADY_SCANNED',
           last_scan_id: cached[0].id,
         });
       }
@@ -393,6 +393,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         try {
           const resp = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
+            signal: AbortSignal.timeout(30000),
             headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: 'gpt-4o-mini',
@@ -567,6 +568,109 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     return reply.status(200).send({ success: true });
   });
 
+  // GET /api/v1/site-check/tech-passport — технический паспорт сайта
+  app.get<{ Querystring: { url: string } }>('/tech-passport', async (req, reply) => {
+    const { url } = req.query as { url: string };
+    if (!url) return reply.status(400).send({ success: false, error: 'url required' });
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
+    } catch {
+      return reply.status(400).send({ success: false, error: 'Некорректный URL' });
+    }
+    const domain = parsedUrl.hostname;
+    const baseUrl = `${parsedUrl.protocol}//${domain}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
+    const checks = await Promise.allSettled([
+      fetch(baseUrl, { method: 'HEAD', signal: controller.signal, headers: { 'User-Agent': 'OWNDEV-TechPassport/1.0' } }),
+      fetch(`${baseUrl}/robots.txt`, { signal: controller.signal }),
+      fetch(`${baseUrl}/llms.txt`, { signal: controller.signal }),
+      fetch(`${baseUrl}/sitemap.xml`, { signal: controller.signal }),
+      fetch(`${baseUrl}/sitemap_index.xml`, { signal: controller.signal }),
+      fetch(`${baseUrl}/.well-known/security.txt`, { signal: controller.signal }),
+    ]);
+    clearTimeout(timeout);
+
+    const [siteResp, robotsResp, llmsResp, sitemapResp, sitemapIdxResp, securityResp] = checks;
+
+    const siteOk = siteResp.status === 'fulfilled' && (siteResp.value as Response).ok;
+    const siteHeaders: Record<string, string> = {};
+    if (siteResp.status === 'fulfilled') {
+      const resp = siteResp.value as Response;
+      for (const h of ['server', 'x-powered-by', 'content-type', 'x-frame-options', 'strict-transport-security', 'content-security-policy', 'x-content-type-options']) {
+        const v = resp.headers.get(h);
+        if (v) siteHeaders[h] = v;
+      }
+    }
+
+    const robotsTxt = robotsResp.status === 'fulfilled' && (robotsResp.value as Response).ok
+      ? await (robotsResp.value as Response).text().catch(() => '')
+      : '';
+    const hasRobots = !!robotsTxt;
+    const hasGptBot = robotsTxt.toLowerCase().includes('gptbot');
+    const hasLlmsTxt = llmsResp.status === 'fulfilled' && (llmsResp.value as Response).ok;
+    const hasSitemap = (sitemapResp.status === 'fulfilled' && (sitemapResp.value as Response).ok)
+      || (sitemapIdxResp.status === 'fulfilled' && (sitemapIdxResp.value as Response).ok);
+    const hasSecurityTxt = securityResp.status === 'fulfilled' && (securityResp.value as Response).ok;
+
+    // Detect CMS/tech from headers
+    const tech: string[] = [];
+    const server = siteHeaders['server'] || '';
+    const powered = siteHeaders['x-powered-by'] || '';
+    if (/nginx/i.test(server)) tech.push('Nginx');
+    if (/apache/i.test(server)) tech.push('Apache');
+    if (/php/i.test(powered)) tech.push('PHP');
+    if (/wordpress/i.test(powered) || /wp-content/i.test(robotsTxt)) tech.push('WordPress');
+    if (/bitrix/i.test(robotsTxt)) tech.push('Bitrix');
+    if (/express/i.test(powered)) tech.push('Express.js');
+
+    // Security score
+    let securityScore = 0;
+    if (siteHeaders['strict-transport-security']) securityScore += 30;
+    if (siteHeaders['x-frame-options']) securityScore += 20;
+    if (siteHeaders['x-content-type-options']) securityScore += 20;
+    if (siteHeaders['content-security-policy']) securityScore += 30;
+
+    // AI readiness
+    let aiScore = 0;
+    if (hasLlmsTxt) aiScore += 40;
+    if (hasGptBot) aiScore += 20;
+    if (hasSitemap) aiScore += 20;
+    if (hasRobots) aiScore += 10;
+    if (siteOk) aiScore += 10;
+
+    return reply.send({
+      success: true,
+      domain,
+      url: baseUrl,
+      accessible: siteOk,
+      tech,
+      headers: siteHeaders,
+      files: {
+        robots_txt: hasRobots,
+        llms_txt: hasLlmsTxt,
+        sitemap_xml: hasSitemap,
+        security_txt: hasSecurityTxt,
+      },
+      ai_access: {
+        has_gptbot_allow: hasGptBot,
+        has_llms_txt: hasLlmsTxt,
+        ai_score: aiScore,
+      },
+      security: {
+        has_hsts: !!siteHeaders['strict-transport-security'],
+        has_x_frame: !!siteHeaders['x-frame-options'],
+        has_xcto: !!siteHeaders['x-content-type-options'],
+        has_csp: !!siteHeaders['content-security-policy'],
+        score: securityScore,
+      },
+    });
+  });
+
   // GET /api/v1/site-check/geo-rating — GEO Rating data from local DB or Supabase proxy
   app.get('/geo-rating', async (_req, reply) => {
     try {
@@ -575,9 +679,9 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       return reply.send(rows);
     } catch {
       // Table doesn't exist locally — proxy to Supabase
+      // Используем только backend-переменные (без VITE_ префикса т. к. его нет на сервере)
       try {
-        const supabaseUrl =
-          process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+        const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey =
           process.env.SUPABASE_SERVICE_ROLE_KEY ||
           process.env.SUPABASE_ANON_KEY;

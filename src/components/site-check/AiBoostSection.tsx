@@ -16,6 +16,7 @@ interface AiBoostSectionProps {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  scanId?: string | null;
 }
 
 const categoryIcon: Record<string, string> = {
@@ -44,22 +45,25 @@ const priorityLabel: Record<string, string> = {
   low: 'LOW',
 };
 
-const AiBoostSection = ({ items, loading, error, onRetry }: AiBoostSectionProps) => {
+const AiBoostSection = ({ items, loading, error, onRetry, scanId }: AiBoostSectionProps) => {
   const [filter, setFilter] = useState<string>('all');
   const [done, setDone] = useState<Set<string>>(new Set());
 
+  // Используем scanId-специфичный ключ чтобы не миксовать чекбоксы разных сканов
+  const storageKey = scanId ? `aiboost_${scanId}` : 'ai-boost-done';
+
   React.useEffect(() => {
-    const saved = localStorage.getItem('ai-boost-done');
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try { setDone(new Set(JSON.parse(saved))); } catch { /* noop */ }
     }
-  }, []);
+  }, [storageKey]);
 
   const toggleDone = (id: string) => {
     setDone(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
-      localStorage.setItem('ai-boost-done', JSON.stringify([...next]));
+      localStorage.setItem(storageKey, JSON.stringify([...next]));
       return next;
     });
   };

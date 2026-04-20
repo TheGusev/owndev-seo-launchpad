@@ -56,7 +56,10 @@ export async function aliceRoutes(app: FastifyInstance): Promise<void> {
         : '';
       const hasLlmsTxt = llmsResp.status === 'fulfilled' && (llmsResp.value as Response).ok;
       const hasGptBot = robotsTxt.toLowerCase().includes('gptbot');
-      const isAiBlocked = robotsTxt.toLowerCase().includes('disallow: /') && !hasGptBot;
+      // Проверяем только глобальную блокировку всего сайта (Disallow: /) для * агента
+      // партичные Disallow: /private/ не должны давать false positive
+      const isGloballyBlocked = /user-agent:\s*\*[\s\S]*?disallow:\s*\/(?:\s|$)/i.test(robotsTxt);
+      const isAiBlocked = isGloballyBlocked && !hasGptBot;
 
       let score = 0;
       if (isAccessible) score += 40;

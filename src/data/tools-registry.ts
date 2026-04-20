@@ -1,4 +1,4 @@
-import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye, ClipboardList, Plug, LayoutTemplate, ShoppingBag } from "lucide-react";
+import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye, ClipboardList, Plug, LayoutTemplate, ShoppingBag, LayoutDashboard, Target } from "lucide-react";
 import { lazy, type ComponentType } from "react";
 
 export type ToolStatus = "active" | "coming_soon";
@@ -302,6 +302,36 @@ export const tools: ToolDef[] = [
     seoTitle: "MCP Server — подключите OWNDEV к AI-агентам | OWNDEV",
     seoDescription: "Запускайте GEO-аудит прямо из Claude, ChatGPT или любого MCP-совместимого клиента. Model Context Protocol для OWNDEV.",
     seoH1: "MCP Server — подключите OWNDEV к AI-агентам",
+  },
+  // ===== FULL AUDIT (GEO + SEO + CRO) =====
+  {
+    id: "full-audit", slug: "full-audit",
+    name: "Полный аудит сайта",
+    shortDesc: "GEO + SEO + CRO в одном отчёте: почему сайт не работает и сколько теряете на конверсии",
+    category: "analysis", icon: LayoutDashboard,
+    component: lazy(() => import("@/pages/FullAudit")),
+    gradient: "bg-gradient-to-br from-primary/20 to-violet-950/40",
+    useCases: ["Полный GEO + SEO аудит", "Анализ конверсии", "Стоимость исправления"],
+    geoEnabled: true, status: "active",
+    customPath: "/tools/full-audit",
+    seoTitle: "Полный аудит сайта GEO + SEO + CRO | OWNDEV",
+    seoDescription: "Единственный бесплатный инструмент: GEO + SEO + CRO в одном отчёте.",
+    seoH1: "Полный аудит сайта",
+  },
+  // ===== CONVERSION AUDIT (CRO) =====
+  {
+    id: "conversion-audit", slug: "conversion-audit",
+    name: "CRO аудит",
+    shortDesc: "Почему сайт не продаёт: барьеры конверсии, потери бюджета Директа и план исправления",
+    category: "analysis", icon: Target,
+    component: lazy(() => import("@/pages/ConversionAudit")),
+    gradient: "bg-gradient-to-br from-orange-950/40 to-red-950/40",
+    useCases: ["Анализ потерь бюджета", "Барьеры конверсии", "Быстрые победы CRO"],
+    geoEnabled: false, status: "active",
+    customPath: "/tools/conversion-audit",
+    seoTitle: "CRO-аудит сайта | OWNDEV",
+    seoDescription: "Почему сайт не продаёт: AI-анализ барьеров конверсии и потерь бюджета Директа.",
+    seoH1: "CRO-аудит сайта",
   },
 ];
 

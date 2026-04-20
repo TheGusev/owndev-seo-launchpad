@@ -21,6 +21,7 @@ import {
 import { FileText, RotateCcw } from "lucide-react";
 import { apiUrl } from "@/lib/api/config";
 import { startScan, getScanStatus, getFullScan } from "@/lib/api/scan";
+import { judgeLlm } from "@/lib/api/tools";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
 import IssueCard from "@/components/site-check/IssueCard";
 import LlmJudgeSection, { type LlmJudgeData } from "@/components/site-check/LlmJudgeSection";
@@ -145,6 +146,10 @@ const FullAudit = () => {
   const [croDone, setCroDone] = useState(false);
   const [croData, setCroData] = useState<ConversionResult | null>(null);
   const [croError, setCroError] = useState<string | null>(null);
+
+  const [llmJudgeData, setLlmJudgeData] = useState<LlmJudgeData | null>(null);
+  const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
+  const [llmJudgeError, setLlmJudgeError] = useState<string | null>(null);
 
   const pollRef = useRef<number | null>(null);
 
@@ -280,6 +285,10 @@ const FullAudit = () => {
             setSiteCheckProgress(100);
             setSiteCheckDone(true);
             setRunning(false);
+            // Запускаем LLM Judge автоматически после завершения GEO/SEO аудита
+            if ((result as any)?.url) {
+              triggerLlmJudge(id, (result as any).url, (result as any).theme);
+            }
           } else if (status.status === "error") {
             if (pollRef.current) window.clearInterval(pollRef.current);
             setSiteCheckError("Аудит сайта завершился с ошибкой");
@@ -303,11 +312,25 @@ const FullAudit = () => {
     }
   };
 
+  const triggerLlmJudge = async (id: string, siteUrl: string, theme?: string) => {
+    setLlmJudgeLoading(true);
+    setLlmJudgeError(null);
+    try {
+      const result = await judgeLlm(id, siteUrl, theme);
+      if (result) setLlmJudgeData(result as LlmJudgeData);
+    } catch (e: any) {
+      setLlmJudgeError(e?.message || 'Не удалось запустить AI-аудит');
+    } finally {
+      setLlmJudgeLoading(false);
+    }
+  };
+
   const topIssues: IssueCardType[] = (siteCheckData?.issues || [])
     .filter((i) => i.severity === "critical" || i.severity === "high")
     .slice(0, 5);
 
-  const llmJudge = (siteCheckData as any)?.llm_judge as LlmJudgeData | null;
+  // llmJudge берём либо из локального state, либо из кэша в siteCheckData
+  const llmJudge = llmJudgeData ?? ((siteCheckData as any)?.llm_judge as LlmJudgeData | null);
 
   const handleDownloadPdf = async () => {
     if (!hasAnyResult) return;
@@ -756,9 +779,19 @@ const FullAudit = () => {
             )}
 
             {/* Section 4: AI visibility */}
-            {llmJudge && llmJudge.systems?.length > 0 && (
+            {(llmJudge || llmJudgeLoading || llmJudgeError) && (
               <ResultAccordion title="AI-видимость в нейросетях">
-                <LlmJudgeSection data={llmJudge} />
+                {llmJudgeLoading && (
+                  <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Анализируем AI-видимость...
+                  </div>
+                )}
+                {llmJudgeError && !llmJudgeLoading && (
+                  <p className="text-sm text-destructive py-2">{llmJudgeError}</p>
+                )}
+                {llmJudge && llmJudge.systems?.length > 0 && (
+                  <LlmJudgeSection data={llmJudge} />
+                )}
               </ResultAccordion>
             )}
 

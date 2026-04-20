@@ -70,7 +70,19 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
       dbRules,
     );
 
-    // Save final result
+    // Save final result — сохраняем все данные включая result JSONB для обратной совместимости
+    const resultJsonb = {
+      theme: result.theme,
+      is_spa: result.is_spa,
+      scores: result.scores,
+      issues: result.issues,
+      competitors: result.competitors,
+      keywords: result.keywords,
+      minus_words: result.minus_words,
+      seo_data: result.seo_data,
+      summary: result.summary ?? null,
+      blocks: result.blocks ?? [],
+    };
     await sql`
       UPDATE site_check_scans
       SET status = 'done',
@@ -83,6 +95,7 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           keywords = ${JSON.stringify(result.keywords)}::jsonb,
           minus_words = ${JSON.stringify(result.minus_words)}::jsonb,
           seo_data = ${JSON.stringify(result.seo_data)}::jsonb,
+          result = COALESCE(result, '{}'::jsonb) || ${JSON.stringify(resultJsonb)}::jsonb,
           updated_at = NOW()
       WHERE id = ${scan_id}
     `;
