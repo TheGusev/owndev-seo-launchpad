@@ -5,6 +5,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ⚠️ DEPRECATED — replaced by Node API endpoint:
+//   POST https://owndev.ru/api/v1/site-check/admin/rescan-geo-rating
+//   Headers: X-Admin-Token: $ADMIN_TOKEN
+//   Body:    { "mode": "low65" | "score65" | "stale" | "all", "domain"?: "foo.ru" }
+// The new flow runs through SiteCheckWorker which writes precise fractional
+// scores into geo_rating via INSERT ... ON CONFLICT. This Edge Function used
+// to overwrite those values with stale "bucketed" scores (65/80/100 etc.) and
+// must NOT be invoked anymore.
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -87,6 +95,21 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Hard deprecation: refuse to run so old buckets don't overwrite fresh data.
+  return new Response(
+    JSON.stringify({
+      error: "GONE",
+      message:
+        "geo-rating-cron deprecated. Use POST /api/v1/site-check/admin/rescan-geo-rating on owndev backend with X-Admin-Token.",
+      replacement: "https://owndev.ru/api/v1/site-check/admin/rescan-geo-rating",
+    }),
+    {
+      status: 410,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
+
+  // eslint-disable-next-line no-unreachable
   try {
     let domain: string | undefined;
     let batchSize = 3;

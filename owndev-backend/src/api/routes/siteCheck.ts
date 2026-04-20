@@ -600,4 +600,84 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       return reply.send([]);
     }
   });
+
+  // POST /api/v1/site-check/admin/rescan-geo-rating
+  // Admin-only: re-queues geo_rating domains through the worker so it
+  // upserts fresh fractional scores back into geo_rating.
+  app.post<{
+    Body: {
+      mode?: 'low65' | 'score65' | 'stale' | 'all';
+      domain?: string;
+      dry_run?: boolean;
+    };
+  }>('/admin/rescan-geo-rating', async (req, reply) => {
+    const adminToken = process.env.ADMIN_TOKEN || '';
+    const provided = (req.headers['x-admin-token'] || '') as string;
+    if (!adminToken || provided !== adminToken) {
+      return reply.status(401).send({ success: false, error: 'invalid admin token' });
+    }
+
+    const { mode = 'low65', domain, dry_run = false } = (req.body || {}) as {
+      mode?: 'low65' | 'score65' | 'stale' | 'all';
+      domain?: string;
+      dry_run?: boolean;
+    };
+
+    let rows: Array<{ domain: string }> = [];
+    if (domain) {
+      rows = await sql<Array<{ domain: string }>>`
+        SELECT domain FROM geo_rating WHERE domain = ${domain} LIMIT 1
+      `;
+    } else if (mode === 'all') {
+      rows = await sql<Array<{ domain: string }>>`
+        SELECT domain FROM geo_rating ORDER BY llm_score ASC
+      `;
+    } else if (mode === 'score65') {
+      rows = await sql<Array<{ domain: string }>>`
+        SELECT domain FROM geo_rating WHERE llm_score = 65 ORDER BY domain
+      `;
+    } else if (mode === 'stale') {
+      rows = await sql<Array<{ domain: string }>>`
+        SELECT domain FROM geo_rating
+        WHERE last_checked_at < NOW() - INTERVAL '24 hours'
+           OR (llm_score % 5 = 0 AND seo_score % 5 = 0)
+        ORDER BY last_checked_at NULLS FIRST
+      `;
+    } else {
+      // low65 (default)
+      rows = await sql<Array<{ domain: string }>>`
+        SELECT domain FROM geo_rating
+        WHERE llm_score <= 65
+           OR seo_score <= 65
+           OR schema_score <= 65
+           OR direct_score <= 65
+        ORDER BY llm_score ASC, seo_score ASC
+      `;
+    }
+
+    const domains = rows.map((r) => r.domain);
+
+    if (dry_run) {
+      return reply.send({ success: true, dry_run: true, mode, count: domains.length, domains });
+    }
+
+    let queued = 0;
+    for (const d of domains) {
+      const url = `https://${d}`;
+      const scan_id = randomUUID();
+      try {
+        await sql`
+          INSERT INTO site_check_scans (id, url, mode, status, progress_pct)
+          VALUES (${scan_id}, ${url}, 'page', 'running', 0)
+        `;
+        await queue.add('scan', { scan_id, url, mode: 'page' });
+        queued++;
+      } catch (e) {
+        logger.warn('SITE_CHECK_ADMIN', `Failed to queue ${d}: ${(e as Error).message}`);
+      }
+    }
+
+    logger.info('SITE_CHECK_ADMIN', `Rescan queued ${queued}/${domains.length} domains (mode=${mode})`);
+    return reply.send({ success: true, mode, queued, total: domains.length, domains });
+  });
 }
