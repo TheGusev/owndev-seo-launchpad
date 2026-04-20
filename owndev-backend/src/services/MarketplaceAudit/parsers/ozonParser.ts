@@ -2,11 +2,10 @@ import type { ParsedProduct } from '../../../types/marketplaceAudit.js';
 import { logger } from '../../../utils/logger.js';
 
 /**
- * Ozon doesn't expose a stable public JSON for product details without auth.
- * MVP strategy:
- *  1) Try fetching the product page HTML and extract OG meta + JSON-LD.
- *  2) If fails — throw, the orchestrator will surface a friendly error
- *     suggesting manual input.
+ * Ozon serves a JS-only SPA shell to server-side fetches (often 403 / empty).
+ * MVP strategy: proxy through Jina Reader (https://r.jina.ai/<url>), which
+ * renders the page and returns clean JSON with title + content. We then
+ * extract price/rating/reviews/brand via regex from the rendered text.
  */
 
 export function extractOzonProductPath(input: string): string | null {
@@ -25,90 +24,85 @@ export function extractOzonProductPath(input: string): string | null {
   return null;
 }
 
-function extractMeta(html: string, prop: string): string | null {
-  const re = new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i');
-  const m = html.match(re);
-  return m ? m[1] : null;
+function cleanTitle(t: string): string {
+  return t
+    .replace(/\s*[—|-]\s*купить.*$/i, '')
+    .replace(/\s*\|\s*Ozon.*$/i, '')
+    .replace(/\s*интернет[- ]магазин.*$/i, '')
+    .trim();
 }
 
-function extractAllMeta(html: string, prop: string): string[] {
-  const re = new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'gi');
-  const out: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) out.push(m[1]);
-  return out;
-}
-
-function extractJsonLd(html: string): any[] {
-  const out: any[] = [];
-  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    try { out.push(JSON.parse(m[1].trim())); } catch { /* skip */ }
-  }
-  return out;
+function extractBrand(text: string): string {
+  const m = text.match(/Бренд[:\s]+([A-Za-zА-Яа-я0-9 \-_.&]{2,40})/);
+  return m ? m[1].trim() : '';
 }
 
 export async function parseOzon(input: string): Promise<ParsedProduct> {
   const path = extractOzonProductPath(input);
   if (!path) throw new Error('Не удалось определить URL карточки Ozon');
 
-  const url = `https://www.ozon.ru${path}`;
-  let html = '';
+  const targetUrl = `https://www.ozon.ru${path}`;
+  const jinaUrl = `https://r.jina.ai/${targetUrl}`;
+
+  let jina: any = null;
   try {
-    const r = await fetch(url, {
+    const r = await fetch(jinaUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept-Language': 'ru-RU,ru;q=0.9',
+        Accept: 'application/json',
+        'X-Return-Format': 'json',
       },
-      redirect: 'follow',
+      signal: AbortSignal.timeout(30000),
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    html = await r.text();
+    jina = await r.json();
   } catch (e) {
-    logger.warn('OZON_PARSER', `fetch failed: ${(e as Error).message}`);
-    throw new Error('Не удалось получить данные с Ozon. Используйте ручной ввод.');
+    logger.warn('OZON_PARSER', `jina fetch failed: ${(e as Error).message}`);
+    throw new Error('Не удалось получить данные Ozon. Используйте ручной ввод.');
   }
 
-  const ogTitle = extractMeta(html, 'og:title') || '';
-  const ogDesc  = extractMeta(html, 'og:description') || '';
-  const ogImage = extractMeta(html, 'og:image');
-  const ogImages = extractAllMeta(html, 'og:image');
+  const data = jina?.data ?? jina ?? {};
+  const rawTitle: string = String(data.title ?? '').trim();
+  const content: string = String(data.content ?? '').trim();
 
-  const jsonLd = extractJsonLd(html);
-  const product = jsonLd.find((j) => j['@type'] === 'Product' || (Array.isArray(j['@type']) && j['@type'].includes('Product'))) || {};
+  if (!content || content.length < 100) {
+    throw new Error('Не удалось получить данные Ozon. Используйте ручной ввод.');
+  }
 
-  const title = (product.name as string) || ogTitle || '';
-  const description = (product.description as string) || ogDesc || '';
-  let images: string[] = Array.isArray(product.image) ? product.image : (product.image ? [product.image] : []);
-  if (images.length === 0 && ogImages.length > 0) images = ogImages;
-  else if (images.length === 0 && ogImage) images = [ogImage];
+  const title = cleanTitle(rawTitle) || 'Без названия';
 
-  const brand = product.brand?.name || product.brand || '';
-  const category = product.category || '';
+  // Numeric extractions
+  const ratingMatch = content.match(/(\d+[.,]\d+)\s*из\s*5/i);
+  const rating = ratingMatch ? parseFloat(ratingMatch[1].replace(',', '.')) : 0;
+
+  const reviewMatch = content.match(/(\d[\d\s]*)\s*отзыв/i);
+  const reviewsCount = reviewMatch ? parseInt(reviewMatch[1].replace(/\s/g, ''), 10) : 0;
+
+  const brand = extractBrand(content);
+
+  // Description: first ~1500 chars of content, trimmed
+  const description = content.slice(0, 1500).trim();
+
+  // Images — Jina sometimes returns data.images as array of URLs
+  let images: string[] = [];
+  if (Array.isArray(data.images)) {
+    images = data.images.filter((u: any) => typeof u === 'string').slice(0, 12);
+  } else if (data.images && typeof data.images === 'object') {
+    images = Object.values(data.images).filter((u: any) => typeof u === 'string').slice(0, 12) as string[];
+  }
 
   const attributes: Record<string, string> = {};
-  if (brand) attributes['Бренд'] = String(brand);
-  if (Array.isArray(product.additionalProperty)) {
-    for (const p of product.additionalProperty) {
-      const n = String(p?.name ?? '').trim();
-      const v = String(p?.value ?? '').trim();
-      if (n && v) attributes[n] = v;
-    }
-  }
-
-  if (!title && !description && images.length === 0) {
-    throw new Error('Карточка Ozon вернула пустые данные. Используйте ручной ввод.');
-  }
+  if (brand) attributes['Бренд'] = brand;
 
   return {
     platform: 'ozon',
-    title: title || 'Без названия',
+    title,
     description,
-    category: String(category || 'Не определена'),
+    category: 'Не определена',
     attributes,
     images,
-    url,
-    sourceData: { path },
+    reviewsCount,
+    rating,
+    url: targetUrl,
+    sourceData: { path, source: 'jina' },
   };
 }
