@@ -47,6 +47,8 @@ export async function startServer() {
     await app.register(siteFormulaRoutes, { prefix: '/api/v1/site-formula' });
     const { marketplaceAuditRoutes } = await import('./routes/marketplaceAudit.js');
     await app.register(marketplaceAuditRoutes, { prefix: '/api/v1/marketplace-audit' });
+    const { aliceRoutes } = await import('./routes/alice.js');
+    await app.register(aliceRoutes, { prefix: '/api/v1/alice' });
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
