@@ -11,7 +11,7 @@ import { logger } from '../utils/logger.js';
 import type { MarketplaceAuditJob } from '../queue/marketplaceAuditQueue.js';
 import type { ManualInput } from '../types/marketplaceAudit.js';
 
-const API_KEY = process.env.LOVABLE_API_KEY || '';
+const API_KEY = process.env.OPENAI_API_KEY || '';
 
 async function processJob(job: Job<MarketplaceAuditJob>): Promise<void> {
   const { audit_id } = job.data;
