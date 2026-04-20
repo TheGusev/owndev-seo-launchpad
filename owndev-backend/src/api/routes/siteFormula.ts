@@ -95,8 +95,15 @@ export async function siteFormulaRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(404).send({ success: false, error: 'Session not found' });
       }
 
-      if (!session.raw_answers) {
-        return reply.status(400).send({ success: false, error: 'No answers saved yet' });
+      if (
+        !session.raw_answers ||
+        typeof session.raw_answers !== 'object' ||
+        Array.isArray(session.raw_answers) ||
+        Object.keys(session.raw_answers).length === 0
+      ) {
+        return reply
+          .status(400)
+          .send({ success: false, error: 'Сохраните ответы перед запуском', code: 'NO_ANSWERS' });
       }
 
       // Idempotent: if already run and preview_ready, return existing

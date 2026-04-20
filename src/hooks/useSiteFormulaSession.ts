@@ -121,6 +121,7 @@ export function useSiteFormulaSession(): UseSiteFormulaSession {
     if (!sessionId) return;
     if (!answers || Object.keys(answers).length === 0) {
       setError('Заполните все шаги перед запуском');
+      setPhase('wizard');
       return;
     }
     setLoading(true);
