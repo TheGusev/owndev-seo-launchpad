@@ -436,6 +436,70 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  // POST /api/v1/site-check/ai-boost
+  app.post<{ Body: { url: string; theme?: string; scores?: any; issues?: any[] } }>(
+    '/ai-boost',
+    async (req, reply) => {
+      const { url, theme, scores, issues } = req.body as {
+        url: string; theme?: string; scores?: any; issues?: any[];
+      };
+      if (!url) return reply.status(400).send({ error: 'url required' });
+
+      const apiKey = process.env.OPENAI_API_KEY || '';
+      if (!apiKey) return reply.status(503).send({ error: 'OPENAI_API_KEY не задан' });
+
+      const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
+      const topIssues = (issues || []).slice(0, 5).map((i: any) => i.title || i.found || '').filter(Boolean).join('; ');
+
+      const systemPrompt = `Ты эксперт по GEO (Generative Engine Optimization) — оптимизации сайтов для попадания в ответы нейросетей. Всегда отвечай ТОЛЬКО валидным JSON-массивом без markdown.`;
+
+      const userPrompt = `Данные аудита сайта ${domain}:
+- Тематика: ${theme || 'не указана'}
+- SEO Score: ${scores?.seo || 0}/100
+- LLM Score: ${scores?.ai || 0}/100
+- Schema Score: ${scores?.schema || 0}/100
+- Топ проблемы: ${topIssues || 'нет данных'}
+
+Сгенерируй персонализированный план из 10 конкретных действий для попадания в ответы нейросетей (ChatGPT, Perplexity, Яндекс Алиса, GigaChat).
+
+Для каждого действия верни объект:
+{
+  "id": "уникальный id строкой 1-10",
+  "action": "конкретное действие в 1 предложении",
+  "priority": "high" | "medium" | "low",
+  "impact": "ожидаемое влияние в 1 предложении",
+  "timeframe": "1 день" | "1 неделя" | "1 месяц",
+  "category": "technical" | "content" | "pr" | "schema"
+}
+
+Верни JSON-массив из ровно 10 объектов. Без markdown, без пояснений — только массив.`;
+
+      try {
+        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.2,
+            max_tokens: 2000,
+          }),
+        });
+        if (!resp.ok) throw new Error(`OpenAI ${resp.status}`);
+        const data = await resp.json();
+        const content = data?.choices?.[0]?.message?.content || '[]';
+        const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
+        return reply.send({ success: true, domain, items: Array.isArray(parsed) ? parsed : [] });
+      } catch (e) {
+        logger.warn('AI_BOOST', `Failed: ${(e as Error).message}`);
+        return reply.status(500).send({ error: 'Не удалось сгенерировать план' });
+      }
+    },
+  );
+
   // POST /api/v1/site-check/nomination
   app.post<{ Body: any }>('/nomination', async (req, reply) => {
     const { domain, display_name, category, email, scan_id, total_score } =
