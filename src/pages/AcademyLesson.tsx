@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo } from "react";
+import { getAllLessons, getLessonsByModuleSlug, getLessonBySlug } from "@/data/academy/lessons";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -24,48 +24,15 @@ interface Lesson {
 const AcademyLesson = () => {
   const { moduleSlug, lessonSlug } = useParams<{ moduleSlug: string; lessonSlug: string }>();
   const navigate = useNavigate();
-  const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [moduleLessons, setModuleLessons] = useState<Lesson[]>([]);
-  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data: all } = await supabase
-        .from("academy_lessons")
-        .select("*")
-        .order("module_number")
-        .order("lesson_number");
-
-      if (!all) { setLoading(false); return; }
-
-      const typed = all as any as Lesson[];
-      setAllLessons(typed);
-      setModuleLessons(typed.filter(l => l.module_slug === moduleSlug));
-      setLesson(typed.find(l => l.module_slug === moduleSlug && l.lesson_slug === lessonSlug) || null);
-      setLoading(false);
-    };
-    load();
-  }, [moduleSlug, lessonSlug]);
-
-  if (loading) {
-    return (
-      <>
-        <Header />
-        <main className="min-h-screen pt-24 pb-16">
-          <div className="container max-w-4xl mx-auto px-4">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-muted rounded w-2/3" />
-              <div className="h-4 bg-muted rounded w-1/3" />
-              <div className="h-64 bg-muted rounded" />
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
-  }
+  const allLessons = useMemo(() => getAllLessons(), []);
+  const moduleLessons = useMemo(
+    () => (moduleSlug ? getLessonsByModuleSlug(moduleSlug) : []),
+    [moduleSlug],
+  );
+  const lesson = useMemo(
+    () => (moduleSlug && lessonSlug ? getLessonBySlug(moduleSlug, lessonSlug) : null),
+    [moduleSlug, lessonSlug],
+  );
 
   if (!lesson) {
     return (
