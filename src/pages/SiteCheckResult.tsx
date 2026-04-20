@@ -11,11 +11,12 @@ import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import LlmJudgeSection from "@/components/site-check/LlmJudgeSection";
+import AiBoostSection from "@/components/site-check/AiBoostSection";
 import GeoRatingNomination from "@/components/site-check/GeoRatingNomination";
 import TechPassport from "@/components/site-check/TechPassport";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
 import { getFullScan } from "@/lib/site-check-api";
-import { judgeLlm, getTechPassport } from "@/lib/api/tools";
+import { judgeLlm, getTechPassport, getAiBoost } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
 import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,9 @@ const SiteCheckResult = () => {
   const [llmJudgeError, setLlmJudgeError] = useState<string | null>(null);
   const [techPassport, setTechPassport] = useState<any>(null);
   const [techPassportLoading, setTechPassportLoading] = useState(false);
+  const [aiBoost, setAiBoost] = useState<any[] | null>(null);
+  const [aiBoostLoading, setAiBoostLoading] = useState(false);
+  const [aiBoostError, setAiBoostError] = useState<string | null>(null);
 
   const previousScores = useMemo(() => {
     if (!data?.url || !scanId) return undefined;
@@ -70,6 +74,21 @@ const SiteCheckResult = () => {
       setLlmJudgeError(e?.message || 'Не удалось запустить AI-аудит');
     }
     finally { setLlmJudgeLoading(false); }
+  };
+
+  const triggerAiBoost = async () => {
+    if (!data?.url) return;
+    setAiBoostLoading(true);
+    setAiBoostError(null);
+    try {
+      const result = await getAiBoost(data.url, data.theme, data.scores, data.issues);
+      if (result?.items) setAiBoost(result.items);
+      else setAiBoostError('Не удалось получить план');
+    } catch (e: any) {
+      setAiBoostError(e?.message || 'Ошибка');
+    } finally {
+      setAiBoostLoading(false);
+    }
   };
 
   const triggerTechPassport = async (url: string) => {
