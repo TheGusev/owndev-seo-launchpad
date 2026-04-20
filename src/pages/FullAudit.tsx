@@ -565,19 +565,42 @@ const FullAudit = () => {
               <h1 className="text-2xl md:text-3xl font-bold font-serif">
                 Полный аудит: {croData?.domain || siteCheckData?.url}
               </h1>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadPdf}
-                disabled={pdfLoading || !hasAnyResult}
-                title={running ? "Можно скачать сейчас, но полный отчёт — после завершения обоих анализов" : undefined}
-              >
-                {pdfLoading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация...</>
-                ) : (
-                  <><FileDown className="w-4 h-4 mr-2" /> Скачать PDF</>
-                )}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadPdf}
+                  disabled={pdfLoading || !hasAnyResult}
+                  title={running ? "Можно скачать сейчас, но полный отчёт — после завершения обоих анализов" : undefined}
+                >
+                  {pdfLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> PDF...</>
+                  ) : (
+                    <><FileDown className="w-4 h-4 mr-2" /> PDF</>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadWord}
+                  disabled={wordLoading || !hasAnyResult}
+                >
+                  {wordLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Word...</>
+                  ) : (
+                    <><FileText className="w-4 h-4 mr-2" /> Word</>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNewAudit}
+                  disabled={running}
+                  title="Очистить и начать новый аудит"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" /> Новый
+                </Button>
+              </div>
             </div>
 
             {/* Live status chips while still loading */}
@@ -802,6 +825,18 @@ const FullAudit = () => {
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация PDF...</>
                   ) : (
                     <><FileDown className="w-4 h-4 mr-2" /> Скачать PDF</>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleDownloadWord}
+                  disabled={wordLoading || !hasAnyResult}
+                >
+                  {wordLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация Word...</>
+                  ) : (
+                    <><FileText className="w-4 h-4 mr-2" /> Скачать Word</>
                   )}
                 </Button>
                 <a href="mailto:dpd.tuva@mail.ru?subject=Полный аудит сайта">
