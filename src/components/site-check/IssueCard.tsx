@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, CheckCircle2, Copy, ExternalLink, Circle } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle2, Copy, Check, ExternalLink, Circle } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -45,14 +45,18 @@ function renderHowToFix(text: string) {
 
 const IssueCardComponent = ({ issue, resolved = false, onToggle, siteUrl, pageTitle, pageDescription }: IssueCardProps) => {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const sev = severityConfig[issue.severity];
   const cat = categoryConfig[issue.module] || { label: issue.module, className: "bg-muted/40 text-muted-foreground" };
   const impactScore = issue.impact_score ?? 0;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(issue.example_fix);
-    toast({ title: "Скопировано!" });
+    navigator.clipboard.writeText(issue.example_fix).then(() => {
+      setCopied(true);
+      toast({ title: "Скопировано!" });
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   return (
@@ -124,19 +128,21 @@ const IssueCardComponent = ({ issue, resolved = false, onToggle, siteUrl, pageTi
           {/* Example */}
           {issue.example_fix && (
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="mb-1">
                 <span className="font-semibold text-foreground">✅ Пример</span>
+              </div>
+              <div className="relative">
+                <pre className="p-3 pr-10 rounded-lg bg-muted/40 text-[11px] overflow-x-auto whitespace-pre-wrap break-all max-w-full text-foreground/80 border border-border/20">
+                  {issue.example_fix}
+                </pre>
                 <button
                   onClick={handleCopy}
-                  className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+                  aria-label={copied ? "Скопировано" : "Скопировать пример"}
+                  className="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-7 h-7 rounded-md bg-background/60 hover:bg-background border border-border/40 text-primary hover:text-primary/80 transition-colors"
                 >
-                  <Copy className="w-3 h-3" />
-                  Копировать
+                  {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
-              <pre className="p-3 rounded-lg bg-muted/40 text-[11px] overflow-x-auto whitespace-pre-wrap break-all max-w-full text-foreground/80 border border-border/20">
-                {issue.example_fix}
-              </pre>
             </div>
           )}
 
