@@ -1045,6 +1045,8 @@ export interface PipelineResult {
   keywords: KeywordEntry[];
   minus_words: MinusWord[];
   seo_data: any;
+  summary?: string | null;
+  blocks?: any[];
   error_message?: string;
 }
 
