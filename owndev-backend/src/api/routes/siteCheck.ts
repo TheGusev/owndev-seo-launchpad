@@ -330,39 +330,64 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-          .catch(() => null),
-      ]);
-      const headers = headersData.status === 'fulfilled' ? headersData.value : {};
-      const geoip = geoipData.status === 'fulfilled' ? geoipData.value : null;
-      const server = (headers as any).server || '';
-      const poweredBy = (headers as any).poweredBy || '';
-      const tech: Record<string, string> = {};
-      if (/nginx/i.test(server)) tech.server = 'Nginx';
-      else if (/apache/i.test(server)) tech.server = 'Apache';
-      else if (server) tech.server = server;
-      if (/php/i.test(poweredBy)) tech.language = 'PHP';
-      else if (/express/i.test(poweredBy))
-        tech.language = 'Node.js/Express';
-      if (/wordpress/i.test(poweredBy)) tech.cms = 'WordPress';
-      return reply.send({
-        tech,
-        security: {
-          https: origin.startsWith('https://'),
-          csp: !!(headers as any).contentSecurityPolicy,
-          hsts: !!(headers as any).strictTransportSecurity,
+  // POST /api/v1/site-check/llm-judge
+  app.post<{ Body: { scan_id?: string; url: string; theme?: string } }>(
+    '/llm-judge',
+    async (req, reply) => {
+      const { url, theme } = req.body as { url: string; theme?: string };
+      if (!url) return reply.status(400).send({ error: 'url required' });
+      const apiKey = process.env.OPENAI_API_KEY || '';
+      if (!apiKey) {
+        return reply.status(503).send({ error: 'OPENAI_API_KEY не задан на сервере' });
+      }
+      const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
+      const topicHint = theme ? ` в теме "${theme}"` : '';
+      const aiSystems = [
+        {
+          id: 'chatgpt', name: 'ChatGPT', icon: 'openai', color: '#10a37f',
+          prompt: `Ты выступаешь в роли ChatGPT (GPT-4). Пользователь задаёт вопрос${topicHint}. Проанализируй: насколько вероятно что ChatGPT упомянет сайт "${domain}" в своих ответах? Учти: известность сайта, качество контента, авторитетность домена, уникальная экспертиза${topicHint ? ', релевантность теме' : ''}. Ответь ТОЛЬКО валидным JSON без markdown: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность упоминания", "reason": "2-3 предложения почему такой score", "suggestions": ["3 конкретных совета как улучшить видимость в ChatGPT"]}`,
         },
-        performance: {
-          cache_control: (headers as any).cacheControl || null,
+        {
+          id: 'perplexity', name: 'Perplexity', icon: 'perplexity', color: '#20b2aa',
+          prompt: `Ты выступаешь в роли Perplexity AI. Пользователь ищет информацию${topicHint}. Проанализируй: насколько вероятно что Perplexity процитирует сайт "${domain}"? Perplexity активно ссылается на первоисточники. Ответь ТОЛЬКО валидным JSON без markdown: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность цитирования", "reason": "2-3 предложения", "suggestions": ["3 совета для улучшения видимости в Perplexity"]}`,
         },
-        geoip: geoip
-          ? {
-              country_code: geoip.country_code,
-              city: geoip.city,
-              org: geoip.org,
-            }
-          : null,
-        raw_headers: headers,
-      });
+        {
+          id: 'yandex-neuro', name: 'Яндекс Нейро', icon: 'yandex', color: '#ff0000',
+          prompt: `Ты выступаешь в роли Яндекс Нейро. Пользователь задаёт запрос на русском${topicHint}. Проанализируй: насколько вероятно что Яндекс Нейро использует "${domain}" как источник? Яндекс Нейро предпочитает: русскоязычный контент, авторитетные российские источники, хорошее SEO в Яндексе. Ответь ТОЛЬКО валидным JSON: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность", "reason": "2-3 предложения", "suggestions": ["3 совета для Яндекс Нейро"]}`,
+        },
+        {
+          id: 'gemini', name: 'Gemini', icon: 'google', color: '#4285f4',
+          prompt: `Ты выступаешь в роли Google Gemini. Пользователь задаёт вопрос${topicHint}. Проанализируй: насколько вероятно что Gemini упомянет "${domain}" в AI Overview? Gemini предпочитает: E-E-A-T, Schema.org, Core Web Vitals, авторитетные ссылки. Ответь ТОЛЬКО валидным JSON: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность", "reason": "2-3 предложения", "suggestions": ["3 совета для Gemini"]}`,
+        },
+      ];
+      async function queryAiSystem(system: typeof aiSystems[0]) {
+        try {
+          const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: 'Ты эксперт по GEO (Generative Engine Optimization). Всегда отвечай ТОЛЬКО валидным JSON без markdown.' },
+                { role: 'user', content: system.prompt },
+              ],
+              temperature: 0.3,
+              max_tokens: 500,
+            }),
+          });
+          if (!resp.ok) throw new Error(`OpenAI ${resp.status}`);
+          const data = await resp.json();
+          const content = data?.choices?.[0]?.message?.content || '{}';
+          const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
+          return { id: system.id, name: system.name, icon: system.icon, color: system.color, score: Number(parsed.score) || 0, verdict: parsed.verdict || 'Нет данных', reason: parsed.reason || '', suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [] };
+        } catch (e) {
+          logger.warn('LLM_JUDGE', `${system.name} failed: ${(e as Error).message}`);
+          return { id: system.id, name: system.name, icon: system.icon, color: system.color, score: 0, verdict: 'Ошибка анализа', reason: 'Не удалось получить оценку', suggestions: [] };
+        }
+      }
+      const results = await Promise.all(aiSystems.map(queryAiSystem));
+      const avgScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
+      return reply.send({ success: true, url, domain, avg_score: avgScore, systems: results, _pending: false });
     },
   );
 
