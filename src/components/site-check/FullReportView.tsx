@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, RotateCcw, ChevronDown, Copy, ExternalLink } from "lucide-react";
+import { RefreshCw, RotateCcw, ChevronDown, Copy, Check, ExternalLink, ClipboardCopy } from "lucide-react";
 import AutoFixGenerator from "@/components/site-check/AutoFixGenerator";
 import { useIssueTracker } from "@/hooks/useIssueTracker";
 import { useToast } from "@/hooks/use-toast";
@@ -142,6 +142,7 @@ const FullReportView = ({ issues, url }: FullReportViewProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isResolved, toggleIssue, resolvedCount, resetFixes } = useIssueTracker(url);
+  const [bulkCopied, setBulkCopied] = useState(false);
   const shownToast = useRef(false);
   const [severityFilter, setSeverityFilter] = useState<IssueSeverity | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState<IssueModule | "all">("all");
@@ -185,8 +186,48 @@ const FullReportView = ({ issues, url }: FullReportViewProps) => {
 
   if (!issues?.length) return null;
 
+  const handleCopyAllFixes = () => {
+    const unresolvedWithFixes = issues
+      .filter((i) => !isResolved(i.id || i.title) && i.example_fix && i.example_fix.trim().length > 0);
+    if (unresolvedWithFixes.length === 0) {
+      toast({ title: "Нет исправлений для копирования", description: "Все проблемы решены или у них нет готового кода." });
+      return;
+    }
+    const text = unresolvedWithFixes
+      .map((i, idx) => `# ${idx + 1}. ${i.title}\n# (${i.severity}/${i.module})\n${i.example_fix}`)
+      .join("\n\n---\n\n");
+    navigator.clipboard.writeText(text).then(() => {
+      setBulkCopied(true);
+      toast({ title: `Скопировано ${unresolvedWithFixes.length} исправлений` });
+      setTimeout(() => setBulkCopied(false), 2000);
+    });
+  };
+
+  const unresolvedFixCount = issues.filter(
+    (i) => !isResolved(i.id || i.title) && i.example_fix && i.example_fix.trim().length > 0,
+  ).length;
+
   return (
     <div className="space-y-3">
+      {/* Bulk copy fixes */}
+      {unresolvedFixCount > 0 && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyAllFixes}
+            className="gap-2"
+          >
+            {bulkCopied ? (
+              <Check className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <ClipboardCopy className="w-3.5 h-3.5" />
+            )}
+            Скопировать все исправления ({unresolvedFixCount})
+          </Button>
+        </div>
+      )}
+
       {/* Progress */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">

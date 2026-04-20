@@ -334,8 +334,27 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Body: { scan_id?: string; url: string; theme?: string } }>(
     '/llm-judge',
     async (req, reply) => {
-      const { url, theme } = req.body as { url: string; theme?: string };
+      const { url, theme, scan_id } = req.body as { url: string; theme?: string; scan_id?: string };
       if (!url) return reply.status(400).send({ error: 'url required' });
+
+      // Try cache from DB first
+      if (scan_id) {
+        try {
+          const cached = await sql<Array<{ llm_judge: any }>>`
+            SELECT result->'llm_judge' AS llm_judge
+            FROM site_check_scans
+            WHERE id = ${scan_id}
+          `;
+          const cachedJudge = cached[0]?.llm_judge;
+          if (cachedJudge && typeof cachedJudge === 'object' && Array.isArray((cachedJudge as any).systems) && (cachedJudge as any).systems.length > 0) {
+            logger.info('LLM_JUDGE', `Cache hit for scan ${scan_id}`);
+            return reply.send({ ...(cachedJudge as object), _cached: true });
+          }
+        } catch (e) {
+          logger.warn('LLM_JUDGE', `Cache read failed: ${(e as Error).message}`);
+        }
+      }
+
       const apiKey = process.env.OPENAI_API_KEY || '';
       if (!apiKey) {
         return reply.status(503).send({ error: 'OPENAI_API_KEY не задан на сервере' });
@@ -387,7 +406,24 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       }
       const results = await Promise.all(aiSystems.map(queryAiSystem));
       const avgScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
-      return reply.send({ success: true, url, domain, avg_score: avgScore, systems: results, _pending: false });
+      const payload = { success: true, url, domain, avg_score: avgScore, systems: results, _pending: false };
+
+      // Persist to DB inside result.llm_judge for next page load
+      if (scan_id) {
+        try {
+          await sql`
+            UPDATE site_check_scans
+            SET result = COALESCE(result, '{}'::jsonb) || jsonb_build_object('llm_judge', ${JSON.stringify(payload)}::jsonb),
+                updated_at = NOW()
+            WHERE id = ${scan_id}
+          `;
+          logger.info('LLM_JUDGE', `Cached result for scan ${scan_id}`);
+        } catch (e) {
+          logger.warn('LLM_JUDGE', `Cache write failed: ${(e as Error).message}`);
+        }
+      }
+
+      return reply.send(payload);
     },
   );
 
