@@ -100,11 +100,18 @@ export async function getTechPassport(url: string) {
   return resp.json();
 }
 
-export async function getAiBoost(url: string, theme?: string, scores?: any, issues?: any[]) {
+export async function getAiBoost(
+  url: string,
+  theme?: string,
+  scores?: any,
+  issues?: any[],
+  scanId?: string,
+  force?: boolean,
+) {
   const resp = await fetch(apiUrl('/site-check/ai-boost'), {
     method: 'POST',
     headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, theme, scores, issues }),
+    body: JSON.stringify({ url, theme, scores, issues, scan_id: scanId, force }),
   });
   if (!resp.ok) return null;
   return resp.json();

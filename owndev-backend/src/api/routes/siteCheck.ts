@@ -246,6 +246,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       minus_words: result?.minus_words ?? (typeof row.minus_words === 'string' ? JSON.parse(row.minus_words) : (row.minus_words ?? [])),
       seo_data: result?.seo_data ?? (typeof row.seo_data === 'string' ? JSON.parse(row.seo_data) : (row.seo_data ?? null)),
       llm_judge: result?.llm_judge ?? null,
+      ai_boost: result?.ai_boost ?? null,
 
       result,
       raw_scores: scores,
@@ -437,13 +438,31 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // POST /api/v1/site-check/ai-boost
-  app.post<{ Body: { url: string; theme?: string; scores?: any; issues?: any[] } }>(
+  app.post<{ Body: { url: string; theme?: string; scores?: any; issues?: any[]; scan_id?: string; force?: boolean } }>(
     '/ai-boost',
     async (req, reply) => {
-      const { url, theme, scores, issues } = req.body as {
-        url: string; theme?: string; scores?: any; issues?: any[];
+      const { url, theme, scores, issues, scan_id, force } = req.body as {
+        url: string; theme?: string; scores?: any; issues?: any[]; scan_id?: string; force?: boolean;
       };
       if (!url) return reply.status(400).send({ error: 'url required' });
+
+      // Cache check — return stored ai_boost if present
+      if (scan_id && !force) {
+        try {
+          const cached = await sql<Array<{ ai_boost: any }>>`
+            SELECT result->'ai_boost' AS ai_boost
+            FROM site_check_scans
+            WHERE id = ${scan_id}
+          `;
+          const cachedBoost = cached[0]?.ai_boost;
+          if (cachedBoost && typeof cachedBoost === 'object' && Array.isArray((cachedBoost as any).items) && (cachedBoost as any).items.length > 0) {
+            logger.info('AI_BOOST', `Cache hit for scan ${scan_id}`);
+            return reply.send({ ...(cachedBoost as object), _cached: true });
+          }
+        } catch (e) {
+          logger.warn('AI_BOOST', `Cache read failed: ${(e as Error).message}`);
+        }
+      }
 
       const apiKey = process.env.OPENAI_API_KEY || '';
       if (!apiKey) return reply.status(503).send({ error: 'OPENAI_API_KEY не задан' });
@@ -492,7 +511,24 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         const data = await resp.json();
         const content = data?.choices?.[0]?.message?.content || '[]';
         const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
-        return reply.send({ success: true, domain, items: Array.isArray(parsed) ? parsed : [] });
+        const payload = { success: true, domain, items: Array.isArray(parsed) ? parsed : [] };
+
+        // Persist to DB inside result.ai_boost for next page load
+        if (scan_id) {
+          try {
+            await sql`
+              UPDATE site_check_scans
+              SET result = COALESCE(result, '{}'::jsonb) || jsonb_build_object('ai_boost', ${JSON.stringify(payload)}::jsonb),
+                  updated_at = NOW()
+              WHERE id = ${scan_id}
+            `;
+            logger.info('AI_BOOST', `Cached result for scan ${scan_id}`);
+          } catch (e) {
+            logger.warn('AI_BOOST', `Cache write failed: ${(e as Error).message}`);
+          }
+        }
+
+        return reply.send(payload);
       } catch (e) {
         logger.warn('AI_BOOST', `Failed: ${(e as Error).message}`);
         return reply.status(500).send({ error: 'Не удалось сгенерировать план' });
