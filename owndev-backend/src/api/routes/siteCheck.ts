@@ -10,7 +10,7 @@ const CONCURRENCY_LIMIT = Number(process.env.SITE_CHECK_CONCURRENCY ?? 10);
 
 export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   // Ensure table exists with all needed columns
-  await sql\`
+  await sql`
     CREATE TABLE IF NOT EXISTS site_check_scans (
       id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
       url         TEXT        NOT NULL,
@@ -30,10 +30,10 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
-  \`;
+  `;
 
   // Ensure geo_rating table exists
-  await sql\`
+  await sql`
     CREATE TABLE IF NOT EXISTS geo_rating (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       domain TEXT NOT NULL,
@@ -51,7 +51,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       last_checked_at TIMESTAMPTZ DEFAULT NOW(),
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
-  \`;
+  `;
   await sql\`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)\`;
 
   // Add columns if they don't exist (for existing tables)
