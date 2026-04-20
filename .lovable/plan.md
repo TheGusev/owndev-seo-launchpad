@@ -1,80 +1,75 @@
 
 
-# Аудит выполненных задач (A–N)
+## Цель
+Прогнать через наш реальный Node-аудит **все домены из `geo_rating` где `llm_score ≤ 65`** (а также параллельно проверить «подозрительно ровные» значения — это следы старого Supabase-cron). Реальные дробные баллы перезапишутся через `SiteCheckWorker`, который сам делает upsert в `geo_rating`.
 
-## Сводка по пунктам
+## Что делаем
 
-| # | Задача | Статус | Что не так |
-|---|---|---|---|
-| **A** | Отвязаться от Supabase в `src/` | ⚠️ ЧАСТИЧНО | Папка `src/integrations/supabase/` всё ещё есть (`client.ts` + `types.ts`). В коде нигде не импортируется (`grep` дал 0 совпадений на `from '@/integrations/supabase'` кроме самого client.ts), но файлы лежат и `.env` всё ещё содержит `VITE_SUPABASE_*` |
-| **B** | `runLlm.ts` — реальный OpenAI gpt-4o-mini | ✅ СДЕЛАНО | URL `https://api.openai.com/v1/chat/completions`, модель `gpt-4o-mini`, ключ из `process.env.OPENAI_API_KEY` |
-| **C** | `tools.ts` без Supabase, всё на `/api/v1/tools/` | ✅ СДЕЛАНО | Все вызовы идут через `apiUrl('/tools/...')` |
-| **D** | `lessons.ts` — реальные уроки минимум 4 | ✅ СДЕЛАНО | 4 урока, 2 модуля, helpers `getAllLessons/getLessonBySlug` |
-| **E** | `/llm-judge` — реальный OpenAI, 4 системы, `avg_score`, `_pending: false` | ⚠️ НУЖНО ПРОВЕРИТЬ | Endpoint существует в `siteCheck.ts` (строка 335+). Проверить структуру ответа в плане реализации не требуется — он уже работает на проде |
-| **F** | `LlmJudgeSection.tsx` — матрица карточек, раскрывающиеся, `avg_score` в центре | ✅ СДЕЛАНО | Круг с `AnimatedCounter`, `SystemCard` с `ChevronUp/Down`, grid 2 колонки |
-| **G** | `ScanProgress.tsx` — этапы с названиями | ✅ СДЕЛАНО | 6 этапов с `icon/label/desc/done`, `progressStages` с эмодзи |
-| **H** | `IssueCard.tsx` — кнопка копирования | ✅ СДЕЛАНО | Кнопка `Copy/Check` с `navigator.clipboard.writeText` и toast «Скопировано» |
-| **I** | Фикс зависания GEO на 75% | ✅ СДЕЛАНО | `llmCall` имеет `AbortController` + timeout 45000ms (строка 316), `extractKeywords` обёрнут в `try/catch` (строки 1189-1195) |
-| **J** | `AiBoostSection.tsx` + `/api/v1/site-check/boost` | ⚠️ ЧАСТИЧНО | Компонент есть, прогресс в localStorage, фильтры. Endpoint называется **`/site-check/ai-boost`** (а не `/boost` как в ТЗ), но фронт `getAiBoost` использует тот же путь — это согласовано |
-| **K** | Алиса — `alice.ts` + webhook + бейдж в Hero | ✅ СДЕЛАНО | Webhook `/api/v1/alice/webhook` зарегистрирован, есть quick-audit логика, бейдж Алисы в Hero (по предыдущим итерациям) |
-| **L** | CRO-аудит — страница + endpoint + кэш в БД + PDF + sitemap | ⚠️ ЧАСТИЧНО | Страница `/tools/conversion-audit` и endpoint `/conversion-audit/analyze` есть. **Кэш в БД НЕ реализован** (каждый запрос идёт в OpenAI заново). PDF в самой CRO-странице — `window.print()` (а не `generatePdfReport`) |
-| **M** | `calcPriceEstimate` + `price_estimate` в Site Formula | ✅ СДЕЛАНО | По прошлой итерации |
-| **N** | `/tools/full-audit` — параллельный SiteCheck + CRO | ✅ СДЕЛАНО | Прогрессивный рендер, единый PDF через `generatePdfReport` с CRO-блоком |
+### 1. Скрипт массового rescan
+Создать `owndev-backend/scripts/rescan-geo-rating.ts` — CLI-утилита:
+- Читает домены из `geo_rating` по фильтру:
+  - `--mode=low65` (новый, **по умолчанию для текущей задачи**): `llm_score <= 65 OR seo_score <= 65 OR schema_score <= 65 OR direct_score <= 65`
+  - `--mode=score65`: только `llm_score = 65` (старый режим)
+  - `--mode=stale`: давно не проверялись (>24ч) ИЛИ scores «ровные» (`% 5 = 0`)
+  - `--mode=all`: все 80 доменов
+  - `--domain=foo.ru`: один конкретный
+- Для каждого:
+  - POST `http://localhost:3000/api/v1/site-check/start` с `{ url: 'https://${domain}', mode: 'page', force: true }`
+  - Поллит `GET /api/v1/site-check/status/:scanId` каждые 5 сек, таймаут 120 сек
+  - Логирует: `✓ domain.ru: llm=87 seo=72 schema=45 direct=63` или `✗ ошибка`
+- Параллелизм 3, пауза 2 сек между батчами
+- В конце сводка: обработано/успешно/ошибок/среднее время
 
----
+`SiteCheckWorker` уже сам делает `INSERT ... ON CONFLICT (domain) DO UPDATE` в `geo_rating` после каждого скана — отдельно записывать ничего не нужно.
 
-## Что доделать (4 пункта)
+### 2. Админ-эндпоинт (для удалённого запуска)
+В `owndev-backend/src/api/routes/siteCheck.ts` добавить:
+```
+POST /api/v1/site-check/admin/rescan-geo-rating
+Headers: X-Admin-Token (сверка с process.env.ADMIN_TOKEN)
+Body: { mode: 'low65'|'score65'|'stale'|'all', domain?: string, dry_run?: boolean }
+```
+Достаёт список доменов, ставит каждый в очередь BullMQ. Возвращает `{ queued: N, domains: [...] }`. Прогресс — через существующий `/status/:scan_id`.
 
-### 1. (A) Удалить `src/integrations/supabase/` физически
-- Удалить `src/integrations/supabase/client.ts`
-- Удалить `src/integrations/supabase/types.ts`
-- В `.env` убрать `VITE_SUPABASE_URL` и `VITE_SUPABASE_PUBLISHABLE_KEY` (оставить только `VITE_BACKEND_URL`)
-- В `src/lib/auth/session.ts` поправить комментарий, убрав упоминание "Supabase Auth"
+### 3. Депрекация старого Supabase-cron
+В `supabase/functions/geo-rating-cron/index.ts` в начале хендлера возвращать **410 Gone** с сообщением «Заменено на /api/v1/site-check/admin/rescan-geo-rating». Это исключит риск что старая функция перезапишет свежие данные «бакетами».
 
-⚠️ **Ограничение:** `.env` и `src/integrations/supabase/types.ts`/`client.ts` — это файлы которые Lovable Cloud автогенерирует. Если в проекте подключён Cloud, удаление может быть восстановлено системой. Поэтому делаем «мягкое» отвязывание: оставляем файлы (их никто не импортирует), но переименовываем `client.ts` в `client.legacy.ts.disabled` через создание нового пустого `client.ts` который экспортирует `null` чтобы любые забытые импорты падали явно. **Решение:** оставляю файлы в покое (раз нигде не используются — мёртвый код не мешает), но добавлю комментарий-предупреждение.
+### 4. package.json
+Добавить скрипт `"rescan:geo": "tsx scripts/rescan-geo-rating.ts"`.
 
-### 2. (J) Согласование пути endpoint AI Boost
-- Проверить, что endpoint в backend называется `/site-check/ai-boost` и фронтовый `getAiBoost` ходит туда же. Если расхождение — синхронизировать. **(уже синхронизировано — пропускаем)**
+## Запуск после деплоя
 
-### 3. (L) CRO — добавить кэш в БД и PDF через `generatePdfReport`
+На сервере (рекомендованный порядок):
+```bash
+cd /var/www/owndev-backend
+npm run rescan:geo -- --mode=low65    # все домены где хоть один score ≤ 65
+npm run rescan:geo -- --mode=stale    # потом «ровные» бакеты остальных
+```
 
-**Backend (`owndev-backend/src/api/routes/conversionAudit.ts`):**
-- В начале `conversionAuditRoutes` создать таблицу:
-  ```sql
-  CREATE TABLE IF NOT EXISTS conversion_audits (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    cache_key TEXT UNIQUE NOT NULL,
-    url TEXT NOT NULL,
-    domain TEXT NOT NULL,
-    goal TEXT, traffic_source TEXT, main_problem TEXT,
-    result JSONB NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )
-  ```
-- Перед запросом к OpenAI: построить `cacheKey = ${domain}|${goal}|${traffic_source}|${main_problem}`, посмотреть запись не старше 7 дней — если есть, вернуть кэш.
-- После успеха — `INSERT ... ON CONFLICT (cache_key) DO UPDATE`.
+Удалённо (без SSH):
+```bash
+curl -X POST https://owndev.ru/api/v1/site-check/admin/rescan-geo-rating \
+  -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"mode":"low65"}'
+```
 
-**Frontend (`src/pages/ConversionAudit.tsx`):**
-- Заменить `window.print()` (если есть) на `handleDownloadPdf` через `generatePdfReport` с `cro`-полем (как в `FullAudit.tsx`). Если у CRO-страницы нет SiteCheck-данных — подавать `ReportData` только с `cro` и пустыми scores/issues.
+## Файлы
 
-### 4. Проверка сборки
-- `npm run build` — после правок убедиться что нет TS-ошибок.
+| Файл | Действие |
+|---|---|
+| `owndev-backend/scripts/rescan-geo-rating.ts` | **Create** — CLI |
+| `owndev-backend/src/api/routes/siteCheck.ts` | **Edit** — `POST /admin/rescan-geo-rating` |
+| `owndev-backend/package.json` | **Edit** — `rescan:geo` script |
+| `supabase/functions/geo-rating-cron/index.ts` | **Edit** — return 410 Gone |
 
----
-
-## Файлы которые будут изменены
-
-- **Edit** `owndev-backend/src/api/routes/conversionAudit.ts` — кэш в БД (CREATE TABLE + lookup + insert)
-- **Edit** `src/pages/ConversionAudit.tsx` — заменить `window.print()` на `generatePdfReport` (если используется), добавить state `pdfLoading`
-- **(опционально)** `src/integrations/supabase/client.ts` — добавить deprecation-комментарий
-
-## Что **НЕ** трогаем
-- Физически файлы Supabase (system-managed, может перезаписаться) — A считаем «функционально сделано»
-- Все остальные пункты B, C, D, E, F, G, H, I, K, M, N — уже на проде
+## Что НЕ трогаем
+- Frontend `/geo-rating` — читает из `geo_rating`, обновится автоматически.
+- Логику upsert в `SiteCheckWorker.ts` — уже корректная, пишет дробные значения.
+- Структуру таблицы `geo_rating`.
 
 ## Проверка
-После реализации:
-1. `npm run build` — без TS-ошибок
-2. На `/tools/conversion-audit`: первый запрос идёт в OpenAI, повторный с теми же параметрами — мгновенно (кэш)
-3. Кнопка «Скачать PDF» на CRO-странице создаёт файл через тот же `generatePdfReport`
+1. `npm run build` в `owndev-backend` — без TS-ошибок.
+2. До запуска: `SELECT count(*) FROM geo_rating WHERE llm_score <= 65 OR seo_score <= 65 OR schema_score <= 65 OR direct_score <= 65` — увидим сколько кандидатов.
+3. `npm run rescan:geo -- --domain=hh.ru --mode=all` — пробный прогон, в логах НЕровные числа.
+4. После полного прогона `--mode=low65`: пересчитать тот же `count(*)` — должен резко уменьшиться, оставшиеся ≤65 — это те у кого реально низкие оценки.
 
