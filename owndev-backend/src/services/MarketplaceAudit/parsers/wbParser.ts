@@ -7,6 +7,10 @@ const WB_BASKET_HOSTS = [
   'basket-11','basket-12','basket-13','basket-14','basket-15',
 ];
 
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36';
+
 function vol(nm: number): number { return Math.floor(nm / 1e5); }
 function part(nm: number): number { return Math.floor(nm / 1e3); }
 
@@ -28,21 +32,38 @@ export function extractWbNm(input: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
+async function fetchWbDetail(nm: number, withSpp: boolean): Promise<any | null> {
+  const base = `https://card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`;
+  const url = withSpp ? `${base}&spp=30` : base;
+  try {
+    const r = await fetch(url, {
+      headers: {
+        'User-Agent': BROWSER_UA,
+        Accept: 'application/json,text/plain,*/*',
+        'Accept-Language': 'ru-RU,ru;q=0.9',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) {
+    logger.warn('WB_PARSER', `detail fetch failed (spp=${withSpp}): ${(e as Error).message}`);
+    return null;
+  }
+}
+
 export async function parseWb(input: string): Promise<ParsedProduct> {
   const nm = extractWbNm(input);
   if (!nm) throw new Error('Не удалось определить артикул WB из значения');
 
-  // 1) basic detail (price, brand, name, supplierId, …)
-  const detailUrl = `https://card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257786&spp=30&nm=${nm}`;
-  let basicJson: any = null;
-  try {
-    const r = await fetch(detailUrl, { headers: { 'User-Agent': 'Mozilla/5.0 OWNDEVBot/1.0' } });
-    if (r.ok) basicJson = await r.json();
-  } catch (e) {
-    logger.warn('WB_PARSER', `detail fetch failed: ${(e as Error).message}`);
+  // 1) basic detail (price, brand, name, supplierId, …) — try with spp first, then without
+  let basicJson = await fetchWbDetail(nm, true);
+  let product = basicJson?.data?.products?.[0];
+  if (!product) {
+    basicJson = await fetchWbDetail(nm, false);
+    product = basicJson?.data?.products?.[0];
   }
 
-  const product = basicJson?.data?.products?.[0];
   let title = product?.name?.trim() || '';
   let brand = product?.brand?.trim() || '';
   let category = product?.entity || product?.subj_root_name || product?.subjectName || '';
@@ -53,7 +74,10 @@ export async function parseWb(input: string): Promise<ParsedProduct> {
   let cardJson: any = null;
   for (const host of WB_BASKET_HOSTS) {
     try {
-      const r = await fetch(basketUrl(nm, host), { headers: { 'User-Agent': 'Mozilla/5.0 OWNDEVBot/1.0' } });
+      const r = await fetch(basketUrl(nm, host), {
+        headers: { 'User-Agent': BROWSER_UA },
+        signal: AbortSignal.timeout(8000),
+      });
       if (r.ok) {
         cardJson = await r.json();
         if (picsCount > 0) images = imagesFor(nm, Math.min(picsCount, 12), host);
@@ -85,8 +109,11 @@ export async function parseWb(input: string): Promise<ParsedProduct> {
   }
   if (brand && !attributes['Бренд']) attributes['Бренд'] = brand;
 
+  if (!product && !cardJson) {
+    throw new Error('Не удалось получить данные карточки WB. Проверьте артикул или используйте ручной ввод.');
+  }
   if (!title && !description && images.length === 0) {
-    throw new Error('Не удалось получить данные карточки с Wildberries. Используйте ручной ввод.');
+    throw new Error('Карточка WB вернула пустые данные. Используйте ручной ввод.');
   }
 
   return {
