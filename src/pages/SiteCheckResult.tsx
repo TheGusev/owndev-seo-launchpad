@@ -54,6 +54,7 @@ const SiteCheckResult = () => {
         if (d && scanId) addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
         if (d?.llm_judge) setLlmJudge(d.llm_judge);
         else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme);
+        if (d?.ai_boost?.items) setAiBoost(d.ai_boost.items);
         if (d?.url) triggerTechPassport(d.url);
       })
       .catch((e) => {
@@ -81,7 +82,7 @@ const SiteCheckResult = () => {
     setAiBoostLoading(true);
     setAiBoostError(null);
     try {
-      const result = await getAiBoost(data.url, data.theme, data.scores, data.issues);
+      const result = await getAiBoost(data.url, data.theme, data.scores, data.issues, scanId);
       if (result?.items) setAiBoost(result.items);
       else setAiBoostError('Не удалось получить план');
     } catch (e: any) {
