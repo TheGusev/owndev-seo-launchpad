@@ -295,29 +295,17 @@ interface DbRule {
   example_fix: string; score_weight: number; visible_in_preview: boolean; active: boolean;
 }
 
-// ─── LLM config (Edge Function proxy → Lovable AI Gateway) ───
-const LLM_PROVIDER = process.env.EDGE_FUNCTION_URL ? 'proxy' : 'gateway';
+// ─── LLM config (direct OpenAI API) ───
+const LLM_PROVIDER = 'openai';
 
-function getLlmConfig(apiKey: string): { url: string; headers: Record<string, string>; defaultModel: string } {
-  const proxyUrl = process.env.EDGE_FUNCTION_URL;
-  if (proxyUrl) {
-    return {
-      url: proxyUrl,
-      headers: {
-        'x-proxy-secret': process.env.EDGE_FUNCTION_SECRET || '',
-        'Content-Type': 'application/json',
-      },
-      defaultModel: 'google/gemini-2.5-flash',
-    };
-  }
-  // Fallback: direct gateway (local dev only)
+function getLlmConfig(_apiKey: string): { url: string; headers: Record<string, string>; defaultModel: string } {
   return {
-    url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+    url: 'https://api.openai.com/v1/chat/completions',
     headers: {
-      Authorization: `Bearer ${process.env.LOVABLE_API_KEY || apiKey}`,
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY || ''}`,
       'Content-Type': 'application/json',
     },
-    defaultModel: 'google/gemini-2.5-flash',
+    defaultModel: 'gpt-4o-mini',
   };
 }
 
