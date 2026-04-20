@@ -306,6 +306,111 @@ export async function generateWordReport(data: ReportData): Promise<void> {
     new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Следующий аудит рекомендуется через 30 дней', color: W.text_sec, size: 16, font: 'Arial' })] }),
   );
 
+  // CRO section (optional)
+  if (data.cro) {
+    const cro = data.cro;
+    children.push(
+      pageBreakP(),
+      sectionTitle('CRO-АУДИТ — ПОЧЕМУ САЙТ НЕ ПРОДАЁТ'),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 200, after: 200 },
+        children: [new TextRun({
+          text: `Конверсионный потенциал: ${cro.conversion_score} / 100`,
+          bold: true, size: 36,
+          color: cro.conversion_score >= 76 ? W.success : cro.conversion_score >= 51 ? W.medium : W.critical,
+          font: 'Arial',
+        })],
+      }),
+      labelBlock('Недополученный доход:', cro.money_lost_estimate, W.critical),
+      labelBlock('Потери бюджета Директа:', cro.direct_budget_waste, W.high),
+    );
+
+    if (cro.barriers?.length > 0) {
+      children.push(subTitle(`Конверсионные барьеры (${cro.barriers.length})`));
+      cro.barriers.forEach((b, idx) => {
+        const sevColor = getSevColorW(b.severity);
+        children.push(
+          new Paragraph({
+            spacing: { before: 200, after: 80 },
+            border: { left: { style: BorderStyle.THICK, size: 12, color: sevColor } },
+            indent: { left: convertInchesToTwip(0.15) },
+            children: [
+              new TextRun({ text: `${idx + 1}. `, bold: true, color: sevColor, size: 22, font: 'Arial' }),
+              new TextRun({ text: `[${b.severity.toUpperCase()}] `, bold: true, color: sevColor, size: 18, font: 'Arial' }),
+              new TextRun({ text: b.title, bold: true, color: W.text, size: 22, font: 'Arial' }),
+            ],
+          }),
+          labelBlock('Категория:', b.category, W.accent),
+          bodyText(b.description, { color: W.text_sec, indent: 0.15 }),
+          labelBlock('Решение:', b.fix, W.success),
+        );
+        if (b.impact) children.push(labelBlock('Эффект:', b.impact, W.success));
+        children.push(hrLine());
+      });
+    }
+
+    if (cro.quick_wins?.length > 0) {
+      children.push(subTitle('Быстрые победы'));
+      cro.quick_wins.forEach((w, i) => {
+        children.push(new Paragraph({
+          spacing: { before: 60, after: 60 },
+          indent: { left: convertInchesToTwip(0.2) },
+          children: [
+            new TextRun({ text: `${i + 1}. `, bold: true, color: W.success, size: 20, font: 'Arial' }),
+            new TextRun({ text: w, color: W.text, size: 20, font: 'Arial' }),
+          ],
+        }));
+      });
+    }
+
+    if (cro.fix_cost_estimate) {
+      const fc = cro.fix_cost_estimate;
+      const fmt = (n: number) => new Intl.NumberFormat('ru-RU').format(n) + ' ₽';
+      children.push(
+        subTitle('Стоимость исправления'),
+        new Paragraph({
+          spacing: { before: 100, after: 100 },
+          children: [new TextRun({
+            text: `${fmt(fc.min)} — ${fmt(fc.max)}`,
+            bold: true, size: 28, color: W.accent, font: 'Arial',
+          })],
+        }),
+      );
+      if (fc.breakdown?.length > 0) {
+        fc.breakdown.forEach((line) => {
+          children.push(new Paragraph({
+            spacing: { before: 40, after: 40 },
+            indent: { left: convertInchesToTwip(0.2) },
+            children: [
+              new TextRun({ text: '• ', color: W.text_sec, size: 18, font: 'Arial' }),
+              new TextRun({ text: line, color: W.text, size: 18, font: 'Arial' }),
+            ],
+          }));
+        });
+      }
+      if (fc.roi_months > 0) {
+        children.push(bodyText(`Окупается за ${fc.roi_months} мес.`, { color: W.success, bold: true }));
+      }
+    }
+
+    if (cro.cta_recommendation) {
+      children.push(
+        new Paragraph({ spacing: { before: 300 }, children: [] }),
+        hrLine(),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 200, after: 200 },
+          shading: { type: ShadingType.CLEAR, color: W.bg_alt, fill: W.bg_alt },
+          children: [new TextRun({
+            text: cro.cta_recommendation,
+            bold: true, color: W.accent, size: 22, font: 'Arial',
+          })],
+        }),
+      );
+    }
+  }
+
   const doc = new Document({
     styles: {
       default: { document: { run: { font: 'Arial', color: W.text, size: 20 } } },
