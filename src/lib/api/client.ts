@@ -17,12 +17,20 @@ export async function request<T = any>(
 ): Promise<T> {
   const url = apiUrl(`/${functionName}${path}`);
 
+  const hasBody = options?.body !== undefined && options?.body !== null;
+  const headers: Record<string, string> = {
+    ...apiHeaders(),
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+  // Only attach Content-Type when there is an actual body (Fastify rejects
+  // empty-body requests that declare application/json).
+  if (hasBody && !headers['Content-Type'] && !headers['content-type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const resp = await fetch(url, {
     ...options,
-    headers: {
-      ...apiHeaders(),
-      ...(options?.headers || {}),
-    },
+    headers,
   });
 
   if (!resp.ok) {

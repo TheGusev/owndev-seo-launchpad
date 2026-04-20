@@ -6,13 +6,15 @@
 import { apiUrl, apiHeaders } from './config';
 
 async function apiFetch<T = any>(path: string, options?: RequestInit): Promise<T> {
-  const resp = await fetch(apiUrl(path), {
-    ...options,
-    headers: {
-      ...apiHeaders(),
-      ...(options?.headers || {}),
-    },
-  });
+  const hasBody = options?.body !== undefined && options?.body !== null;
+  const headers: Record<string, string> = {
+    ...apiHeaders(),
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+  if (hasBody && !headers['Content-Type'] && !headers['content-type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const resp = await fetch(apiUrl(path), { ...options, headers });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
     if (resp.status === 401 || resp.status === 403) {

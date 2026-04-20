@@ -37,11 +37,12 @@ export function apiUrl(path: string) {
 
 /**
  * Standard headers for own backend requests.
+ * NOTE: Content-Type is intentionally NOT set here — it must be added only by
+ * callers that actually send a JSON body. Fastify rejects requests with
+ * `Content-Type: application/json` and an empty body.
  */
 export function apiHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const headers: Record<string, string> = {};
   const token = localStorage.getItem('owndev_token');
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;

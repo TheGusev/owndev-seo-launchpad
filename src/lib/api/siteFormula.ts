@@ -9,10 +9,15 @@ const SF_BASE = '/site-formula';
 
 async function sfRequest<T = any>(path: string, options?: RequestInit): Promise<T> {
   const url = apiUrl(`${SF_BASE}${path}`);
-  const resp = await fetch(url, {
-    ...options,
-    headers: { ...apiHeaders(), ...(options?.headers || {}) },
-  });
+  const hasBody = options?.body !== undefined && options?.body !== null;
+  const headers: Record<string, string> = {
+    ...apiHeaders(),
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+  if (hasBody && !headers['Content-Type'] && !headers['content-type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const resp = await fetch(url, { ...options, headers });
 
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
@@ -77,7 +82,7 @@ export async function fetchQuestions(): Promise<{ questions: WizardQuestion[]; t
 }
 
 export async function createSession(): Promise<{ session_id: string; status: string }> {
-  return sfRequest('/sessions', { method: 'POST', body: '{}' });
+  return sfRequest('/sessions', { method: 'POST' });
 }
 
 export async function saveAnswers(sessionId: string, answers: Record<string, any>): Promise<{ success: boolean }> {
@@ -88,7 +93,7 @@ export async function saveAnswers(sessionId: string, answers: Record<string, any
 }
 
 export async function runEngine(sessionId: string): Promise<{ success: boolean; status: string; preview_payload: PreviewPayload }> {
-  return sfRequest(`/sessions/${sessionId}/run`, { method: 'POST', body: '{}' });
+  return sfRequest(`/sessions/${sessionId}/run`, { method: 'POST' });
 }
 
 export async function unlockReport(sessionId: string): Promise<{
@@ -97,7 +102,7 @@ export async function unlockReport(sessionId: string): Promise<{
   full_report_payload: FullReportPayload;
   unlock_token: string;
 }> {
-  return sfRequest(`/sessions/${sessionId}/unlock`, { method: 'POST', body: '{}' });
+  return sfRequest(`/sessions/${sessionId}/unlock`, { method: 'POST' });
 }
 
 export async function getSession(sessionId: string): Promise<SessionData> {
