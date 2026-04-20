@@ -10,7 +10,7 @@ import DirectAdPreview from "@/components/site-check/DirectAdPreview";
 import KeywordsSection from "@/components/site-check/KeywordsSection";
 import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
-import LlmJudgeSection from "@/components/site-check/LlmJudgeSection";
+import LlmJudgeSection, { type LlmJudgeData } from "@/components/site-check/LlmJudgeSection";
 import AiBoostSection from "@/components/site-check/AiBoostSection";
 import GeoRatingNomination from "@/components/site-check/GeoRatingNomination";
 import TechPassport from "@/components/site-check/TechPassport";
@@ -30,7 +30,7 @@ const SiteCheckResult = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [llmJudge, setLlmJudge] = useState<any>(null);
+  const [llmJudge, setLlmJudge] = useState<LlmJudgeData | null>(null);
   const [llmJudgeLoading, setLlmJudgeLoading] = useState(false);
   const [llmJudgeError, setLlmJudgeError] = useState<string | null>(null);
   const [techPassport, setTechPassport] = useState<any>(null);
