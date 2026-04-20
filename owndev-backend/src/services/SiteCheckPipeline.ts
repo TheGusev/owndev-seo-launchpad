@@ -1,9 +1,10 @@
 /**
  * Full GEO-audit pipeline — ported from Edge Function site-check-scan.
- * Replaces the simplified AuditService + Puppeteer CrawlerService for site-check.
- * Uses fetch + Jina Reader (no Puppeteer/Chromium needed).
+ * Uses fetch for static pages; Puppeteer for SPA rendering (Jina fallback removed
+ * because JinaBot is blocked by many robots.txt configurations).
  */
 
+import puppeteer from 'puppeteer';
 import { logger } from '../utils/logger.js';
 
 const UA = 'OWNDEV-SiteCheck/2.0';
@@ -53,51 +54,74 @@ function isSpaPage(html: string): boolean {
   return wordCount < 150 && (hasAppRoot || hasFrameworkBundle);
 }
 
-// ─── Fetch rendered content via Jina Reader for SPA pages ───
+// ─── Fetch rendered content via Puppeteer for SPA pages ───
+// Jina Reader is NOT used: it is blocked by many robots.txt (including owndev.ru itself).
+// Puppeteer renders the full JS app and extracts real HTML after hydration.
 async function fetchRenderedContent(url: string): Promise<string | null> {
-  // Attempt 1: Jina Reader markdown (wait up to 25s for h1 to appear)
+  let browser;
   try {
-    logger.info('PIPELINE', `SPA detected — fetching via Jina Reader: ${url}`);
-    const resp = await fetchWithTimeout(`https://r.jina.ai/${url}`, 28000, {
-      headers: {
-        'Accept': 'text/plain',
-        'X-Timeout': '22',
-        'X-Wait-For-Selector': 'h1,main,[id="root"],[id="app"]',
-        'X-Remove-Selector': 'nav,footer,script,style',
-      } as any,
+    logger.info('PIPELINE', `SPA detected — launching Puppeteer for: ${url}`);
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
     });
-    if (resp.ok) {
-      const markdown = await resp.text();
-      // Validate that we got real content with at least a heading
-      if (markdown.length > 200 && /^#\s+/m.test(markdown)) {
-        logger.info('PIPELINE', `Jina Reader OK — ${markdown.length} chars, has H1`);
-        return markdown;
-      }
-      // Got markdown but no heading — still usable if long enough
-      if (markdown.length > 500) {
-        logger.info('PIPELINE', `Jina Reader OK (no H1 found) — ${markdown.length} chars`);
-        return markdown;
-      }
-    }
-  } catch (e: any) {
-    logger.warn('PIPELINE', `Jina Reader attempt 1 failed: ${e.message}`);
-  }
+    const page = await browser.newPage();
+    await page.setUserAgent('OWNDEV-Crawler/2.0 (+https://owndev.ru)');
+    await page.setViewport({ width: 1280, height: 800 });
 
-  // Attempt 2: Jina Reader with shorter wait (fallback)
-  try {
-    logger.info('PIPELINE', `SPA — Jina Reader fallback attempt for: ${url}`);
-    const resp2 = await fetchWithTimeout(`https://r.jina.ai/${url}`, 15000, {
-      headers: { 'Accept': 'text/plain', 'X-Timeout': '12' } as any,
+    // Navigate and wait for network idle + key DOM elements
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 25000 });
+
+    // Extra wait for JS hydration (React/Vue/etc settle after network idle)
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Try waiting for h1 specifically (gives React time to render)
+    try {
+      await page.waitForSelector('h1', { timeout: 5000 });
+    } catch {
+      logger.warn('PIPELINE', 'Puppeteer: h1 not found within 5s, continuing anyway');
+    }
+
+    // Extract full rendered HTML
+    const renderedHtml = await page.evaluate(() => document.documentElement.outerHTML);
+
+    // Convert to markdown-like string for buildEnrichedHtml compatibility
+    const h1 = await page.evaluate(() => document.querySelector('h1')?.textContent?.trim() || '');
+    const title = await page.title();
+    const description = await page.evaluate(() => {
+      const el = document.querySelector('meta[name="description"]');
+      return el ? el.getAttribute('content') || '' : '';
     });
-    if (resp2.ok) {
-      const markdown2 = await resp2.text();
-      if (markdown2.length > 200) return markdown2;
-    }
-  } catch (e: any) {
-    logger.error('PIPELINE', `Jina Reader fallback failed: ${e.message}`);
-  }
+    const bodyText = await page.evaluate(() => {
+      const body = document.body.cloneNode(true) as HTMLElement;
+      body.querySelectorAll('script,style,nav,footer,header').forEach(el => el.remove());
+      return body.innerText || body.textContent || '';
+    });
 
-  return null;
+    logger.info('PIPELINE', `Puppeteer rendered ${renderedHtml.length} chars, H1: "${h1}", words: ~${bodyText.split(/\s+/).length}`);
+
+    // Return as markdown for buildEnrichedHtml (Title:/Description:/# H1 format)
+    const lines: string[] = [];
+    if (title) lines.push(`Title: ${title}`);
+    if (description) lines.push(`Description: ${description}`);
+    lines.push('');
+    if (h1) lines.push(`# ${h1}`);
+    // Add body paragraphs
+    for (const line of bodyText.split('\n')) {
+      const t = line.trim();
+      if (t.length > 10) lines.push(t);
+    }
+
+    const markdown = lines.join('\n');
+    return markdown.length > 200 ? markdown : null;
+  } catch (e: any) {
+    logger.error('PIPELINE', `Puppeteer rendering failed: ${e.message}`);
+    return null;
+  } finally {
+    if (browser) {
+      try { await browser.close(); } catch {}
+    }
+  }
 }
 
 function buildEnrichedHtml(markdown: string, originalHtml: string): string {
