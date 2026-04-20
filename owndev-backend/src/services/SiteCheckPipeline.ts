@@ -1099,6 +1099,15 @@ function extractSeoData(html: string, parsedUrl: URL, httpStatus: number, loadTi
     } catch {}
   }
 
+  // GEO scoring supplemental signals
+  const hasHreflang = /hreflang/i.test(html);
+  const hasLists = /<ul[\s>]|<ol[\s>]/i.test(html);
+  const hasTables = /<table[\s>]/i.test(html);
+  const hasAuthorMeta = /об\s*автор|author|автор\s*стать|Person/i.test(html);
+  const hasContactPage = /контакт|contact/i.test(html);
+  const hasReviews = /отзыв|review|Review/i.test(html);
+  const hasPricingBlock = /цен|тариф|price|pricing/i.test(html);
+
   return {
     title, titleLength: title.length, description, descriptionLength: description.length,
     h1, h1Count, h2Count, h3Count, wordCount, canonical,
@@ -1109,6 +1118,8 @@ function extractSeoData(html: string, parsedUrl: URL, httpStatus: number, loadTi
     hasViewport: /<meta[^>]*name=["']viewport["']/i.test(html),
     loadTimeMs, httpStatus,
     hasRobotsTxt: robotsResult.ok, hasSitemap: sitemapResult.ok,
+    // GEO scoring signals
+    hasHreflang, hasLists, hasTables, hasAuthorMeta, hasContactPage, hasReviews, hasPricingBlock,
   };
 }
 

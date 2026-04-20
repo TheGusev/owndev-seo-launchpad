@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { Queue } from 'bullmq';
 import { redis } from '../../cache/redis.js';
 import { logger } from '../../utils/logger.js';
+import { calcGeoScore } from '../../services/GeoScoreService.js';
 import { isValidUrl, normalizeUrl } from '../../utils/url.js';
 
 const CONCURRENCY_LIMIT = Number(process.env.SITE_CHECK_CONCURRENCY ?? 10);
@@ -339,7 +340,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       const { url, theme, scan_id } = req.body as { url: string; theme?: string; scan_id?: string };
       if (!url) return reply.status(400).send({ error: 'url required' });
 
-      // Try cache from DB first
+      // Try cache from DB first — only if result was computed deterministically
       if (scan_id) {
         try {
           const cached = await sql<Array<{ llm_judge: any }>>`
@@ -348,8 +349,9 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
             WHERE id = ${scan_id}
           `;
           const cachedJudge = cached[0]?.llm_judge;
-          if (cachedJudge && typeof cachedJudge === 'object' && Array.isArray((cachedJudge as any).systems) && (cachedJudge as any).systems.length > 0) {
-            logger.info('LLM_JUDGE', `Cache hit for scan ${scan_id}`);
+          // Only use cache if it was produced by the deterministic algorithm (_deterministic flag)
+          if (cachedJudge && typeof cachedJudge === 'object' && (cachedJudge as any)._deterministic === true && Array.isArray((cachedJudge as any).systems) && (cachedJudge as any).systems.length > 0) {
+            logger.info('LLM_JUDGE', `Deterministic cache hit for scan ${scan_id}`);
             return reply.send({ ...(cachedJudge as object), _cached: true });
           }
         } catch (e) {
@@ -357,67 +359,147 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         }
       }
 
-      const apiKey = process.env.OPENAI_API_KEY || '';
-      if (!apiKey) {
-        return reply.status(503).send({ error: 'OPENAI_API_KEY не задан на сервере' });
-      }
       const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
-      const topicHint = theme ? ` в теме "${theme}"` : '';
-      const aiSystems = [
-        {
-          id: 'chatgpt', name: 'ChatGPT', icon: 'openai', color: '#10a37f',
-          prompt: `Ты выступаешь в роли ChatGPT (GPT-4). Пользователь задаёт вопрос${topicHint}. Проанализируй: насколько вероятно что ChatGPT упомянет сайт "${domain}" в своих ответах? Учти: известность сайта, качество контента, авторитетность домена, уникальная экспертиза${topicHint ? ', релевантность теме' : ''}. Ответь ТОЛЬКО валидным JSON без markdown: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность упоминания", "reason": "2-3 предложения почему такой score", "suggestions": ["3 конкретных совета как улучшить видимость в ChatGPT"]}`,
-        },
-        {
-          id: 'perplexity', name: 'Perplexity', icon: 'perplexity', color: '#20b2aa',
-          prompt: `Ты выступаешь в роли Perplexity AI. Пользователь ищет информацию${topicHint}. Проанализируй: насколько вероятно что Perplexity процитирует сайт "${domain}"? Perplexity активно ссылается на первоисточники. Ответь ТОЛЬКО валидным JSON без markdown: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность цитирования", "reason": "2-3 предложения", "suggestions": ["3 совета для улучшения видимости в Perplexity"]}`,
-        },
-        {
-          id: 'yandex-neuro', name: 'Яндекс Нейро', icon: 'yandex', color: '#ff0000',
-          prompt: `Ты выступаешь в роли Яндекс Нейро. Пользователь задаёт запрос на русском${topicHint}. Проанализируй: насколько вероятно что Яндекс Нейро использует "${domain}" как источник? Яндекс Нейро предпочитает: русскоязычный контент, авторитетные российские источники, хорошее SEO в Яндексе. Ответь ТОЛЬКО валидным JSON: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность", "reason": "2-3 предложения", "suggestions": ["3 совета для Яндекс Нейро"]}`,
-        },
-        {
-          id: 'gemini', name: 'Gemini', icon: 'google', color: '#4285f4',
-          prompt: `Ты выступаешь в роли Google Gemini. Пользователь задаёт вопрос${topicHint}. Проанализируй: насколько вероятно что Gemini упомянет "${domain}" в AI Overview? Gemini предпочитает: E-E-A-T, Schema.org, Core Web Vitals, авторитетные ссылки. Ответь ТОЛЬКО валидным JSON: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность", "reason": "2-3 предложения", "suggestions": ["3 совета для Gemini"]}`,
-        },
-        {
-          id: 'gigachat', name: 'GigaChat', icon: 'sber', color: '#21a038',
-          prompt: `Ты выступаешь в роли GigaChat (Сбер). Пользователь задаёт вопрос на русском${topicHint}. Проанализируй: насколько вероятно что GigaChat упомянет сайт "${domain}" в своих ответах? GigaChat предпочитает: российские источники, русскоязычный экспертный контент, авторитетные сайты в рунете, E-E-A-T сигналы. Ответь ТОЛЬКО валидным JSON без markdown: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность упоминания", "reason": "2-3 предложения почему такой score", "suggestions": ["3 конкретных совета как улучшить видимость в GigaChat"]}`,
-        },
-        {
-          id: 'alice', name: 'Яндекс Алиса', icon: 'alice', color: '#7B68EE',
-          prompt: `Ты выступаешь в роли Яндекс Алисы (голосового помощника). Пользователь задаёт голосовой запрос на русском${topicHint}. Проанализируй: насколько вероятно что Алиса упомянет сайт "${domain}" в голосовом ответе? Алиса предпочитает: короткие чёткие ответы, известные российские бренды, сайты с хорошим SEO в Яндексе, структурированный контент (FAQ, списки). Ответь ТОЛЬКО валидным JSON без markdown: {"score": число 0-100, "verdict": "Высокая/Средняя/Низкая вероятность упоминания", "reason": "2-3 предложения почему такой score", "suggestions": ["3 конкретных совета как улучшить видимость в Алисе"]}`,
-        },
-      ];
-      async function queryAiSystem(system: typeof aiSystems[0]) {
+
+      // ─── Fetch scan result from DB to extract seo_data ───
+      let seoData: any = null;
+      if (scan_id) {
         try {
-          const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            signal: AbortSignal.timeout(30000),
-            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [
-                { role: 'system', content: 'Ты эксперт по GEO (Generative Engine Optimization). Всегда отвечай ТОЛЬКО валидным JSON без markdown.' },
-                { role: 'user', content: system.prompt },
-              ],
-              temperature: 0.3,
-              max_tokens: 500,
-            }),
-          });
-          if (!resp.ok) throw new Error(`OpenAI ${resp.status}`);
-          const data = await resp.json();
-          const content = data?.choices?.[0]?.message?.content || '{}';
-          const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
-          return { id: system.id, name: system.name, icon: system.icon, color: system.color, score: Number(parsed.score) || 0, verdict: parsed.verdict || 'Нет данных', reason: parsed.reason || '', suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [] };
+          const rows = await sql<Array<{ seo_data: any }>>`
+            SELECT seo_data FROM site_check_scans WHERE id = ${scan_id}
+          `;
+          seoData = rows[0]?.seo_data ?? null;
         } catch (e) {
-          logger.warn('LLM_JUDGE', `${system.name} failed: ${(e as Error).message}`);
-          return { id: system.id, name: system.name, icon: system.icon, color: system.color, score: 0, verdict: 'Ошибка анализа', reason: 'Не удалось получить оценку', suggestions: [] };
+          logger.warn('LLM_JUDGE', `seo_data fetch failed: ${(e as Error).message}`);
         }
       }
-      const results = await Promise.all(aiSystems.map(queryAiSystem));
-      const avgScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
-      const payload = { success: true, url, domain, avg_score: avgScore, systems: results, _pending: false };
+
+      // ─── If no seo_data in DB, do a quick live fetch ───
+      let liveHtml = '';
+      if (!seoData) {
+        try {
+          const r = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+          liveHtml = await r.text();
+        } catch (e) {
+          logger.warn('LLM_JUDGE', `live fetch failed: ${(e as Error).message}`);
+        }
+      }
+
+      // ─── Helper: get HTML either from DB seo_data or live fetch ───
+      // seo_data doesn't store raw HTML, so we need live fetch for regex-based signals
+      // We'll fetch robots.txt separately for AI-crawler check
+      const hostname = (() => { try { return new URL(url).hostname; } catch { return ''; } })();
+      const origin = (() => { try { const u = new URL(url); return `${u.protocol}//${u.hostname}`; } catch { return ''; } })();
+
+      // Use seo_data fields if available, otherwise parse liveHtml
+      const html = liveHtml || '';
+
+      // ─── robots.txt — check for AI crawlers ───
+      let robotsTxt = '';
+      try {
+        const rr = await fetch(`${origin}/robots.txt`, { signal: AbortSignal.timeout(5000) });
+        if (rr.ok) robotsTxt = await rr.text();
+      } catch {}
+      const AI_CRAWLERS = /GPTBot|OAI-SearchBot|PerplexityBot|anthropic-ai|ClaudeBot|Googlebot-Extended|BingAI/i;
+      const robotsAllowsAiCrawlers = (() => {
+        if (!robotsTxt) return true; // assume allowed if can't check
+        // check if any AI crawler is explicitly allowed or not blocked
+        const lines = robotsTxt.split('\n').map(l => l.trim());
+        let currentAgent = '';
+        let anyAiAllowed = false;
+        for (const line of lines) {
+          if (line.startsWith('User-agent:')) {
+            currentAgent = line.replace('User-agent:', '').trim();
+          } else if (line.startsWith('Disallow:') && AI_CRAWLERS.test(currentAgent)) {
+            const path = line.replace('Disallow:', '').trim();
+            if (path === '/' || path === '') return false; // full block
+          } else if (line.startsWith('Allow:') && AI_CRAWLERS.test(currentAgent)) {
+            anyAiAllowed = true;
+          }
+          if (currentAgent === '*' && line.startsWith('Disallow:') && line.replace('Disallow:', '').trim() === '/') {
+            // all blocked
+            return anyAiAllowed;
+          }
+        }
+        return true; // not explicitly blocked
+      })();
+
+      // ─── llms.txt length (always try — needed for scoring) ───
+      let llmsTxtLength = 0;
+      try {
+        const lr = await fetch(`${origin}/llms.txt`, { signal: AbortSignal.timeout(5000) });
+        if (lr.ok) { const t = await lr.text(); llmsTxtLength = t.length; }
+      } catch {}
+
+      // ─── pageAge via WHOIS-like heuristic (domain creation date) ───
+      let pageAge: number | null = null;
+      try {
+        // Try to get domain registration year from rdap
+        const rdapResp = await fetch(`https://rdap.org/domain/${hostname.replace(/^www\./, '')}`, {
+          signal: AbortSignal.timeout(5000),
+          headers: { 'Accept': 'application/json' },
+        });
+        if (rdapResp.ok) {
+          const rdap = await rdapResp.json();
+          const events = rdap?.events || [];
+          const registered = events.find((e: any) => e.eventAction === 'registration');
+          if (registered?.eventDate) {
+            const regDate = new Date(registered.eventDate);
+            pageAge = Math.floor((Date.now() - regDate.getTime()) / (1000 * 60 * 60 * 24));
+          }
+        }
+      } catch {}
+
+      // ─── Build GeoParams from seo_data + supplemental signals ───
+      // Parse additional signals from live HTML if available
+      const htmlForParsing = html;
+      const hasHreflang = seoData?.hasHreflang ?? /hreflang/i.test(htmlForParsing);
+      const hasLists = seoData?.hasLists ?? (/<ul[\s>]|<ol[\s>]/i.test(htmlForParsing));
+      const hasTables = seoData?.hasTables ?? (/<table[\s>]/i.test(htmlForParsing));
+      const hasAuthorMeta = seoData?.hasAuthorMeta ?? (/об\s*автор|author|автор\s*стать|Person/i.test(htmlForParsing));
+      const hasContactPage = seoData?.hasContactPage ?? (/контакт|contact/i.test(htmlForParsing));
+      const hasReviews = seoData?.hasReviews ?? (/отзыв|review|Review/i.test(htmlForParsing));
+      const hasPricingBlock = seoData?.hasPricingBlock ?? (/цен|тариф|price|pricing/i.test(htmlForParsing));
+
+      const geoParams = {
+        hasLlmsTxt: seoData?.hasLlmsTxt ?? false,
+        llmsTxtLength,
+        hasJsonLd: seoData?.hasSchema ?? (/<script[^>]*type=["']application\/ld\+json["']/i.test(htmlForParsing)),
+        schemaTypes: seoData?.schemaTypes ?? [],
+        wordCount: seoData?.wordCount ?? 0,
+        hasH1: seoData ? (seoData.h1Count > 0 || (seoData.h1 && seoData.h1.length > 0)) : (/<h1[\s>]/i.test(htmlForParsing)),
+        hasFaq: seoData?.hasFaq ?? (/faq|часто\s*задаваемые|вопрос.*ответ/i.test(htmlForParsing)),
+        hasHreflang,
+        isRuDomain: hostname.endsWith('.ru') || hostname.endsWith('.рф'),
+        robotsAllowsAiCrawlers,
+        sitemapExists: seoData?.hasSitemap ?? false,
+        loadTimeMs: seoData?.loadTimeMs ?? 0,
+        hasLists,
+        hasTables,
+        hasAuthorMeta,
+        hasContactPage,
+        hasReviews,
+        hasPricingBlock,
+        pageAge,
+      };
+
+      // ─── Deterministic GEO score (no LLM, 100% reproducible) ───
+      const geoResult = calcGeoScore(geoParams);
+
+      // Map to legacy response shape expected by frontend
+      const SYSTEM_META: Record<string, { icon: string; color: string }> = {
+        chatgpt:     { icon: 'openai',     color: '#10a37f' },
+        perplexity:  { icon: 'perplexity', color: '#20b2aa' },
+        yandex_neiro:{ icon: 'yandex',     color: '#ff0000' },
+        gemini:      { icon: 'google',     color: '#4285f4' },
+        gigachat:    { icon: 'sber',       color: '#21a038' },
+        alisa:       { icon: 'alice',      color: '#7B68EE' },
+      };
+      const results = geoResult.systems.map(s => ({
+        ...s,
+        ...(SYSTEM_META[s.id] ?? { icon: s.id, color: '#888' }),
+      }));
+      const payload = { success: true, url, domain, avg_score: geoResult.avg_score, systems: results, _pending: false, _deterministic: true };
 
       // Persist to DB inside result.llm_judge for next page load
       if (scan_id) {
