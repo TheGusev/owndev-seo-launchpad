@@ -86,7 +86,23 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     try {
       normalizedUrl = normalizeUrl(url);
       if (!isValidUrl(normalizedUrl)) throw new Error('invalid');
-      new URL(normalizedUrl);
+      const parsed = new URL(normalizedUrl);
+      if (!parsed.hostname || parsed.hostname.length < 3 || !parsed.hostname.includes('.')) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Некорректный URL. Укажите адрес сайта, например: https://example.ru',
+        });
+      }
+      if (
+        parsed.hostname === 'localhost' ||
+        /^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname) ||
+        parsed.hostname.endsWith('.local')
+      ) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Укажите реальный домен сайта',
+        });
+      }
     } catch {
       return reply.status(400).send({
         success: false,
