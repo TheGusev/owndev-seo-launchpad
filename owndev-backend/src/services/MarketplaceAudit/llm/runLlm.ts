@@ -1,7 +1,7 @@
 import { logger } from '../../../utils/logger.js';
 
-const GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-const DEFAULT_MODEL = 'google/gemini-3-flash-preview';
+const GATEWAY_URL = 'https://api.openai.com/v1/chat/completions';
+const DEFAULT_MODEL = 'gpt-4o-mini';
 
 export interface LlmCallOptions {
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
@@ -16,15 +16,16 @@ export interface LlmCallOptions {
  * Returns parsed args of the tool call, or null on any failure (caller decides fallback).
  */
 export async function callJsonLlm<T = any>(opts: LlmCallOptions): Promise<T | null> {
-  if (!opts.apiKey) {
-    logger.warn('MA_LLM', 'No API key — skipping LLM call');
+  const apiKey = process.env.OPENAI_API_KEY || opts.apiKey || '';
+  if (!apiKey) {
+    logger.warn('MA_LLM', 'No OPENAI_API_KEY — skipping LLM call');
     return null;
   }
   try {
     const r = await fetch(GATEWAY_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${opts.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
