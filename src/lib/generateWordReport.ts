@@ -68,26 +68,38 @@ const hrLine = (): Paragraph =>
   });
 
 const createStyledTable = (headers: string[], rows: string[][], colWidths: number[]): Table => {
+  const normalizedWidths = (() => {
+    const total = colWidths.reduce((s, w) => s + w, 0);
+    if (total === 0) return colWidths;
+    return colWidths.map(w => Math.round((w / total) * 100));
+  })();
+
   const headerRow = new TableRow({
     tableHeader: true,
+    cantSplit: true,
     children: headers.map((h, i) => new TableCell({
-      width: { size: colWidths[i], type: WidthType.PERCENTAGE },
+      width: { size: normalizedWidths[i], type: WidthType.PERCENTAGE },
       shading: { type: ShadingType.CLEAR, color: W.bg_header, fill: W.bg_header },
-      margins: { top: 80, bottom: 80, left: 120, right: 120 },
-      children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: W.text, size: 18, font: 'Arial' })], alignment: AlignmentType.CENTER })],
+      margins: { top: 80, bottom: 80, left: 100, right: 100 },
+      children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, color: W.text, size: 16, font: 'Arial' })], alignment: AlignmentType.CENTER })],
     })),
   });
   const dataRows = rows.map((row, rowIdx) =>
     new TableRow({
+      cantSplit: false,
       children: row.map((cell, colIdx) => new TableCell({
-        width: { size: colWidths[colIdx], type: WidthType.PERCENTAGE },
+        width: { size: normalizedWidths[colIdx], type: WidthType.PERCENTAGE },
         shading: { type: ShadingType.CLEAR, color: rowIdx % 2 === 0 ? 'FFFFFF' : W.bg_alt, fill: rowIdx % 2 === 0 ? 'FFFFFF' : W.bg_alt },
-        margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: cell, color: W.text, size: 17, font: 'Arial' })] })],
+        margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        children: [new Paragraph({ children: [new TextRun({ text: cell, color: W.text, size: 16, font: 'Arial' })] })],
       })),
     }),
   );
-  return new Table({ layout: TableLayoutType.FIXED, width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] });
+  return new Table({
+    layout: TableLayoutType.FIXED,
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [headerRow, ...dataRows],
+  });
 };
 
 export async function generateWordReport(data: ReportData): Promise<void> {
@@ -208,24 +220,33 @@ export async function generateWordReport(data: ReportData): Promise<void> {
       ));
     }
 
-    const compHeaders = ['Сайт', 'Слов', 'H2', 'FAQ', 'Цены', 'Отзывы', 'Schema', 'Видео'];
-    const compRows: string[][] = [
-      [`★ ${data.domain}`, String(data.comparisonTable?.your_site?.content_length_words || '—'), String(data.seoData?.h2Count || '—'),
-        data.seoData?.hasFaq ? '✓' : '✗', data.seoData?.hasPriceBlock ? '✓' : '✗', data.seoData?.hasReviews ? '✓' : '✗',
-        data.seoData?.hasSchema ? '✓' : '✗', data.seoData?.hasVideo ? '✓' : '✗'],
-      ...competitors.map((c: any) => [
-        `#${c.position} ${c.domain}`, String(c.content_length_words || 0), String(c.h2_count || 0),
-        c.has_faq ? '✓' : '✗', c.has_price_block ? '✓' : '✗', c.has_reviews ? '✓' : '✗',
-        c.has_schema ? '✓' : '✗', c.has_video ? '✓' : '✗',
+    // Table 1: content metrics (mobile-friendly: 4 columns)
+    const compHeaders1 = ['Сайт / Домен', 'Слов', 'H2', 'Позиция'];
+    const compRows1: string[][] = [
+      [`★ ВАШ САЙТ: ${data.domain}`, String(data.comparisonTable?.your_site?.content_length_words || '—'), String(data.seoData?.h2Count || '—'), '—'],
+      ...competitors.slice(0, 10).map((c: any) => [
+        `#${c.position} ${c.domain}`, String(c.content_length_words || 0), String(c.h2_count || 0), String(c.position || '—'),
       ]),
     ];
     if (data.comparisonTable) {
       const avg = data.comparisonTable.avg_top10;
-      compRows.push(['СРЕДНЕЕ', String(avg?.content_length_words || 0), String(avg?.h2_count || 0),
-        avg?.has_faq ? '✓' : '—', avg?.has_price_block ? '✓' : '—', avg?.has_reviews ? '✓' : '—',
-        avg?.has_schema ? '✓' : '—', avg?.has_video ? '✓' : '—']);
+      compRows1.push(['СРЕДНЕЕ ТОП-10', String(avg?.content_length_words || 0), String(avg?.h2_count || 0), '—']);
     }
-    children.push(createStyledTable(compHeaders, compRows, [24, 10, 8, 8, 8, 10, 10, 8]));
+    children.push(createStyledTable(compHeaders1, compRows1, [52, 18, 15, 15]));
+    children.push(new Paragraph({ spacing: { before: 200 }, children: [] }));
+
+    // Table 2: feature flags (mobile-friendly: 5 columns)
+    const compHeaders2 = ['Домен', 'FAQ', 'Цены', 'Отзывы', 'Schema'];
+    const compRows2: string[][] = [
+      [data.domain,
+        data.seoData?.hasFaq ? '✓' : '✗', data.seoData?.hasPriceBlock ? '✓' : '✗',
+        data.seoData?.hasReviews ? '✓' : '✗', data.seoData?.hasSchema ? '✓' : '✗'],
+      ...competitors.slice(0, 10).map((c: any) => [
+        c.domain, c.has_faq ? '✓' : '✗', c.has_price_block ? '✓' : '✗',
+        c.has_reviews ? '✓' : '✗', c.has_schema ? '✓' : '✗',
+      ]),
+    ];
+    children.push(createStyledTable(compHeaders2, compRows2, [44, 14, 14, 14, 14]));
 
     if (data.comparisonTable?.insights?.length) {
       children.push(subTitle('Что взять у конкурентов'));
@@ -264,8 +285,21 @@ export async function generateWordReport(data: ReportData): Promise<void> {
     const catNames: Record<string, string> = { informational: 'Информационные', irrelevant: 'Нерелевантные', competitor: 'Конкуренты', geo: 'Регионы', other: 'Прочие', general: 'Общие' };
     const groups: Record<string, any[]> = {};
     data.minusWords.forEach((w: any) => { const cat = w.category || w.type || 'other'; if (!groups[cat]) groups[cat] = []; groups[cat].push(w); });
-    const minusRows = Object.entries(groups).map(([cat, words]) => [catNames[cat] || cat, words.map((w: any) => `-${w.word}`).join(', '), String(words.length)]);
-    children.push(createStyledTable(['Категория', 'Минус-слова', 'Кол-во'], minusRows, [18, 70, 12]));
+    // Split long minus-word lists into chunks of 8 words per row for mobile readability
+    const minusRows: string[][] = [];
+    Object.entries(groups).forEach(([cat, words]) => {
+      const CHUNK = 8;
+      const wordArr = words.map((w: any) => `-${w.word}`);
+      for (let i = 0; i < wordArr.length; i += CHUNK) {
+        const chunk = wordArr.slice(i, i + CHUNK);
+        minusRows.push([
+          i === 0 ? (catNames[cat] || cat) : '',
+          chunk.join('  '),
+          i === 0 ? String(words.length) : '',
+        ]);
+      }
+    });
+    children.push(createStyledTable(['Категория', 'Минус-слова', 'Кол-во'], minusRows, [22, 64, 14]));
     children.push(
       subTitle('Строка для вставки в Яндекс.Директ:'),
       new Paragraph({
