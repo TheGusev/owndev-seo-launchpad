@@ -93,7 +93,14 @@ const ToolsShowcase = () => {
                 <div className="p-2.5 rounded-xl bg-card inline-block mb-3 self-start">
                   <tool.icon className="w-4 h-4 text-primary" />
                 </div>
-                <h3 className="text-base font-bold mb-1.5">{tool.name}</h3>
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <h3 className="text-base font-bold">{tool.name}</h3>
+                  {(tool as any).badge && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold uppercase tracking-wide">
+                      {(tool as any).badge}
+                    </span>
+                  )}
+                </div>
                 <p className="text-muted-foreground text-sm mb-3 flex-1">{tool.description}</p>
                 <span className="text-primary text-sm font-medium">Открыть →</span>
               </Link>
