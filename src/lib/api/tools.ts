@@ -1,104 +1,73 @@
 /**
- * High-level API functions for all OWNDEV tools.
- * Tools call Supabase Edge Functions directly via supabase.functions.invoke().
- * Site-check endpoints go through the Node backend via apiUrl/apiHeaders.
+ * Tools API — все вызовы идут на наш Node.js бэкенд.
+ * Supabase больше не используется.
  */
+import { apiUrl, apiHeaders } from './config';
 
-import { supabase } from "@/integrations/supabase/client";
-import { apiUrl, apiHeaders } from "./config";
-
-// ── Helpers ──
+async function callTool<T = any>(endpoint: string, body: object): Promise<T> {
+  const resp = await fetch(apiUrl(`/tools/${endpoint}`), {
+    method: 'POST',
+    headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error((err as any).error || `Ошибка ${resp.status}`);
+  }
+  return resp.json();
+}
 
 export function ensureProtocol(url: string): string {
-  let trimmed = url.trim().replace(/\s+/g, '');
+  const trimmed = url.trim().replace(/\s+/g, '');
   if (!trimmed) return '';
-  if (!/^https?:\/\//i.test(trimmed)) trimmed = `https://${trimmed}`;
+  const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   try {
-    const parsed = new URL(trimmed);
-    // hostname в браузере автоматически конвертируется в IDN/punycode
-    return parsed.toString().replace(/\/$/, '');
+    return new URL(withProto).toString().replace(/\/$/, '');
   } catch {
-    return trimmed; // fallback — пусть backend отобьёт с понятной ошибкой
+    return withProto;
   }
 }
 
-async function invokeFunction<T = any>(name: string, body: object): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
-  if (error) throw new Error(error.message || `Ошибка вызова ${name}`);
-  return data as T;
-}
+export const auditSite = (url: string, _options?: { toolId?: string }) =>
+  callTool('seo-audit', { url });
 
-// ── Audit ──
+export const checkIndexation = (url: string) =>
+  callTool('check-indexation', { url });
 
-export async function auditSite(url: string, options?: { toolId?: string }) {
-  return invokeFunction("seo-audit", { url });
-}
+export const generateSemanticCore = (topic: string) =>
+  callTool('generate-semantic-core', { topic });
 
-// ── Tools ──
+export const generateText = (type: string, topic: string, keywords: string) =>
+  callTool('generate-text', { type, topic, keywords });
 
-export async function checkIndexation(url: string) {
-  return invokeFunction("check-indexation", { url });
-}
+export const generateContentBrief = (query: string, url?: string, contentType?: string) =>
+  callTool('generate-content-brief', { query, url, contentType });
 
-export async function generateSemanticCore(topic: string) {
-  return invokeFunction("generate-semantic-core", { topic });
-}
+export const checkInternalLinks = (url: string) =>
+  callTool('check-internal-links', { url });
 
-export async function generateText(type: string, topic: string, keywords: string) {
-  return invokeFunction("generate-text", { type, topic, keywords });
-}
+export const analyzeCompetitors = (url1: string, url2: string) =>
+  callTool('competitor-analysis', { url1, url2 });
 
-export async function generateContentBrief(
-  query: string,
-  url?: string,
-  contentType?: string,
-) {
-  return invokeFunction("generate-content-brief", {
-    query,
-    url: url || undefined,
-    contentType,
-  });
-}
+export const trackBrand = (brand: string, prompts: string[], aiSystems: string[]) =>
+  callTool('brand-tracker', { brand, prompts, aiSystems });
 
-export async function checkInternalLinks(url: string) {
-  return invokeFunction("check-internal-links", { url });
-}
-
-export async function analyzeCompetitors(url1: string, url2: string) {
-  return invokeFunction("competitor-analysis", { url1, url2 });
-}
-
-export async function trackBrand(
-  brand: string,
-  prompts: string[],
-  aiSystems: string[],
-) {
-  return invokeFunction("brand-tracker", { brand, prompts, aiSystems });
-}
-
-export async function generateAutofix(
+export const generateAutofix = (
   issueType: string,
   url: string,
   title?: string,
   description?: string,
-) {
-  return invokeFunction("generate-autofix", {
-    issueType,
-    url,
-    title,
-    description,
-  });
-}
+) => callTool('generate-autofix', { issueType, url, title, description });
 
-export async function generateGeoContent(
+export const generateGeoContent = (
   pages: Array<{ city: string; service: string; slug: string }>,
   niche: string,
   region: string,
   tone?: string,
   urlFormat?: string,
   customInstructions?: string,
-) {
-  return invokeFunction("generate-geo-content", {
+) =>
+  callTool('generate-geo-content', {
     pages,
     niche,
     region,
@@ -106,18 +75,16 @@ export async function generateGeoContent(
     urlFormat,
     customInstructions,
   });
-}
 
-export async function sendTelegram(body: object) {
-  return invokeFunction("send-telegram", body);
-}
+export const sendTelegram = (body: object) =>
+  callTool('send-telegram', body);
 
-// ── Site-check specific (Node backend) ──
+// ── Site-check специфичные (уже на Node бэкенде) ──
 
 export async function judgeLlm(scanId: string, url: string, theme?: string) {
-  const resp = await fetch(apiUrl(`/site-check/llm-judge`), {
+  const resp = await fetch(apiUrl('/site-check/llm-judge'), {
     method: 'POST',
-    headers: apiHeaders(),
+    headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ scan_id: scanId, url, theme }),
   });
   if (!resp.ok) return null;
