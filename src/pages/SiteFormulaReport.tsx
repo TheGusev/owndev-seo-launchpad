@@ -9,7 +9,7 @@ import { BlueprintSkeleton } from '@/components/site-formula/SiteFormulaSkeleton
 import { getSession, type FullReportPayload } from '@/lib/api/siteFormula';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, AlertCircle, RefreshCw, DollarSign, ChevronRight } from 'lucide-react';
 
 const CLASS_LABELS: Record<string, string> = {
   start: 'Start',
@@ -119,6 +119,47 @@ export default function SiteFormulaReport() {
                       <li key={i} className="text-xs text-muted-foreground font-mono break-words">{item}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Price Estimate */}
+              {report.price_estimate && (
+                <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5 p-5 sm:p-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                      <DollarSign className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-semibold text-foreground">
+                      Примерная стоимость разработки
+                    </h3>
+                  </div>
+
+                  <div className="rounded-lg bg-background/60 border border-border px-4 py-3">
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                      {report.price_estimate.min.toLocaleString('ru-RU')} — {report.price_estimate.max.toLocaleString('ru-RU')} ₽
+                    </p>
+                  </div>
+
+                  <ul className="space-y-1.5">
+                    {report.price_estimate.breakdown.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                        <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <span className="break-words">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className="text-xs text-muted-foreground">
+                    {report.price_estimate.note} Окупаемость от {report.price_estimate.roi_months} мес.
+                  </p>
+
+                  <a
+                    href="mailto:dpd.tuva@mail.ru?subject=Расчёт стоимости разработки сайта"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    Получить точный расчёт
+                    <ChevronRight className="h-4 w-4" />
+                  </a>
                 </div>
               )}
             </>

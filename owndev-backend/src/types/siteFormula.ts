@@ -101,6 +101,17 @@ export interface FullReportPayload {
     template_version: string;
     generated_at: string;
   };
+  price_estimate?: PriceEstimate;
+}
+
+export interface PriceEstimate {
+  class: string;
+  min: number;
+  max: number;
+  currency: 'RUB';
+  breakdown: string[];
+  roi_months: number;
+  note: string;
 }
 
 // ───── Session / Report DB ─────

@@ -61,6 +61,17 @@ export interface FullReportPayload {
   sections: ReportSection[];
   decision_trace_summary: string[];
   metadata: { rules_version: string; template_version: string; generated_at: string };
+  price_estimate?: PriceEstimate;
+}
+
+export interface PriceEstimate {
+  class: string;
+  min: number;
+  max: number;
+  currency: 'RUB';
+  breakdown: string[];
+  roi_months: number;
+  note: string;
 }
 
 export interface SessionData {
