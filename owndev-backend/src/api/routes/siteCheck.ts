@@ -330,39 +330,6 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // POST /api/v1/site-check/llm-judge
-  app.post<{ Body: { scan_id: string; url: string; theme?: string } }>(
-    '/llm-judge',
-    async (req, reply) => {
-      const { scan_id, url, theme } = req.body as {
-        scan_id: string;
-        url: string;
-        theme?: string;
-      };
-      if (!url) {
-        return reply.status(400).send({ success: false, error: 'url is required' });
-      }
-      const origin = (() => {
-        try {
-          return new URL(url).origin;
-        } catch {
-          return url;
-        }
-      })();
-      const llmsTxtResp = await fetch(`${origin}/llms.txt`).catch(() => null);
-      const llmsTxtFound = llmsTxtResp?.ok ?? false;
-      return reply.send({
-        total_prompts: 0,
-        cited_count: 0,
-        citation_rate: '0%',
-        competitors_found: [],
-        llm_judge_score: 0,
-        llms_txt_found: llmsTxtFound,
-        results: [],
-        _pending: true,
-      });
-    },
-  );
 
   // GET /api/v1/site-check/tech-passport
   app.get<{ Querystring: { url: string } }>(
