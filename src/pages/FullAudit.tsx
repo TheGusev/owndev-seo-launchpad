@@ -152,7 +152,7 @@ const FullAudit = () => {
 
   const bothDone = siteCheckDone && croDone;
   const hasAnyResult = !!(siteCheckData || croData);
-  const showResults = hasAnyResult || running;
+  const showResults = hasAnyResult;
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
