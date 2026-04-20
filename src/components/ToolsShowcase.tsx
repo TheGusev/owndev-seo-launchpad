@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag } from "lucide-react";
+import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, TrendingDown } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const tools = [
   { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check" },
   { icon: ShoppingBag, name: "Аудит карточек WB / Ozon", description: "AI-аудит карточки маркетплейса: контент, поиск, конверсия и реклама", slug: "marketplace-audit", external: true },
+  { icon: TrendingDown, name: "CRO-аудит", description: "Почему сайт не продаёт — конверсионные барьеры, потери бюджета и расчёт стоимости исправления", slug: "conversion-audit", badge: "Новое" },
   { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor" },
   { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis" },
   { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker" },
