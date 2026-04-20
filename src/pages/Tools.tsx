@@ -21,7 +21,7 @@ const TOOL_GROUPS = [
   {
     title: "Аудит и анализ",
     emoji: "🔍",
-    slugs: ["seo-auditor", "competitor-analysis", "indexation-checker", "internal-links"],
+    slugs: ["marketplace-audit", "seo-auditor", "competitor-analysis", "indexation-checker", "internal-links"],
   },
   {
     title: "AI-видимость и GEO",
@@ -244,6 +244,12 @@ const Tools = () => {
                                 )}
                               </h3>
                               <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
+                              {tool.slug === "marketplace-audit" && (
+                                <div className="flex gap-2 mt-2">
+                                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{color: '#CB11AB', border: '1px solid #CB11AB'}}>WB</span>
+                                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{color: '#005BFF', border: '1px solid #005BFF'}}>OZON</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
