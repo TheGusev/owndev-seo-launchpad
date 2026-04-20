@@ -246,6 +246,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       minus_words: result?.minus_words ?? (typeof row.minus_words === 'string' ? JSON.parse(row.minus_words) : (row.minus_words ?? [])),
       seo_data: result?.seo_data ?? (typeof row.seo_data === 'string' ? JSON.parse(row.seo_data) : (row.seo_data ?? null)),
       llm_judge: result?.llm_judge ?? null,
+      ai_boost: result?.ai_boost ?? null,
 
       result,
       raw_scores: scores,
