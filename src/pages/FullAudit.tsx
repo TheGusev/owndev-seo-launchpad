@@ -24,6 +24,9 @@ import ResultAccordion from "@/components/site-check/ResultAccordion";
 import IssueCard from "@/components/site-check/IssueCard";
 import LlmJudgeSection, { type LlmJudgeData } from "@/components/site-check/LlmJudgeSection";
 import type { Scan, IssueCard as IssueCardType } from "@/lib/site-check-types";
+import { generatePdfReport } from "@/lib/generatePdfReport";
+import type { ReportData } from "@/lib/reportHelpers";
+import { useToast } from "@/hooks/use-toast";
 
 type Goal = "calls" | "leads" | "sales";
 type TrafficSource = "seo" | "direct" | "both";
@@ -120,6 +123,7 @@ const ChoiceGroup = <T extends string>({
 );
 
 const FullAudit = () => {
+  const { toast } = useToast();
   const [url, setUrl] = useState("");
   const [goal, setGoal] = useState<Goal | null>(null);
   const [traffic, setTraffic] = useState<TrafficSource | null>(null);
@@ -127,6 +131,7 @@ const FullAudit = () => {
 
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const [siteCheckProgress, setSiteCheckProgress] = useState(0);
   const [siteCheckDone, setSiteCheckDone] = useState(false);
@@ -146,7 +151,8 @@ const FullAudit = () => {
     !!url.trim() && !!goal && !!traffic && !!problem && !running;
 
   const bothDone = siteCheckDone && croDone;
-  const showResults = bothDone && (siteCheckData || croData);
+  const hasAnyResult = !!(siteCheckData || croData);
+  const showResults = hasAnyResult || running;
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
