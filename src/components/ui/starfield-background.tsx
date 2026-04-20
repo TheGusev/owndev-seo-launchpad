@@ -16,9 +16,10 @@ interface StarfieldBackgroundProps {
   className?: string;
 }
 
-function generateStars(count: number): Star[] {
+function generateStars(count: number, isMobile = false): Star[] {
   return Array.from({ length: count }, () => {
-    const distance = 5 + Math.random() * 45;
+    const maxDistance = isMobile ? 30 : 45;
+    const distance = 5 + Math.random() * maxDistance;
     return {
       angle: Math.random() * 360,
       distance,
