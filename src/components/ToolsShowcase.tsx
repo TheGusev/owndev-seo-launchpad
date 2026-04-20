@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag } from "lucide-react";
+import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, TrendingDown } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const tools = [
   { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check" },
   { icon: ShoppingBag, name: "Аудит карточек WB / Ozon", description: "AI-аудит карточки маркетплейса: контент, поиск, конверсия и реклама", slug: "marketplace-audit", external: true },
+  { icon: TrendingDown, name: "CRO-аудит", description: "Почему сайт не продаёт — конверсионные барьеры, потери бюджета и расчёт стоимости исправления", slug: "conversion-audit", badge: "Новое" },
   { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor" },
   { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis" },
   { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker" },
@@ -92,7 +93,14 @@ const ToolsShowcase = () => {
                 <div className="p-2.5 rounded-xl bg-card inline-block mb-3 self-start">
                   <tool.icon className="w-4 h-4 text-primary" />
                 </div>
-                <h3 className="text-base font-bold mb-1.5">{tool.name}</h3>
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <h3 className="text-base font-bold">{tool.name}</h3>
+                  {(tool as any).badge && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold uppercase tracking-wide">
+                      {(tool as any).badge}
+                    </span>
+                  )}
+                </div>
                 <p className="text-muted-foreground text-sm mb-3 flex-1">{tool.description}</p>
                 <span className="text-primary text-sm font-medium">Открыть →</span>
               </Link>
