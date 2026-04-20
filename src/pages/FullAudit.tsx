@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   LayoutDashboard,
 } from "lucide-react";
+import { FileText, RotateCcw } from "lucide-react";
 import { apiUrl } from "@/lib/api/config";
 import { startScan, getScanStatus, getFullScan } from "@/lib/api/scan";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
@@ -25,6 +26,7 @@ import IssueCard from "@/components/site-check/IssueCard";
 import LlmJudgeSection, { type LlmJudgeData } from "@/components/site-check/LlmJudgeSection";
 import type { Scan, IssueCard as IssueCardType } from "@/lib/site-check-types";
 import { generatePdfReport } from "@/lib/generatePdfReport";
+import { generateWordReport } from "@/lib/generateWordReport";
 import type { ReportData } from "@/lib/reportHelpers";
 import { useToast } from "@/hooks/use-toast";
 
