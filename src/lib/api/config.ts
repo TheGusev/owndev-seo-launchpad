@@ -44,6 +44,6 @@ export function apiUrl(path: string) {
 export function apiHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
   const token = localStorage.getItem('owndev_token');
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['x-api-key'] = token;
   return headers;
 }
