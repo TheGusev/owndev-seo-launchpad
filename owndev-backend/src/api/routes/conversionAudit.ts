@@ -1,5 +1,29 @@
 import type { FastifyInstance } from 'fastify';
 import { logger } from '../../utils/logger.js';
+import { sql } from '../../db/client.js';
+
+let cacheTableReady = false;
+async function ensureCacheTable(): Promise<void> {
+  if (cacheTableReady) return;
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS conversion_audits (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        cache_key TEXT UNIQUE NOT NULL,
+        url TEXT NOT NULL,
+        domain TEXT NOT NULL,
+        goal TEXT,
+        traffic_source TEXT,
+        main_problem TEXT,
+        result JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    cacheTableReady = true;
+  } catch (e: any) {
+    logger.error('CONVERSION_AUDIT', 'cache table init failed:', e?.message);
+  }
+}
 
 export async function conversionAuditRoutes(app: FastifyInstance): Promise<void> {
   // POST /api/v1/conversion-audit/analyze
@@ -16,6 +40,23 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
     if (!apiKey) return reply.status(503).send({ error: 'OpenAI key not set' });
 
     const domain = (() => { try { return new URL(url).hostname; } catch { return url; } })();
+
+    // Cache lookup (7 days)
+    await ensureCacheTable();
+    const cacheKey = `${domain}|${goal}|${traffic_source}|${main_problem}`;
+    try {
+      const rows = await sql<{ result: any }[]>`
+        SELECT result FROM conversion_audits
+        WHERE cache_key = ${cacheKey}
+          AND created_at > NOW() - INTERVAL '7 days'
+        LIMIT 1
+      `;
+      if (rows.length > 0) {
+        return reply.send({ success: true, url, domain, cached: true, ...rows[0].result });
+      }
+    } catch (e: any) {
+      logger.error('CONVERSION_AUDIT', 'cache read failed:', e?.message);
+    }
 
     // Fetch page HTML
     let html = '';
@@ -104,7 +145,19 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
       const data = await resp.json();
       const content = data?.choices?.[0]?.message?.content || '{}';
       const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
-      return reply.send({ success: true, url, domain, ...parsed });
+      // Persist to cache
+      try {
+        await sql`
+          INSERT INTO conversion_audits (cache_key, url, domain, goal, traffic_source, main_problem, result)
+          VALUES (${cacheKey}, ${url}, ${domain}, ${goal}, ${traffic_source}, ${main_problem}, ${sql.json(parsed)})
+          ON CONFLICT (cache_key) DO UPDATE SET
+            result = EXCLUDED.result,
+            created_at = NOW()
+        `;
+      } catch (e: any) {
+        logger.error('CONVERSION_AUDIT', 'cache write failed:', e?.message);
+      }
+      return reply.send({ success: true, url, domain, cached: false, ...parsed });
     } catch (e: any) {
       clearTimeout(tid2);
       logger.error('CONVERSION_AUDIT', e.message);

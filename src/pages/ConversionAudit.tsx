@@ -5,8 +5,11 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, AlertTriangle, TrendingDown, DollarSign, Zap, Wrench, ArrowRight, Mail } from "lucide-react";
+import { Loader2, AlertTriangle, TrendingDown, DollarSign, Zap, Wrench, ArrowRight, Mail, Download } from "lucide-react";
 import { apiUrl } from "@/lib/api/config";
+import { generatePdfReport } from "@/lib/generatePdfReport";
+import type { ReportData } from "@/lib/reportHelpers";
+import { useToast } from "@/hooks/use-toast";
 
 type Goal = "calls" | "leads" | "sales";
 type TrafficSource = "seo" | "direct" | "both";
@@ -111,8 +114,46 @@ const ConversionAudit = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ConversionResult | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const { toast } = useToast();
 
   const canSubmit = !!url.trim() && !!goal && !!traffic && !!problem && !loading;
+
+  const handleDownloadPdf = async () => {
+    if (!result) return;
+    setPdfLoading(true);
+    try {
+      const reportData: ReportData = {
+        url: result.url,
+        domain: result.domain,
+        theme: "CRO-аудит",
+        scanDate: new Date().toISOString(),
+        scores: { total: result.conversion_score, seo: 0, direct: 0, schema: 0, ai: 0 },
+        issues: [],
+        keywords: [],
+        minusWords: [],
+        competitors: [],
+        comparisonTable: null,
+        directMeta: null,
+        seoData: {},
+        cro: {
+          conversion_score: result.conversion_score,
+          money_lost_estimate: result.money_lost_estimate,
+          direct_budget_waste: result.direct_budget_waste,
+          barriers: result.barriers || [],
+          quick_wins: result.quick_wins || [],
+          fix_cost_estimate: result.fix_cost_estimate,
+          cta_recommendation: result.cta_recommendation,
+        },
+      };
+      await generatePdfReport(reportData);
+      toast({ title: "✅ PDF готов", description: "Файл сохранён" });
+    } catch (e: any) {
+      toast({ title: "Ошибка PDF", description: e?.message || "", variant: "destructive" });
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -389,6 +430,19 @@ const ConversionAudit = () => {
                 {result.cta_recommendation}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={handleDownloadPdf}
+                  disabled={pdfLoading}
+                  className="w-full sm:w-auto"
+                >
+                  {pdfLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Готовим PDF...</>
+                  ) : (
+                    <><Download className="w-4 h-4 mr-2" />Скачать PDF</>
+                  )}
+                </Button>
                 <a href="mailto:dpd.tuva@mail.ru?subject=Коммерческое предложение по CRO-аудиту">
                   <Button variant="default" size="lg" className="w-full sm:w-auto">
                     <Mail className="w-4 h-4 mr-2" />
