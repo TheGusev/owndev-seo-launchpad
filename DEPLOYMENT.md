@@ -38,11 +38,10 @@ PORT=3001
 DATABASE_URL=postgresql://owndev:<pass>@127.0.0.1:5432/owndev
 REDIS_URL=redis://localhost:6379
 
-# AI / LLM (без них Marketplace Audit и LLM Judge пропускают AI-анализ:
-#   в логах появится "No API key — skipping LLM call")
-GEMINI_API_KEY=<ключ>            # ИЛИ OPENAI_API_KEY=<ключ>
-EDGE_FUNCTION_URL=https://chrsibijgyihualqlabm.supabase.co/functions/v1/llm-proxy
-EDGE_FUNCTION_SECRET=<секрет>
+# AI / LLM — прямой вызов OpenAI API.
+# Без этого ключа Marketplace Audit и LLM Judge пропускают AI-анализ
+# (в логах: "No OPENAI_API_KEY — skipping LLM call").
+OPENAI_API_KEY=sk-proj-...        # ключ от platform.openai.com
 ```
 
 Файл должен быть с `chmod 600` и владельцем root.
