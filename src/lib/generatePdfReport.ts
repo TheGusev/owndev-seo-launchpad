@@ -643,6 +643,203 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   doc.setFontSize(7);
   doc.text(`Сгенерировано: OWNDEV.ru  ·  ${formatDate()}  ·  Аудит: ${data.domain}`, MARGIN, y);
 
-  const fileName = `owndev_audit_${data.domain}_${new Date().toISOString().split('T')[0]}.pdf`;
+  // ============= CRO SECTION (опционально) =============
+  if (data.cro) {
+    newPage();
+    drawSectionTitle('CRO-АУДИТ: ПОЧЕМУ САЙТ НЕ ПРОДАЁТ');
+    y += 4;
+
+    const cro = data.cro;
+    const scoreStatus = getScoreStatus(cro.conversion_score);
+
+    // Score card
+    checkPageBreak(36);
+    setFill(P.bg_alt);
+    doc.roundedRect(MARGIN, y, CONTENT_W, 30, 3, 3, 'F');
+    doc.setDrawColor(...hexToRgb(scoreStatus.color));
+    doc.setLineWidth(0.6);
+    doc.roundedRect(MARGIN, y, CONTENT_W, 30, 3, 3, 'S');
+    setTextColor(scoreStatus.color);
+    doc.setFont('Roboto', 'bold');
+    doc.setFontSize(28);
+    doc.text(String(cro.conversion_score), MARGIN + 10, y + 20);
+    doc.setFontSize(9);
+    doc.text('/ 100', MARGIN + 10 + doc.getTextWidth(String(cro.conversion_score)) + 2, y + 20);
+    setTextColor(P.text);
+    doc.setFontSize(11);
+    doc.text('Конверсионный потенциал', MARGIN + 50, y + 13);
+    setTextColor(scoreStatus.color);
+    doc.setFontSize(9);
+    doc.text(scoreStatus.label, MARGIN + 50, y + 21);
+    y += 34;
+
+    // Money lost / budget waste
+    checkPageBreak(30);
+    const halfW = (CONTENT_W - 4) / 2;
+    setFill('#fef2f2');
+    doc.roundedRect(MARGIN, y, halfW, 24, 2, 2, 'F');
+    doc.setDrawColor(...hexToRgb(P.critical));
+    doc.setLineWidth(0.4);
+    doc.roundedRect(MARGIN, y, halfW, 24, 2, 2, 'S');
+    setTextColor(P.critical);
+    doc.setFont('Roboto', 'bold');
+    doc.setFontSize(8);
+    doc.text('НЕДОПОЛУЧЕННЫЙ ДОХОД', MARGIN + 4, y + 7);
+    setTextColor(P.text);
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(9);
+    const mlText = doc.splitTextToSize(cro.money_lost_estimate || '—', halfW - 8);
+    doc.text(mlText.slice(0, 2), MARGIN + 4, y + 14);
+
+    setFill('#fff7ed');
+    doc.roundedRect(MARGIN + halfW + 4, y, halfW, 24, 2, 2, 'F');
+    doc.setDrawColor(...hexToRgb(P.high));
+    doc.roundedRect(MARGIN + halfW + 4, y, halfW, 24, 2, 2, 'S');
+    setTextColor(P.high);
+    doc.setFont('Roboto', 'bold');
+    doc.setFontSize(8);
+    doc.text('ПОТЕРИ БЮДЖЕТА ДИРЕКТА', MARGIN + halfW + 8, y + 7);
+    setTextColor(P.text);
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(9);
+    const dwText = doc.splitTextToSize(cro.direct_budget_waste || '—', halfW - 8);
+    doc.text(dwText.slice(0, 2), MARGIN + halfW + 8, y + 14);
+    y += 30;
+
+    // Barriers
+    if (cro.barriers && cro.barriers.length > 0) {
+      checkPageBreak(12);
+      setTextColor(P.text);
+      doc.setFont('Roboto', 'bold');
+      doc.setFontSize(11);
+      doc.text(`Конверсионные барьеры (${cro.barriers.length})`, MARGIN, y);
+      y += 6;
+
+      cro.barriers.forEach((b) => {
+        const sevColor = getSeverityColor(b.severity);
+        const descLines = doc.splitTextToSize(b.description || '', CONTENT_W - 12);
+        const fixLines = doc.splitTextToSize(`Решение: ${b.fix || ''}`, CONTENT_W - 12);
+        const blockH = 12 + descLines.length * 4 + fixLines.length * 4 + (b.impact ? 5 : 0) + 4;
+        checkPageBreak(blockH);
+
+        setFill(P.bg_alt);
+        doc.roundedRect(MARGIN, y, CONTENT_W, blockH, 2, 2, 'F');
+        doc.setDrawColor(...hexToRgb(P.border));
+        doc.setLineWidth(0.3);
+        doc.roundedRect(MARGIN, y, CONTENT_W, blockH, 2, 2, 'S');
+        doc.setFillColor(...hexToRgb(sevColor));
+        doc.rect(MARGIN, y, 2, blockH, 'F');
+
+        setTextColor(P.text_secondary);
+        doc.setFont('Roboto', 'bold');
+        doc.setFontSize(7);
+        doc.text((b.category || '').toUpperCase(), MARGIN + 6, y + 5);
+        doc.setTextColor(...hexToRgb(sevColor));
+        doc.text(getSeverityLabel(b.severity), PAGE_W - MARGIN - 2, y + 5, { align: 'right' });
+
+        setTextColor(P.text);
+        doc.setFontSize(9);
+        doc.text(b.title || '', MARGIN + 6, y + 10);
+
+        setTextColor(P.text_secondary);
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(8);
+        doc.text(descLines, MARGIN + 6, y + 15);
+        let cy = y + 15 + descLines.length * 4;
+        setTextColor(P.text);
+        doc.text(fixLines, MARGIN + 6, cy);
+        cy += fixLines.length * 4;
+        if (b.impact) {
+          setTextColor(P.success);
+          doc.text(`Эффект: ${b.impact}`, MARGIN + 6, cy);
+        }
+        y += blockH + 2;
+      });
+      y += 2;
+    }
+
+    // Quick wins
+    if (cro.quick_wins && cro.quick_wins.length > 0) {
+      checkPageBreak(14);
+      setTextColor(P.text);
+      doc.setFont('Roboto', 'bold');
+      doc.setFontSize(11);
+      doc.text('Быстрые победы', MARGIN, y);
+      y += 6;
+      doc.setFont('Roboto', 'normal');
+      doc.setFontSize(9);
+      cro.quick_wins.forEach((w, i) => {
+        const lines = doc.splitTextToSize(`${i + 1}. ${w}`, CONTENT_W - 6);
+        checkPageBreak(lines.length * 5 + 2);
+        setTextColor(P.text);
+        doc.text(lines, MARGIN + 2, y + 4);
+        y += lines.length * 5 + 2;
+      });
+      y += 4;
+    }
+
+    // Fix cost
+    if (cro.fix_cost_estimate) {
+      checkPageBreak(34);
+      setFill(P.bg_alt);
+      doc.roundedRect(MARGIN, y, CONTENT_W, 28, 3, 3, 'F');
+      doc.setDrawColor(...hexToRgb(P.accent));
+      doc.setLineWidth(0.4);
+      doc.roundedRect(MARGIN, y, CONTENT_W, 28, 3, 3, 'S');
+      setTextColor(P.text);
+      doc.setFont('Roboto', 'bold');
+      doc.setFontSize(10);
+      doc.text('Стоимость исправления', MARGIN + 4, y + 7);
+      setTextColor(P.accent);
+      doc.setFontSize(14);
+      const fmt = (n: number) => new Intl.NumberFormat('ru-RU').format(n) + ' ₽';
+      doc.text(`${fmt(cro.fix_cost_estimate.min)} — ${fmt(cro.fix_cost_estimate.max)}`, MARGIN + 4, y + 16);
+      if (cro.fix_cost_estimate.roi_months > 0) {
+        setTextColor(P.success);
+        doc.setFontSize(9);
+        doc.text(`Окупается за ${cro.fix_cost_estimate.roi_months} мес.`, MARGIN + 4, y + 23);
+      }
+      y += 32;
+
+      if (cro.fix_cost_estimate.breakdown?.length > 0) {
+        setTextColor(P.text);
+        doc.setFont('Roboto', 'bold');
+        doc.setFontSize(9);
+        doc.text('Состав работ:', MARGIN, y);
+        y += 5;
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(8);
+        cro.fix_cost_estimate.breakdown.forEach((b) => {
+          const lines = doc.splitTextToSize(`• ${b}`, CONTENT_W - 4);
+          checkPageBreak(lines.length * 4 + 1);
+          setTextColor(P.text_secondary);
+          doc.text(lines, MARGIN + 2, y + 3);
+          y += lines.length * 4 + 1;
+        });
+        y += 4;
+      }
+    }
+
+    // CTA banner
+    if (cro.cta_recommendation) {
+      const ctaLines = doc.splitTextToSize(cro.cta_recommendation, CONTENT_W - 12);
+      const ctaH = Math.max(22, ctaLines.length * 5 + 12);
+      checkPageBreak(ctaH + 4);
+      setFill(P.accent);
+      doc.roundedRect(MARGIN, y, CONTENT_W, ctaH, 3, 3, 'F');
+      setTextColor('#ffffff');
+      doc.setFont('Roboto', 'bold');
+      doc.setFontSize(9);
+      doc.text('Рекомендация:', MARGIN + 6, y + 7);
+      doc.setFont('Roboto', 'normal');
+      doc.setFontSize(8);
+      doc.text(ctaLines, MARGIN + 6, y + 13);
+      y += ctaH + 4;
+    }
+  }
+
+  const fileName = data.cro
+    ? `owndev_full_audit_${data.domain}_${new Date().toISOString().split('T')[0]}.pdf`
+    : `owndev_audit_${data.domain}_${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(fileName);
 }

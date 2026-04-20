@@ -111,4 +111,29 @@ export interface ReportData {
   comparisonTable: any;
   directMeta: any;
   seoData: any;
+  cro?: CroSection;
+}
+
+export interface CroBarrier {
+  category: string;
+  severity: 'critical' | 'high' | 'medium';
+  title: string;
+  description: string;
+  fix: string;
+  impact?: string;
+}
+
+export interface CroSection {
+  conversion_score: number;
+  money_lost_estimate: string;
+  direct_budget_waste: string;
+  barriers: CroBarrier[];
+  quick_wins: string[];
+  fix_cost_estimate: {
+    min: number;
+    max: number;
+    breakdown: string[];
+    roi_months: number;
+  };
+  cta_recommendation: string;
 }
