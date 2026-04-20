@@ -39,7 +39,7 @@ export default function SiteFormula() {
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
               Архитектурный blueprint для сервисного сайта. Ответьте на несколько вопросов о бизнесе —
               получите профессиональный план структуры: какие страницы создать, что индексировать,
-              как масштабироваться безопасно.
+              как масштабироваться безопасно — включая расчёт стоимости разработки.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button asChild size="lg" className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90">
