@@ -1,43 +1,44 @@
 
 
-## План: Перенос всех инструментов /tools с Supabase Edge Functions на Node.js backend
+## План: Усилить парсеры WB и Ozon
 
-### Что будет сделано
+### Что не так сейчас
+- **WB парсер** уже использует `card.wb.ru` — но падает, потому что иногда WB возвращает 200 с пустым `products: []` (например при неправильном `dest`), и нет fallback'а. Также `User-Agent: OWNDEVBot` подозрителен для WB CDN.
+- **Ozon парсер** скрейпит HTML страницу — Ozon отдаёт пустой SPA-каркас или 403 для серверных запросов без cookies. Нужен прокси через Jina Reader.
 
-**Backend (owndev-backend)**
-1. **Создать `owndev-backend/src/api/routes/tools.ts`** — Fastify роутер с 11 endpoints:
-   - `/tools/seo-audit` — OpenAI анализ
-   - `/tools/check-indexation` — fetch + robots.txt
-   - `/tools/generate-semantic-core` — OpenAI
-   - `/tools/generate-text` — OpenAI
-   - `/tools/generate-content-brief` — OpenAI
-   - `/tools/check-internal-links` — fetch + parse HTML
-   - `/tools/competitor-analysis` — OpenAI
-   - `/tools/brand-tracker` — OpenAI
-   - `/tools/generate-autofix` — OpenAI
-   - `/tools/generate-geo-content` — OpenAI
-   - `/tools/send-telegram` — прямой вызов Telegram Bot API
-2. **Зарегистрировать роутер в `owndev-backend/src/api/server.ts`** — `app.register(toolsRoutes, { prefix: '/api/v1' })`.
+### Изменения
 
-**Frontend**
-3. **Полностью переписать `src/lib/api/tools.ts`** — убрать `supabase.functions.invoke`, заменить на `fetch(apiUrl('/tools/...'))` через `apiHeaders()` из `config.ts`. Сохранить публичные сигнатуры функций (`auditSite`, `checkIndexation`, `generateSemanticCore`, `generateText`, `generateContentBrief`, `checkInternalLinks`, `analyzeCompetitors`, `trackBrand`, `generateAutofix`, `generateGeoContent`, `sendTelegram`, `judgeLlm`, `getTechPassport`, `ensureProtocol`), чтобы не сломать вызовы из 11 компонентов в `src/components/tools/*` и `src/components/site-check/*`.
+**1. `owndev-backend/src/services/MarketplaceAudit/parsers/wbParser.ts`**
+- Заменить `User-Agent` на стандартный браузерный (`Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36`).
+- В `parseWb`: если `card.wb.ru` ответил, но `products[0]` пустой — повторить запрос без параметра `spp` и с `dest=-1257786` (центральный регион).
+- При полном отсутствии `products` — кидать понятную ошибку: `Не удалось получить данные карточки WB. Проверьте артикул или используйте ручной ввод.`
+- Описание из basket: оставить текущую логику перебора basket-01..15 (она работает), но добавить timeout 8s через `AbortSignal.timeout(8000)` чтобы не висеть.
+- Сохранить публичный экспорт `parseWb` и `extractWbNm` без изменений сигнатуры.
 
-### Что НЕ трогаю
-- Supabase edge functions в `supabase/functions/*` — оставляю на диске (можно удалить отдельным промтом). Frontend на них больше не ссылается.
-- `judgeLlm` и `getTechPassport` — уже идут на Node backend через `/site-check/...`, оставляю как есть (только переношу из старого файла, если они там были).
-- Компоненты в `src/components/tools/*` — публичный API сохранён, изменений не требуется.
+**2. `owndev-backend/src/services/MarketplaceAudit/parsers/ozonParser.ts`**
+- Полностью переписать стратегию: вместо прямого fetch `ozon.ru` использовать **Jina Reader** (`https://r.jina.ai/<encoded-url>`), который рендерит JS и возвращает текст/markdown.
+- Запрашивать с заголовками `Accept: application/json`, `X-Return-Format: json`, timeout 30s.
+- Из ответа Jina брать `data.title` (для title) и `data.content` (для description/parsing).
+- Извлекать через regex из текста:
+  - рейтинг: `(\d+[.,]\d+)\s*из\s*5`
+  - отзывы: `(\d[\d\s]*)\s*отзыв`
+  - цена: `(\d[\d\s]*)\s*₽`
+  - бренд: строка после "Бренд:" если найдена
+- Описание = первые ~1500 символов контента после очистки шапки.
+- Картинки: попробовать достать из `data.images` (Jina их отдаёт массивом URL), иначе пустой массив.
+- Сохранить публичный экспорт `parseOzon` и `extractOzonProductPath`.
+- Если Jina вернула пусто или <100 символов контента — кидать `Не удалось получить данные Ozon. Используйте ручной ввод.`
 
-### Проверки
-- Прочитаю `src/lib/api/tools.ts` и `src/lib/api/config.ts` → убедиться в актуальных сигнатурах и хелперах.
-- Прочитаю `owndev-backend/src/api/server.ts` → найти место регистрации роутов.
-- Грепом по `src/components/tools/` сверю, какие функции реально используются (нельзя случайно удалить экспорт).
-- После правок: `tsc --noEmit` для frontend (для backend — TS ошибки в sandbox ожидаемы из-за отсутствия `node_modules`, но синтаксис проверю).
-- Греп `supabase` в `src/lib/api/tools.ts` после правки → должен быть пустым.
+**3. Оркестратор `index.ts`** — без изменений. Текущая логика `parseInput` уже корректно делегирует в `parseWb`/`parseOzon`, а `runMarketplaceAuditWorker` уже ловит ошибки парсера и сохраняет их в `error_msg` через `failAudit`. Ручной ввод (`inputType=manual`) — отдельная ветка, не зависит от автопарсеров, продолжит работать.
 
-### Риски
-- Если в старом `tools.ts` есть экспорты, не упомянутые в новом коде (например, какие-нибудь утилиты), компоненты сломаются. Минимизирую через греп перед перезаписью.
-- `apiHeaders()` уже добавляет `Content-Type` — учту, чтобы не дублировать (в текущем `config.ts` Content-Type ставится только при наличии body — проверю и адаптирую).
+### Важные моменты
+- Возвращаемая структура `ParsedProduct` остаётся прежней — никаких изменений в типах, scoring, БД, фронте.
+- Поле `rating`/`reviewsCount` в Ozon заполняем из regex (раньше было пусто).
+- Jina Reader работает без API ключа на разумных лимитах — для MVP подходит. Если в будущем упрёмся в лимиты — заменим на собственный headless-браузер.
+- Никаких изменений во фронте, в `package.json`, в env переменных.
 
-### Формат финального ответа
-Короткое summary в `<final-text>` + предложения для тестирования.
+### Проверка после имплементации
+- `npm run build` в `owndev-backend` — без ошибок TypeScript.
+- Тест на реальных артикулах WB и URL Ozon после деплоя.
+- В логах PM2 при валидных входах — без `Не удалось получить данные карточки`.
 
