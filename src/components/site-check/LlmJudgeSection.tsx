@@ -1,23 +1,24 @@
-import { Brain, CheckCircle, XCircle, Users, Trophy, AlertTriangle, Info, Loader2, RefreshCw } from "lucide-react";
-import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
+import React from 'react';
+import { Brain, AlertTriangle, Info, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface PromptResult {
-  prompt: string;
-  response_snippet: string;
-  is_cited: boolean;
-  brand_mentioned: boolean;
-  sentiment: 'positive' | 'neutral' | 'negative' | 'none';
-  competitor_mentions: string[];
+interface AiSystemResult {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  score: number;
+  verdict: string;
+  reason: string;
+  suggestions: string[];
 }
 
 interface LlmJudgeData {
-  total_prompts: number;
-  cited_count: number;
-  citation_rate: string;
-  competitors_found: string[];
-  llm_judge_score: number;
-  results: PromptResult[];
+  success: boolean;
+  url: string;
+  domain: string;
+  avg_score: number;
+  systems: AiSystemResult[];
 }
 
 interface LlmJudgeSectionProps {
