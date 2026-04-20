@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import {
   ChevronDown, ChevronUp, ExternalLink, Share2, Copy, Search,
-  AlertTriangle, CheckCircle2, XCircle, RefreshCw,
+  AlertTriangle, CheckCircle2, XCircle, RefreshCw, Sparkles,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import SiteBadge from "@/components/ui/site-badge";
 import { type GeoRatingEntry, SNAPSHOT_META, mapDbRowToEntry } from "@/data/geo-rating-types";
@@ -171,9 +172,22 @@ const GeoRating = () => {
               ))}
             </div>
 
-            <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-muted-foreground mb-6">
+            <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs text-muted-foreground mb-6">
               <span>Обновлено: {lastUpdate}</span>
-              <Link to="/geo-rating/methodology" className="hover:text-foreground transition-colors underline underline-offset-2">Методология: {SNAPSHOT_META.methodology}</Link>
+              <motion.div
+                animate={{ opacity: [0.85, 1, 0.85], scale: [1, 1.02, 1] }}
+                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                whileHover={{ scale: 1.05 }}
+                className="inline-flex"
+              >
+                <Link
+                  to="/geo-rating/methodology"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors underline underline-offset-4 decoration-primary/40 hover:decoration-primary px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 hover:bg-primary/10"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Методология: {SNAPSHOT_META.methodology}
+                </Link>
+              </motion.div>
               <span>Источник: {SNAPSHOT_META.source}</span>
             </div>
 
