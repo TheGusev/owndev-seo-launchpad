@@ -13,10 +13,15 @@ const BASE = '/marketplace-audit';
 
 async function maRequest<T = any>(path: string, options?: RequestInit): Promise<T> {
   const url = apiUrl(`${BASE}${path}`);
-  const resp = await fetch(url, {
-    ...options,
-    headers: { ...apiHeaders(), ...(options?.headers || {}) },
-  });
+  const hasBody = options?.body !== undefined && options?.body !== null;
+  const headers: Record<string, string> = {
+    ...apiHeaders(),
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+  if (hasBody && !headers['Content-Type'] && !headers['content-type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const resp = await fetch(url, { ...options, headers });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
     if (resp.status === 429) {
