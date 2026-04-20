@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import {
   ChevronDown, ChevronUp, ExternalLink, Share2, Copy, Search,
-  AlertTriangle, CheckCircle2, XCircle, RefreshCw,
+  AlertTriangle, CheckCircle2, XCircle, RefreshCw, Sparkles,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import SiteBadge from "@/components/ui/site-badge";
 import { type GeoRatingEntry, SNAPSHOT_META, mapDbRowToEntry } from "@/data/geo-rating-types";
