@@ -355,6 +355,55 @@ const FullAudit = () => {
     }
   };
 
+  const buildReportData = (): ReportData => {
+    let domain = croData?.domain || "";
+    if (!domain && siteCheckData?.url) {
+      try { domain = new URL(siteCheckData.url).hostname; } catch { domain = siteCheckData.url; }
+    }
+    if (!domain) {
+      try { domain = new URL(url.startsWith("http") ? url : `https://${url}`).hostname; }
+      catch { domain = url; }
+    }
+    return {
+      url: siteCheckData?.url || (croData?.url ?? url),
+      domain,
+      theme: siteCheckData?.theme || "Полный аудит сайта",
+      scanDate: new Date().toISOString(),
+      scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
+      issues: siteCheckData?.issues || [],
+      keywords: siteCheckData?.keywords || [],
+      minusWords: (siteCheckData as any)?.minus_words || [],
+      competitors: siteCheckData?.competitors || [],
+      comparisonTable: (siteCheckData as any)?.comparison_table || null,
+      directMeta: (siteCheckData as any)?.direct_meta || null,
+      seoData: (siteCheckData as any)?.seo_data || {},
+      cro: croData
+        ? {
+            conversion_score: croData.conversion_score,
+            money_lost_estimate: croData.money_lost_estimate,
+            direct_budget_waste: croData.direct_budget_waste,
+            barriers: croData.barriers || [],
+            quick_wins: croData.quick_wins || [],
+            fix_cost_estimate: croData.fix_cost_estimate || { min: 0, max: 0, breakdown: [], roi_months: 0 },
+            cta_recommendation: croData.cta_recommendation || "",
+          }
+        : undefined,
+    };
+  };
+
+  const handleDownloadWord = async () => {
+    if (!hasAnyResult) return;
+    setWordLoading(true);
+    try {
+      await generateWordReport(buildReportData());
+      toast({ title: "✅ Word готов", description: "Файл сохранён в загрузках" });
+    } catch (e: any) {
+      toast({ title: "Ошибка Word", description: e?.message || "Попробуйте ещё раз", variant: "destructive" });
+    } finally {
+      setWordLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Helmet>
