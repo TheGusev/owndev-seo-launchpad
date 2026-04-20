@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      sites = data;
+      sites = data as { id: string; domain: string }[];
     } else {
       // Batch mode
       const { data, error } = await supabase
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      sites = data;
+      sites = data as { id: string; domain: string }[];
     }
 
     // Get total count for progress info
