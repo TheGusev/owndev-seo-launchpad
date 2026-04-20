@@ -946,16 +946,16 @@ async function extractKeywords(html: string, theme: string, url: string, competi
   const phrasesBlock = competitorPhrases.length > 0 ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}` : '';
 
   const allKeywords: KeywordEntry[] = [];
-  for (let batch = 0; batch < 3; batch++) {
+  for (let batch = 0; batch < 2; batch++) {
     const userPrompt = batch === 0
       ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
       : `Ещё 100 НОВЫХ запросов для "${theme}". Не дублируй: ${allKeywords.slice(0, 20).map(k => k.phrase).join(', ')}`;
     const content = await llmCall(apiKey, 'gpt-4o-mini',
-      `Ты — SEO-специалист для Рунета. Сгенерируй 150 ключевых запросов.\nТребования: реальные запросы Яндекса, 7 кластеров max, intent: commercial/informational/navigational/transactional, frequency: 50-50000.\nФормат: JSON-массив [{"phrase":"...","cluster":"...","intent":"commercial","frequency":2400,"landing_needed":false}].\nТолько JSON.`,
-      userPrompt, 16000, 0.1);
+      `Ты — SEO-специалист для Рунета. Сгенерируй 100 ключевых запросов.\nТребования: реальные запросы Яндекса, 7 кластеров max, intent: commercial/informational/navigational/transactional, frequency: 50-50000.\nФормат: JSON-массив [{"phrase":"...","cluster":"...","intent":"commercial","frequency":2400,"landing_needed":false}].\nТолько JSON.`,
+      userPrompt, 8000, 0.1);
     const parsed = safeParseJson<KeywordEntry[]>(content, []);
     allKeywords.push(...parsed);
-    if (allKeywords.length >= 300) break;
+    if (allKeywords.length >= 200) break;
   }
 
   // Deduplicate
