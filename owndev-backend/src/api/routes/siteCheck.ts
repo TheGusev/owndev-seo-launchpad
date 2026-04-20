@@ -52,7 +52,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
-  await sql\`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)\`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)`;
 
   // Add columns if they don't exist (for existing tables)
   for (const col of [
@@ -66,10 +66,10 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   ]) {
     const colName = col.split(' ')[0];
     try {
-      await sql\`SELECT \${sql(colName)} FROM site_check_scans LIMIT 0\`;
+      await sql`SELECT ${sql(colName)} FROM site_check_scans LIMIT 0`;
     } catch {
       try {
-        await sql.unsafe(\`ALTER TABLE site_check_scans ADD COLUMN IF NOT EXISTS \${col}\`);
+        await sql.unsafe(`ALTER TABLE site_check_scans ADD COLUMN IF NOT EXISTS ${col}`);
       } catch {}
     }
   }
@@ -110,9 +110,9 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const [{ count }] = await sql<[{ count: number }]>\`
+    const [{ count }] = await sql<[{ count: number }]>`
       SELECT COUNT(*)::int AS count FROM site_check_scans WHERE status = 'running'
-    \`;
+    `;
     if ((count || 0) >= CONCURRENCY_LIMIT) {
       return reply
         .status(429)
@@ -130,13 +130,13 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         hostname = new URL(normalizedUrl).hostname;
       } catch {}
       const today = new Date().toISOString().slice(0, 10);
-      const cached = await sql<[{ id: string }?]>\`
+      const cached = await sql<[{ id: string }?]>`
         SELECT id FROM site_check_scans
-        WHERE url LIKE \${'%' + hostname + '%'}
+        WHERE url LIKE ${'%' + hostname + '%'}
           AND status = 'done'
-          AND created_at::date = \${today}::date
+          AND created_at::date = ${today}::date
         ORDER BY created_at DESC LIMIT 1
-      \`;
+      `;
       if (cached[0]) {
         return reply.status(429).send({
           success: false,
@@ -148,13 +148,13 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const scan_id = randomUUID();
-    await sql\`
+    await sql`
       INSERT INTO site_check_scans (id, url, mode, status, progress_pct)
-      VALUES (\${scan_id}, \${normalizedUrl}, \${mode}, 'running', 0)
-    \`;
+      VALUES (${scan_id}, ${normalizedUrl}, ${mode}, 'running', 0)
+    `;
 
     await queue.add('scan', { scan_id, url: normalizedUrl, mode });
-    logger.info('SITE_CHECK', \`Scan \${scan_id} queued for \${normalizedUrl}\`);
+    logger.info('SITE_CHECK', `Scan ${scan_id} queued for ${normalizedUrl}`);
     return reply.status(200).send({ scan_id, status: 'running' });
   });
 
@@ -163,11 +163,11 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     const { scanId } = req.params;
     const rows = await sql<
       Array<{ status: string; progress_pct: number; scores: unknown; error_message: string | null }>
-    >\`
+    >`
       SELECT status, progress_pct, scores, error_message
       FROM site_check_scans
-      WHERE id = \${scanId}
-    \`;
+      WHERE id = ${scanId}
+    `;
     if (!rows.length) {
       return reply.status(404).send({ success: false, error: 'Scan not found' });
     }
@@ -183,13 +183,13 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   // GET /api/v1/site-check/result/:scanId — FLATTENED response for frontend
   app.get<{ Params: { scanId: string } }>('/result/:scanId', async (req, reply) => {
     const { scanId } = req.params;
-    const rows = await sql<Array<any>>\`
+    const rows = await sql<Array<any>>`
       SELECT id, url, mode, status, progress_pct, theme, is_spa,
              scores, issues, competitors, keywords, minus_words,
              seo_data, result, error_message, created_at
       FROM site_check_scans
-      WHERE id = \${scanId}
-    \`;
+      WHERE id = ${scanId}
+    `;
     if (!rows.length) {
       return reply.status(404).send({ success: false, error: 'Scan not found' });
     }
@@ -258,11 +258,11 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   // GET /api/v1/site-check/preview/:scanId
   app.get<{ Params: { scanId: string } }>('/preview/:scanId', async (req, reply) => {
     const { scanId } = req.params;
-    const rows = await sql<Array<{ status: string; progress_pct: number; scores: unknown }>>\`
+    const rows = await sql<Array<{ status: string; progress_pct: number; scores: unknown }>>`
       SELECT status, progress_pct, scores
       FROM site_check_scans
-      WHERE id = \${scanId}
-    \`;
+      WHERE id = ${scanId}
+    `;
     if (!rows.length) {
       return reply.status(404).send({ success: false, error: 'Scan not found' });
     }
@@ -274,5 +274,160 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // PO
-[stdout truncated]
+  // POST /api/v1/site-check/report/create
+  app.post<{ Body: { scan_id: string; email: string } }>('/report/create', async (req, reply) => {
+    const { scan_id, email } = req.body as { scan_id: string; email: string };
+    if (!scan_id || !email) {
+      return reply
+        .status(400)
+        .send({ success: false, error: 'scan_id and email are required' });
+    }
+    await sql`
+      CREATE TABLE IF NOT EXISTS site_check_reports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        scan_id UUID NOT NULL,
+        email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        download_token TEXT,
+        payment_url TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    const report_id = randomUUID();
+    const download_token = randomUUID();
+    await sql`
+      INSERT INTO site_check_reports (id, scan_id, email, status, download_token)
+      VALUES (${report_id}, ${scan_id}, ${email}, 'pending', ${download_token})
+    `;
+    return reply
+      .status(200)
+      .send({ report_id, download_token, payment_url: null });
+  });
+
+  // GET /api/v1/site-check/report/:reportId
+  app.get<{ Params: { reportId: string }; Querystring: { token?: string } }>(
+    '/report/:reportId',
+    async (req, reply) => {
+      const { reportId } = req.params;
+      const { token } = req.query as { token?: string };
+      const rows = await sql<Array<any>>`
+        SELECT id, scan_id, email, status, download_token, payment_url
+        FROM site_check_reports
+        WHERE id = ${reportId}
+      `;
+      if (!rows.length) {
+        return reply
+          .status(404)
+          .send({ success: false, error: 'Report not found' });
+      }
+      const row = rows[0];
+      if (token && row.download_token !== token) {
+        return reply
+          .status(403)
+          .send({ success: false, error: 'Invalid token' });
+      }
+      return reply.send(row);
+    },
+  );
+
+          .catch(() => null),
+      ]);
+      const headers = headersData.status === 'fulfilled' ? headersData.value : {};
+      const geoip = geoipData.status === 'fulfilled' ? geoipData.value : null;
+      const server = (headers as any).server || '';
+      const poweredBy = (headers as any).poweredBy || '';
+      const tech: Record<string, string> = {};
+      if (/nginx/i.test(server)) tech.server = 'Nginx';
+      else if (/apache/i.test(server)) tech.server = 'Apache';
+      else if (server) tech.server = server;
+      if (/php/i.test(poweredBy)) tech.language = 'PHP';
+      else if (/express/i.test(poweredBy))
+        tech.language = 'Node.js/Express';
+      if (/wordpress/i.test(poweredBy)) tech.cms = 'WordPress';
+      return reply.send({
+        tech,
+        security: {
+          https: origin.startsWith('https://'),
+          csp: !!(headers as any).contentSecurityPolicy,
+          hsts: !!(headers as any).strictTransportSecurity,
+        },
+        performance: {
+          cache_control: (headers as any).cacheControl || null,
+        },
+        geoip: geoip
+          ? {
+              country_code: geoip.country_code,
+              city: geoip.city,
+              org: geoip.org,
+            }
+          : null,
+        raw_headers: headers,
+      });
+    },
+  );
+
+  // POST /api/v1/site-check/nomination
+  app.post<{ Body: any }>('/nomination', async (req, reply) => {
+    const { domain, display_name, category, email, scan_id, total_score } =
+      req.body as any;
+    if (!domain || !display_name) {
+      return reply
+        .status(400)
+        .send({ success: false, error: 'domain and display_name are required' });
+    }
+    await sql`
+      CREATE TABLE IF NOT EXISTS geo_rating_nominations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        domain TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'Другое',
+        email TEXT,
+        scan_id UUID,
+        total_score INT NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await sql`
+      INSERT INTO geo_rating_nominations (domain, display_name, category, email, scan_id, total_score)
+      VALUES (${domain}, ${display_name}, ${category || 'Другое'}, ${email || null}, ${
+        scan_id || null
+      }, ${total_score || 0})
+    `;
+    return reply.status(200).send({ success: true });
+  });
+
+  // GET /api/v1/site-check/geo-rating — GEO Rating data from local DB or Supabase proxy
+  app.get('/geo-rating', async (_req, reply) => {
+    try {
+      // Try local table first
+      const rows = await sql`SELECT * FROM geo_rating ORDER BY llm_score DESC`;
+      return reply.send(rows);
+    } catch {
+      // Table doesn't exist locally — proxy to Supabase
+      try {
+        const supabaseUrl =
+          process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+        const supabaseKey =
+          process.env.SUPABASE_SERVICE_ROLE_KEY ||
+          process.env.SUPABASE_ANON_KEY;
+        if (supabaseUrl && supabaseKey) {
+          const resp = await fetch(
+            `${supabaseUrl}/rest/v1/geo_rating?select=*&order=llm_score.desc`,
+            {
+              headers: {
+                apikey: supabaseKey,
+                Authorization: `Bearer ${supabaseKey}`,
+              },
+            },
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            return reply.send(data);
+          }
+        }
+      } catch {}
+      return reply.send([]);
+    }
+  });
+}
