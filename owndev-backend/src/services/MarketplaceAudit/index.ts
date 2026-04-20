@@ -33,6 +33,42 @@ import {
 } from './llm/prompts.js';
 import { buildManualCompetitors } from './competitorService.js';
 import { logger } from '../../utils/logger.js';
+import { redis } from '../../cache/redis.js';
+import { extractWbNm } from './parsers/wbParser.js';
+import { extractOzonProductPath } from './parsers/ozonParser.js';
+
+const PARSE_CACHE_TTL_SEC = 60 * 60; // 1 hour
+
+function parseCacheKey(platform: MarketplacePlatform, value: string): string | null {
+  if (platform === 'wb') {
+    const nm = extractWbNm(value);
+    return nm ? `mp:parse:wb:${nm}` : null;
+  }
+  if (platform === 'ozon') {
+    const path = extractOzonProductPath(value);
+    return path ? `mp:parse:ozon:${path}` : null;
+  }
+  return null;
+}
+
+async function getCachedParsed(key: string): Promise<ParsedProduct | null> {
+  try {
+    const raw = await redis.get(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as ParsedProduct;
+  } catch (e) {
+    logger.warn('MA_CACHE', `get failed: ${(e as Error).message}`);
+    return null;
+  }
+}
+
+async function setCachedParsed(key: string, product: ParsedProduct): Promise<void> {
+  try {
+    await redis.set(key, JSON.stringify(product), 'EX', PARSE_CACHE_TTL_SEC);
+  } catch (e) {
+    logger.warn('MA_CACHE', `set failed: ${(e as Error).message}`);
+  }
+}
 
 export interface OrchestratorInput {
   platform: MarketplacePlatform;
@@ -57,9 +93,23 @@ async function parseInput(input: OrchestratorInput): Promise<ParsedProduct> {
     if (!input.manual) throw new Error('Для ручного режима нужны поля title/description/category');
     return normalizeManual(input.platform, input.manual);
   }
-  if (input.platform === 'wb') return parseWb(input.value);
-  if (input.platform === 'ozon') return parseOzon(input.value);
-  throw new Error(`Неизвестная платформа: ${input.platform}`);
+
+  const cacheKey = parseCacheKey(input.platform, input.value);
+  if (cacheKey) {
+    const cached = await getCachedParsed(cacheKey);
+    if (cached) {
+      logger.info('MA_CACHE', `hit ${cacheKey}`);
+      return cached;
+    }
+  }
+
+  let product: ParsedProduct;
+  if (input.platform === 'wb') product = await parseWb(input.value);
+  else if (input.platform === 'ozon') product = await parseOzon(input.value);
+  else throw new Error(`Неизвестная платформа: ${input.platform}`);
+
+  if (cacheKey) await setCachedParsed(cacheKey, product);
+  return product;
 }
 
 function summarize(scores: ScoresJson, issuesCount: number): string {
