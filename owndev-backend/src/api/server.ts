@@ -5,6 +5,7 @@ import { auditRoutes } from './routes/audit.js';
 import { monitorRoutes } from './routes/monitor.js';
 import { eventRoutes } from './routes/events.js';
 import { siteCheckRoutes } from './routes/siteCheck.js';
+import { toolsRoutes } from './routes/tools.js';
 import { authMiddleware } from './middleware/auth.js';
 import { rateLimitMiddleware } from './middleware/rateLimit.js';
 import { logger } from '../utils/logger.js';
@@ -41,6 +42,7 @@ export async function startServer() {
   await app.register(monitorRoutes);
   await app.register(eventRoutes);
     await app.register(siteCheckRoutes, { prefix: '/api/v1/site-check' });
+    await app.register(toolsRoutes, { prefix: '/api/v1' });
     const { siteFormulaRoutes } = await import('./routes/siteFormula.js');
     await app.register(siteFormulaRoutes, { prefix: '/api/v1/site-formula' });
     const { marketplaceAuditRoutes } = await import('./routes/marketplaceAudit.js');
