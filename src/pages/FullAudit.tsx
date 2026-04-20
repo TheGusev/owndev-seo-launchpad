@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   LayoutDashboard,
 } from "lucide-react";
+import { FileText, RotateCcw } from "lucide-react";
 import { apiUrl } from "@/lib/api/config";
 import { startScan, getScanStatus, getFullScan } from "@/lib/api/scan";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
@@ -25,6 +26,7 @@ import IssueCard from "@/components/site-check/IssueCard";
 import LlmJudgeSection, { type LlmJudgeData } from "@/components/site-check/LlmJudgeSection";
 import type { Scan, IssueCard as IssueCardType } from "@/lib/site-check-types";
 import { generatePdfReport } from "@/lib/generatePdfReport";
+import { generateWordReport } from "@/lib/generateWordReport";
 import type { ReportData } from "@/lib/reportHelpers";
 import { useToast } from "@/hooks/use-toast";
 
@@ -132,6 +134,7 @@ const FullAudit = () => {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [wordLoading, setWordLoading] = useState(false);
 
   const [siteCheckProgress, setSiteCheckProgress] = useState(0);
   const [siteCheckDone, setSiteCheckDone] = useState(false);
@@ -146,6 +149,68 @@ const FullAudit = () => {
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => () => { if (pollRef.current) window.clearInterval(pollRef.current); }, []);
+
+  // === Persistence: restore last full-audit session from localStorage on mount ===
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("owndev_full_audit_last");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        url?: string; goal?: Goal; traffic?: TrafficSource; problem?: MainProblem;
+        scanId?: string | null; siteCheckData?: Scan | null; croData?: ConversionResult | null;
+        siteCheckDone?: boolean; croDone?: boolean;
+        siteCheckError?: string | null; croError?: string | null;
+        savedAt?: number;
+      };
+      // Expire after 24h
+      if (saved.savedAt && Date.now() - saved.savedAt > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem("owndev_full_audit_last");
+        return;
+      }
+      if (saved.url) setUrl(saved.url);
+      if (saved.goal) setGoal(saved.goal);
+      if (saved.traffic) setTraffic(saved.traffic);
+      if (saved.problem) setProblem(saved.problem);
+      if (saved.scanId) setScanId(saved.scanId);
+      if (saved.siteCheckData) setSiteCheckData(saved.siteCheckData);
+      if (saved.croData) setCroData(saved.croData);
+      if (saved.siteCheckDone) setSiteCheckDone(true);
+      if (saved.croDone) setCroDone(true);
+      if (saved.siteCheckError) setSiteCheckError(saved.siteCheckError);
+      if (saved.croError) setCroError(saved.croError);
+      if (saved.siteCheckData?.scores) setSiteCheckProgress(100);
+    } catch {
+      // corrupted entry — ignore
+    }
+  }, []);
+
+  // Save snapshot whenever results change
+  useEffect(() => {
+    if (!siteCheckData && !croData) return;
+    try {
+      localStorage.setItem(
+        "owndev_full_audit_last",
+        JSON.stringify({
+          url, goal, traffic, problem,
+          scanId, siteCheckData, croData,
+          siteCheckDone, croDone,
+          siteCheckError, croError,
+          savedAt: Date.now(),
+        }),
+      );
+    } catch {
+      // quota exceeded — ignore
+    }
+  }, [siteCheckData, croData, scanId, siteCheckDone, croDone, siteCheckError, croError, url, goal, traffic, problem]);
+
+  const handleNewAudit = () => {
+    localStorage.removeItem("owndev_full_audit_last");
+    setUrl(""); setGoal(null); setTraffic(null); setProblem(null);
+    setSiteCheckData(null); setCroData(null);
+    setScanId(null); setSiteCheckDone(false); setCroDone(false);
+    setSiteCheckError(null); setCroError(null);
+    setSiteCheckProgress(0); setError(null);
+  };
 
   const canSubmit =
     !!url.trim() && !!goal && !!traffic && !!problem && !running;
@@ -287,6 +352,55 @@ const FullAudit = () => {
       toast({ title: "Ошибка PDF", description: e?.message || "Попробуйте ещё раз", variant: "destructive" });
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  const buildReportData = (): ReportData => {
+    let domain = croData?.domain || "";
+    if (!domain && siteCheckData?.url) {
+      try { domain = new URL(siteCheckData.url).hostname; } catch { domain = siteCheckData.url; }
+    }
+    if (!domain) {
+      try { domain = new URL(url.startsWith("http") ? url : `https://${url}`).hostname; }
+      catch { domain = url; }
+    }
+    return {
+      url: siteCheckData?.url || (croData?.url ?? url),
+      domain,
+      theme: siteCheckData?.theme || "Полный аудит сайта",
+      scanDate: new Date().toISOString(),
+      scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
+      issues: siteCheckData?.issues || [],
+      keywords: siteCheckData?.keywords || [],
+      minusWords: (siteCheckData as any)?.minus_words || [],
+      competitors: siteCheckData?.competitors || [],
+      comparisonTable: (siteCheckData as any)?.comparison_table || null,
+      directMeta: (siteCheckData as any)?.direct_meta || null,
+      seoData: (siteCheckData as any)?.seo_data || {},
+      cro: croData
+        ? {
+            conversion_score: croData.conversion_score,
+            money_lost_estimate: croData.money_lost_estimate,
+            direct_budget_waste: croData.direct_budget_waste,
+            barriers: croData.barriers || [],
+            quick_wins: croData.quick_wins || [],
+            fix_cost_estimate: croData.fix_cost_estimate || { min: 0, max: 0, breakdown: [], roi_months: 0 },
+            cta_recommendation: croData.cta_recommendation || "",
+          }
+        : undefined,
+    };
+  };
+
+  const handleDownloadWord = async () => {
+    if (!hasAnyResult) return;
+    setWordLoading(true);
+    try {
+      await generateWordReport(buildReportData());
+      toast({ title: "✅ Word готов", description: "Файл сохранён в загрузках" });
+    } catch (e: any) {
+      toast({ title: "Ошибка Word", description: e?.message || "Попробуйте ещё раз", variant: "destructive" });
+    } finally {
+      setWordLoading(false);
     }
   };
 
@@ -451,19 +565,42 @@ const FullAudit = () => {
               <h1 className="text-2xl md:text-3xl font-bold font-serif">
                 Полный аудит: {croData?.domain || siteCheckData?.url}
               </h1>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadPdf}
-                disabled={pdfLoading || !hasAnyResult}
-                title={running ? "Можно скачать сейчас, но полный отчёт — после завершения обоих анализов" : undefined}
-              >
-                {pdfLoading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация...</>
-                ) : (
-                  <><FileDown className="w-4 h-4 mr-2" /> Скачать PDF</>
-                )}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadPdf}
+                  disabled={pdfLoading || !hasAnyResult}
+                  title={running ? "Можно скачать сейчас, но полный отчёт — после завершения обоих анализов" : undefined}
+                >
+                  {pdfLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> PDF...</>
+                  ) : (
+                    <><FileDown className="w-4 h-4 mr-2" /> PDF</>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadWord}
+                  disabled={wordLoading || !hasAnyResult}
+                >
+                  {wordLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Word...</>
+                  ) : (
+                    <><FileText className="w-4 h-4 mr-2" /> Word</>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNewAudit}
+                  disabled={running}
+                  title="Очистить и начать новый аудит"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" /> Новый
+                </Button>
+              </div>
             </div>
 
             {/* Live status chips while still loading */}
@@ -688,6 +825,18 @@ const FullAudit = () => {
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация PDF...</>
                   ) : (
                     <><FileDown className="w-4 h-4 mr-2" /> Скачать PDF</>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleDownloadWord}
+                  disabled={wordLoading || !hasAnyResult}
+                >
+                  {wordLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация Word...</>
+                  ) : (
+                    <><FileText className="w-4 h-4 mr-2" /> Скачать Word</>
                   )}
                 </Button>
                 <a href="mailto:dpd.tuva@mail.ru?subject=Полный аудит сайта">
