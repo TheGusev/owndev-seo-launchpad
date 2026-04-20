@@ -244,6 +244,52 @@ const FullAudit = () => {
 
   const llmJudge = (siteCheckData as any)?.llm_judge as LlmJudgeData | null;
 
+  const handleDownloadPdf = async () => {
+    if (!hasAnyResult) return;
+    setPdfLoading(true);
+    try {
+      let domain = croData?.domain || "";
+      if (!domain && siteCheckData?.url) {
+        try { domain = new URL(siteCheckData.url).hostname; } catch { domain = siteCheckData.url; }
+      }
+      if (!domain) {
+        try { domain = new URL(url.startsWith("http") ? url : `https://${url}`).hostname; }
+        catch { domain = url; }
+      }
+      const reportData: ReportData = {
+        url: siteCheckData?.url || (croData?.url ?? url),
+        domain,
+        theme: siteCheckData?.theme || "Полный аудит сайта",
+        scanDate: new Date().toISOString(),
+        scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
+        issues: siteCheckData?.issues || [],
+        keywords: siteCheckData?.keywords || [],
+        minusWords: (siteCheckData as any)?.minus_words || [],
+        competitors: siteCheckData?.competitors || [],
+        comparisonTable: (siteCheckData as any)?.comparison_table || null,
+        directMeta: (siteCheckData as any)?.direct_meta || null,
+        seoData: (siteCheckData as any)?.seo_data || {},
+        cro: croData
+          ? {
+              conversion_score: croData.conversion_score,
+              money_lost_estimate: croData.money_lost_estimate,
+              direct_budget_waste: croData.direct_budget_waste,
+              barriers: croData.barriers || [],
+              quick_wins: croData.quick_wins || [],
+              fix_cost_estimate: croData.fix_cost_estimate || { min: 0, max: 0, breakdown: [], roi_months: 0 },
+              cta_recommendation: croData.cta_recommendation || "",
+            }
+          : undefined,
+      };
+      await generatePdfReport(reportData);
+      toast({ title: "✅ PDF готов", description: "Файл сохранён в загрузках" });
+    } catch (e: any) {
+      toast({ title: "Ошибка PDF", description: e?.message || "Попробуйте ещё раз", variant: "destructive" });
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Helmet>
@@ -405,10 +451,54 @@ const FullAudit = () => {
               <h1 className="text-2xl md:text-3xl font-bold font-serif">
                 Полный аудит: {croData?.domain || siteCheckData?.url}
               </h1>
-              <Button variant="outline" size="sm" onClick={() => window.print()}>
-                <Printer className="w-4 h-4 mr-2" /> Печать / PDF
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPdf}
+                disabled={pdfLoading || !hasAnyResult}
+                title={running ? "Можно скачать сейчас, но полный отчёт — после завершения обоих анализов" : undefined}
+              >
+                {pdfLoading ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация...</>
+                ) : (
+                  <><FileDown className="w-4 h-4 mr-2" /> Скачать PDF</>
+                )}
               </Button>
             </div>
+
+            {/* Live status chips while still loading */}
+            {!bothDone && (
+              <div className="flex flex-wrap gap-2 no-print">
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
+                  croDone
+                    ? croError
+                      ? "bg-destructive/10 border-destructive/30 text-destructive"
+                      : "bg-success/10 border-success/30 text-success"
+                    : "bg-card border-border text-muted-foreground"
+                }`}>
+                  {croDone ? (
+                    croError ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />
+                  ) : (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  CRO анализ {croDone ? (croError ? "— ошибка" : "готов") : "идёт..."}
+                </div>
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
+                  siteCheckDone
+                    ? siteCheckError
+                      ? "bg-destructive/10 border-destructive/30 text-destructive"
+                      : "bg-success/10 border-success/30 text-success"
+                    : "bg-card border-border text-muted-foreground"
+                }`}>
+                  {siteCheckDone ? (
+                    siteCheckError ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />
+                  ) : (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  GEO + SEO аудит {siteCheckDone ? (siteCheckError ? "— ошибка" : "готов") : `${siteCheckProgress}%`}
+                </div>
+              </div>
+            )}
 
             {/* Section 1: Verdict */}
             <ResultAccordion title="Общий вердикт" defaultOpen>
@@ -588,8 +678,17 @@ const FullAudit = () => {
                 </p>
               )}
               <div className="flex flex-col sm:flex-row gap-3 justify-center no-print">
-                <Button variant="outline" size="lg" onClick={() => window.print()}>
-                  <Printer className="w-4 h-4 mr-2" /> Скачать PDF
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleDownloadPdf}
+                  disabled={pdfLoading || !hasAnyResult}
+                >
+                  {pdfLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация PDF...</>
+                  ) : (
+                    <><FileDown className="w-4 h-4 mr-2" /> Скачать PDF</>
+                  )}
                 </Button>
                 <a href="mailto:dpd.tuva@mail.ru?subject=Полный аудит сайта">
                   <Button size="lg" className="w-full sm:w-auto">
