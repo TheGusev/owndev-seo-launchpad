@@ -14,7 +14,7 @@ import {
   Wrench,
   ArrowRight,
   Mail,
-  Printer,
+  FileDown,
   CheckCircle2,
   LayoutDashboard,
 } from "lucide-react";
