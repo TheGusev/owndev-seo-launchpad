@@ -1,62 +1,55 @@
 
 
-## Нашли — `DATABASE_URL` живёт только в PM2 окружении
+## План: Финальная сквозная проверка системы (Промт #6)
 
-`postgresql://owndev:OwndevStrongPass1@127.0.0.1:5432/owndev` — есть роль `owndev` и БД `owndev`. Файла `.env` для бэкенда нет, креды только в PM2 dump.
+Сейчас я в режиме плана и не могу запускать браузер/curl. После одобрения переключусь в обычный режим и выполню полную проверку всех 4 модулей по чек-листу ниже.
 
-## План — одна команда, всё доделать
+### Что буду проверять
 
-```bash
-cd /var/www/owndev.ru/owndev-backend && \
-echo "=== [1/6] создаю .env для бэкенда (чтобы больше не искать) ===" && \
-cat > .env <<'EOF'
-PORT=3001
-DATABASE_URL=postgresql://owndev:OwndevStrongPass1@127.0.0.1:5432/owndev
-REDIS_URL=redis://localhost:6379
-PUPPETEER_TIMEOUT=15000
-MAX_CONCURRENT_AUDITS=3
-SITE_CHECK_CONCURRENCY=10
-MAX_CONCURRENT_SITE_CHECKS=5
-MAX_CONCURRENT_MARKETPLACE=2
-EDGE_FUNCTION_URL=https://chrsibijgyihualqlabm.supabase.co/functions/v1/llm-proxy
-EOF
-chmod 600 .env && \
-echo "=== [2/6] миграция 003_marketplace_audit ===" && \
-PGPASSWORD=OwndevStrongPass1 psql -h 127.0.0.1 -U owndev -d owndev -f src/db/migrations/003_marketplace_audit.sql && \
-echo "=== [3/6] проверка таблицы ===" && \
-PGPASSWORD=OwndevStrongPass1 psql -h 127.0.0.1 -U owndev -d owndev -c "\dt marketplace_audits" && \
-echo "=== [4/6] pm2 restart ===" && \
-pm2 restart owndev-backend --update-env && sleep 4 && \
-echo "=== [5/6] логи воркеров ===" && \
-pm2 logs owndev-backend --lines 40 --nostream | grep -iE "BOOT|WORKER|marketplace|ERROR" && \
-echo "=== [6/6] health + smoke test ===" && \
-curl -s http://localhost:3001/api/v1/health && echo "" && \
-curl -s -X POST http://localhost:3001/api/v1/marketplace-audit/start \
-  -H "Content-Type: application/json" \
-  -d '{"platform":"wb","inputType":"manual","value":"manual","manual":{"title":"Тест товар","description":"Описание для проверки пайплайна marketplace audit","specs":{"Цвет":"красный"},"category":"Тест"}}' \
-  | head -c 500 && echo ""
-```
+**1. Site Check (`/tools/site-check`)**
+- `navigate_to_sandbox` → `/tools/site-check`
+- Ввод `https://owndev.ru`, клик «Проверить»
+- Отслеживание `POST /api/v1/site-check/start` → должен вернуть 200/202 + `scan_id`
+- Polling `GET /api/v1/site-check/status/:id` до `status=done`
+- Переход на `/tools/site-check/result/:id`, проверка секций: SEO, Schema.org, LLM/AI, Скорость
 
-## Что искать в выводе
+**2. Site Formula (`/site-formula`)**
+- Клик «Начать» → `/site-formula/wizard`
+- Прохождение всех 4 шагов с выбором ответов
+- Финальная кнопка → ожидание `POST /sessions/:id/answers` (200) и `POST /sessions/:id/run` (200)
+- Переход на `/site-formula/preview?session=...`
+- Проверка отображения: класс проекта, ключевые слои, риски
 
-| Шаг | Хорошо |
-|---|---|
-| [2] | `CREATE TYPE` / `CREATE TABLE` / `NOTICE: relation already exists` |
-| [3] | строка `marketplace_audits` в списке |
-| [5] | `[OWNDEV:MA_WORKER]` или `Started` рядом с marketplace |
-| [6] health | JSON с `ok` или `status` |
-| [6] smoke | `{"id":"<uuid>","status":"pending"}` |
+**3. Marketplace Audit (`/marketplace-audit`)**
+- Выбор WB, ввод тестового URL/SKU
+- Запуск аудита → `POST /api/v1/marketplace-audit/...`
+- Ожидание прогресса и результата
+- Проверка скоров (content, search, conversion, ads) и списка проблем
+- Допустимо: пустой AI Summary (если нет LLM ключа)
 
-## Если упадёт
+**4. Geo Rating (`/geo-rating`)**
+- Загрузка списка сайтов (Supabase `geo_rating`)
+- Проверка фильтров по категории и скору
 
-- **миграция auth fail** — пароль другой; пришли `pm2 env 0 \| grep DATABASE_URL` и подставим
-- **smoke test 500** — пришли `pm2 logs owndev-backend --err --lines 50`
-- **в логах нет MA_WORKER** — значит `dist/index.js` не импортирует worker; проверим `grep -c MarketplaceAuditWorker dist/index.js`
+### Чек-лист консоли/сети для каждой страницы
+- Нет ошибок: `Body cannot be empty`, `Failed to fetch`, `401`, `404`, `500`
+- Все POST → 200/202
+- Заголовки: `x-api-key` присутствует если есть `owndev_token` в localStorage; `Content-Type: application/json` только в POST с body
 
-## Безопасность
+### Используемые инструменты
+- `browser--navigate_to_sandbox` / `browser--act` / `browser--observe` — для прохода по сценариям
+- `browser--list_network_requests` + `browser--get_network_request_details` — для проверки статусов и заголовков POST
+- `browser--read_console_logs` — для отлова ошибок
+- `supabase--read_query` — для проверки наполненности `geo_rating`
 
-- `.env` создаётся с `chmod 600` (только root читает)
-- Пароль БД уже виден тебе в выводе PM2, новой утечки нет
-- Миграция идемпотентна (`CREATE IF NOT EXISTS`)
-- Если что — `.env` можно удалить, PM2 продолжит работать с переменными из своего окружения
+### Формат отчёта
+По каждому модулю:
+- ✅/❌ статус
+- Если ❌ — точный текст ошибки, endpoint, HTTP-статус, скриншот при необходимости
+- Финальная сводка: что работает, что требует правки
+
+### Ограничения
+- Тесты идут на preview-окружении Lovable (`*.lovable.app`), backend — `https://owndev.ru/api`. Если backend недоступен из preview (CORS/cold-start), отмечу это и предложу проверить production напрямую.
+- Marketplace Audit без LLM ключа покажет пустой AI Summary — это ожидаемо, не баг.
+- Если найду баг, остановлюсь и сообщу до фиксов (по правилу из инструкций).
 
