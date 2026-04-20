@@ -617,16 +617,44 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       || (sitemapIdxResp.status === 'fulfilled' && (sitemapIdxResp.value as Response).ok);
     const hasSecurityTxt = securityResp.status === 'fulfilled' && (securityResp.value as Response).ok;
 
-    // Detect CMS/tech from headers
-    const tech: string[] = [];
-    const server = siteHeaders['server'] || '';
+    // Detect CMS/tech from headers and robots.txt
+    const serverVal = siteHeaders['server'] || '';
     const powered = siteHeaders['x-powered-by'] || '';
-    if (/nginx/i.test(server)) tech.push('Nginx');
-    if (/apache/i.test(server)) tech.push('Apache');
-    if (/php/i.test(powered)) tech.push('PHP');
-    if (/wordpress/i.test(powered) || /wp-content/i.test(robotsTxt)) tech.push('WordPress');
-    if (/bitrix/i.test(robotsTxt)) tech.push('Bitrix');
-    if (/express/i.test(powered)) tech.push('Express.js');
+
+    // Build structured tech object (matches TechPassport.tsx interface)
+    let cms: string | undefined;
+    let framework: string | undefined;
+    let language: string | undefined;
+    let serverSoftware: string | undefined;
+
+    if (/wordpress/i.test(powered) || /wp-content/i.test(robotsTxt)) cms = 'WordPress';
+    else if (/bitrix/i.test(robotsTxt) || /bitrix/i.test(powered)) cms = '1C-Bitrix';
+    else if (/tilda/i.test(robotsTxt)) cms = 'Tilda';
+    else if (/joomla/i.test(robotsTxt) || /joomla/i.test(powered)) cms = 'Joomla';
+    else if (/drupal/i.test(powered)) cms = 'Drupal';
+    else if (/opencart/i.test(robotsTxt)) cms = 'OpenCart';
+
+    if (/next\.?js/i.test(powered) || /next\.?js/i.test(serverVal)) framework = 'Next.js';
+    else if (/nuxt/i.test(powered)) framework = 'Nuxt.js';
+    else if (/express/i.test(powered)) framework = 'Express.js';
+    else if (/laravel/i.test(powered)) framework = 'Laravel';
+
+    if (/php/i.test(powered)) language = 'PHP';
+    else if (/node/i.test(powered) || /express/i.test(powered)) language = 'Node.js';
+    else if (/python/i.test(powered) || /django/i.test(powered) || /flask/i.test(powered)) language = 'Python';
+    else if (/ruby/i.test(powered) || /rails/i.test(powered)) language = 'Ruby';
+
+    if (/nginx/i.test(serverVal)) serverSoftware = 'Nginx';
+    else if (/apache/i.test(serverVal)) serverSoftware = 'Apache';
+    else if (/cloudflare/i.test(serverVal)) serverSoftware = 'Cloudflare';
+    else if (/litespeed/i.test(serverVal)) serverSoftware = 'LiteSpeed';
+    else if (serverVal) serverSoftware = serverVal.split('/')[0];
+
+    const techObj: Record<string, string | undefined> = {};
+    if (cms) techObj.cms = cms;
+    if (framework) techObj.framework = framework;
+    if (language) techObj.language = language;
+    if (serverSoftware) techObj.server = serverSoftware;
 
     // Security score
     let securityScore = 0;
@@ -648,7 +676,12 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       domain,
       url: baseUrl,
       accessible: siteOk,
-      tech,
+      // tech object — structured for TechPassport.tsx component
+      tech: techObj,
+      // geoip placeholder (no IP lookup without external service — return empty)
+      geoip: {},
+      // raw list for backwards compat
+      tech_list: Object.values(techObj).filter(Boolean),
       headers: siteHeaders,
       files: {
         robots_txt: hasRobots,

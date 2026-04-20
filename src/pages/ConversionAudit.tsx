@@ -80,11 +80,13 @@ const ChoiceGroup = <T extends string>({
   value,
   options,
   onChange,
+  disabled,
 }: {
   label: string;
   value: T | null;
   options: { value: T; label: string }[];
   onChange: (v: T) => void;
+  disabled?: boolean;
 }) => (
   <div>
     <p className="text-sm font-medium mb-2 text-foreground">{label}</p>
@@ -93,9 +95,12 @@ const ChoiceGroup = <T extends string>({
         <button
           key={o.value}
           type="button"
-          onClick={() => onChange(o.value)}
+          onClick={() => !disabled && onChange(o.value)}
+          disabled={disabled}
           className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-            value === o.value
+            disabled
+              ? "opacity-50 cursor-not-allowed bg-card border-border text-muted-foreground"
+              : value === o.value
               ? "bg-primary text-primary-foreground border-primary"
               : "bg-card border-border hover:border-primary/40 text-foreground"
           }`}
@@ -236,18 +241,21 @@ const ConversionAudit = () => {
             value={goal}
             options={goalOptions}
             onChange={setGoal}
+            disabled={loading}
           />
           <ChoiceGroup<TrafficSource>
             label="Откуда трафик"
             value={traffic}
             options={trafficOptions}
             onChange={setTraffic}
+            disabled={loading}
           />
           <ChoiceGroup<MainProblem>
             label="Главная проблема"
             value={problem}
             options={problemOptions}
             onChange={setProblem}
+            disabled={loading}
           />
 
           <Button

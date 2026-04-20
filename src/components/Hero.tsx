@@ -77,7 +77,7 @@ const Hero = () => {
 
           {/* Alice skill badge */}
           <motion.a
-            href="https://dialogs.yandex.ru/"
+            href="https://dialogs.yandex.ru/store/skills/owndev-seo-audit"
             target="_blank"
             rel="noopener noreferrer"
             initial={{ opacity: 0, y: -10 }}
