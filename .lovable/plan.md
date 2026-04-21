@@ -1,237 +1,121 @@
 
 
-## Цель
+## Что не так с LLM-инструментами (root cause)
 
-1. **Exponential backoff на сетевые ошибки** при поллинге `getScanStatus` — 3с → 5с → 10с → 10с... (cap 10с), сброс счётчика на любом успешном ответе.
-2. **SSE для real-time прогресса** — добавить `GET /api/v1/site-check/events/:scanId` на бэке, который шлёт `progress`/`done`/`error` события без опроса. Поллинг оставляем как **fallback** на случай когда SSE не работает (старый прокси / firewall / нет EventSource).
+Проблема **не в одной конкретной строке**, а в **архитектурном рассогласовании** между фронтом и бэкендом. Их три, наслаиваются друг на друга.
 
-## Часть 1. Exponential backoff (фронт)
+### Проблема №1 — Бэкенд возвращает строку, фронт ждёт объект
 
-Файл: `src/pages/SiteCheck.tsx`, функция `pollStatus`.
+Это **главная** причина «крутится → пустой экран».
 
-- Завести локальный счётчик `errorCount` внутри `poll`.
-- На каждом успешном `getScanStatus` → сбросить `errorCount = 0`.
-- В `catch` → `errorCount++`, рассчитать `backoff = [3000, 5000, 10000][Math.min(errorCount-1, 2)]` и `setTimeout(poll, backoff)`.
-- Если `errorCount >= 10` (≈100 сек подряд недоступен бэк) — показать toast «Связь с сервером потеряна, переподключаемся…» один раз и продолжить, не падая.
+`owndev-backend/src/api/routes/tools.ts` для всех LLM-инструментов делает:
 
 ```ts
-const BACKOFF_STEPS = [3000, 5000, 10000];
-let errorCount = 0;
-let warnedDisconnected = false;
-
-const poll = async () => {
-  if (!mountedRef.current) return;
-  try {
-    const status = await getScanStatus(id);
-    errorCount = 0; // reset on success
-    if (warnedDisconnected) {
-      warnedDisconnected = false;
-      toast({ title: 'Связь восстановлена' });
-    }
-    // ... existing done/error/setTimeout logic
-  } catch {
-    if (!mountedRef.current) return;
-    errorCount++;
-    if (errorCount === 10 && !warnedDisconnected) {
-      warnedDisconnected = true;
-      toast({ title: 'Связь с сервером потеряна', description: 'Переподключаемся…' });
-    }
-    const backoff = BACKOFF_STEPS[Math.min(errorCount - 1, BACKOFF_STEPS.length - 1)];
-    setTimeout(poll, backoff);
-  }
-};
+const result = await askOpenAI(systemPrompt, userPrompt); // → string (markdown)
+return reply.send({ success: true, result }); // result = "## Анализ...\n..."
 ```
 
-## Часть 2. SSE — real-time прогресс
+А фронт-компоненты ждут **структурированные объекты**:
 
-### Бэкенд: новый endpoint
+| Компонент | Ждёт | Получает реально |
+|---|---|---|
+| `CompetitorAnalysis.tsx` | `{ page1: PageMetrics, page2: PageMetrics }` (40+ полей: title, h1, wordCount, brokenLinks…) | `{ success: true, result: "## Сравнение...\n..." }` |
+| `SemanticCoreGenerator.tsx` | `{ clusters: [{name, intent, keywords[]}] }` | `{ success: true, result: "ВЧ:\n— ремонт..." }` |
+| `AITextGenerator.tsx` | `{ text: string }` | `{ success: true, result: "..." }` |
+| `BrandTracker`, `ContentBrief`, `Autofix`, `GeoContent` | каждый свой объект | `{ success, result: markdown }` |
 
-Файл: `owndev-backend/src/api/routes/siteCheck.ts`. Добавить **рядом с `/status/:scanId`**:
+Что видит пользователь: `result?.page1?.seoScore` = `undefined` → **ничего не рендерится → пустой экран**. EmptyState срабатывает только для частных случаев (например, `clusters.length === 0`), а у `CompetitorAnalysis` условие — `!result && checkedAt`, но `result` **есть** (это `{success:true, result:"..."}`), просто внутри нет `page1`.
 
-```ts
-// GET /api/v1/site-check/events/:scanId — Server-Sent Events
-app.get<{ Params: { scanId: string } }>('/events/:scanId', async (req, reply) => {
-  const { scanId } = req.params;
-  
-  reply.raw.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no', // отключить буферизацию nginx
-  });
-  
-  let lastPct = -1;
-  let lastStatus = '';
-  let closed = false;
-  
-  req.raw.on('close', () => { closed = true; });
-  
-  // Heartbeat каждые 15с — держит соединение живым через прокси/firewall
-  const heartbeat = setInterval(() => {
-    if (closed) return;
-    reply.raw.write(`: ping\n\n`);
-  }, 15_000);
-  
-  // Опрос БД каждую 1с (это внутрисерверный SQL, дёшево; клиент не опрашивает)
-  const poll = async () => {
-    while (!closed) {
-      const rows = await sql<Array<{ status: string; progress_pct: number; error_message: string | null }>>`
-        SELECT status, progress_pct, error_message FROM site_check_scans WHERE id = ${scanId}
-      `;
-      if (!rows.length) {
-        reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'not_found' })}\n\n`);
-        break;
-      }
-      const { status, progress_pct, error_message } = rows[0];
-      if (progress_pct !== lastPct || status !== lastStatus) {
-        lastPct = progress_pct;
-        lastStatus = status;
-        reply.raw.write(`event: progress\ndata: ${JSON.stringify({ status, progress_pct })}\n\n`);
-      }
-      if (status === 'done') {
-        reply.raw.write(`event: done\ndata: ${JSON.stringify({ scan_id: scanId })}\n\n`);
-        break;
-      }
-      if (status === 'error') {
-        reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: error_message ?? 'scan_failed' })}\n\n`);
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-    clearInterval(heartbeat);
-    if (!closed) reply.raw.end();
-  };
-  
-  poll().catch(() => {
-    clearInterval(heartbeat);
-    try { reply.raw.end(); } catch {}
-  });
-});
-```
+### Проблема №2 — Используется `OPENAI_API_KEY` напрямую, в обход правила памяти
 
-Замечания:
-- БД-поллинг внутри сервера (1с) — дешевле, чем десятки клиентов опрашивающих API через сеть.
-- `X-Accel-Buffering: no` — критично, иначе nginx буферизует SSE и клиент ничего не видит.
-- Auth-middleware применяется глобально (`onRequest`) — анонимные запросы проходят как `ANON_USER`, эндпоинт публичный (как `/status`).
+Правило памяти `llm-provider-switch`:
+> «Do not store LLM keys in backend; use proxy Edge Function.»
 
-### Фронт: гибридный клиент
+А `tools.ts` стучится напрямую в `https://api.openai.com/v1/chat/completions` с `process.env.OPENAI_API_KEY`. Если ключа на проде нет (или он истёк) — `askOpenAI` тихо возвращает `''` или строку `"AI недоступен..."`. Фронт всё равно получает `{success:true, result:""}` → опять же пустой экран.
 
-Новый файл `src/lib/api/scan-events.ts`:
+У нас уже есть рабочий `supabase/functions/llm-proxy/index.ts` с `LOVABLE_API_KEY` (он точно есть в секретах). И есть `MA_LLM` в `MarketplaceAudit/llm/runLlm.ts` — он умеет делать **strict-JSON через tool-calling**. Это и есть тот шаблон, который надо применить ко всем инструментам.
 
-```ts
-import { API_BASE_URL, API_VERSION } from './config';
+### Проблема №3 — Half-LLM, half-fetch инструменты падают молча
 
-export type ScanEvent =
-  | { type: 'progress'; status: string; progress_pct: number }
-  | { type: 'done'; scan_id: string }
-  | { type: 'error'; error: string };
+`competitor-analysis` на бэке **не парсит сайты вообще** — просто шлёт URL в LLM и просит «сравни». Никаких `wordCount`, `brokenLinks`, `htmlSizeKB` LLM выдумать не может. Этот инструмент **никогда не работал по новой архитектуре** — раньше был на Supabase edge-функции с реальным fetch+parse, а при миграции на Node его обрезали до «спроси LLM».
 
-export function subscribeScanEvents(
-  scanId: string,
-  onEvent: (e: ScanEvent) => void,
-  onFatal: () => void, // сигнал «SSE недоступно, переключайся на polling»
-): () => void {
-  const url = `${API_BASE_URL}/${API_VERSION}/site-check/events/${scanId}`;
-  let es: EventSource;
-  try {
-    es = new EventSource(url, { withCredentials: false });
-  } catch {
-    onFatal();
-    return () => {};
-  }
-  
-  es.addEventListener('progress', (ev) => {
-    try {
-      const data = JSON.parse((ev as MessageEvent).data);
-      onEvent({ type: 'progress', ...data });
-    } catch {}
-  });
-  es.addEventListener('done', (ev) => {
-    try {
-      const data = JSON.parse((ev as MessageEvent).data);
-      onEvent({ type: 'done', scan_id: data.scan_id });
-    } catch {}
-    es.close();
-  });
-  es.addEventListener('error', (ev) => {
-    // EventSource сам ретраит, но если соединение упало >3 раз — fallback
-    if (es.readyState === EventSource.CLOSED) {
-      onFatal();
-    }
-  });
-  
-  return () => es.close();
-}
-```
+Аналогично `seo-audit` — без скачивания HTML это пустой совет.
 
-### Интеграция в `src/pages/SiteCheck.tsx`
+---
 
-Заменяем вызов `pollStatus(scan_id)` на:
+## Что предлагаю сделать
 
-```ts
-const startTracking = (id: string) => {
-  let pollFallbackStarted = false;
-  
-  const cleanup = subscribeScanEvents(
-    id,
-    (ev) => {
-      if (!mountedRef.current) return;
-      if (ev.type === 'progress') setProgress(ev.progress_pct);
-      else if (ev.type === 'done') navigate(`/tools/site-check/result/${id}`);
-      else if (ev.type === 'error') {
-        toast({ title: 'Ошибка проверки', variant: 'destructive' });
-        setScanError('Не удалось проанализировать сайт. Попробуйте ещё раз.');
-        setScanning(false);
-      }
-    },
-    () => {
-      // SSE недоступно (CORS/прокси/старый браузер) — fallback на polling
-      if (pollFallbackStarted) return;
-      pollFallbackStarted = true;
-      logger?.warn?.('SSE failed, falling back to polling');
-      pollStatus(id);
-    },
-  );
-  
-  // На размонтировании — закрыть SSE
-  cleanupRef.current = cleanup;
-};
-```
+Чинить нужно **бэкенд**, фронт почти не трогаем (он уже корректно рендерит ожидаемые структуры).
 
-Добавить `cleanupRef = useRef<() => void>()` и в существующий `useEffect` cleanup:
-```ts
-useEffect(() => {
-  return () => {
-    mountedRef.current = false;
-    cleanupRef.current?.();
-  };
-}, []);
-```
+### Шаг 1. Перевести все LLM-вызовы на `llm-proxy` + tool-calling
 
-`pollStatus` остаётся в файле как fallback с уже встроенным adaptive interval + новым exponential backoff из Части 1.
+В `owndev-backend/src/api/routes/tools.ts` заменить функцию `askOpenAI` на `callJsonLlm` (по образцу `MarketplaceAudit/llm/runLlm.ts`), которая:
+- Идёт на `https://chrsibijgyihualqlabm.supabase.co/functions/v1/llm-proxy` с заголовком `x-proxy-secret: ${EDGE_FUNCTION_SECRET}` (секрет уже есть на бэке — `backend-environment-config`).
+- Передаёт `tools: [{...}]` + `tool_choice: { type:'function', function:{name} }`.
+- Возвращает **уже распарсенный объект**, а не markdown.
+- Default model: `google/gemini-3-flash-preview` (быстро + бесплатно по правилу `connecting-to-ai-models`).
+
+Это устраняет проблему №2 целиком.
+
+### Шаг 2. Под каждый инструмент — свой JSON-schema
+
+| Эндпоинт | Schema выхода |
+|---|---|
+| `/tools/seo-audit` | `{ summary, issues:[{title, severity, fix}], recommendations:[] }` (фронт `SEOAuditor` принимает уже структуру) |
+| `/tools/generate-semantic-core` | `{ clusters:[{name, intent: 'informational'\|'commercial'\|'transactional'\|'navigational', keywords:string[]}] }` |
+| `/tools/generate-text` | `{ text: string }` |
+| `/tools/generate-content-brief` | `{ goal, structure:[{h2, points[]}], keywords[], wordCount, formatting }` |
+| `/tools/competitor-analysis` | **сначала fetch+parse обоих URL → metrics**, потом **LLM только для рекомендаций**. Возвращаем `{ page1, page2, recommendations? }` где page1/page2 — реальные `PageMetrics`. |
+| `/tools/brand-tracker` | `{ visibility_score, gaps[], recommendations[] }` |
+| `/tools/generate-autofix` | `{ explanation, steps[], code? }` |
+| `/tools/generate-geo-content` | `{ pages: [{slug, h1, meta_description, intro}] }` |
+
+### Шаг 3. Реальный парсинг для `competitor-analysis` и `seo-audit`
+
+Добавить во временный helper (внутри `tools.ts` или новый `owndev-backend/src/services/Tools/pageMetrics.ts`):
+- `fetchPageMetrics(url)` — скачивает HTML, считает: title, description, h1, h2/h3 count, wordCount, image count, alt missing, JSON-LD, canonical, OG, internal/external links, htmlSizeKB, loadTimeMs, lang.
+- Возвращает `PageMetrics` 1:1 как ждёт фронт (40+ полей).
+
+`competitor-analysis` вызывает `Promise.all([fetchPageMetrics(url1), fetchPageMetrics(url2)])`, без LLM на старте — данные точные и быстрые. LLM-комментарий — опциональным полем `recommendations`.
+
+`seo-audit` — fetchPageMetrics + правила (HTTPS missing? canonical missing? wordCount<300?) → формирует `issues[]` детерминистично, LLM добавляет «как починить» только текстом для каждого issue.
+
+### Шаг 4. Убрать молчаливые провалы
+
+- Если `callJsonLlm` вернул `null` — отвечать `reply.status(503).send({ error: 'AI временно недоступен, попробуйте через минуту' })`. Фронт уже умеет ловить это в `catch` и показывать toast.
+- Если у инструмента есть нон-AI часть (как fetchPageMetrics) — отдавать её даже когда LLM упал.
+
+### Шаг 5. Маленькая фронтовая правка для устойчивости
+
+В `src/lib/api/tools.ts` функция `callTool` сейчас возвращает весь `{success, result, ...}`. Компоненты иногда обращаются к корню (`result.page1`), иногда к `.result`. Чтобы не править 11 компонентов, **в `callTool` развернуть конверт**: если ответ выглядит как `{success:true, result:X}` и `X` — объект, вернуть `X`; если `X` — строка, вернуть `{text: X}` (для простых текстовых инструментов). Это обратно-совместимо.
+
+---
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `owndev-backend/src/api/routes/siteCheck.ts` | **Edit** — добавить `GET /events/:scanId` (SSE-эндпоинт) рядом с `/status/:scanId` |
-| `src/lib/api/scan-events.ts` | **New** — клиент `EventSource` с graceful fallback callback |
-| `src/pages/SiteCheck.tsx` | **Edit** — добавить exponential backoff в `pollStatus` (Часть 1); заменить прямой вызов `pollStatus` на `startTracking` который сначала пробует SSE, при фейле падает на polling; закрытие EventSource в cleanup |
+| `owndev-backend/src/services/Tools/llmCall.ts` | **New** — обёртка над `llm-proxy` с tool-calling, по образцу `MarketplaceAudit/llm/runLlm.ts` |
+| `owndev-backend/src/services/Tools/pageMetrics.ts` | **New** — `fetchPageMetrics(url): PageMetrics` с реальным fetch+regex-парсингом |
+| `owndev-backend/src/services/Tools/schemas.ts` | **New** — JSON-схемы для всех 8 LLM-инструментов |
+| `owndev-backend/src/api/routes/tools.ts` | **Edit** — переписать каждый эндпоинт: использовать `callJsonLlm` + соответствующую schema; для competitor-analysis и seo-audit добавить fetchPageMetrics; на ошибку LLM возвращать 503 |
+| `src/lib/api/tools.ts` | **Edit** — в `callTool` развернуть конверт `{success, result}` (5 строк) |
 
 ## Что НЕ трогаем
 
-- `src/lib/site-check-api.ts` / `src/lib/api/scan.ts` — поллинг-функция остаётся (она используется как fallback и в других местах не вызывается, но интерфейс не меняем).
-- `ScanProgress.tsx` — только потребляет `realProgress`, источник прозрачен.
-- Логику `done/error/navigate` — поведение сохраняем 1:1.
+- `supabase/functions/llm-proxy/index.ts` — он уже работает.
+- 11 фронтовых компонентов в `src/components/tools/*` — они уже корректно ждут структурированные объекты (после правки `callTool` всё совпадёт).
 - Header/Footer/маршруты/БД-схему/правила памяти.
-- Другие эндпоинты `siteCheck.ts` (`/status` остаётся для fallback и внешних потребителей).
+- `MarketplaceAudit/*` — у них своя цепочка с tool-calling, она в порядке.
+- SiteCheck/SSE/scan-events — недавняя работа, не пересекается.
 
 ## Проверка
 
-1. **SSE happy path**: открыть DevTools → Network → фильтр `events/`. После старта проверки — **1 запрос** с типом `eventsource`, в нём идут события `progress` каждый раз когда меняется `progress_pct`. Запросов к `/status/` **нет**.
-2. **SSE → fallback**: в DevTools заблокировать `/events/` (Block request URL). Через ~3 сек начинают идти запросы к `/status/` с adaptive интервалами (1с/2с/3с) — старая логика работает.
-3. **Exponential backoff**: в DevTools отключить сеть на 30 сек во время поллинга (когда SSE отвалился) — интервалы между retry-попытками 3с → 5с → 10с → 10с. После 10 фейлов — toast «Связь с сервером потеряна, переподключаемся…». При восстановлении — toast «Связь восстановлена», поллинг продолжается.
-4. **Done**: при `status=done` — событие `done` приходит мгновенно, `EventSource` закрывается, навигация на `/result/:id`.
-5. **Heartbeat**: оставить вкладку открытой 1 минуту на стадии 75% — соединение не рвётся (служебные `: ping` каждые 15с).
-6. **Размонтирование**: уйти с страницы во время сканирования — соединение закрывается (нет утечки `EventSource` в Network).
+1. Открыть `/tools/competitor-analysis`, ввести `vk.com` и `ok.ru`, нажать «Сравнить» — через ~5 сек видно две колонки SEO Score, метрики Title/H1/wordCount, бейджи HTTPS/JSON-LD и т.п. **Без пустого экрана.**
+2. Открыть `/tools/semantic-core`, тема «ремонт квартир в Москве» — приходит 3+ кластеров с keywords.
+3. Открыть `/tools/text-generator`, тип «meta», тема «доставка цветов» — приходит готовый текст.
+4. Network вкладка: запросы идут на `https://owndev.ru/api/v1/tools/...`, ответы JSON со структурой, не markdown-строки.
+5. Если бэк временно без AI (имитация: уронить `EDGE_FUNCTION_SECRET`) — toast «AI временно недоступен», экран не пустой, кнопка «Попробовать снова» работает.
+6. `/tools/seo-audit` для `example.com` — реальные метрики из fetch + LLM-рекомендации к каждой проблеме.
+7. Остальные 5 инструментов (brand-tracker, content-brief, autofix, geo-content, internal-links) — отдают свой ожидаемый JSON, рендерятся, не молчат.
 
