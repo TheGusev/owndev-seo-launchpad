@@ -37,12 +37,6 @@ const TOOL_GROUPS: Array<{ title: string; icon: LucideIcon; slugs: string[]; col
     icon: Sparkles,
     slugs: ["pseo-generator", "semantic-core", "ai-text-generator", "schema-generator", "llm-prompt-helper"],
   },
-  {
-    title: "Утилиты вебмастера",
-    icon: Wrench,
-    slugs: ["webmaster-files", "anti-duplicate", "position-monitor"],
-    collapsible: true,
-  },
 ];
 
 const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);

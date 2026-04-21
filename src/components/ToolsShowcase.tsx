@@ -16,10 +16,7 @@ const tools = [
   { icon: Sparkles, name: "pSEO Generator", description: "Структура GEO‑страниц для городов и ниш", slug: "pseo-generator" },
   { icon: Code2, name: "Schema.org генератор", description: "JSON‑LD разметка для LocalBusiness, FAQ и др.", slug: "schema-generator" },
   { icon: Bot, name: "LLM Prompt Helper", description: "Готовые промты для AI‑генерации SEO‑контента", slug: "llm-prompt-helper" },
-  { icon: Shield, name: "Anti‑Duplicate Checker", description: "Проверка текста на шаблонность", slug: "anti-duplicate" },
-  { icon: FileCode, name: "Файлы вебмастера", description: "Sitemap.xml + robots.txt генератор", slug: "webmaster-files" },
   { icon: Link2, name: "Внутренние ссылки", description: "Поиск битых ссылок и анализ перелинковки", slug: "internal-links" },
-  { icon: TrendingUp, name: "Мониторинг позиций", description: "Ручной трекер позиций из GSC", slug: "position-monitor" },
 ];
 
 const ToolsShowcase = () => {

@@ -28,7 +28,7 @@ export const categories = [
   { id: "analysis", name: "Анализ и аудит", icon: Search },
   { id: "generation", name: "Генерация (pSEO)", icon: Sparkles },
   { id: "content", name: "Контент и LLM", icon: Bot },
-  { id: "webmaster", name: "Инструменты вебмастера", icon: FileCode },
+  { id: "utilities", name: "Утилиты", icon: FileCode },
 ];
 
 export const tools: ToolDef[] = [
@@ -104,16 +104,6 @@ export const tools: ToolDef[] = [
     useCases: ["Проверка после деплоя", "Поиск причин деиндексации", "Аудит noindex/nofollow"],
     geoEnabled: false, status: "active",
   },
-  {
-    id: "position-monitor", slug: "position-monitor",
-    name: "Мониторинг позиций",
-    shortDesc: "Ручной трекер позиций: добавляйте данные из GSC и отслеживайте динамику",
-    category: "analysis", icon: TrendingUp,
-    component: lazy(() => import("@/components/tools/PositionMonitor")),
-    gradient: "bg-gradient-to-br from-green-950/40 to-emerald-950/40",
-    useCases: ["Отслеживание ТОП-10", "История позиций по ключам", "Контроль после оптимизации"],
-    geoEnabled: false, status: "active",
-  },
   // ===== GENERATION =====
   {
     id: "pseo-generator", slug: "pseo-generator",
@@ -182,32 +172,12 @@ export const tools: ToolDef[] = [
     useCases: ["Генерация SEO‑контента через LLM", "Улучшение существующих страниц", "Попадание в AI‑обзоры"],
     geoEnabled: false, status: "active",
   },
-  {
-    id: "anti-duplicate", slug: "anti-duplicate",
-    name: "Anti‑Duplicate Checker",
-    shortDesc: "Проверка текста на шаблонность и риск деиндексации",
-    category: "content", icon: Shield,
-    component: lazy(() => import("@/components/tools/AntiDuplicateChecker")),
-    gradient: "bg-gradient-to-br from-red-950/40 to-purple-950/40",
-    useCases: ["Перед массовой загрузкой контента", "После генерации текстов нейросетью", "Аудит GEO‑страниц"],
-    geoEnabled: false, status: "active",
-  },
-  // ===== WEBMASTER =====
-  {
-    id: "webmaster-files", slug: "webmaster-files",
-    name: "Генератор файлов вебмастера",
-    shortDesc: "Sitemap.xml и robots.txt: создание, копирование и скачивание",
-    category: "webmaster", icon: FileCode,
-    component: lazy(() => import("@/components/tools/SitemapGenerator")),
-    gradient: "bg-gradient-to-br from-teal-950/40 to-cyan-950/40",
-    useCases: ["Создание sitemap для сайта", "Генерация robots.txt", "Настройка правил краулинга"],
-    geoEnabled: false, status: "active",
-  },
+  // ===== UTILITIES =====
   {
     id: "internal-links", slug: "internal-links",
     name: "Проверка внутренних ссылок",
     shortDesc: "Поиск битых ссылок, nofollow-меток и анализ внутренней перелинковки",
-    category: "webmaster", icon: Link2,
+    category: "utilities", icon: Link2,
     component: lazy(() => import("@/components/tools/InternalLinksChecker")),
     gradient: "bg-gradient-to-br from-slate-950/40 to-zinc-950/40",
     useCases: ["Поиск битых ссылок", "Аудит перелинковки", "Проверка nofollow на внутренних ссылках"],
@@ -257,7 +227,7 @@ export const tools: ToolDef[] = [
     id: "llms-txt-checker", slug: "llms-txt-checker",
     name: "llms.txt Checker",
     shortDesc: "Бесплатная проверка и генерация llms.txt для вашего сайта.",
-    category: "webmaster", icon: FileCode,
+    category: "utilities", icon: FileCode,
     component: lazy(() => import("@/components/site-check/ScanForm")),
     gradient: "bg-gradient-to-br from-teal-950/40 to-green-950/40",
     useCases: ["Проверка llms.txt", "Генерация llms.txt", "Настройка для AI-краулеров"],
@@ -296,7 +266,7 @@ export const tools: ToolDef[] = [
     id: "mcp-server", slug: "mcp-server",
     name: "MCP Server",
     shortDesc: "Подключите OWNDEV к Claude, ChatGPT и другим AI-агентам через Model Context Protocol",
-    category: "webmaster", icon: Plug,
+    category: "utilities", icon: Plug,
     component: lazy(() => import("@/components/tools/MCPServerDocs")),
     gradient: "bg-gradient-to-br from-indigo-950/40 to-violet-950/40",
     useCases: ["Интеграция с Claude Desktop", "Программный запуск аудита", "API для AI-агентов"],
