@@ -10,10 +10,7 @@
 - Schema.org генератор — JSON-LD разметка для AI-цитирования
 - AI Генератор текстов — SEO-тексты, meta, FAQ, описания
 - LLM Prompt Helper — готовые промты для ChatGPT/Perplexity
-- Anti-Duplicate Checker — проверка текста на шаблонность
 - Проверка индексации — meta robots, canonical, X-Robots-Tag
-- Мониторинг позиций — ручной трекер позиций из GSC
-- Генератор файлов вебмастера — sitemap.xml и robots.txt
 - Проверка внутренних ссылок — битые ссылки и перелинковка
 
 ## Links

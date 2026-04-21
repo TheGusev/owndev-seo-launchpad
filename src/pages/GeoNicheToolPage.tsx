@@ -254,7 +254,6 @@ function generateContent(toolSlug: string, niche: { name: string; nameCase: stri
 
   const nicheIntro: Record<string, string> = {
     "pseo-generator": `pSEO Generator позволяет за минуты создать сотни уникальных GEO-страниц для сферы ${niche.nameCase} в ${region.nameCase}. Каждая страница получает уникальные Title, H1, H2, FAQ и Schema.org разметку, оптимизированную под ${niche.name.toLowerCase()}.`,
-    "anti-duplicate": `Anti-Duplicate Checker анализирует тексты ваших pSEO-страниц в нише «${niche.name}» на шаблонность и риск деиндексации. Особенно важно для ${region.nameCase}, где ${region.agencies} агентств конкурируют за одни и те же запросы.`,
     "ai-citation": `AI Citation Checker оценивает готовность ваших страниц в нише «${niche.name}» к цитированию в Perplexity, ChatGPT и AI-обзорах. В ${region.nameCase} это даёт конкурентное преимущество перед ${region.agencies} агентствами.`,
     "roi-calculator": `ROI Calculator прогнозирует трафик, лиды и окупаемость pSEO-проекта для ${niche.nameCase} в ${region.nameCase}. Учитывает локальную конкуренцию среди ${region.agencies} агентств и средние бюджеты региона.`,
     "geo-map": `GEO Coverage Map помогает спланировать охват городов для pSEO-проекта в нише «${niche.name}». Начиная с ${region.nameCase}, вы можете расширить покрытие на соседние города и регионы.`,

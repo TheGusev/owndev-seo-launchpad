@@ -7,12 +7,9 @@ export const GEO_ALLOWED_TOOLS = [
 ];
 
 export const GEO_BLOCKED_TOOLS = [
-  'anti-duplicate',
   'schema-generator',
   'llm-prompt-helper',
   'ai-text-generator',
-  'webmaster-files',
-  'position-monitor',
   'pseo-generator',
   'indexation-checker',
   'geo-audit',

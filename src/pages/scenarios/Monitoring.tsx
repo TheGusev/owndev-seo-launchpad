@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { BarChart3, PlusCircle, Activity, Bell, ArrowRight, TrendingUp, Construction, LineChart } from "lucide-react";
+import { BarChart3, PlusCircle, Activity, Bell, ArrowRight, TrendingUp, Construction } from "lucide-react";
 import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -26,7 +26,6 @@ const steps = [
 
 const tools = [
   { name: "GEO-рейтинг", desc: "Сравнительный рейтинг AI-видимости сайтов", link: "/geo-rating", icon: BarChart3 },
-  { name: "Position Monitor", desc: "Отслеживание позиций по ключевым запросам", link: "/tools/position-monitor", icon: LineChart },
 ];
 
 const Monitoring = () => (

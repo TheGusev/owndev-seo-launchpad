@@ -16,8 +16,6 @@ export type ToolId =
   | 'schema-generator'
   | 'pseo-generator'
   | 'llm-prompt-helper'
-  | 'position-monitor'
-  | 'anti-duplicate'
   | 'mcp-server';
 
 export type IssuePriority = 'P1' | 'P2' | 'P3';

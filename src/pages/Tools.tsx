@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { tools, type ToolDef } from "@/data/tools-registry";
-import { ArrowRight, ChevronDown, ChevronUp, Trophy, Star, Search, BrainCircuit, Sparkles, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Trophy, Star, Search, BrainCircuit, Sparkles, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
@@ -36,12 +36,6 @@ const TOOL_GROUPS: Array<{ title: string; icon: LucideIcon; slugs: string[]; col
     title: "Генерация и контент",
     icon: Sparkles,
     slugs: ["pseo-generator", "semantic-core", "ai-text-generator", "schema-generator", "llm-prompt-helper"],
-  },
-  {
-    title: "Утилиты вебмастера",
-    icon: Wrench,
-    slugs: ["webmaster-files", "anti-duplicate", "position-monitor"],
-    collapsible: true,
   },
 ];
 
