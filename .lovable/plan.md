@@ -1,44 +1,68 @@
 
 
 ## Цель
-Сделать поллинг `getScanStatus` адаптивным — реже опрашивать бэкенд на медленных стадиях. Сейчас фиксированный `setTimeout(poll, 2000)` = постоянно 2 сек, на ошибке 3 сек.
+Убрать эмодзи (⭐ 🚀 🔍 🧠 ⚙️ 🛠 💡 🎯 🤖 и т.п.) из UI и заменить их на чистые **иконки lucide-react** в стиле остального сайта. Сохранить эмодзи только там, где они уместны: подпись «Сделано ❤️ в России 🇷🇺» (правило памяти) и флаги стран в Tech Passport.
 
-## Логика интервалов
+## Что меняем
 
-Опираемся на две метрики:
-1. **Elapsed** — сколько секунд прошло с момента старта (`startedAt`).
-2. **Текущая стадия** по `progress_pct` — медленные LLM-этапы это `pct ∈ [60, 85)` (Анализ конкурентов 75% и Семантическое ядро 85%) и стадия Theme detection около 20%.
+### 1. `src/pages/Tools.tsx` — заголовки групп и флагманов
+Сейчас в `TOOL_GROUPS` каждая группа имеет поле `emoji: "🚀"`/`"🔍"`/`"🧠"`/`"⚙️"`/`"🛠"` и в JSX выводится `{group.emoji} {group.title}`.
 
-```ts
-function getPollInterval(elapsedMs: number, progressPct: number): number {
-  // Первые 10 секунд — 1 сек (быстрые ранние стадии 5/10/20/35)
-  if (elapsedMs < 10_000) return 1000;
-  // Медленные LLM-стадии (Theme≈20%, Competitors≈75%, Keywords≈85%) — 3 сек
-  if ((progressPct >= 15 && progressPct < 35) || (progressPct >= 60 && progressPct < 95)) return 3000;
-  // Всё остальное — 2 сек
-  return 2000;
-}
-```
+- Заменить `emoji: string` на `icon: LucideIcon` в `TOOL_GROUPS`:
+  | Группа | Было | Станет |
+  |---|---|---|
+  | Флагманский аудит | 🚀 | `Trophy` |
+  | Аудит и анализ | 🔍 | `Search` |
+  | AI-видимость и GEO | 🧠 | `BrainCircuit` |
+  | Генерация и контент | ⚙️ | `Sparkles` |
+  | Утилиты вебмастера | 🛠 | `Wrench` |
+- Заголовок флагманского блока `⭐ Флагманские инструменты` → иконка `Star` слева от текста (используем уже импортированный `Star`).
+- Рендер: `<group.icon className="w-5 h-5 text-primary" /> {group.title}` вместо `{group.emoji} {group.title}`.
 
-После `error` в catch — оставляем 3 сек (как сейчас, временная ошибка сети не должна спамить).
+### 2. `src/components/landing/Testimonials.tsx`
+Строка 97: `⭐ Отзывы клиентов` → `<Star className="w-3 h-3" /> Отзывы клиентов` (Star уже доступен в lucide).
+
+### 3. `src/components/audit/AuditSectionBlock.tsx`
+Строка 74: `💡 {section.whyImportant}` → `<Lightbulb className="w-3 h-3 inline mr-1" /> {section.whyImportant}` (lucide `Lightbulb`).
+
+### 4. `src/pages/SiteCheckResult.tsx`
+Строка 277: `title="🚀 AI Boost — план попадания в нейросети"` → `title="AI Boost — план попадания в нейросети"`. Если у `ResultAccordion` есть проп `icon`, передадим `Rocket`; иначе просто убираем эмодзи (визуальная иерархия и так понятна).
+
+### 5. `src/components/mascot/BorderBot.tsx`
+Реплики бота — это речевые пузыри, эмодзи в чат-баббле ОК (это персонаж, не UI). **Не трогаем** строки 269 (🎯) и 284 (🤖) — это часть характера маскота, не «AI-style» декор.
+
+### 6. `supabase/functions/site-check-scan/index.ts` (строки 1574, 1591)
+В `title` issue: `🤖 Нет FAQPage Schema для AI-видимости` → `Нет FAQPage Schema для AI-видимости`. Эмодзи попадает в выгружаемый отчёт и UI карточки issue — убираем. Аналогично второй title.
+
+### 7. Что **не трогаем** (эмодзи остаются)
+- `src/components/Footer.tsx` строка 143: `Сделано ❤️ в России 🇷🇺` — защищено правилом памяти `footer-heart-preference`.
+- `src/lib/generateMarketplaceReport.ts` строки 307, 502: та же подпись в PDF/Word.
+- `supabase/functions/tech-passport/index.ts` строки 149–150: флаги стран `🇷🇺 🇩🇪 🇳🇱 …` — это семантика данных (страна хостинга), не декор.
+- `supabase/functions/send-telegram/index.ts` строки 44–46: 📞 📧 🛠 💬 — это **сервисный текст уведомления в Telegram**, видит только админ, не клиент. Можно оставить, для тона сообщения они уместны.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/pages/SiteCheck.tsx` | **Edit** — внутри `pollStatus` (строки 121–142) считать `elapsedMs = Date.now() - (startedAt ?? Date.now())`, передавать в `getPollInterval(elapsedMs, status.progress_pct)`, использовать результат в `setTimeout(poll, interval)`. Доступ к `startedAt` — через `useRef` (или захват через closure, так как `startedAt` стейтится в `handleSubmit`). Чтобы не было устаревшего значения в callback, используем `startedAtRef = useRef<number>()` и обновляем его в `handleSubmit` синхронно с `setStartedAt`. |
+| `src/pages/Tools.tsx` | Заменить `emoji` на `icon: LucideIcon` в `TOOL_GROUPS`, обновить рендер заголовков групп и флагманского блока |
+| `src/components/landing/Testimonials.tsx` | Заменить `⭐` на `<Star/>` в badge |
+| `src/components/audit/AuditSectionBlock.tsx` | Заменить `💡` на `<Lightbulb/>`, добавить импорт |
+| `src/pages/SiteCheckResult.tsx` | Убрать `🚀` из title accordion |
+| `supabase/functions/site-check-scan/index.ts` | Убрать `🤖` из двух issue title |
 
 ## Что НЕ трогаем
-- `ScanProgress.tsx` — индикация heartbeat и стадий уже корректна.
-- Backend (`/site-check/status/:id`) — никаких изменений.
-- Header / Footer / маршруты.
-- Поведение при `done` / `error` — переход на result / показ ошибки.
+- Footer и подписи в экспорт-отчётах (правило памяти).
+- Флаги стран в Tech Passport (семантика, не декор).
+- Telegram-уведомления (внутренний канал).
+- BorderBot реплики (характер маскота).
+- Header / навигация.
+- Backend пайплайн, маршруты, БД.
 
 ## Проверка
-1. Открыть DevTools → Network, фильтр по `status/`.
-2. Запустить проверку крупного сайта (например `vk.ru`).
-3. Первые ~10 сек запросы каждые 1 сек.
-4. На стадиях 60–95% (Анализ конкурентов / Семантика) интервал 3 сек.
-5. На остальных — 2 сек.
-6. Завершение и переход на `/result/:id` работает как раньше.
+1. `/tools` — заголовки групп и флагманского блока без эмодзи, иконки lucide того же стиля что иконки инструментов.
+2. Главная — секция «Отзывы клиентов» — badge со звездой-иконкой вместо ⭐.
+3. Внутри отчёта аудита — раздел `whyImportant` показывает иконку лампочки вместо 💡.
+4. `/result/:id` — accordion «AI Boost» без 🚀 в заголовке.
+5. Свежий запуск site-check на сайте без FAQPage — issue называется «Нет FAQPage Schema для AI-видимости» без 🤖.
+6. Footer по-прежнему: «Сделано ❤️ в России 🇷🇺».
 
