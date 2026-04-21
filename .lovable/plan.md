@@ -1,63 +1,98 @@
 
 
-## Цель
-Исправить горизонтальный «плавающий» сдвиг на мобильной версии при скролле — страница должна жёстко фиксироваться по ширине viewport.
+## Проблема
 
-## Причина
-На мобиле какой-то элемент выходит за пределы `100vw` (типичные виновники в этом проекте — `MouseGradient`, `ClickRipple`, `floating-particles`, `starfield-background`, `animated-grid`, декоративные absolute-блоки в Hero/секциях с отрицательными `translate`/`-left-…`/`-right-…`, или широкий контент в таблицах). Браузер позволяет скроллить вбок к этому элементу — отсюда «плавание».
+Сейчас `ScanProgress.tsx` рендерит **6 шагов с фиксированными задержками** (`STEP_DELAYS = [2500, 3000, 3500, 3000, 2500, 2000]` = ~16 сек) — это **симуляция, не привязанная к реальному прогрессу бэкенда**.
 
-## Решение (минимальное и безопасное)
+Реальный пайплайн (`SiteCheckPipeline.ts`) имеет **9 фактических чекпоинтов**, и часть из них — медленные LLM-вызовы (15–60 сек каждый):
 
-### 1. Жёсткая блокировка горизонтального скролла глобально
-В `src/index.css` добавить в базовый слой:
+| % | Что происходит на бэке | Реальная длительность |
+|---|---|---|
+| 5  | Старт |
+| 10 | HTML загружен |
+| 20 | Theme detection (LLM) | 5–15 сек |
+| 35 | SEO data + robots/sitemap + broken links |
+| 60 | Tech / Content / Direct / Schema / AI audits + scoring |
+| 75 | **Competitor analysis (LLM + Yandex/Google scrape)** | **20–60 сек** ⚠️ |
+| 85 | **Keywords extraction (LLM)** | **15–30 сек** ⚠️ |
+| 95–100 | Minus words + ad suggestion + финальные scores |
 
-```css
-@layer base {
-  html, body {
-    overflow-x: hidden;
-    overscroll-behavior-x: none;
-    max-width: 100vw;
-  }
-  #root {
-    overflow-x: clip;        /* clip лучше hidden — не создаёт scroll-context */
-    max-width: 100vw;
-  }
-  /* Защита от переполнения общими элементами на мобиле */
-  @media (max-width: 768px) {
-    img, video, svg, canvas, iframe { max-width: 100%; height: auto; }
-  }
-}
+После 16 сек симуляции пользователь видит «все 6 пунктов ✓, шкала на 95%», а бэк ещё может 60+ сек считать конкурентов и ключи. Отсюда ощущение «зависло».
+
+## Решение
+
+Полностью переделать `ScanProgress.tsx` — **выкинуть симуляцию**, привязать каждый шаг к реальному `progress_pct` из бэкенда.
+
+### 1. Новый список этапов (синхронизирован с backend)
+
+```ts
+const stages = [
+  { pct: 5,   label: 'Запуск',                     desc: 'Инициализация проверки',                         icon: Play },
+  { pct: 10,  label: 'Загрузка страницы',          desc: 'Скачиваем HTML, проверяем доступность',          icon: Globe },
+  { pct: 20,  label: 'Определение тематики',       desc: 'AI анализирует тему сайта',                      icon: Brain },
+  { pct: 35,  label: 'SEO-данные и robots.txt',    desc: 'meta-теги, sitemap, битые ссылки',               icon: FileText },
+  { pct: 60,  label: 'Технический и AI-аудит',     desc: 'Schema.org, E-E-A-T, llms.txt, контент',         icon: Cpu },
+  { pct: 75,  label: 'Анализ конкурентов',         desc: 'Топ-10 из выдачи Яндекс — это самый долгий шаг', icon: Users },
+  { pct: 85,  label: 'Семантическое ядро',         desc: 'AI извлекает 200+ ключевых слов',                icon: Key },
+  { pct: 95,  label: 'Минус-слова и AI-объявление',desc: 'Генерация Direct-объявления',                    icon: Sparkles },
+  { pct: 100, label: 'Формирование отчёта',        desc: 'Сохраняем результат',                            icon: CheckCircle2 },
+];
 ```
 
-`overflow-x: clip` на `#root` + `hidden` на `html/body` — двойная страховка: даже если декоративный absolute-элемент выйдет за край, он будет обрезан без появления скролл-области.
+### 2. Логика статуса каждого шага (от реального `realProgress`)
 
-### 2. Изоляция фиксированных декоративных слоёв
-Проверить и при необходимости поправить компоненты, которые рендерятся на каждой странице через `Index.tsx`:
-- `MouseGradient` (`src/components/ui/mouse-gradient.tsx`)
-- `ClickRipple` (`src/components/ui/click-ripple.tsx`)
+```ts
+const isDone   = stage.pct <  realProgress;
+const isActive = stage.pct >= realProgress && (prevStage?.pct ?? 0) < realProgress;
+const isFuture = (prevStage?.pct ?? 0) >= realProgress; // не дошли
+```
 
-Убедиться что у их корневых элементов есть `pointer-events-none` + `fixed inset-0` + **`overflow-hidden`** на контейнере, чтобы внутренние radial-градиенты/частицы не выходили наружу.
+Шаг помечается «✓ done» только когда бэк реально перешагнул его %. Текущий активный шаг крутит спиннер **бесконечно** до тех пор, пока `realProgress` не обновится. **Никаких setTimeout-ов с фиксированными задержками.**
 
-### 3. Hero и секции с декоративными absolute-блоками
-В `src/components/Hero.tsx` и `src/components/landing/*.tsx` у внешней `<section>` добавить класс `relative overflow-hidden` (если его ещё нет) — это локально обрежет декоративные `-translate-x-…`/`blur-3xl` пятна на мобиле.
+### 3. Подстраховка от «застывшей» полосы — heartbeat
+
+В дополнение к stage-индикатору добавить **«пульс активности»** под progress bar:
+
+- Сохранять `lastProgressUpdateAt` (timestamp последнего изменения `realProgress`)
+- Считать `secondsSinceLastUpdate`
+- Если активная стадия — «Анализ конкурентов» или «Семантическое ядро» (то есть LLM-этапы), показывать таймер **«Идёт уже Xs… (LLM-запрос может занять до 60 сек)»** — пользователь видит что система живёт.
+- Если `secondsSinceLastUpdate > 90` для одного шага — показать предупреждение «Дольше обычного, продолжаем ждать…» (без отмены).
+
+### 4. Elapsed-counter и реалистичная подсказка
+
+- Заменить «Обычно проверка занимает 15–30 секунд» на **«Обычно 30–90 секунд, может занять до 2 минут»** (правда).
+- Добавить общий счётчик «Идёт: 0:42» — растёт от старта.
+
+### 5. Tooltip для медленных стадий
+
+При наведении на «Анализ конкурентов» / «Семантическое ядро» — tooltip: «AI-запрос к OpenAI, обычно 20–60 сек. Это нормально».
+
+### 6. Поллинг (`SiteCheck.tsx`) уже корректный
+
+`pollStatus` вызывает `getScanStatus` каждые 2 сек и обновляет `progress`. Менять там ничего не надо. Передавать в `ScanProgress` будем тот же `realProgress`.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/index.css` | **Edit** — добавить глобальные правила overflow-x clipping |
-| `src/components/Hero.tsx` | **Edit (если нужно)** — `overflow-hidden` на корневой секции |
-| `src/components/landing/GeoScenarios.tsx`, `HowItWorks.tsx`, `ReportValue.tsx`, `ComparisonSection.tsx`, `Testimonials.tsx` | **Edit (точечно, только где есть decorative absolute)** — `overflow-hidden` на корневой секции |
-| `src/components/ui/mouse-gradient.tsx`, `click-ripple.tsx` | **Edit (если нужно)** — добавить `overflow-hidden` на контейнер |
+| `src/components/site-check/ScanProgress.tsx` | **Rewrite** — выкинуть симуляцию, привязать стадии к реальному `realProgress`, добавить heartbeat + elapsed counter |
+| `src/pages/SiteCheck.tsx` | **Edit (минимально)** — передать в `<ScanProgress>` дополнительный prop `startedAt` (Date.now() при запуске), чтобы считать elapsed |
 
 ## Что НЕ трогаем
-- Логику компонентов, props, состояние.
-- Header/мобильное меню (защищённые правилом памяти).
-- Десктопную ширину/центрирование контейнеров.
+
+- `SiteCheckPipeline.ts`, `SiteCheckWorker.ts`, `siteCheck.ts` route — backend уже шлёт правильные `progress_pct`.
+- Таблицу `site_check_scans`.
+- Логику poll'инга в `SiteCheck.tsx` (только prop добавим).
+- Header / Footer / Hero (защищённые правилами памяти).
 
 ## Проверка
-1. Открыть превью на мобильном viewport (375×812).
-2. Проскроллить главную страницу сверху вниз — горизонтального люфта быть не должно, страница «прибита» по ширине.
-3. Проверить остальные ключевые страницы: `/tools/site-check`, `/tools/conversion-audit`, `/tools/full-audit`, `/geo-rating`, `/blog`.
-4. На десктопе ничего не должно измениться визуально.
+
+1. Запустить проверку любого крупного сайта (например `vk.ru`).
+2. На фронте должно быть видно:
+   - Стадии загораются по мере реального прогресса (5 → 10 → 20 → 35 → 60 → **75 надолго** → 85 → 95 → 100).
+   - На «Анализ конкурентов» спиннер крутится 30–60 сек, но снизу растёт счётчик «Идёт уже Xs… LLM-запрос может занять до 60 сек».
+   - На «Семантическое ядро» — то же самое.
+   - Общий counter «0:42» растёт.
+3. Если бэк затупил >90 сек на одном шаге — появляется текст «Дольше обычного, продолжаем ждать…».
+4. После завершения — переход на `/result/:id`.
 
