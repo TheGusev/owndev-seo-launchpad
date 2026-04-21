@@ -1,63 +1,62 @@
 
 
-## Цель
-Исправить горизонтальный «плавающий» сдвиг на мобильной версии при скролле — страница должна жёстко фиксироваться по ширине viewport.
+## Проблема
+На скриншоте `/tools/site-check` застрял на 75% и не редиректит на результаты. Это значит: воркер на проде записал `progress_pct` где-то в районе 60–75 и **не дошёл до `status='done'`** — либо упал с ошибкой и не дописал `error_message`, либо завис в одном из шагов пайплайна (LLM-вызов, краулинг, schema-парсер).
 
-## Причина
-На мобиле какой-то элемент выходит за пределы `100vw` (типичные виновники в этом проекте — `MouseGradient`, `ClickRipple`, `floating-particles`, `starfield-background`, `animated-grid`, декоративные absolute-блоки в Hero/секциях с отрицательными `translate`/`-left-…`/`-right-…`, или широкий контент в таблицах). Браузер позволяет скроллить вбок к этому элементу — отсюда «плавание».
+## Root cause hypothesis
+1. `SiteCheckWorker.processSiteCheckJob` падает внутри `runPipeline`, исключение глотается, но финальный `UPDATE status='error'` не отрабатывает (например, из-за обрыва Redis-коннекта или `OOM`/таймаута процесса PM2).
+2. Либо BullMQ-job выбит из очереди при рестарте PM2, и запись в `site_check_scans` осталась `running` навсегда — фронт поллит её бесконечно.
+3. Frontend нет таймаута поллинга — он будет крутить бар до бесконечности, без UX-выхода.
 
-## Решение (минимальное и безопасное)
+## Что делаем
 
-### 1. Жёсткая блокировка горизонтального скролла глобально
-В `src/index.css` добавить в базовый слой:
+### 1. Инструмент диагностики (новый эндпоинт)
+В `owndev-backend/src/api/routes/siteCheck.ts` добавить **админ-эндпоинт** `GET /api/v1/site-check/admin/stuck-scans` (защита `X-Admin-Token`). Возвращает все сканы со `status='running'` старше 5 минут: id, url, progress_pct, created_at, updated_at, error_message. Это даст моментальный ответ «что зависло».
 
-```css
-@layer base {
-  html, body {
-    overflow-x: hidden;
-    overscroll-behavior-x: none;
-    max-width: 100vw;
-  }
-  #root {
-    overflow-x: clip;        /* clip лучше hidden — не создаёт scroll-context */
-    max-width: 100vw;
-  }
-  /* Защита от переполнения общими элементами на мобиле */
-  @media (max-width: 768px) {
-    img, video, svg, canvas, iframe { max-width: 100%; height: auto; }
-  }
-}
+И парный `POST /api/v1/site-check/admin/reset-stuck` — помечает все такие зависшие сканы как `status='error', error_message='Превышено время выполнения'`. Освобождает слот в `CONCURRENCY_LIMIT` и даёт пользователям возможность перезапустить.
+
+### 2. Авто-«пинок» в воркере: cleanup stale scans при старте
+В `owndev-backend/src/workers/SiteCheckWorker.ts` в `startSiteCheckWorker()` перед запуском воркера выполнить:
+```sql
+UPDATE site_check_scans 
+SET status='error', error_message='Прервано рестартом сервера', updated_at=NOW()
+WHERE status='running' AND updated_at < NOW() - INTERVAL '5 minutes'
 ```
+Это страхует от ситуации «PM2 рестартнул процесс — сканы остались висеть».
 
-`overflow-x: clip` на `#root` + `hidden` на `html/body` — двойная страховка: даже если декоративный absolute-элемент выйдет за край, он будет обрезан без появления скролл-области.
+### 3. Frontend: таймаут поллинга + кнопка «прервать»
+В `src/pages/SiteCheck.tsx` (`pollStatus`):
+- Засечь `startedAt` начала поллинга. Если прошло **>120 сек** и status всё ещё `running` И `progress_pct === lastProgress` — показать toast «Проверка зависла, попробуйте ещё раз», `setScanning(false)`, `setScanError(...)`.
+- В `ScanProgress` добавить кнопку «Отменить и попробовать снова» (только после 60 сек ожидания) — сбрасывает state, возвращает форму.
 
-### 2. Изоляция фиксированных декоративных слоёв
-Проверить и при необходимости поправить компоненты, которые рендерятся на каждой странице через `Index.tsx`:
-- `MouseGradient` (`src/components/ui/mouse-gradient.tsx`)
-- `ClickRipple` (`src/components/ui/click-ripple.tsx`)
+### 4. Защита SiteCheckWorker от молчаливого падения
+Обернуть весь `processSiteCheckJob` дополнительным `try/finally`, в `finally` проверять — если `status` всё ещё `running` (т.е. ни `done`, ни `error` не записался), форсированно выставлять `error` с сообщением «Внутренняя ошибка пайплайна». Это закроет дыру когда исключение в `runPipeline` пробрасывается мимо catch (например, из-за необработанного промиса).
 
-Убедиться что у их корневых элементов есть `pointer-events-none` + `fixed inset-0` + **`overflow-hidden`** на контейнере, чтобы внутренние radial-градиенты/частицы не выходили наружу.
-
-### 3. Hero и секции с декоративными absolute-блоками
-В `src/components/Hero.tsx` и `src/components/landing/*.tsx` у внешней `<section>` добавить класс `relative overflow-hidden` (если его ещё нет) — это локально обрежет декоративные `-translate-x-…`/`blur-3xl` пятна на мобиле.
+### 5. Watchdog таймаут на сам job
+BullMQ job опции: добавить `attempts: 1` (без ретраев — они только маскируют проблему) и `removeOnComplete/removeOnFail` для гигиены. Главное — `lockDuration` или явный `setTimeout(180_000)` обёрнутый вокруг `runPipeline`, который через `Promise.race` бросает `new Error('Pipeline timeout 180s')`. Это гарантирует что воркер всегда завершается.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/index.css` | **Edit** — добавить глобальные правила overflow-x clipping |
-| `src/components/Hero.tsx` | **Edit (если нужно)** — `overflow-hidden` на корневой секции |
-| `src/components/landing/GeoScenarios.tsx`, `HowItWorks.tsx`, `ReportValue.tsx`, `ComparisonSection.tsx`, `Testimonials.tsx` | **Edit (точечно, только где есть decorative absolute)** — `overflow-hidden` на корневой секции |
-| `src/components/ui/mouse-gradient.tsx`, `click-ripple.tsx` | **Edit (если нужно)** — добавить `overflow-hidden` на контейнер |
+| `owndev-backend/src/api/routes/siteCheck.ts` | **Edit** — добавить `GET /admin/stuck-scans`, `POST /admin/reset-stuck` |
+| `owndev-backend/src/workers/SiteCheckWorker.ts` | **Edit** — cleanup при старте, `Promise.race` таймаут на `runPipeline`, гарантированный финалайзер |
+| `src/pages/SiteCheck.tsx` | **Edit** — таймаут поллинга 120 сек, отслеживание stale `progress_pct` |
+| `src/components/site-check/ScanProgress.tsx` | **Edit** — кнопка «Отменить» после 60 сек |
 
 ## Что НЕ трогаем
-- Логику компонентов, props, состояние.
-- Header/мобильное меню (защищённые правилом памяти).
-- Десктопную ширину/центрирование контейнеров.
+- Frontend `/geo-rating`, Header, мобильное меню.
+- Логику самого `runPipeline` и его подсервисов (`SchemaService`, `LlmsService` и т.д.) — мы только страхуем их таймаутом сверху.
+- Структуру таблиц.
+
+## Запуск после деплоя
+1. На проде: `curl https://owndev.ru/api/v1/site-check/admin/stuck-scans -H "X-Admin-Token: $ADMIN_TOKEN"` — узнаём какие конкретно сканы зависли (включая тот, что у пользователя на скрине).
+2. `curl -X POST .../reset-stuck -H "X-Admin-Token: $ADMIN_TOKEN"` — разблокировать слоты.
+3. Пользователь жмёт «Перепроверить» на странице — проходит чисто.
+4. В дальнейшем зависания будут автозакрываться watchdog-ом + cleanup-ом при старте PM2.
 
 ## Проверка
-1. Открыть превью на мобильном viewport (375×812).
-2. Проскроллить главную страницу сверху вниз — горизонтального люфта быть не должно, страница «прибита» по ширине.
-3. Проверить остальные ключевые страницы: `/tools/site-check`, `/tools/conversion-audit`, `/tools/full-audit`, `/geo-rating`, `/blog`.
-4. На десктопе ничего не должно измениться визуально.
+- В логах PM2 на проде после деплоя: `pm2 logs owndev-backend | grep "Pipeline timeout\|Cleanup\|stuck"` — увидим работу новых страховок.
+- На фронте после 120 сек простоя на /tools/site-check появляется красное сообщение «Проверка зависла» вместо вечного 75%.
+- `npm run build` в `owndev-backend` и в корне — без TS-ошибок.
 
