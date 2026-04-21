@@ -180,6 +180,80 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // GET /api/v1/site-check/events/:scanId — Server-Sent Events для real-time прогресса
+  app.get<{ Params: { scanId: string } }>('/events/:scanId', async (req, reply) => {
+    const { scanId } = req.params;
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': (req.headers.origin as string) ?? '*',
+    });
+    reply.raw.write(`: connected\n\n`);
+
+    let lastPct = -1;
+    let lastStatus = '';
+    let closed = false;
+
+    req.raw.on('close', () => { closed = true; });
+
+    const heartbeat = setInterval(() => {
+      if (closed) return;
+      try { reply.raw.write(`: ping\n\n`); } catch { closed = true; }
+    }, 15_000);
+
+    const loop = async () => {
+      while (!closed) {
+        try {
+          const rows = await sql<
+            Array<{ status: string; progress_pct: number; error_message: string | null }>
+          >`
+            SELECT status, progress_pct, error_message
+            FROM site_check_scans
+            WHERE id = ${scanId}
+          `;
+          if (!rows.length) {
+            reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'not_found' })}\n\n`);
+            break;
+          }
+          const { status, progress_pct, error_message } = rows[0];
+          if (progress_pct !== lastPct || status !== lastStatus) {
+            lastPct = progress_pct;
+            lastStatus = status;
+            reply.raw.write(
+              `event: progress\ndata: ${JSON.stringify({ status, progress_pct })}\n\n`
+            );
+          }
+          if (status === 'done') {
+            reply.raw.write(`event: done\ndata: ${JSON.stringify({ scan_id: scanId })}\n\n`);
+            break;
+          }
+          if (status === 'error') {
+            reply.raw.write(
+              `event: error\ndata: ${JSON.stringify({ error: error_message ?? 'scan_failed' })}\n\n`
+            );
+            break;
+          }
+        } catch (err: any) {
+          logger.warn('SSE', `events loop failed for ${scanId}: ${err?.message ?? err}`);
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      clearInterval(heartbeat);
+      if (!closed) {
+        try { reply.raw.end(); } catch {}
+      }
+    };
+
+    loop().catch(() => {
+      clearInterval(heartbeat);
+      try { reply.raw.end(); } catch {}
+    });
+  });
+
   // GET /api/v1/site-check/result/:scanId — FLATTENED response for frontend
   app.get<{ Params: { scanId: string } }>('/result/:scanId', async (req, reply) => {
     const { scanId } = req.params;

@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
+import { subscribeScanEvents } from "@/lib/api/scan-events";
 import type { ScanMode } from "@/lib/site-check-types";
 import { ArrowRight, Globe, Trash2, Search, BrainCircuit, Target, Sparkles, Users, Key, Ban, ShieldCheck, FileText, Download, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -82,9 +83,14 @@ const SiteCheck = () => {
   const [startedAt, setStartedAt] = useState<number | undefined>(undefined);
   const mountedRef = useRef(true);
   const startedAtRef = useRef<number | undefined>(undefined);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -118,7 +124,7 @@ const SiteCheck = () => {
     try {
       const result = await startScan(url, mode, { force });
       setScanId(result.scan_id);
-      pollStatus(result.scan_id);
+      startTracking(result.scan_id);
     } catch (e: any) {
       if (e.lastScanId) {
         setLimitScanId(e.lastScanId);
@@ -131,11 +137,19 @@ const SiteCheck = () => {
   };
 
   const pollStatus = useCallback(async (id: string) => {
+    const BACKOFF_STEPS = [3000, 5000, 10000];
+    let errorCount = 0;
+    let warnedDisconnected = false;
     const poll = async () => {
       if (!mountedRef.current) return;
       try {
         const status = await getScanStatus(id);
         if (!mountedRef.current) return;
+        if (errorCount > 0 && warnedDisconnected) {
+          warnedDisconnected = false;
+          toast({ title: "Связь восстановлена" });
+        }
+        errorCount = 0;
         setProgress(status.progress_pct);
         if (status.status === 'done') {
           navigate(`/tools/site-check/result/${id}`);
@@ -149,11 +163,54 @@ const SiteCheck = () => {
           setTimeout(poll, interval);
         }
       } catch {
-        if (mountedRef.current) setTimeout(poll, 3000);
+        if (!mountedRef.current) return;
+        errorCount++;
+        if (errorCount === 10 && !warnedDisconnected) {
+          warnedDisconnected = true;
+          toast({
+            title: "Связь с сервером потеряна",
+            description: "Переподключаемся…",
+            variant: "destructive",
+          });
+        }
+        const backoff = BACKOFF_STEPS[Math.min(errorCount - 1, BACKOFF_STEPS.length - 1)];
+        setTimeout(poll, backoff);
       }
     };
     poll();
   }, [navigate, toast]);
+
+  const startTracking = useCallback((id: string) => {
+    let pollFallbackStarted = false;
+    const startPollFallback = () => {
+      if (pollFallbackStarted) return;
+      pollFallbackStarted = true;
+      pollStatus(id);
+    };
+
+    const cleanup = subscribeScanEvents(
+      id,
+      (ev) => {
+        if (!mountedRef.current) return;
+        if (ev.type === 'progress') {
+          setProgress(ev.progress_pct);
+        } else if (ev.type === 'done') {
+          navigate(`/tools/site-check/result/${id}`);
+        } else if (ev.type === 'error') {
+          toast({
+            title: "Ошибка проверки",
+            description: "Не удалось проанализировать сайт",
+            variant: "destructive",
+          });
+          setScanError("Не удалось проанализировать сайт. Попробуйте ещё раз.");
+          setScanning(false);
+        }
+      },
+      startPollFallback,
+    );
+
+    cleanupRef.current = cleanup;
+  }, [navigate, pollStatus, toast]);
 
   return (
     <>
