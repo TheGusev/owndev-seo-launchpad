@@ -1,5 +1,4 @@
 import type { FastifyInstance } from 'fastify';
-import { logger } from '../../utils/logger.js';
 import { callJsonLlm } from '../../services/Tools/llmCall.js';
 import { fetchPageMetrics } from '../../services/Tools/pageMetrics.js';
 import {
