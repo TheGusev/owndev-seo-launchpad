@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { BarChart3, PlusCircle, Activity, Bell, ArrowRight, TrendingUp, Construction, LineChart } from "lucide-react";
+import { BarChart3, PlusCircle, Activity, Bell, ArrowRight, TrendingUp, Construction } from "lucide-react";
 import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
