@@ -12,6 +12,15 @@ import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 import type { LucideIcon } from "lucide-react";
 
+function getPollInterval(elapsedMs: number, progressPct: number): number {
+  // Первые 10 секунд — 1 сек (быстрые ранние стадии 5/10/20/35)
+  if (elapsedMs < 10_000) return 1000;
+  // Медленные LLM-стадии (Theme≈20%, Competitors≈75%, Keywords≈85%) — 3 сек
+  if ((progressPct >= 15 && progressPct < 35) || (progressPct >= 60 && progressPct < 95)) return 3000;
+  // Всё остальное — 2 сек
+  return 2000;
+}
+
 const checkItems: { icon: LucideIcon; text: string }[] = [
   { icon: Search, text: "SEO Score (20+ параметров)" },
   { icon: BrainCircuit, text: "LLM Score (AI-готовность)" },
