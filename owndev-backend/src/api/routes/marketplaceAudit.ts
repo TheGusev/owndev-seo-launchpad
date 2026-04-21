@@ -136,6 +136,83 @@ export async function marketplaceAuditRoutes(app: FastifyInstance): Promise<void
     });
   });
 
+  // ─── GET /events/:id — Server-Sent Events stream ───
+  app.get<{ Params: { id: string } }>('/events/:id', async (req, reply) => {
+    const { id } = req.params;
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    let lastPct = -1;
+    let lastStatus = '';
+    let closed = false;
+    req.raw.on('close', () => { closed = true; });
+
+    const heartbeat = setInterval(() => {
+      if (!closed) {
+        try { reply.raw.write(`: ping\n\n`); } catch { closed = true; }
+      }
+    }, 15_000);
+
+    const poll = async () => {
+      while (!closed) {
+        const rows = await sql<Array<{
+          status: string; progress_pct: number;
+          product_title: string | null; category: string | null;
+          images_json: any; scores_json: any; error_msg: string | null;
+        }>>`
+          SELECT status, progress_pct, product_title, category,
+                 images_json, scores_json, error_msg
+          FROM marketplace_audits WHERE id = ${id}
+        `;
+        if (!rows.length) {
+          try { reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'not_found' })}\n\n`); } catch {}
+          break;
+        }
+        const r = rows[0];
+        if (r.progress_pct !== lastPct || r.status !== lastStatus) {
+          lastPct = r.progress_pct;
+          lastStatus = r.status;
+          const scores = r.scores_json && (r.scores_json as any).total !== undefined ? r.scores_json as any : null;
+          const payload = {
+            status: r.status,
+            progress_pct: r.progress_pct,
+            product_title: r.product_title,
+            category: r.category,
+            image: Array.isArray(r.images_json) && r.images_json.length > 0 ? r.images_json[0] : null,
+            preview_scores: scores ? {
+              total: scores.total, content: scores.content, search: scores.search,
+              conversion: scores.conversion, ads: scores.ads,
+            } : null,
+            error: r.error_msg ?? null,
+          };
+          try { reply.raw.write(`event: progress\ndata: ${JSON.stringify(payload)}\n\n`); } catch { closed = true; break; }
+        }
+        if (r.status === 'done') {
+          try { reply.raw.write(`event: done\ndata: ${JSON.stringify({ id })}\n\n`); } catch {}
+          break;
+        }
+        if (r.status === 'error') {
+          try { reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: r.error_msg ?? 'audit_failed' })}\n\n`); } catch {}
+          break;
+        }
+        await new Promise((res) => setTimeout(res, 1000));
+      }
+      clearInterval(heartbeat);
+      if (!closed) { try { reply.raw.end(); } catch {} }
+    };
+
+    poll().catch((e) => {
+      logger.error('MA_ROUTES', `SSE poll failed for ${id}: ${e?.message}`);
+      clearInterval(heartbeat);
+      try { reply.raw.end(); } catch {}
+    });
+  });
+
   // ─── GET /result/:id — full report ───
   app.get<{ Params: { id: string } }>('/result/:id', async (req, reply) => {
     const row = await getMarketplaceAudit(req.params.id);
