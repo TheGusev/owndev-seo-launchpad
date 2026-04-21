@@ -67,6 +67,7 @@ const SiteCheck = () => {
   const [scanId, setScanId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [staleScanId, setStaleScanId] = useState<string | null>(null);
   const [limitScanId, setLimitScanId] = useState<string | null>(null);
   const [limitUrl, setLimitUrl] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
@@ -80,14 +81,41 @@ const SiteCheck = () => {
     setHistory(getHistory());
   }, []);
 
-  // Auto-submit from query params (e.g. from homepage)
+  // Auto-submit from query params (e.g. from homepage) OR resume an active scan from sessionStorage.
   const rescanTriggered = useRef(false);
   useEffect(() => {
+    if (rescanTriggered.current) return;
     const rescanUrl = searchParams.get("url");
-    if (rescanUrl && !rescanTriggered.current) {
+    if (rescanUrl) {
       rescanTriggered.current = true;
       handleSubmit(rescanUrl, "site");
+      return;
     }
+    // Try to resume an active scan after page reload
+    try {
+      const savedId = sessionStorage.getItem("owndev_active_scan");
+      if (savedId) {
+        rescanTriggered.current = true;
+        (async () => {
+          try {
+            const status = await getScanStatus(savedId);
+            if (status.status === "done") {
+              sessionStorage.removeItem("owndev_active_scan");
+              navigate(`/tools/site-check/result/${savedId}`);
+            } else if (status.status === "running" || status.status === "queued") {
+              setScanning(true);
+              setScanId(savedId);
+              setProgress(status.progress_pct ?? 0);
+              pollStatus(savedId);
+            } else {
+              sessionStorage.removeItem("owndev_active_scan");
+            }
+          } catch {
+            sessionStorage.removeItem("owndev_active_scan");
+          }
+        })();
+      }
+    } catch { /* sessionStorage unavailable */ }
   }, [searchParams]);
 
   const handleClearHistory = () => {
@@ -100,10 +128,12 @@ const SiteCheck = () => {
     setLimitScanId(null);
     setLimitUrl(null);
     setScanError(null);
+    setStaleScanId(null);
     setProgress(0);
     try {
       const result = await startScan(url, mode, { force });
       setScanId(result.scan_id);
+      try { sessionStorage.setItem("owndev_active_scan", result.scan_id); } catch {}
       pollStatus(result.scan_id);
     } catch (e: any) {
       if (e.lastScanId) {
@@ -120,44 +150,65 @@ const SiteCheck = () => {
     const startedAt = Date.now();
     let lastProgress = -1;
     let lastProgressChangeAt = Date.now();
-    const HARD_TIMEOUT_MS = 120_000; // 2 минуты — общий потолок
-    const STALE_PROGRESS_MS = 60_000; // 1 минута без изменения прогресса
+    const HARD_TIMEOUT_MS = 300_000; // 5 минут — реальный потолок Puppeteer + LLM
+    const STALE_PROGRESS_MS = 120_000; // 2 минуты без изменения прогресса
+
+    const finalize = (status: 'done' | 'error' | 'stale') => {
+      try { sessionStorage.removeItem("owndev_active_scan"); } catch {}
+      if (status === 'done') {
+        navigate(`/tools/site-check/result/${id}`);
+      }
+    };
+
     const poll = async () => {
       if (!mountedRef.current) return;
-      try {
-        const status = await getScanStatus(id);
-        if (!mountedRef.current) return;
-        if (status.progress_pct !== lastProgress) {
-          lastProgress = status.progress_pct;
-          lastProgressChangeAt = Date.now();
-        }
-        setProgress(status.progress_pct);
-        if (status.status === 'done') {
-          navigate(`/tools/site-check/result/${id}`);
-          return;
-        } else if (status.status === 'error') {
-          toast({ title: "Ошибка проверки", description: "Не удалось проанализировать сайт", variant: "destructive" });
-          setScanError("Не удалось проанализировать сайт. Попробуйте ещё раз.");
-          setScanning(false);
-          return;
-        }
-        const elapsed = Date.now() - startedAt;
-        const stale = Date.now() - lastProgressChangeAt;
-        if (elapsed > HARD_TIMEOUT_MS || stale > STALE_PROGRESS_MS) {
-          toast({
-            title: "Проверка зависла",
-            description: "Сервер не ответил вовремя. Попробуйте ещё раз.",
-            variant: "destructive",
-          });
-          setScanError("Проверка зависла. Попробуйте ещё раз через минуту.");
-          setScanning(false);
-          return;
-        } else {
-          setTimeout(poll, 2000);
-        }
-      } catch {
+      const status = await getScanStatus(id); // never throws now — returns {status:'unknown'} on net err
+      if (!mountedRef.current) return;
+
+      if (status.status === 'unknown') {
+        // Network blip — keep polling, don't penalize stale window
         if (mountedRef.current) setTimeout(poll, 3000);
+        return;
       }
+
+      if (typeof status.progress_pct === 'number' && status.progress_pct !== lastProgress) {
+        lastProgress = status.progress_pct;
+        lastProgressChangeAt = Date.now();
+        setProgress(status.progress_pct);
+      }
+
+      if (status.status === 'done') {
+        finalize('done');
+        return;
+      }
+      if (status.status === 'error') {
+        try { sessionStorage.removeItem("owndev_active_scan"); } catch {}
+        toast({ title: "Ошибка проверки", description: "Не удалось проанализировать сайт", variant: "destructive" });
+        setScanError("Не удалось проанализировать сайт. Попробуйте ещё раз.");
+        setScanning(false);
+        return;
+      }
+
+      const elapsed = Date.now() - startedAt;
+      const stale = Date.now() - lastProgressChangeAt;
+      if (elapsed > HARD_TIMEOUT_MS || stale > STALE_PROGRESS_MS) {
+        // FINAL RE-CHECK before giving up — scan may have just completed
+        const finalStatus = await getScanStatus(id);
+        if (!mountedRef.current) return;
+        if (finalStatus.status === 'done') {
+          finalize('done');
+          return;
+        }
+        toast({
+          title: "Проверка идёт дольше обычного",
+          description: "Можно открыть результат вручную, когда он будет готов.",
+        });
+        setScanError("Проверка идёт дольше обычного. Откройте результат позже по ссылке ниже.");
+        setStaleScanId(id);
+        setScanning(false);
+        return;
+      }
+      setTimeout(poll, 2000);
     };
     poll();
   }, [navigate, toast]);
@@ -167,6 +218,7 @@ const SiteCheck = () => {
     setScanError(null);
     setProgress(0);
     setScanId(null);
+    try { sessionStorage.removeItem("owndev_active_scan"); } catch {}
   }, []);
 
   return (
