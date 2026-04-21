@@ -3,14 +3,13 @@ import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { tools } from "@/data/tools-registry";
-import { ArrowRight, ChevronDown, ChevronUp, Shield, Trophy } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Trophy, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
-import { GradientButton } from "@/components/ui/gradient-button";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -19,9 +18,9 @@ const FORMULA_SLUG = "site-formula";
 
 const TOOL_GROUPS = [
   {
-    title: "Полный + CRO аудит",
+    title: "Флагманский аудит",
     emoji: "🚀",
-    slugs: ["full-audit", "conversion-audit"],
+    slugs: ["full-audit"],
   },
   {
     title: "Аудит и анализ",
