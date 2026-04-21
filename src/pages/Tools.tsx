@@ -131,47 +131,24 @@ const Tools = () => {
             </motion.a>
           </motion.div>
 
-          {/* Section 1 — Flagship */}
-          {flagship && (
-            <motion.section
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="mb-12"
-            >
-              <Link to="/tools/site-check" className="block glass rounded-2xl p-8 md:p-10 border border-primary/30 hover:border-primary/60 transition-all group">
-                <div className="flex flex-col md:flex-row md:items-center gap-6">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <flagship.icon className="w-7 h-7 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-2xl md:text-3xl font-bold font-serif text-foreground group-hover:text-primary transition-colors">
-                        {flagship.name}
-                      </h2>
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                        <Shield className="w-3 h-3" />
-                        <Trophy className="w-3 h-3" /> GEO‑аудит
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground text-lg">
-                      SEO Score + LLM Score, топ-10 конкурентов, 200+ ключей, E‑E‑A‑T, Schema и экспорт
-                    </p>
-                  </div>
-                  <GradientButton size="lg" className="shrink-0">
-                    Начать проверку
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </GradientButton>
-                </div>
-            </Link>
-            </motion.section>
-          )}
-
-          {/* Section 1b — Site Formula */}
+          {/* Flagship section — unified grid (same card size as below, but with stronger border + glow + Флагман badge) */}
           {(() => {
             const formula = getToolBySlug(FORMULA_SLUG);
-            if (!formula) return null;
+            const flagshipCards = [
+              flagship && {
+                tool: flagship,
+                href: "/tools/site-check",
+                accent: "primary" as const,
+                tagline: "SEO Score + LLM Score, топ-10 конкурентов, 200+ ключей, E‑E‑A‑T, Schema и экспорт",
+              },
+              formula && {
+                tool: formula,
+                href: "/site-formula",
+                accent: "violet" as const,
+                tagline: formula.shortDesc,
+              },
+            ].filter(Boolean) as Array<{ tool: ToolDef; href: string; accent: "primary" | "violet"; tagline: string }>;
+            if (flagshipCards.length === 0) return null;
             return (
               <motion.section
                 initial={{ opacity: 0, y: 30 }}
@@ -180,30 +157,62 @@ const Tools = () => {
                 transition={{ duration: 0.5 }}
                 className="mb-12"
               >
-                <Link to="/site-formula" className="block glass rounded-2xl p-8 md:p-10 border border-violet-500/30 hover:border-violet-500/60 transition-all group">
-                  <div className="flex flex-col md:flex-row md:items-center gap-6">
-                    <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center shrink-0">
-                      <formula.icon className="w-7 h-7 text-violet-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-2xl md:text-3xl font-bold font-serif text-foreground group-hover:text-violet-400 transition-colors">
-                          {formula.name}
-                        </h2>
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-violet-500/10 text-violet-400 text-xs font-semibold">
-                          NEW
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground text-lg">
-                        {formula.shortDesc}
-                      </p>
-                    </div>
-                    <GradientButton size="lg" className="shrink-0">
-                      Начать
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </GradientButton>
-                  </div>
-                </Link>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground">
+                    ⭐ Флагманские инструменты ({flagshipCards.length})
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {flagshipCards.map((card, i) => {
+                    const isPrimary = card.accent === "primary";
+                    const borderClass = isPrimary ? "border-primary/40 hover:border-primary/70" : "border-violet-500/40 hover:border-violet-500/70";
+                    const glowStyle = isPrimary
+                      ? { boxShadow: "0 0 28px -14px hsl(var(--primary) / 0.7)" }
+                      : { boxShadow: "0 0 28px -14px hsl(270 80% 60% / 0.7)" };
+                    const iconBg = isPrimary ? "bg-primary/10" : "bg-violet-500/10";
+                    const iconColor = isPrimary ? "text-primary" : "text-violet-400";
+                    const titleHover = isPrimary ? "group-hover:text-primary" : "group-hover:text-violet-400";
+                    const linkColor = isPrimary ? "text-primary" : "text-violet-400";
+                    const badgeBg = isPrimary ? "bg-primary/10 text-primary" : "bg-violet-500/15 text-violet-400";
+                    return (
+                      <motion.div
+                        key={card.tool.slug}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.4, delay: i * 0.08 }}
+                      >
+                        <Link
+                          to={card.href}
+                          style={glowStyle}
+                          className={`glass rounded-2xl p-5 transition-all group block h-full border ${borderClass}`}
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
+                              <card.tool.icon className={`w-5 h-5 ${iconColor}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <Trophy className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />
+                                <h3 className={`font-semibold text-foreground transition-colors ${titleHover}`}>
+                                  {card.tool.name}
+                                </h3>
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${badgeBg}`}>
+                                  <Star className="w-2.5 h-2.5" /> Флагман
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{card.tagline}</p>
+                            </div>
+                          </div>
+                          <div className={`mt-4 flex items-center gap-1 text-sm font-medium ${linkColor}`}>
+                            Открыть
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </motion.section>
             );
           })()}
