@@ -81,6 +81,7 @@ const SiteCheck = () => {
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const [startedAt, setStartedAt] = useState<number | undefined>(undefined);
   const mountedRef = useRef(true);
+  const startedAtRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     return () => { mountedRef.current = false; };
@@ -111,7 +112,9 @@ const SiteCheck = () => {
     setLimitUrl(null);
     setScanError(null);
     setProgress(0);
-    setStartedAt(Date.now());
+    const now = Date.now();
+    startedAtRef.current = now;
+    setStartedAt(now);
     try {
       const result = await startScan(url, mode, { force });
       setScanId(result.scan_id);
@@ -141,7 +144,9 @@ const SiteCheck = () => {
           setScanError("Не удалось проанализировать сайт. Попробуйте ещё раз.");
           setScanning(false);
         } else {
-          setTimeout(poll, 2000);
+          const elapsedMs = Date.now() - (startedAtRef.current ?? Date.now());
+          const interval = getPollInterval(elapsedMs, status.progress_pct);
+          setTimeout(poll, interval);
         }
       } catch {
         if (mountedRef.current) setTimeout(poll, 3000);
