@@ -274,7 +274,7 @@ const SiteCheckResult = () => {
           </ResultAccordion>
 
           {/* AI Boost */}
-          <ResultAccordion title="🚀 AI Boost — план попадания в нейросети" defaultOpen={false}>
+          <ResultAccordion title="AI Boost — план попадания в нейросети" defaultOpen={false}>
             <AiBoostSection
               items={aiBoost}
               loading={aiBoostLoading}

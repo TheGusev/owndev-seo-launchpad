@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { tools, type ToolDef } from "@/data/tools-registry";
-import { ArrowRight, ChevronDown, ChevronUp, Trophy, Star } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Trophy, Star, Search, BrainCircuit, Sparkles, Wrench, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
@@ -16,30 +16,30 @@ import { useState } from "react";
 const FLAGSHIP_SLUG = "site-check";
 const FORMULA_SLUG = "site-formula";
 
-const TOOL_GROUPS = [
+const TOOL_GROUPS: Array<{ title: string; icon: LucideIcon; slugs: string[]; collapsible?: boolean }> = [
   {
     title: "Флагманский аудит",
-    emoji: "🚀",
+    icon: Trophy,
     slugs: ["full-audit"],
   },
   {
     title: "Аудит и анализ",
-    emoji: "🔍",
+    icon: Search,
     slugs: ["marketplace-audit", "seo-auditor", "competitor-analysis", "indexation-checker", "internal-links"],
   },
   {
     title: "AI-видимость и GEO",
-    emoji: "🧠",
+    icon: BrainCircuit,
     slugs: ["brand-tracker", "content-brief", "mcp-server"],
   },
   {
     title: "Генерация и контент",
-    emoji: "⚙️",
+    icon: Sparkles,
     slugs: ["pseo-generator", "semantic-core", "ai-text-generator", "schema-generator", "llm-prompt-helper"],
   },
   {
     title: "Утилиты вебмастера",
-    emoji: "🛠",
+    icon: Wrench,
     slugs: ["webmaster-files", "anti-duplicate", "position-monitor"],
     collapsible: true,
   },
@@ -158,8 +158,9 @@ const Tools = () => {
                 className="mb-12"
               >
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground">
-                    ⭐ Флагманские инструменты ({flagshipCards.length})
+                  <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground inline-flex items-center gap-2">
+                    <Star className="w-5 h-5 text-primary" />
+                    Флагманские инструменты ({flagshipCards.length})
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -232,8 +233,9 @@ const Tools = () => {
                 className="mb-12"
               >
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground">
-                    {group.emoji} {group.title} ({groupTools.length})
+                  <h2 className="text-xl md:text-2xl font-bold font-serif text-foreground inline-flex items-center gap-2">
+                    <group.icon className="w-5 h-5 text-primary" />
+                    {group.title} ({groupTools.length})
                   </h2>
                   {group.collapsible && (
                     <Button

@@ -1,6 +1,6 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, XCircle, Construction } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Construction, Lightbulb } from "lucide-react";
 import AuditIssueRow from "./AuditIssueRow";
 import type { AuditIssue } from "@/lib/api/types";
 
@@ -71,7 +71,10 @@ const AuditSectionBlock = ({ section, issues, confidence }: AuditSectionBlockPro
         </AccordionTrigger>
         <AccordionContent className="glass rounded-b-xl border-t border-border/20 px-4 pb-4 pt-3">
           {section.whyImportant && (
-            <p className="text-xs text-muted-foreground mb-3 italic">💡 {section.whyImportant}</p>
+            <p className="text-xs text-muted-foreground mb-3 italic inline-flex items-start gap-1.5">
+              <Lightbulb className="w-3 h-3 mt-0.5 shrink-0" />
+              <span>{section.whyImportant}</span>
+            </p>
           )}
           <div className="space-y-2">
             {issues.map((issue, i) => (

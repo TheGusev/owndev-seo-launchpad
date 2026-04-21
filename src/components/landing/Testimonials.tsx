@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
+import { Star } from "lucide-react";
 
 const testimonials = [
   {
@@ -94,7 +95,7 @@ const Testimonials = () => {
           className="text-center mb-10 space-y-4"
         >
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs">
-            ⭐ Отзывы клиентов
+            <Star className="w-3 h-3" /> Отзывы клиентов
           </span>
           <h2 className="text-2xl md:text-3xl font-bold font-serif">
             Что говорят{" "}
