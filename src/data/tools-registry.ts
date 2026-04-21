@@ -20,6 +20,8 @@ export interface ToolDef {
   seoH1?: string;
   /** Custom route path (overrides default /tools/:slug) */
   customPath?: string;
+  /** Hide from tool listings (Tools page, ToolsShowcase, SEO indexes), but keep route working */
+  hidden?: boolean;
 }
 
 export const categories = [
