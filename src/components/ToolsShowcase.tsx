@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, TrendingDown, LayoutDashboard } from "lucide-react";
+import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, LayoutDashboard, LayoutTemplate, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const tools = [
+  { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check", flagship: true, accent: "primary" as const },
+  { icon: LayoutTemplate, name: "Site Formula", description: "Архитектурный blueprint для service-сайта: структура, индексация, масштабирование", slug: "site-formula", external: true, customPath: "/site-formula", flagship: true, accent: "violet" as const },
   { icon: LayoutDashboard, name: "Полный аудит", description: "GEO + SEO + CRO в одном отчёте — технические проблемы, конверсионные барьеры, потери бюджета и стоимость исправления", slug: "full-audit", badge: "Новое", badge2: "Всё в одном" },
-  { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check" },
   { icon: ShoppingBag, name: "Аудит карточек WB / Ozon", description: "AI-аудит карточки маркетплейса: контент, поиск, конверсия и реклама", slug: "marketplace-audit", external: true },
-  { icon: TrendingDown, name: "CRO-аудит", description: "Почему сайт не продаёт — конверсионные барьеры, потери бюджета и расчёт стоимости исправления", slug: "conversion-audit", badge: "Новое" },
   { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor" },
   { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis" },
   { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker" },
@@ -46,40 +46,22 @@ const ToolsShowcase = () => {
           </p>
         </motion.div>
 
-        {/* Flagship card */}
-        {(() => {
-          const flagship = tools[0];
-          const FlagshipIcon = flagship.icon;
-          return tools.length > 0 && flagship.slug === "site-check" ? (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5 }}
-            className="mb-8"
-          >
-            <Link
-              to={`/tools/${flagship.slug}`}
-              className="glass rounded-2xl p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-5 border border-primary/30 hover:border-primary/60 transition-colors duration-200 block"
-            >
-              <div className="p-3 rounded-xl bg-primary/10 inline-block self-start">
-                <FlagshipIcon className="w-6 h-6 text-primary" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-xl md:text-2xl font-bold">{flagship.name}</h3>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold"><Trophy className="w-3 h-3" /> GEO‑аудит</span>
-                </div>
-                <p className="text-muted-foreground text-sm md:text-base">{flagship.description}</p>
-              </div>
-              <span className="text-primary font-semibold shrink-0">Начать проверку →</span>
-            </Link>
-          </motion.div>
-          ) : null;
-        })()}
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-12">
-          {tools.slice(1).map((tool, i) => {
-            const href = (tool as any).external ? `/${tool.slug}` : `/tools/${tool.slug}`;
+          {tools.map((tool, i) => {
+            const href = (tool as any).customPath ? (tool as any).customPath : (tool as any).external ? `/${tool.slug}` : `/tools/${tool.slug}`;
+            const isFlagship = (tool as any).flagship;
+            const isViolet = (tool as any).accent === "violet";
+            const flagshipBorder = isFlagship
+              ? isViolet
+                ? "border-violet-500/40 hover:border-violet-500/70"
+                : "border-primary/40 hover:border-primary/70"
+              : "border-transparent hover:border-primary/30";
+            const flagshipGlow = isFlagship
+              ? isViolet
+                ? { boxShadow: "0 0 28px -14px hsl(270 80% 60% / 0.7)" }
+                : { boxShadow: "0 0 28px -14px hsl(var(--primary) / 0.7)" }
+              : undefined;
+            const flagshipIconColor = isFlagship && isViolet ? "text-violet-400" : "text-primary";
             return (
             <motion.div
               key={tool.slug}
@@ -89,13 +71,20 @@ const ToolsShowcase = () => {
             >
               <Link
                 to={href}
-                className="glass rounded-2xl p-5 flex flex-col h-full card-hover block border border-transparent hover:border-primary/30 transition-colors duration-200"
+                style={flagshipGlow}
+                className={`glass rounded-2xl p-5 flex flex-col h-full card-hover block border transition-colors duration-200 ${flagshipBorder}`}
               >
                 <div className="p-2.5 rounded-xl bg-card inline-block mb-3 self-start">
-                  <tool.icon className="w-4 h-4 text-primary" />
+                  <tool.icon className={`w-4 h-4 ${flagshipIconColor}`} />
                 </div>
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  {isFlagship && <Trophy className={`w-3.5 h-3.5 ${flagshipIconColor} shrink-0`} />}
                   <h3 className="text-base font-bold">{tool.name}</h3>
+                  {isFlagship && (
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${isViolet ? "bg-violet-500/15 text-violet-400" : "bg-primary/15 text-primary"}`}>
+                      <Star className="w-2.5 h-2.5" /> Флагман
+                    </span>
+                  )}
                   {(tool as any).badge && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold uppercase tracking-wide">
                       {(tool as any).badge}
@@ -108,7 +97,7 @@ const ToolsShowcase = () => {
                   )}
                 </div>
                 <p className="text-muted-foreground text-sm mb-3 flex-1">{tool.description}</p>
-                <span className="text-primary text-sm font-medium">Открыть →</span>
+                <span className={`text-sm font-medium ${flagshipIconColor}`}>Открыть →</span>
               </Link>
             </motion.div>
             );
