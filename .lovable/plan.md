@@ -1,65 +1,44 @@
 
 
-## Проблема
+## Цель
+Сделать поллинг `getScanStatus` адаптивным — реже опрашивать бэкенд на медленных стадиях. Сейчас фиксированный `setTimeout(poll, 2000)` = постоянно 2 сек, на ошибке 3 сек.
 
-1. **Дублирование CRO**. Эндпоинт `POST /conversion-audit/analyze` уже вызывается внутри `FullAudit.tsx` параллельно с `siteCheck`. То есть страница `/tools/conversion-audit` — это часть Полного аудита, отрезанная от GEO/SEO. Логически она дублируется и путает: «А чем CRO‑аудит отличается от Полного?»
-2. **Перекошенные плитки на `/tools`**. «Проверка сайта» и «Site Formula» вынесены отдельными огромными секциями (`p-8 md:p-10`, шрифт `text-2xl md:text-3xl`, отдельная `GradientButton`). На мобиле они занимают почти весь экран — общая сетка теряется.
+## Логика интервалов
 
-## Решение
+Опираемся на две метрики:
+1. **Elapsed** — сколько секунд прошло с момента старта (`startedAt`).
+2. **Текущая стадия** по `progress_pct` — медленные LLM-этапы это `pct ∈ [60, 85)` (Анализ конкурентов 75% и Семантическое ядро 85%) и стадия Theme detection около 20%.
 
-### 1. Убрать CRO‑аудит как отдельный продукт (без поломок)
+```ts
+function getPollInterval(elapsedMs: number, progressPct: number): number {
+  // Первые 10 секунд — 1 сек (быстрые ранние стадии 5/10/20/35)
+  if (elapsedMs < 10_000) return 1000;
+  // Медленные LLM-стадии (Theme≈20%, Competitors≈75%, Keywords≈85%) — 3 сек
+  if ((progressPct >= 15 && progressPct < 35) || (progressPct >= 60 && progressPct < 95)) return 3000;
+  // Всё остальное — 2 сек
+  return 2000;
+}
+```
 
-| Где | Действие |
-|---|---|
-| `src/components/ToolsShowcase.tsx` | удалить элемент `{ icon: TrendingDown, name: "CRO-аудит", slug: "conversion-audit", … }` из массива `tools` |
-| `src/pages/Tools.tsx` | в `TOOL_GROUPS[0]` поменять `slugs: ["full-audit", "conversion-audit"]` → `slugs: ["full-audit"]`. Заголовок группы переименовать `"Полный + CRO аудит"` → `"Флагманский аудит"` |
-| `src/data/tools-registry.ts` | у объекта `conversion-audit` поставить `status: "coming_soon"` **И** добавить новое поле `hidden: true` (новое поле в `ToolDef`), чтобы он не появлялся в `Tools.tsx`/`ToolsShowcase` и в SEO‑списках, но маршрут остался |
-| `src/App.tsx` | оставить `Route path="/tools/conversion-audit"` нетронутым **+** добавить `<Route path="/tools/cro-audit" element={<Navigate to="/tools/full-audit" replace />} />` если такой URL где-то рекламировался. Старый URL `/tools/conversion-audit` оставляем рабочим — он показывает страницу `ConversionAudit.tsx`, чтобы не сломать внешние ссылки и закладки |
-| `src/pages/ConversionAudit.tsx` | в самом верху страницы (внутри `<main>`, до формы) **добавить deprecation‑баннер** `glass rounded-xl p-4 border border-primary/30`: «Этот инструмент теперь входит в Полный аудит — он даёт CRO + SEO + GEO в одном отчёте бесплатно. → Перейти к Полному аудиту». Кнопка ведёт на `/tools/full-audit`. Сама форма ниже остаётся работать (back‑compat для старого трафика) |
-
-Серверный код `owndev-backend/src/api/routes/conversionAudit.ts` **не трогаем** — `FullAudit.tsx` его использует.
-
-### 2. Уравнять плитки «Проверка сайта» и «Site Formula» с остальной сеткой, но подчеркнуть статус флагмана
-
-В `src/pages/Tools.tsx` обе большие секции (`Section 1 — Flagship` и `Section 1b — Site Formula`) переписываем как **одну общую секцию** «⭐ Флагманские инструменты» с **сеткой 1×2 на десктопе / 1×1 на мобиле**. Карточки делаем **одного размера с обычными** в группах ниже:
-- внешний padding `p-5` (как у остальных), не `p-8 md:p-10`
-- размер заголовка `font-semibold text-base` (как у остальных), не `text-2xl md:text-3xl`
-- иконка `w-10 h-10` (как у остальных), не `w-14 h-14`
-- ссылка «Открыть →» того же стиля, без отдельной `GradientButton`
-
-Чтобы подчеркнуть флагманский статус, добавляем **визуальные акценты внутри карточки того же формата**:
-- более яркая рамка (`border-primary/40` для site-check, `border-violet-500/40` для site-formula) с лёгким glow `shadow-[0_0_24px_-12px_hsl(var(--primary)/0.6)]`
-- **бейдж «⭐ Флагман»** рядом с названием (как существующие `NEW` / `GEO‑аудит` бейджи)
-- маленькая `Trophy` иконка слева от названия
-
-То есть плитки **визуально такого же размера**, как все остальные карточки в группах ниже, но выделены рамкой, glow и бейджем «Флагман».
-
-### 3. Главная (`ToolsShowcase`)
-
-Большая отдельная карточка `tools[0]` (site‑check) тоже превращается в **обычную карточку с бейджем «⭐ Флагман»** + сохраняется яркая рамка и glow. Сетка становится визуально единой.
+После `error` в catch — оставляем 3 сек (как сейчас, временная ошибка сети не должна спамить).
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/ToolsShowcase.tsx` | **Edit** — удалить запись `conversion-audit`; убрать отдельный flagship‑блок (lines 49–78); добавить флагман как первую карточку обычной сетки с бейджем `⭐ Флагман` и подсвеченной рамкой |
-| `src/pages/Tools.tsx` | **Edit** — объединить `Section 1` и `Section 1b` в одну сетку 2 колонки (мобильно — 1), уменьшить размеры до уровня обычных карточек, добавить бейдж и glow; в `TOOL_GROUPS` убрать `conversion-audit` из первой группы и переименовать заголовок |
-| `src/data/tools-registry.ts` | **Edit** — добавить поле `hidden?: boolean` в `ToolDef`; пометить `conversion-audit` как `hidden: true` |
-| `src/pages/ConversionAudit.tsx` | **Edit** — добавить вверху страницы deprecation‑баннер со ссылкой на `/tools/full-audit` |
+| `src/pages/SiteCheck.tsx` | **Edit** — внутри `pollStatus` (строки 121–142) считать `elapsedMs = Date.now() - (startedAt ?? Date.now())`, передавать в `getPollInterval(elapsedMs, status.progress_pct)`, использовать результат в `setTimeout(poll, interval)`. Доступ к `startedAt` — через `useRef` (или захват через closure, так как `startedAt` стейтится в `handleSubmit`). Чтобы не было устаревшего значения в callback, используем `startedAtRef = useRef<number>()` и обновляем его в `handleSubmit` синхронно с `setStartedAt`. |
 
 ## Что НЕ трогаем
-
-- `owndev-backend/src/api/routes/conversionAudit.ts` — backend живёт, его использует FullAudit
-- `App.tsx` маршрут `/tools/conversion-audit` — оставляем работающим (только баннер сверху)
-- Header / Footer / мобильное меню (защищённые правилами памяти)
-- Логику `FullAudit.tsx`
-- SEO `seoTitle/seoDescription` инструмента `conversion-audit` — пусть остаются для канонического URL
+- `ScanProgress.tsx` — индикация heartbeat и стадий уже корректна.
+- Backend (`/site-check/status/:id`) — никаких изменений.
+- Header / Footer / маршруты.
+- Поведение при `done` / `error` — переход на result / показ ошибки.
 
 ## Проверка
-
-1. На главной `/` карточка «Проверка сайта» в `ToolsShowcase` — **того же размера, что остальные**, с бейджем `⭐ Флагман` и яркой рамкой. CRO‑аудита в сетке нет.
-2. На `/tools` блоки «Проверка сайта» и «Site Formula» — **в одной сетке 2 колонки**, размером как карточки ниже. Группа «Полный + CRO аудит» переименована в «Флагманский аудит» и содержит **только** «Полный аудит сайта». CRO‑аудита в сетке нет.
-3. На мобиле 375px — оба флагмана складываются в колонку, размер согласован с остальными.
-4. Прямой переход `/tools/conversion-audit` — страница работает, сверху баннер «Теперь входит в Полный аудит → Перейти». Форма ниже принимает запросы, бэкенд отвечает.
-5. Полный аудит `/tools/full-audit` работает как раньше — параллельно SiteCheck + CRO.
+1. Открыть DevTools → Network, фильтр по `status/`.
+2. Запустить проверку крупного сайта (например `vk.ru`).
+3. Первые ~10 сек запросы каждые 1 сек.
+4. На стадиях 60–95% (Анализ конкурентов / Семантика) интервал 3 сек.
+5. На остальных — 2 сек.
+6. Завершение и переход на `/result/:id` работает как раньше.
 
