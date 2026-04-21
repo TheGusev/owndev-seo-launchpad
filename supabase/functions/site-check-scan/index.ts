@@ -1571,7 +1571,7 @@ async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: b
 
   if (!schemaTypes.includes('FAQPage')) {
     issues.push(makeIssue({ module: 'ai', severity: 'high',
-      title: '🤖 Нет FAQPage Schema для AI-видимости',
+      title: 'Нет FAQPage Schema для AI-видимости',
       found: `Schema типы: ${schemaTypes.length > 0 ? schemaTypes.join(', ') : 'нет'}`,
       location: 'JSON-LD разметка',
       why_it_matters: 'FAQPage Schema — ключевой сигнал для AI-систем. Вопрос-ответ формат цитируется в AI Overviews в 3 раза чаще. FAQ-блоки — главный источник контента для AI-ответов',
@@ -1588,7 +1588,7 @@ async function aiAudit(html: string, origin: string, pageUrl?: string, isSpa?: b
   );
   if (!hasArticle && !hasLocalBusiness) {
     issues.push(makeIssue({ module: 'ai', severity: 'medium',
-      title: '🤖 Нет Article или LocalBusiness Schema',
+      title: 'Нет Article или LocalBusiness Schema',
       found: `Schema типы: ${schemaTypes.length > 0 ? schemaTypes.join(', ') : 'нет'}`,
       location: 'JSON-LD разметка',
       why_it_matters: 'Article и LocalBusiness — ключевые типы для AI-цитирования. Без них LLM не может определить тип контента и авторитетность',
