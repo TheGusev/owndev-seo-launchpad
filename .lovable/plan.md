@@ -1,121 +1,192 @@
 
 
-## Что не так с LLM-инструментами (root cause)
+## Цель
 
-Проблема **не в одной конкретной строке**, а в **архитектурном рассогласовании** между фронтом и бэкендом. Их три, наслаиваются друг на друга.
+Перенести `/marketplace-audit` с polling-а `/preview/:id` на **SSE-стриминг** прогресса по образцу site-check. Polling оставить как fallback. Финальный `/result/:id` после `done` так и подгружается одним запросом — это правильно, тяжёлый payload через SSE гнать не нужно.
 
-### Проблема №1 — Бэкенд возвращает строку, фронт ждёт объект
+## Часть 1. Бэкенд — новый SSE endpoint
 
-Это **главная** причина «крутится → пустой экран».
-
-`owndev-backend/src/api/routes/tools.ts` для всех LLM-инструментов делает:
+Файл: `owndev-backend/src/api/routes/marketplaceAudit.ts`. Добавить рядом с `/preview/:id`:
 
 ```ts
-const result = await askOpenAI(systemPrompt, userPrompt); // → string (markdown)
-return reply.send({ success: true, result }); // result = "## Анализ...\n..."
+// GET /api/v1/marketplace-audit/events/:id — Server-Sent Events
+app.get<{ Params: { id: string } }>('/events/:id', async (req, reply) => {
+  const { id } = req.params;
+
+  reply.raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  let lastPct = -1;
+  let lastStatus = '';
+  let closed = false;
+  req.raw.on('close', () => { closed = true; });
+
+  const heartbeat = setInterval(() => {
+    if (!closed) reply.raw.write(`: ping\n\n`);
+  }, 15_000);
+
+  const poll = async () => {
+    while (!closed) {
+      const rows = await sql<Array<{
+        status: string; progress_pct: number;
+        product_title: string | null; category: string | null;
+        images_json: any; scores_json: any; error_msg: string | null;
+      }>>`
+        SELECT status, progress_pct, product_title, category,
+               images_json, scores_json, error_msg
+        FROM marketplace_audits WHERE id = ${id}
+      `;
+      if (!rows.length) {
+        reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'not_found' })}\n\n`);
+        break;
+      }
+      const r = rows[0];
+      if (r.progress_pct !== lastPct || r.status !== lastStatus) {
+        lastPct = r.progress_pct;
+        lastStatus = r.status;
+        const scores = r.scores_json && (r.scores_json as any).total !== undefined ? r.scores_json : null;
+        reply.raw.write(`event: progress\ndata: ${JSON.stringify({
+          status: r.status,
+          progress_pct: r.progress_pct,
+          product_title: r.product_title,
+          category: r.category,
+          image: Array.isArray(r.images_json) && r.images_json.length > 0 ? r.images_json[0] : null,
+          preview_scores: scores ? {
+            total: scores.total, content: scores.content, search: scores.search,
+            conversion: scores.conversion, ads: scores.ads,
+          } : null,
+        })}\n\n`);
+      }
+      if (r.status === 'done') {
+        reply.raw.write(`event: done\ndata: ${JSON.stringify({ id })}\n\n`);
+        break;
+      }
+      if (r.status === 'error') {
+        reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: r.error_msg ?? 'audit_failed' })}\n\n`);
+        break;
+      }
+      await new Promise((res) => setTimeout(res, 1000));
+    }
+    clearInterval(heartbeat);
+    if (!closed) try { reply.raw.end(); } catch {}
+  };
+
+  poll().catch(() => {
+    clearInterval(heartbeat);
+    try { reply.raw.end(); } catch {}
+  });
+});
 ```
 
-А фронт-компоненты ждут **структурированные объекты**:
+Поведение `progress` payload — это **тот же объект что отдаёт `/preview/:id`** (минус `id` который уже в URL), чтобы фронт мог использовать его как полный `PreviewResponse`. `/preview/:id` остаётся как fallback.
 
-| Компонент | Ждёт | Получает реально |
-|---|---|---|
-| `CompetitorAnalysis.tsx` | `{ page1: PageMetrics, page2: PageMetrics }` (40+ полей: title, h1, wordCount, brokenLinks…) | `{ success: true, result: "## Сравнение...\n..." }` |
-| `SemanticCoreGenerator.tsx` | `{ clusters: [{name, intent, keywords[]}] }` | `{ success: true, result: "ВЧ:\n— ремонт..." }` |
-| `AITextGenerator.tsx` | `{ text: string }` | `{ success: true, result: "..." }` |
-| `BrandTracker`, `ContentBrief`, `Autofix`, `GeoContent` | каждый свой объект | `{ success, result: markdown }` |
+## Часть 2. Фронт — SSE-клиент
 
-Что видит пользователь: `result?.page1?.seoScore` = `undefined` → **ничего не рендерится → пустой экран**. EmptyState срабатывает только для частных случаев (например, `clusters.length === 0`), а у `CompetitorAnalysis` условие — `!result && checkedAt`, но `result` **есть** (это `{success:true, result:"..."}`), просто внутри нет `page1`.
+Новый файл `src/lib/api/marketplace-audit-events.ts` (структурно идентичен `scan-events.ts`):
 
-### Проблема №2 — Используется `OPENAI_API_KEY` напрямую, в обход правила памяти
+```ts
+import { API_BASE_URL, API_VERSION } from './config';
+import type { PreviewResponse } from '../marketplace-audit-types';
 
-Правило памяти `llm-provider-switch`:
-> «Do not store LLM keys in backend; use proxy Edge Function.»
+export type MarketplaceAuditEvent =
+  | { type: 'progress'; preview: PreviewResponse }
+  | { type: 'done'; id: string }
+  | { type: 'error'; error: string };
 
-А `tools.ts` стучится напрямую в `https://api.openai.com/v1/chat/completions` с `process.env.OPENAI_API_KEY`. Если ключа на проде нет (или он истёк) — `askOpenAI` тихо возвращает `''` или строку `"AI недоступен..."`. Фронт всё равно получает `{success:true, result:""}` → опять же пустой экран.
+export function subscribeMarketplaceAuditEvents(
+  auditId: string,
+  onEvent: (e: MarketplaceAuditEvent) => void,
+  onFatal: () => void,
+): () => void {
+  if (typeof window === 'undefined' || typeof EventSource === 'undefined') {
+    onFatal();
+    return () => {};
+  }
+  const url = `${API_BASE_URL}/${API_VERSION}/marketplace-audit/events/${auditId}`;
+  let es: EventSource;
+  try { es = new EventSource(url, { withCredentials: false }); }
+  catch { onFatal(); return () => {}; }
 
-У нас уже есть рабочий `supabase/functions/llm-proxy/index.ts` с `LOVABLE_API_KEY` (он точно есть в секретах). И есть `MA_LLM` в `MarketplaceAudit/llm/runLlm.ts` — он умеет делать **strict-JSON через tool-calling**. Это и есть тот шаблон, который надо применить ко всем инструментам.
+  let closedByCaller = false;
+  let firedFatal = false;
+  let gotAnything = false;
 
-### Проблема №3 — Half-LLM, half-fetch инструменты падают молча
+  const fireFatal = () => {
+    if (firedFatal) return;
+    firedFatal = true;
+    try { es.close(); } catch {}
+    onFatal();
+  };
 
-`competitor-analysis` на бэке **не парсит сайты вообще** — просто шлёт URL в LLM и просит «сравни». Никаких `wordCount`, `brokenLinks`, `htmlSizeKB` LLM выдумать не может. Этот инструмент **никогда не работал по новой архитектуре** — раньше был на Supabase edge-функции с реальным fetch+parse, а при миграции на Node его обрезали до «спроси LLM».
+  es.addEventListener('progress', (ev) => {
+    gotAnything = true;
+    try {
+      const data = JSON.parse((ev as MessageEvent).data);
+      onEvent({ type: 'progress', preview: { id: auditId, ...data } as PreviewResponse });
+    } catch {}
+  });
+  es.addEventListener('done', (ev) => {
+    gotAnything = true;
+    try {
+      const data = JSON.parse((ev as MessageEvent).data);
+      onEvent({ type: 'done', id: data.id ?? auditId });
+    } catch { onEvent({ type: 'done', id: auditId }); }
+    closedByCaller = true;
+    try { es.close(); } catch {}
+  });
+  es.addEventListener('error', () => {
+    if (es.readyState === EventSource.CLOSED && !closedByCaller) fireFatal();
+  });
 
-Аналогично `seo-audit` — без скачивания HTML это пустой совет.
+  const watchdog = setTimeout(() => {
+    if (!gotAnything && !closedByCaller) fireFatal();
+  }, 8000);
 
----
+  return () => {
+    closedByCaller = true;
+    clearTimeout(watchdog);
+    try { es.close(); } catch {}
+  };
+}
+```
 
-## Что предлагаю сделать
+## Часть 3. Хук `useMarketplaceAudit` — гибридная логика
 
-Чинить нужно **бэкенд**, фронт почти не трогаем (он уже корректно рендерит ожидаемые структуры).
+Файл: `src/hooks/useMarketplaceAudit.ts`. Сейчас там polling каждые 1.5с с rate-limit backoff. Перерабатываем:
 
-### Шаг 1. Перевести все LLM-вызовы на `llm-proxy` + tool-calling
+1. На старте → `subscribeMarketplaceAuditEvents`. На событиях `progress` обновляем `state.preview`. На `done` → загружаем `getAuditResult` → `state.result`, останавливаемся. На `error` — выставляем `state.error`.
+2. На `onFatal` (SSE недоступно) → стартуем существующий polling-цикл. Cleanup закрывает оба.
+3. Добавить **exponential backoff** на сетевые ошибки polling-fallback по образцу site-check: счётчик `errorCount`, шаги `[2000, 4000, 8000]` (cap 8с, для marketplace это нормально), сброс на успехе. Сохранить существующий rate-limit backoff.
+4. Существующий лимит `MAX_POLLS = 120` оставить только для polling-режима. Для SSE — не нужен (heartbeat держит соединение).
+5. Cleanup в `useEffect` должен закрывать и SSE-подписку, и pending polling timeout.
 
-В `owndev-backend/src/api/routes/tools.ts` заменить функцию `askOpenAI` на `callJsonLlm` (по образцу `MarketplaceAudit/llm/runLlm.ts`), которая:
-- Идёт на `https://chrsibijgyihualqlabm.supabase.co/functions/v1/llm-proxy` с заголовком `x-proxy-secret: ${EDGE_FUNCTION_SECRET}` (секрет уже есть на бэке — `backend-environment-config`).
-- Передаёт `tools: [{...}]` + `tool_choice: { type:'function', function:{name} }`.
-- Возвращает **уже распарсенный объект**, а не markdown.
-- Default model: `google/gemini-3-flash-preview` (быстро + бесплатно по правилу `connecting-to-ai-models`).
-
-Это устраняет проблему №2 целиком.
-
-### Шаг 2. Под каждый инструмент — свой JSON-schema
-
-| Эндпоинт | Schema выхода |
-|---|---|
-| `/tools/seo-audit` | `{ summary, issues:[{title, severity, fix}], recommendations:[] }` (фронт `SEOAuditor` принимает уже структуру) |
-| `/tools/generate-semantic-core` | `{ clusters:[{name, intent: 'informational'\|'commercial'\|'transactional'\|'navigational', keywords:string[]}] }` |
-| `/tools/generate-text` | `{ text: string }` |
-| `/tools/generate-content-brief` | `{ goal, structure:[{h2, points[]}], keywords[], wordCount, formatting }` |
-| `/tools/competitor-analysis` | **сначала fetch+parse обоих URL → metrics**, потом **LLM только для рекомендаций**. Возвращаем `{ page1, page2, recommendations? }` где page1/page2 — реальные `PageMetrics`. |
-| `/tools/brand-tracker` | `{ visibility_score, gaps[], recommendations[] }` |
-| `/tools/generate-autofix` | `{ explanation, steps[], code? }` |
-| `/tools/generate-geo-content` | `{ pages: [{slug, h1, meta_description, intro}] }` |
-
-### Шаг 3. Реальный парсинг для `competitor-analysis` и `seo-audit`
-
-Добавить во временный helper (внутри `tools.ts` или новый `owndev-backend/src/services/Tools/pageMetrics.ts`):
-- `fetchPageMetrics(url)` — скачивает HTML, считает: title, description, h1, h2/h3 count, wordCount, image count, alt missing, JSON-LD, canonical, OG, internal/external links, htmlSizeKB, loadTimeMs, lang.
-- Возвращает `PageMetrics` 1:1 как ждёт фронт (40+ полей).
-
-`competitor-analysis` вызывает `Promise.all([fetchPageMetrics(url1), fetchPageMetrics(url2)])`, без LLM на старте — данные точные и быстрые. LLM-комментарий — опциональным полем `recommendations`.
-
-`seo-audit` — fetchPageMetrics + правила (HTTPS missing? canonical missing? wordCount<300?) → формирует `issues[]` детерминистично, LLM добавляет «как починить» только текстом для каждого issue.
-
-### Шаг 4. Убрать молчаливые провалы
-
-- Если `callJsonLlm` вернул `null` — отвечать `reply.status(503).send({ error: 'AI временно недоступен, попробуйте через минуту' })`. Фронт уже умеет ловить это в `catch` и показывать toast.
-- Если у инструмента есть нон-AI часть (как fetchPageMetrics) — отдавать её даже когда LLM упал.
-
-### Шаг 5. Маленькая фронтовая правка для устойчивости
-
-В `src/lib/api/tools.ts` функция `callTool` сейчас возвращает весь `{success, result, ...}`. Компоненты иногда обращаются к корню (`result.page1`), иногда к `.result`. Чтобы не править 11 компонентов, **в `callTool` развернуть конверт**: если ответ выглядит как `{success:true, result:X}` и `X` — объект, вернуть `X`; если `X` — строка, вернуть `{text: X}` (для простых текстовых инструментов). Это обратно-совместимо.
-
----
+Поведение видимое пользователю не меняется: `MarketplaceAuditResult.tsx` продолжает читать `preview.status`, `preview.progress_pct`, `result.scores` — менять компонент не нужно.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `owndev-backend/src/services/Tools/llmCall.ts` | **New** — обёртка над `llm-proxy` с tool-calling, по образцу `MarketplaceAudit/llm/runLlm.ts` |
-| `owndev-backend/src/services/Tools/pageMetrics.ts` | **New** — `fetchPageMetrics(url): PageMetrics` с реальным fetch+regex-парсингом |
-| `owndev-backend/src/services/Tools/schemas.ts` | **New** — JSON-схемы для всех 8 LLM-инструментов |
-| `owndev-backend/src/api/routes/tools.ts` | **Edit** — переписать каждый эндпоинт: использовать `callJsonLlm` + соответствующую schema; для competitor-analysis и seo-audit добавить fetchPageMetrics; на ошибку LLM возвращать 503 |
-| `src/lib/api/tools.ts` | **Edit** — в `callTool` развернуть конверт `{success, result}` (5 строк) |
+| `owndev-backend/src/api/routes/marketplaceAudit.ts` | **Edit** — добавить `GET /events/:id` (SSE) рядом с `/preview/:id` |
+| `src/lib/api/marketplace-audit-events.ts` | **New** — `EventSource` обёртка с watchdog и graceful fallback |
+| `src/hooks/useMarketplaceAudit.ts` | **Edit** — гибрид: SSE primary + polling fallback с exponential backoff |
 
 ## Что НЕ трогаем
 
-- `supabase/functions/llm-proxy/index.ts` — он уже работает.
-- 11 фронтовых компонентов в `src/components/tools/*` — они уже корректно ждут структурированные объекты (после правки `callTool` всё совпадёт).
-- Header/Footer/маршруты/БД-схему/правила памяти.
-- `MarketplaceAudit/*` — у них своя цепочка с tool-calling, она в порядке.
-- SiteCheck/SSE/scan-events — недавняя работа, не пересекается.
+- `src/lib/api/marketplaceAudit.ts` — `getAuditPreview` / `getAuditResult` остаются (нужны для fallback и финальной загрузки результата).
+- `MarketplaceAuditResult.tsx`, все компоненты `src/components/marketplace/*` — интерфейсы `preview`/`result` не меняются.
+- Worker / queue / БД-схема / правила памяти.
+- Site-check SSE и существующие маршруты.
 
 ## Проверка
 
-1. Открыть `/tools/competitor-analysis`, ввести `vk.com` и `ok.ru`, нажать «Сравнить» — через ~5 сек видно две колонки SEO Score, метрики Title/H1/wordCount, бейджи HTTPS/JSON-LD и т.п. **Без пустого экрана.**
-2. Открыть `/tools/semantic-core`, тема «ремонт квартир в Москве» — приходит 3+ кластеров с keywords.
-3. Открыть `/tools/text-generator`, тип «meta», тема «доставка цветов» — приходит готовый текст.
-4. Network вкладка: запросы идут на `https://owndev.ru/api/v1/tools/...`, ответы JSON со структурой, не markdown-строки.
-5. Если бэк временно без AI (имитация: уронить `EDGE_FUNCTION_SECRET`) — toast «AI временно недоступен», экран не пустой, кнопка «Попробовать снова» работает.
-6. `/tools/seo-audit` для `example.com` — реальные метрики из fetch + LLM-рекомендации к каждой проблеме.
-7. Остальные 5 инструментов (brand-tracker, content-brief, autofix, geo-content, internal-links) — отдают свой ожидаемый JSON, рендерятся, не молчат.
+1. **SSE happy path**: открыть `/marketplace-audit`, запустить аудит карточки WB → `MarketplaceAuditResult`. DevTools → Network, фильтр `events/` — **1 запрос** типа `eventsource`. Запросов к `/preview/` нет. Прогресс-бар плавно растёт по событиям.
+2. **`done`**: после завершения аудита SSE присылает `done`, хук подгружает `/result/:id`, экран переключается на полный отчёт.
+3. **SSE → fallback**: в DevTools Block request URL для `/marketplace-audit/events/`. Через ~8 сек начинают идти запросы к `/preview/` каждые 1.5с — fallback работает.
+4. **Exponential backoff**: отключить сеть на 30 сек во время polling-режима — интервалы между retry 2с → 4с → 8с → 8с. При восстановлении — polling продолжается.
+5. **Heartbeat**: оставить вкладку на стадии `parsing` 1 минуту — соединение не рвётся.
+6. **Cleanup**: уйти со страницы во время аудита — соединение `eventsource` закрывается в Network, нет утечки.
 
