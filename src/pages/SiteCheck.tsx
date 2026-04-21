@@ -281,7 +281,7 @@ const SiteCheck = () => {
           )}
 
           {staleScanId && (
-            <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+            <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
               <p className="text-sm text-foreground flex-1">
                 Проверка занимает больше времени, чем обычно. Результат сохранится — откройте его через минуту-две.
               </p>
