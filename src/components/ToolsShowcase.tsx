@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, LayoutDashboard, LayoutTemplate, Star } from "lucide-react";
+import { Search, Code2, Sparkles, Bot, Swords, ScanSearch, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, LayoutDashboard, LayoutTemplate, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const tools = [
