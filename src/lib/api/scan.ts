@@ -51,17 +51,9 @@ export async function startScan(url: string, mode: 'page' | 'site', options?: { 
 }
 
 export async function getScanStatus(scanId: string) {
-  try {
-    return await apiFetch<{ status: string; progress_pct: number; scores_preview: any }>(
-      `/site-check/status/${scanId}`
-    );
-  } catch (e: any) {
-    // Network/timeout — return sentinel so poller can distinguish from a real "stuck" scan
-    if (typeof console !== 'undefined') {
-      console.warn('[scan-status] network error, retrying:', e?.message || e);
-    }
-    return { status: 'unknown', progress_pct: -1, scores_preview: null } as any;
-  }
+  return apiFetch<{ status: string; progress_pct: number; scores_preview: any }>(
+    `/site-check/status/${scanId}`
+  );
 }
 
 export async function getScanPreview(scanId: string) {
