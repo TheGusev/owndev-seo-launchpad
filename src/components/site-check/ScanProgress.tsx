@@ -11,7 +11,7 @@ const steps = [
   { icon: Star, label: "E-E-A-T сигналы", desc: "Экспертность, авторитетность, доверие...", done: "E-E-A-T оценён" },
 ];
 
-const STEP_DELAYS = [2500, 3000, 3500, 3000, 2500, 2000];
+const STEP_DELAYS = [4000, 5000, 6000, 5000, 4000, 3500];
 
 const progressStages = [
   { min: 0,  max: 20,  label: 'Загрузка страницы',    icon: '🌐' },
@@ -34,11 +34,14 @@ const ScanProgress = ({ onComplete, realProgress, error, domain, onCancel }: Sca
   const [simStep, setSimStep] = useState(0);
   const [allDone, setAllDone] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
+  const [displayProgress, setDisplayProgress] = useState(0);
+  const lastRealUpdateAtRef = useRef<number>(Date.now());
+  const lastRealValueRef = useRef<number>(-1);
 
-  // Show "Cancel & retry" button after 60 seconds of waiting
+  // Show "Cancel & retry" button after 90 seconds of waiting
   useEffect(() => {
     if (allDone || error) return;
-    const t = setTimeout(() => setShowCancel(true), 60_000);
+    const t = setTimeout(() => setShowCancel(true), 90_000);
     return () => clearTimeout(t);
   }, [allDone, error]);
 
@@ -60,9 +63,34 @@ const ScanProgress = ({ onComplete, realProgress, error, domain, onCancel }: Sca
     }
   }, [realProgress, allDone, onComplete]);
 
-  // If simulation finishes before API — just wait
+  // Track when realProgress actually changes
+  useEffect(() => {
+    if (typeof realProgress === 'number' && realProgress !== lastRealValueRef.current) {
+      lastRealValueRef.current = realProgress;
+      lastRealUpdateAtRef.current = Date.now();
+    }
+  }, [realProgress]);
+
+  // Smooth display progress: never go beyond realProgress + 3, freeze if no real updates for 30s
+  useEffect(() => {
+    if (allDone) { setDisplayProgress(100); return; }
+    const interval = setInterval(() => {
+      setDisplayProgress((curr) => {
+        const real = typeof realProgress === 'number' ? realProgress : -1;
+        const cap = real >= 0 ? Math.min(real + 3, 99) : Math.min((simStep / steps.length) * 95, 95);
+        // Freeze if no real updates for 30s
+        const stale = Date.now() - lastRealUpdateAtRef.current > 30_000;
+        if (stale && real >= 0) return real;
+        if (curr < cap) return Math.min(curr + 0.5, cap);
+        if (curr > cap + 1) return cap; // snap back if we overshot
+        return curr;
+      });
+    }, 200);
+    return () => clearInterval(interval);
+  }, [realProgress, allDone, simStep]);
+
   const currentStep = allDone ? steps.length : simStep;
-  const progress = allDone ? 100 : realProgress ?? Math.min((currentStep / steps.length) * 100, 95);
+  const progress = allDone ? 100 : displayProgress;
   const currentStage =
     progressStages.find((s) => progress >= s.min && progress <= s.max) ??
     progressStages[progressStages.length - 1];
@@ -151,7 +179,7 @@ const ScanProgress = ({ onComplete, realProgress, error, domain, onCancel }: Sca
           />
         </div>
         <p className="text-xs text-muted-foreground text-center">
-          Обычно проверка занимает 15–30 секунд
+          Обычно проверка занимает 1–3 минуты
         </p>
         <p className="text-sm text-muted-foreground text-center mt-2">
           {currentStage.icon} {currentStage.label}... {Math.round(progress)}%
