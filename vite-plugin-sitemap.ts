@@ -37,10 +37,10 @@ const nicheEnabledTools: string[] = [];
 
 /** All tool slugs from tools-registry.ts */
 const allToolSlugs = [
-  "seo-auditor", "competitor-analysis", "indexation-checker", "position-monitor",
+  "seo-auditor", "competitor-analysis", "indexation-checker",
   "pseo-generator", "schema-generator", "semantic-core",
-  "ai-text-generator", "llm-prompt-helper", "anti-duplicate",
-  "webmaster-files", "internal-links",
+  "ai-text-generator", "llm-prompt-helper",
+  "internal-links",
   "geo-audit", "llm-score", "ai-ready-audit", "llms-txt-checker", "eeat-audit",
 ];
 

@@ -26,7 +26,6 @@ const steps = [
 
 const tools = [
   { name: "GEO-рейтинг", desc: "Сравнительный рейтинг AI-видимости сайтов", link: "/geo-rating", icon: BarChart3 },
-  { name: "Position Monitor", desc: "Отслеживание позиций по ключевым запросам", link: "/tools/position-monitor", icon: LineChart },
 ];
 
 const Monitoring = () => (

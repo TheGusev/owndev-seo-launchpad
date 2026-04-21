@@ -44,6 +44,7 @@ import MarketplaceAudit from "./pages/MarketplaceAudit";
 import MarketplaceAuditResult from "./pages/MarketplaceAuditResult";
 import ConversionAudit from "./pages/ConversionAudit";
 import FullAudit from "./pages/FullAudit";
+import RedirectGone from "./pages/RedirectGone";
 
 const queryClient = new QueryClient();
 
@@ -98,6 +99,13 @@ const App = () => (
             <Route path="/scenario/ai-ready-content" element={<AiReadyContent />} />
             <Route path="/scenario/brand-presence" element={<BrandPresence />} />
             <Route path="/scenario/monitoring" element={<Monitoring />} />
+            {/* Removed tools — 301-style redirects with noindex for SEO cleanup */}
+            <Route path="/tools/webmaster-files" element={<RedirectGone />} />
+            <Route path="/tools/webmaster-files/:region" element={<RedirectGone />} />
+            <Route path="/tools/anti-duplicate" element={<RedirectGone />} />
+            <Route path="/tools/anti-duplicate/:region" element={<RedirectGone />} />
+            <Route path="/tools/position-monitor" element={<RedirectGone />} />
+            <Route path="/tools/position-monitor/:region" element={<RedirectGone />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

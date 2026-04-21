@@ -35,21 +35,9 @@ URL: https://owndev.ru/tools/ai-text-generator
 Готовые промты для ChatGPT и Perplexity: генерация контента, улучшение страниц, подготовка к AI Overviews.
 URL: https://owndev.ru/tools/llm-prompt-helper
 
-### Anti-Duplicate Checker
-Проверка текста на шаблонность и риск деиндексации. Полезно после массовой генерации контента нейросетями.
-URL: https://owndev.ru/tools/anti-duplicate
-
 ### Проверка индексации
 Анализ meta robots, X-Robots-Tag, canonical, HTTP-статуса — доступна ли страница для поисковых роботов.
 URL: https://owndev.ru/tools/indexation-checker
-
-### Мониторинг позиций
-Ручной трекер позиций: добавляйте данные из Google Search Console и отслеживайте динамику по ключевым словам.
-URL: https://owndev.ru/tools/position-monitor
-
-### Генератор файлов вебмастера
-Создание sitemap.xml и robots.txt: генерация, копирование и скачивание готовых файлов.
-URL: https://owndev.ru/tools/webmaster-files
 
 ### Проверка внутренних ссылок
 Поиск битых ссылок, nofollow-меток и анализ внутренней перелинковки сайта.
@@ -98,10 +86,7 @@ URL: https://owndev.ru/tools/internal-links
 - https://owndev.ru/tools/competitor-analysis: Анализ конкурентов
 - https://owndev.ru/tools/ai-text-generator: AI Генератор текстов
 - https://owndev.ru/tools/llm-prompt-helper: LLM Prompt Helper
-- https://owndev.ru/tools/anti-duplicate: Anti-Duplicate Checker
 - https://owndev.ru/tools/indexation-checker: Проверка индексации
-- https://owndev.ru/tools/position-monitor: Мониторинг позиций
-- https://owndev.ru/tools/webmaster-files: Генератор файлов вебмастера
 - https://owndev.ru/tools/internal-links: Проверка внутренних ссылок
 - https://owndev.ru/blog: Блог
 - https://owndev.ru/contacts: Контакты
