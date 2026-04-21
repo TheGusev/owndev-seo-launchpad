@@ -83,9 +83,14 @@ const SiteCheck = () => {
   const [startedAt, setStartedAt] = useState<number | undefined>(undefined);
   const mountedRef = useRef(true);
   const startedAtRef = useRef<number | undefined>(undefined);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -119,7 +124,7 @@ const SiteCheck = () => {
     try {
       const result = await startScan(url, mode, { force });
       setScanId(result.scan_id);
-      pollStatus(result.scan_id);
+      startTracking(result.scan_id);
     } catch (e: any) {
       if (e.lastScanId) {
         setLimitScanId(e.lastScanId);
