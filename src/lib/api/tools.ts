@@ -14,7 +14,19 @@ async function callTool<T = any>(endpoint: string, body: object): Promise<T> {
     const err = await resp.json().catch(() => ({}));
     throw new Error((err as any).error || `Ошибка ${resp.status}`);
   }
-  return resp.json();
+  const raw = await resp.json();
+  // Бэкенд возвращает { success: true, result: <object|string>, ... }.
+  // Разворачиваем конверт, чтобы фронт-компоненты получали именно структуру:
+  //   - объект → отдаём как есть;
+  //   - строка → оборачиваем в { text: string } (для простых тулов);
+  //   - если поля result нет — отдаём весь ответ (back-compat для check-indexation,
+  //     check-internal-links и подобных, у которых поля лежат в корне).
+  if (raw && typeof raw === 'object' && 'result' in raw) {
+    const inner = (raw as any).result;
+    if (inner && typeof inner === 'object') return inner as T;
+    if (typeof inner === 'string') return { text: inner } as unknown as T;
+  }
+  return raw as T;
 }
 
 export function ensureProtocol(url: string): string {
