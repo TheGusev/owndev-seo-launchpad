@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import ScanForm from "@/components/site-check/ScanForm";
 import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
+import { subscribeScanEvents } from "@/lib/api/scan-events";
 import type { ScanMode } from "@/lib/site-check-types";
 import { ArrowRight, Globe, Trash2, Search, BrainCircuit, Target, Sparkles, Users, Key, Ban, ShieldCheck, FileText, Download, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
