@@ -20,6 +20,8 @@ export interface ToolDef {
   seoH1?: string;
   /** Custom route path (overrides default /tools/:slug) */
   customPath?: string;
+  /** Hide from tool listings (Tools page, ToolsShowcase, SEO indexes), but keep route working */
+  hidden?: boolean;
 }
 
 export const categories = [
@@ -328,6 +330,7 @@ export const tools: ToolDef[] = [
     gradient: "bg-gradient-to-br from-orange-950/40 to-red-950/40",
     useCases: ["Анализ потерь бюджета", "Барьеры конверсии", "Быстрые победы CRO"],
     geoEnabled: false, status: "active",
+    hidden: true,
     customPath: "/tools/conversion-audit",
     seoTitle: "CRO-аудит сайта | OWNDEV",
     seoDescription: "Почему сайт не продаёт: AI-анализ барьеров конверсии и потерь бюджета Директа.",

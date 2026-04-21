@@ -206,6 +206,22 @@ const ConversionAudit = () => {
       <Header />
 
       <main className="flex-1 container px-4 md:px-6 py-10 md:py-16 max-w-5xl mx-auto">
+        <div className="glass rounded-xl p-4 md:p-5 border border-primary/30 mb-8 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-foreground mb-1">
+              CRO-аудит теперь входит в «Полный аудит сайта»
+            </div>
+            <div className="text-xs md:text-sm text-muted-foreground">
+              Получите CRO + SEO + GEO в одном бесплатном отчёте — рекомендуем перейти на флагманский инструмент.
+            </div>
+          </div>
+          <Link
+            to="/tools/full-audit"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-sm font-semibold transition-colors shrink-0"
+          >
+            Перейти к Полному аудиту <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
             <TrendingDown className="w-3.5 h-3.5" /> CRO-аудит
