@@ -1,25 +1,30 @@
-import { useEffect, useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, FileText, AlignLeft, Bot, Code, Star, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { motion } from "framer-motion";
+import {
+  Play, Globe, Brain, FileText, Cpu, Users, Key, Sparkles, CheckCircle2,
+  Loader2, AlertCircle, Clock,
+} from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const steps = [
-  { icon: Search, label: "Краулинг страницы", desc: "Загружаем и анализируем HTML...", done: "HTML загружен и проанализирован" },
-  { icon: FileText, label: "Индексируемость", desc: "Проверяем доступность для поисковиков...", done: "Страница индексируется" },
-  { icon: AlignLeft, label: "Структура контента", desc: "Анализируем заголовки, текст, списки...", done: "Структура проанализирована" },
-  { icon: Bot, label: "AI-готовность", desc: "llms.txt, FAQ, структурированность...", done: "AI-сигналы собраны" },
-  { icon: Code, label: "Schema.org разметка", desc: "JSON-LD, микроразметка...", done: "Разметка проверена" },
-  { icon: Star, label: "E-E-A-T сигналы", desc: "Экспертность, авторитетность, доверие...", done: "E-E-A-T оценён" },
-];
+type Stage = {
+  pct: number;
+  label: string;
+  desc: string;
+  icon: typeof Play;
+  slow?: boolean;
+  slowHint?: string;
+};
 
-const STEP_DELAYS = [2500, 3000, 3500, 3000, 2500, 2000];
-
-const progressStages = [
-  { min: 0,  max: 20,  label: 'Загрузка страницы',    icon: '🌐' },
-  { min: 20, max: 40,  label: 'Технический SEO',      icon: '⚙️' },
-  { min: 40, max: 60,  label: 'Schema.org анализ',    icon: '📋' },
-  { min: 60, max: 80,  label: 'E-E-A-T и контент',    icon: '✍️' },
-  { min: 80, max: 95,  label: 'AI Score расчёт',      icon: '🤖' },
-  { min: 95, max: 100, label: 'Формирование отчёта',  icon: '📊' },
+const stages: Stage[] = [
+  { pct: 5,   label: "Запуск",                      desc: "Инициализация проверки",                                icon: Play },
+  { pct: 10,  label: "Загрузка страницы",           desc: "Скачиваем HTML, проверяем доступность",                 icon: Globe },
+  { pct: 20,  label: "Определение тематики",        desc: "AI анализирует тему сайта",                             icon: Brain, slow: true, slowHint: "AI-запрос к LLM, обычно 5–15 сек" },
+  { pct: 35,  label: "SEO-данные и robots.txt",     desc: "meta-теги, sitemap, битые ссылки",                      icon: FileText },
+  { pct: 60,  label: "Технический и AI-аудит",      desc: "Schema.org, E-E-A-T, llms.txt, контент",                icon: Cpu },
+  { pct: 75,  label: "Анализ конкурентов",          desc: "Топ-10 из выдачи Яндекс — это самый долгий шаг",        icon: Users, slow: true, slowHint: "AI-запрос к OpenAI + парсинг выдачи, обычно 20–60 сек. Это нормально." },
+  { pct: 85,  label: "Семантическое ядро",          desc: "AI извлекает 200+ ключевых слов",                       icon: Key,   slow: true, slowHint: "AI-запрос к OpenAI, обычно 15–30 сек. Это нормально." },
+  { pct: 95,  label: "Минус-слова и AI-объявление", desc: "Генерация Direct-объявления",                           icon: Sparkles, slow: true, slowHint: "AI-запрос к OpenAI, обычно 10–20 сек" },
+  { pct: 100, label: "Формирование отчёта",         desc: "Сохраняем результат",                                   icon: CheckCircle2 },
 ];
 
 interface ScanProgressProps {
@@ -27,129 +32,205 @@ interface ScanProgressProps {
   realProgress?: number;
   error?: string | null;
   domain?: string;
+  startedAt?: number;
 }
 
-const ScanProgress = ({ onComplete, realProgress, error, domain }: ScanProgressProps) => {
-  const [simStep, setSimStep] = useState(0);
-  const [allDone, setAllDone] = useState(false);
+const formatElapsed = (ms: number) => {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+};
 
-  // Simulated step progression (independent of API)
-  useEffect(() => {
-    if (allDone || error) return;
-    if (simStep >= steps.length) return;
-    const t = setTimeout(() => setSimStep((s) => s + 1), STEP_DELAYS[simStep] ?? 2500);
-    return () => clearTimeout(t);
-  }, [simStep, allDone, error]);
+const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }: ScanProgressProps) => {
+  const progress = Math.min(100, Math.max(0, realProgress));
 
-  // When real progress hits 100 — mark all done
+  // Track when realProgress last changed (heartbeat)
+  const [lastUpdateAt, setLastUpdateAt] = useState<number>(() => Date.now());
+  const prevProgressRef = useRef<number>(progress);
   useEffect(() => {
-    if (realProgress !== undefined && realProgress >= 100 && !allDone) {
-      setAllDone(true);
-      setSimStep(steps.length);
-      const t = setTimeout(onComplete, 800);
+    if (progress !== prevProgressRef.current) {
+      prevProgressRef.current = progress;
+      setLastUpdateAt(Date.now());
+    }
+  }, [progress]);
+
+  // Tick every second for elapsed counters
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    if (progress >= 100 || error) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [progress, error]);
+
+  // Trigger onComplete when reaching 100
+  useEffect(() => {
+    if (progress >= 100) {
+      const t = setTimeout(onComplete, 600);
       return () => clearTimeout(t);
     }
-  }, [realProgress, allDone, onComplete]);
+  }, [progress, onComplete]);
 
-  // If simulation finishes before API — just wait
-  const currentStep = allDone ? steps.length : simStep;
-  const progress = allDone ? 100 : realProgress ?? Math.min((currentStep / steps.length) * 100, 95);
-  const currentStage =
-    progressStages.find((s) => progress >= s.min && progress <= s.max) ??
-    progressStages[progressStages.length - 1];
+  const elapsedTotalMs = startedAt ? now - startedAt : 0;
+  const secondsSinceUpdate = Math.floor((now - lastUpdateAt) / 1000);
+
+  // Determine active stage: first stage whose pct > progress
+  const activeIndex = stages.findIndex((s) => progress < s.pct);
+  const currentStageIndex = activeIndex === -1 ? stages.length - 1 : activeIndex;
+  const currentStage = stages[currentStageIndex];
+
+  // Visual progress stage label
+  const stageLabelTop = error
+    ? "Произошла ошибка"
+    : progress >= 100
+    ? "Готово"
+    : `${currentStage.label}…`;
 
   return (
-    <div className="space-y-6 max-w-xl mx-auto">
-      {/* Header */}
-      {domain && (
-        <motion.p
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center text-lg font-semibold text-foreground"
-        >
-          Анализируем <span className="text-primary">{domain}</span>...
-        </motion.p>
-      )}
+    <TooltipProvider delayDuration={150}>
+      <div className="space-y-6 max-w-xl mx-auto">
+        {/* Header */}
+        {domain && (
+          <motion.p
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center text-lg font-semibold text-foreground"
+          >
+            Анализируем <span className="text-primary">{domain}</span>…
+          </motion.p>
+        )}
 
-      {/* Steps list */}
-      <div className="space-y-2">
-        {steps.map((step, i) => {
-          const Icon = step.icon;
-          const isDone = i < currentStep;
-          const isActive = i === currentStep && !allDone && !error;
-          const isError = i === currentStep && !!error;
-          const isFuture = i > currentStep;
+        {/* Steps list */}
+        <div className="space-y-2">
+          {stages.map((stage, i) => {
+            const Icon = stage.icon;
+            const isDone = progress >= stage.pct && !(i === stages.length - 1 && progress < 100);
+            const isActive = !error && !isDone && i === currentStageIndex;
+            const isError = !!error && i === currentStageIndex;
+            const showLlmHeartbeat = isActive && stage.slow && secondsSinceUpdate >= 3;
+            const showStuckWarning = isActive && secondsSinceUpdate > 90;
 
-          return (
+            const row = (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05, duration: 0.3 }}
+                className={`flex items-start gap-3 rounded-xl px-4 py-3 transition-all duration-300 ${
+                  isError
+                    ? "bg-destructive/10 border border-destructive/30"
+                    : isDone
+                    ? "bg-card/40 opacity-70"
+                    : isActive
+                    ? "bg-primary/5 border border-primary/20"
+                    : "bg-card/20 opacity-40"
+                }`}
+              >
+                <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5">
+                  {isError ? (
+                    <AlertCircle className="w-5 h-5 text-destructive" />
+                  ) : isDone ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  ) : isActive ? (
+                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  ) : (
+                    <Icon className="w-5 h-5 text-muted-foreground/40" />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p
+                      className={`text-sm font-medium ${
+                        isError
+                          ? "text-destructive"
+                          : isDone || isActive
+                          ? "text-foreground"
+                          : "text-muted-foreground/50"
+                      }`}
+                    >
+                      {stage.label}
+                    </p>
+                    {stage.slow && (isActive || isFutureBadge(isDone, isActive)) && (
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                        AI
+                      </span>
+                    )}
+                  </div>
+                  <p
+                    className={`text-xs ${
+                      isError
+                        ? "text-destructive/70"
+                        : isDone
+                        ? "text-green-500/80"
+                        : isActive
+                        ? "text-muted-foreground"
+                        : "text-muted-foreground/30"
+                    }`}
+                  >
+                    {isError ? error : isDone ? `✓ Готово` : isActive ? stage.desc : ""}
+                  </p>
+
+                  {/* Heartbeat for slow LLM stages */}
+                  {showLlmHeartbeat && (
+                    <p className="mt-1 text-xs text-primary/80 flex items-center gap-1.5">
+                      <Clock className="w-3 h-3 animate-pulse" />
+                      Идёт уже {secondsSinceUpdate}s… LLM-запрос может занять до 60 сек
+                    </p>
+                  )}
+                  {showStuckWarning && (
+                    <p className="mt-1 text-xs text-amber-500">
+                      Дольше обычного, продолжаем ждать…
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            );
+
+            return stage.slow && stage.slowHint ? (
+              <Tooltip key={i}>
+                <TooltipTrigger asChild>
+                  <div>{row}</div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs">
+                  {stage.slowHint}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              row
+            );
+          })}
+        </div>
+
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{stageLabelTop}</span>
+            <span className="font-mono">{Math.round(progress)}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
             <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1, duration: 0.3 }}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300 ${
-                isError
-                  ? "bg-destructive/10 border border-destructive/30"
-                  : isDone
-                  ? "bg-card/40 opacity-70"
-                  : isActive
-                  ? "bg-primary/5 border border-primary/20"
-                  : "bg-card/20 opacity-40"
-              }`}
-            >
-              {/* Status icon */}
-              <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center">
-                {isError ? (
-                  <AlertCircle className="w-5 h-5 text-destructive" />
-                ) : isDone ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                ) : isActive ? (
-                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                ) : (
-                  <Icon className="w-5 h-5 text-muted-foreground/40" />
-                )}
-              </div>
-
-              {/* Text */}
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium ${
-                  isError ? "text-destructive" : isDone ? "text-foreground" : isActive ? "text-foreground" : "text-muted-foreground/50"
-                }`}>
-                  {step.label}
-                </p>
-                <p className={`text-xs ${
-                  isError ? "text-destructive/70" : isDone ? "text-green-500/80" : isActive ? "text-muted-foreground" : "text-muted-foreground/30"
-                }`}>
-                  {isError ? error : isDone ? `✓ ${step.done}` : isActive ? step.desc : ""}
-                </p>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Progress bar */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Прогресс</span>
-          <span className="font-mono">{Math.round(progress)}%</span>
+              className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+            <span>Обычно 30–90 секунд, может занять до 2 минут</span>
+            {startedAt && (
+              <span className="font-mono tabular-nums">
+                Идёт: {formatElapsed(elapsedTotalMs)}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
-          <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground text-center">
-          Обычно проверка занимает 15–30 секунд
-        </p>
-        <p className="text-sm text-muted-foreground text-center mt-2">
-          {currentStage.icon} {currentStage.label}... {Math.round(progress)}%
-        </p>
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
+
+// helper: keep AI badge visible on done slow steps too (subtle)
+const isFutureBadge = (isDone: boolean, isActive: boolean) => isDone || isActive;
 
 export default ScanProgress;

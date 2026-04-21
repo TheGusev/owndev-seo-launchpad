@@ -70,6 +70,7 @@ const SiteCheck = () => {
   const [limitScanId, setLimitScanId] = useState<string | null>(null);
   const [limitUrl, setLimitUrl] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  const [startedAt, setStartedAt] = useState<number | undefined>(undefined);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -100,6 +101,8 @@ const SiteCheck = () => {
     setLimitScanId(null);
     setLimitUrl(null);
     setScanError(null);
+    setProgress(0);
+    setStartedAt(Date.now());
     try {
       const result = await startScan(url, mode, { force });
       setScanId(result.scan_id);
@@ -159,7 +162,13 @@ const SiteCheck = () => {
 
           <div className="glass rounded-2xl p-5 md:p-8">
             {scanning ? (
-              <ScanProgress onComplete={() => {}} realProgress={progress} error={scanError} domain={(() => { try { return new URL(searchParams.get("url") || "").hostname; } catch { return undefined; } })()} />
+              <ScanProgress
+                onComplete={() => {}}
+                realProgress={progress}
+                error={scanError}
+                startedAt={startedAt}
+                domain={(() => { try { return new URL(searchParams.get("url") || "").hostname; } catch { return undefined; } })()}
+              />
             ) : (
               <ScanForm onSubmit={handleSubmit} />
             )}
