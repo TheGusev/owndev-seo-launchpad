@@ -55,49 +55,18 @@ function isSpaPage(html: string): boolean {
 
 // ─── Fetch rendered content via Jina Reader for SPA pages ───
 async function fetchRenderedContent(url: string): Promise<string | null> {
-  // Attempt 1: Jina Reader markdown (wait up to 25s for h1 to appear)
   try {
     logger.info('PIPELINE', `SPA detected — fetching via Jina Reader: ${url}`);
-    const resp = await fetchWithTimeout(`https://r.jina.ai/${url}`, 28000, {
-      headers: {
-        'Accept': 'text/plain',
-        'X-Timeout': '22',
-        'X-Wait-For-Selector': 'h1,main,[id="root"],[id="app"]',
-        'X-Remove-Selector': 'nav,footer,script,style',
-      } as any,
+    const resp = await fetchWithTimeout(`https://r.jina.ai/${url}`, 20000, {
+      headers: { 'Accept': 'text/plain', 'X-Timeout': '15', 'X-Wait-For-Selector': 'h1' } as any,
     });
-    if (resp.ok) {
-      const markdown = await resp.text();
-      // Validate that we got real content with at least a heading
-      if (markdown.length > 200 && /^#\s+/m.test(markdown)) {
-        logger.info('PIPELINE', `Jina Reader OK — ${markdown.length} chars, has H1`);
-        return markdown;
-      }
-      // Got markdown but no heading — still usable if long enough
-      if (markdown.length > 500) {
-        logger.info('PIPELINE', `Jina Reader OK (no H1 found) — ${markdown.length} chars`);
-        return markdown;
-      }
-    }
+    if (!resp.ok) return null;
+    const markdown = await resp.text();
+    return markdown.length > 200 ? markdown : null;
   } catch (e: any) {
-    logger.warn('PIPELINE', `Jina Reader attempt 1 failed: ${e.message}`);
+    logger.error('PIPELINE', `Jina Reader failed: ${e.message}`);
+    return null;
   }
-
-  // Attempt 2: Jina Reader with shorter wait (fallback)
-  try {
-    logger.info('PIPELINE', `SPA — Jina Reader fallback attempt for: ${url}`);
-    const resp2 = await fetchWithTimeout(`https://r.jina.ai/${url}`, 15000, {
-      headers: { 'Accept': 'text/plain', 'X-Timeout': '12' } as any,
-    });
-    if (resp2.ok) {
-      const markdown2 = await resp2.text();
-      if (markdown2.length > 200) return markdown2;
-    }
-  } catch (e: any) {
-    logger.error('PIPELINE', `Jina Reader fallback failed: ${e.message}`);
-  }
-
-  return null;
 }
 
 function buildEnrichedHtml(markdown: string, originalHtml: string): string {
@@ -486,13 +455,9 @@ function technicalAudit(html: string, parsedUrl: URL, httpStatus: number, robots
   }
 
   const imgTags = html.match(/<img[^>]*>/gi) || [];
-  // Count images with missing alt OR empty alt="" (both are SEO issues for meaningful images)
   const imgsNoAlt = imgTags.filter(img => !img.match(/alt=["'][^"']+["']/i));
-  const imgsEmptyAlt = imgTags.filter(img => img.match(/alt=["']["']/i)); // alt="" specifically
-  const imgsProblematic = imgsNoAlt.length; // includes no-alt + empty-alt
-  if (imgsProblematic > 0) {
-    const emptyNote = imgsEmptyAlt.length > 0 ? ` (в т.ч. ${imgsEmptyAlt.length} с пустым alt="")` : '';
-    issues.push(makeIssue({ module: 'technical', severity: imgsProblematic > 5 ? 'high' : 'medium', title: `${imgsProblematic} изображений без alt`, found: `Из ${imgTags.length} <img> у ${imgsProblematic} нет описательного alt${emptyNote}`, location: '<img> теги', why_it_matters: 'Без alt изображения невидимы для поисковиков и скринридеров', how_to_fix: 'Добавьте описательный alt к каждому значимому <img>', example_fix: '<img src="photo.jpg" alt="Описание изображения">', visible_in_preview: false }));
+  if (imgsNoAlt.length > 0) {
+    issues.push(makeIssue({ module: 'technical', severity: imgsNoAlt.length > 5 ? 'high' : 'medium', title: `${imgsNoAlt.length} изображений без alt`, found: `Из ${imgTags.length} <img> у ${imgsNoAlt.length} нет alt`, location: '<img> теги', why_it_matters: 'Без alt изображения невидимы для поисковиков и скринридеров', how_to_fix: 'Добавьте описательный alt к каждому <img>', example_fix: '<img src="photo.jpg" alt="Описание изображения">', visible_in_preview: false }));
   }
 
   if (brokenLinks.length > 0) {
@@ -627,16 +592,13 @@ function directAudit(html: string, theme: string): { issues: Issue[]; ad_headlin
   }
 
   // 4. CTA → commercialSignals
-  // E-com CTA: order/buy/cart verbs
-  const ecomCtaPattern = /заказ|купи|оставь|запис|получи|звони|консультац|заявк|корзин|добавить в/i;
-  // SaaS/freemium CTA: open/start/try/access verbs — also valid action signals
-  const saasCtaPattern = /открыть|перейти|начать|попробовать|зарегистрир|войти|активир|подключить|запустить/i;
-  const ctaOk = ecomCtaPattern.test(html) || saasCtaPattern.test(html);
+  const ctaPattern = /заказ|купи|оставь|запис|получи|звони|консультац|заявк|корзин|добавить в/i;
+  const ctaOk = ctaPattern.test(html);
   if (!ctaOk) {
-    issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Нет CTA (призыва к действию)', found: 'Не найдены кнопки заказа, формы или кнопки действия', location: 'Контент', why_it_matters: 'Без CTA посетители из Директа уходят без конверсии', how_to_fix: 'Добавьте кнопку CTA', example_fix: `<button>Заказать ${theme.toLowerCase()}</button>`, impact_score: 11, visible_in_preview: true }));
-    addCheck('commercialSignals', 'fail', 'Не найдены CTA (заказать, купить, открыть, перейти, начать и т.д.)');
+    issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Нет CTA (призыва к действию)', found: 'Не найдены кнопки заказа или формы', location: 'Контент', why_it_matters: 'Без CTA посетители из Директа уходят', how_to_fix: 'Добавьте кнопку CTA', example_fix: `<button>Заказать ${theme.toLowerCase()}</button>`, impact_score: 11, visible_in_preview: true }));
+    addCheck('commercialSignals', 'fail', 'Не найдены коммерческие CTA (заказать, купить, оставить заявку и т.д.)');
   } else {
-    addCheck('commercialSignals', 'pass', 'Найдены CTA на странице');
+    addCheck('commercialSignals', 'pass', 'Найдены коммерческие CTA на странице');
   }
 
   // 5. Яндекс.Метрика → noMixedTopics (re-используем как "трекинг")
@@ -873,36 +835,18 @@ async function competitorAnalysis(url: string, theme: string, html: string, mode
 
   // Find competitor URLs via LLM
   const competitorUrls = new Set<string>();
-
-  // Detect Russian market by TLD or Cyrillic content in page
-  const isRuMarket = ownHostname.endsWith('.ru') || ownHostname.endsWith('.рф') || ownHostname.endsWith('.su')
-    || /[\u0400-\u04FF]/.test(html.slice(0, 5000));
-
-  const geoHint = isRuMarket
-    ? '\nВАЖНО: сайт нацелен на Рунет. Предпочтительно указывай .ru/.рф сайты-аналоги. НЕ указывай глобальные зарубежные сервисы (ahrefs.com, moz.com, semrush.com, screamingfrog.co.uk, spyfu.com, sitebulb.com и т.п.), если есть русскоязычные конкуренты в той же нише.'
-    : '';
-  const searchQueries = isRuMarket
-    ? [theme, `${theme} россия`, `${theme} сервис`]
-    : [theme, `${theme} site`, `${theme} company`];
-
-  // Exclude well-known global SEO tools when site targets ru-market
-  const RU_MARKET_EXCLUDE = isRuMarket
-    ? /ahrefs\.com|moz\.com|semrush\.com|screamingfrog\.co\.uk|spyfu\.com|sitebulb\.com|majestic\.com|mangools\.com/i
-    : null;
+  const searchQueries = [theme, `${theme} сайт`, `${theme} компания`];
 
   if (apiKey) {
     for (const query of searchQueries.slice(0, 2)) {
       if (competitorUrls.size >= 10) break;
       try {
         const content = await llmCall(apiKey, 'gpt-4o-mini',
-          `Ты — поисковый аналитик. Верни JSON-массив из 5-7 URL-адресов сайтов-конкурентов для данного запроса. Только домашние страницы реальных компаний. Исключи маркетплейсы, соцсети, Wikipedia.${geoHint} Формат: ["https://example.com",...]`,
+          'Ты — поисковый аналитик. Верни JSON-массив из 5-7 URL-адресов сайтов-конкурентов для данного запроса. Только домашние страницы реальных компаний. Исключи маркетплейсы, соцсети, Wikipedia. Формат: ["https://example.com",...]',
           `Запрос: "${query}"\nСайт пользователя: ${url}\nНЕ включай ${ownHostname}`, 1000);
         const urls: string[] = safeParseJson<string[]>(content, []);
         for (const u of urls) {
-          const isGlobalToolExcluded = RU_MARKET_EXCLUDE && RU_MARKET_EXCLUDE.test(u);
-          if (!isExcludedUrl(u, ownHostname) && !isGlobalToolExcluded && competitorUrls.size < 10) {
-            competitorUrls.add(u);
-          }
+          if (!isExcludedUrl(u, ownHostname) && competitorUrls.size < 10) competitorUrls.add(u);
         }
       } catch {}
     }
