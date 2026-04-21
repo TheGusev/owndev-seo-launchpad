@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, AlertTriangle, TrendingDown, DollarSign, Zap, Wrench, ArrowRight, Mail, Download, Database, RotateCcw } from "lucide-react";
+import { Loader2, AlertTriangle, TrendingDown, DollarSign, Zap, Wrench, ArrowRight, Mail, Download, Database } from "lucide-react";
 import { apiUrl } from "@/lib/api/config";
 import { generatePdfReport } from "@/lib/generatePdfReport";
 import type { ReportData } from "@/lib/reportHelpers";
@@ -41,10 +41,6 @@ interface ConversionResult {
   cta_recommendation: string;
   cached?: boolean;
 }
-
-const LS_KEY = "owndev_cro_audit_last";
-const LS_TTL = 24 * 60 * 60 * 1000; // 24 ч
-const FETCH_TIMEOUT_MS = 90_000; // 90 секунд (Puppeteer может занять 25–30 s)
 
 const goalOptions: { value: Goal; label: string }[] = [
   { value: "calls", label: "Звонки" },
@@ -127,68 +123,7 @@ const ConversionAudit = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const { toast } = useToast();
 
-  // БАГ К: AbortController ref для отмены зависшего fetch
-  const abortRef = useRef<AbortController | null>(null);
-
-  // === БАГ И: Восстановление из localStorage при монтировании ===
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw) as {
-        url?: string;
-        goal?: Goal;
-        traffic?: TrafficSource;
-        problem?: MainProblem;
-        result?: ConversionResult | null;
-        savedAt?: number;
-      };
-      if (saved.savedAt && Date.now() - saved.savedAt > LS_TTL) {
-        localStorage.removeItem(LS_KEY);
-        return;
-      }
-      if (saved.url) setUrl(saved.url);
-      if (saved.goal) setGoal(saved.goal);
-      if (saved.traffic) setTraffic(saved.traffic);
-      if (saved.problem) setProblem(saved.problem);
-      if (saved.result) setResult(saved.result);
-    } catch {
-      // corrupted — ignore
-    }
-  }, []);
-
-  // === БАГ И: Сохранение результата в localStorage при изменении ===
-  useEffect(() => {
-    if (!result) return;
-    try {
-      localStorage.setItem(
-        LS_KEY,
-        JSON.stringify({ url, goal, traffic, problem, result, savedAt: Date.now() }),
-      );
-    } catch {
-      // quota exceeded — ignore
-    }
-  }, [result, url, goal, traffic, problem]);
-
-  // Очистка AbortController при размонтировании
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
-
   const canSubmit = !!url.trim() && !!goal && !!traffic && !!problem && !loading;
-
-  // === БАГ И: Сброс состояния + очистка localStorage ===
-  const handleNewAudit = () => {
-    localStorage.removeItem(LS_KEY);
-    setUrl("");
-    setGoal(null);
-    setTraffic(null);
-    setProblem(null);
-    setResult(null);
-    setError(null);
-  };
 
   const handleDownloadPdf = async () => {
     if (!result) return;
@@ -229,24 +164,13 @@ const ConversionAudit = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-
-    // БАГ К: отменяем предыдущий запрос, если он ещё идёт
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    // БАГ К: таймер 90 секунд
-    const timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
     setLoading(true);
     setError(null);
     setResult(null);
-
     try {
       const normalizedUrl = url.trim().startsWith("http")
         ? url.trim()
         : `https://${url.trim()}`;
-
       const resp = await fetch(apiUrl("/conversion-audit/analyze"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -256,22 +180,15 @@ const ConversionAudit = () => {
           traffic_source: traffic,
           main_problem: problem,
         }),
-        signal: controller.signal,
       });
-
       const data = await resp.json();
       if (!resp.ok || !data?.success) {
         throw new Error(data?.error || `Ошибка ${resp.status}`);
       }
       setResult(data as ConversionResult);
     } catch (err: any) {
-      if (err?.name === "AbortError") {
-        setError("Превышено время ожидания (90 сек). Попробуйте ещё раз.");
-      } else {
-        setError(err?.message || "Не удалось выполнить анализ");
-      }
+      setError(err?.message || "Не удалось выполнить анализ");
     } finally {
-      window.clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -301,65 +218,62 @@ const ConversionAudit = () => {
           </p>
         </div>
 
-        {/* Form — показываем всегда (кроме когда есть результат) */}
-        {!result && (
-          <form
-            onSubmit={handleSubmit}
-            className="glass rounded-2xl p-5 md:p-8 space-y-6 border border-border"
+        {/* Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="glass rounded-2xl p-5 md:p-8 space-y-6 border border-border"
+        >
+          <div>
+            <label className="text-sm font-medium mb-2 block text-foreground">
+              Адрес сайта
+            </label>
+            <Input
+              type="text"
+              placeholder="https://my-site.ru"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              maxLength={300}
+            />
+          </div>
+
+          <ChoiceGroup<Goal>
+            label="Главная цель"
+            value={goal}
+            options={goalOptions}
+            onChange={setGoal}
+            disabled={loading}
+          />
+          <ChoiceGroup<TrafficSource>
+            label="Откуда трафик"
+            value={traffic}
+            options={trafficOptions}
+            onChange={setTraffic}
+            disabled={loading}
+          />
+          <ChoiceGroup<MainProblem>
+            label="Главная проблема"
+            value={problem}
+            options={problemOptions}
+            onChange={setProblem}
+            disabled={loading}
+          />
+
+          <Button
+            type="submit"
+            disabled={!canSubmit}
+            className="w-full md:w-auto"
+            size="lg"
           >
-            <div>
-              <label className="text-sm font-medium mb-2 block text-foreground">
-                Адрес сайта
-              </label>
-              <Input
-                type="text"
-                placeholder="https://my-site.ru"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                maxLength={300}
-                disabled={loading}
-              />
-            </div>
-
-            <ChoiceGroup<Goal>
-              label="Главная цель"
-              value={goal}
-              options={goalOptions}
-              onChange={setGoal}
-              disabled={loading}
-            />
-            <ChoiceGroup<TrafficSource>
-              label="Откуда трафик"
-              value={traffic}
-              options={trafficOptions}
-              onChange={setTraffic}
-              disabled={loading}
-            />
-            <ChoiceGroup<MainProblem>
-              label="Главная проблема"
-              value={problem}
-              options={problemOptions}
-              onChange={setProblem}
-              disabled={loading}
-            />
-
-            <Button
-              type="submit"
-              disabled={!canSubmit}
-              className="w-full md:w-auto"
-              size="lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Анализируем...
-                </>
-              ) : (
-                <>Найти причины <ArrowRight className="w-4 h-4 ml-2" /></>
-              )}
-            </Button>
-          </form>
-        )}
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Анализируем...
+              </>
+            ) : (
+              <>Найти причины <ArrowRight className="w-4 h-4 ml-2" /></>
+            )}
+          </Button>
+        </form>
 
         {/* Loading */}
         {loading && (
@@ -383,21 +297,6 @@ const ConversionAudit = () => {
         {/* Result */}
         {result && !loading && (
           <div className="mt-10 space-y-6">
-            {/* Header: домен + кнопка «Новый аудит» */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <h2 className="text-xl font-bold">
-                CRO-аудит: {result.domain}
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleNewAudit}
-                title="Очистить и начать новый аудит"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" /> Новый аудит
-              </Button>
-            </div>
-
             {/* Score */}
             <div className="flex flex-col items-center text-center">
               <div

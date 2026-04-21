@@ -184,23 +184,9 @@ const FullAudit = () => {
       if (saved.siteCheckError) setSiteCheckError(saved.siteCheckError);
       if (saved.croError) setCroError(saved.croError);
       if (saved.siteCheckData?.scores) setSiteCheckProgress(100);
-      // БАГ Е: если siteCheckData есть, но llm_judge нет — запустить triggerLlmJudge
-      if (
-        saved.siteCheckData &&
-        saved.scanId &&
-        !(saved.siteCheckData as any)?.llm_judge
-      ) {
-        triggerLlmJudge(
-          saved.scanId,
-          (saved.siteCheckData as any).url,
-          (saved.siteCheckData as any).theme,
-        );
-      }
     } catch {
       // corrupted entry — ignore
     }
-  // triggerLlmJudge intentionally omitted — it's defined below and stable
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save snapshot whenever results change
