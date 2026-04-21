@@ -280,6 +280,23 @@ const SiteCheck = () => {
             </div>
           )}
 
+          {staleScanId && (
+            <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+              <p className="text-sm text-foreground flex-1">
+                Проверка занимает больше времени, чем обычно. Результат сохранится — откройте его через минуту-две.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate(`/tools/site-check/result/${staleScanId}`)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                >
+                  Открыть результат
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {history.length > 0 && (
             <div className="mt-8" id="history">
               <h2 className="text-lg font-semibold text-foreground mb-4">Последние проверки</h2>
