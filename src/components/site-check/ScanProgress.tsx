@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, FileText, AlignLeft, Bot, Code, Star, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Search, FileText, AlignLeft, Bot, Code, Star, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
 
 const steps = [
   { icon: Search, label: "Краулинг страницы", desc: "Загружаем и анализируем HTML...", done: "HTML загружен и проанализирован" },
@@ -27,11 +27,20 @@ interface ScanProgressProps {
   realProgress?: number;
   error?: string | null;
   domain?: string;
+  onCancel?: () => void;
 }
 
-const ScanProgress = ({ onComplete, realProgress, error, domain }: ScanProgressProps) => {
+const ScanProgress = ({ onComplete, realProgress, error, domain, onCancel }: ScanProgressProps) => {
   const [simStep, setSimStep] = useState(0);
   const [allDone, setAllDone] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+
+  // Show "Cancel & retry" button after 60 seconds of waiting
+  useEffect(() => {
+    if (allDone || error) return;
+    const t = setTimeout(() => setShowCancel(true), 60_000);
+    return () => clearTimeout(t);
+  }, [allDone, error]);
 
   // Simulated step progression (independent of API)
   useEffect(() => {
@@ -148,6 +157,23 @@ const ScanProgress = ({ onComplete, realProgress, error, domain }: ScanProgressP
           {currentStage.icon} {currentStage.label}... {Math.round(progress)}%
         </p>
       </div>
+
+      {/* Cancel button — appears after 60s if scan is still running */}
+      {(showCancel || error) && onCancel && !allDone && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center pt-2"
+        >
+          <button
+            onClick={onCancel}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border/60 bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+            {error ? "Попробовать снова" : "Отменить и попробовать снова"}
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 };
