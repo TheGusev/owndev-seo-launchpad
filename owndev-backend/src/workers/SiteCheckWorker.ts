@@ -11,6 +11,7 @@ interface SiteCheckJobData {
 }
 
 const API_KEY = process.env.OPENAI_API_KEY || '';
+const PIPELINE_TIMEOUT_MS = Number(process.env.SITE_CHECK_PIPELINE_TIMEOUT_MS ?? 180_000);
 
 async function loadDbRules(): Promise<any[]> {
   try {
@@ -47,7 +48,9 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
   try {
     const dbRules = await loadDbRules();
 
-    const result = await runPipeline(
+    // Watchdog: hard timeout around the entire pipeline.
+    // Guarantees the worker process never hangs silently.
+    const pipelinePromise = runPipeline(
       url,
       mode,
       async (pct, partialData) => {
@@ -69,6 +72,13 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
       API_KEY,
       dbRules,
     );
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`Pipeline timeout ${PIPELINE_TIMEOUT_MS / 1000}s`)),
+        PIPELINE_TIMEOUT_MS,
+      );
+    });
+    const result = await Promise.race([pipelinePromise, timeoutPromise]);
 
     // Save final result — сохраняем все данные включая result JSONB для обратной совместимости
     const resultJsonb = {
@@ -176,10 +186,48 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           updated_at = NOW()
       WHERE id = ${scan_id}
     `.catch(() => {});
+  } finally {
+    // Safety net: if neither 'done' nor 'error' was written (e.g. uncaught
+    // promise rejection slipped past), force the row to 'error' so the
+    // frontend stops polling.
+    try {
+      const [row] = await sql<Array<{ status: string }>>`
+        SELECT status FROM site_check_scans WHERE id = ${scan_id}
+      `;
+      if (row && row.status === 'running') {
+        logger.error('SITE_CHECK_WORKER', `Scan ${scan_id} still 'running' after handler — force error`);
+        await sql`
+          UPDATE site_check_scans
+          SET status = 'error',
+              error_message = 'Внутренняя ошибка пайплайна',
+              updated_at = NOW()
+          WHERE id = ${scan_id}
+        `;
+      }
+    } catch {}
   }
 }
 
 export function startSiteCheckWorker() {
+  // Cleanup stale scans on worker startup — handles PM2 restarts that
+  // killed running jobs mid-execution.
+  sql`
+    UPDATE site_check_scans
+    SET status = 'error',
+        error_message = 'Прервано рестартом сервера',
+        updated_at = NOW()
+    WHERE status = 'running'
+      AND updated_at < NOW() - INTERVAL '5 minutes'
+  `
+    .then((res: any) => {
+      const n = Array.isArray(res) ? res.length : (res?.count ?? 0);
+      if (n > 0) logger.info('SITE_CHECK_WORKER', `Cleanup: reset ${n} stale 'running' scans on startup`);
+    })
+    .catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      logger.error('SITE_CHECK_WORKER', `Startup cleanup failed: ${msg}`);
+    });
+
   const worker = new Worker<SiteCheckJobData>(
     'site-check',
     processSiteCheckJob,

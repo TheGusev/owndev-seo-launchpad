@@ -100,6 +100,7 @@ const SiteCheck = () => {
     setLimitScanId(null);
     setLimitUrl(null);
     setScanError(null);
+    setProgress(0);
     try {
       const result = await startScan(url, mode, { force });
       setScanId(result.scan_id);
@@ -116,18 +117,41 @@ const SiteCheck = () => {
   };
 
   const pollStatus = useCallback(async (id: string) => {
+    const startedAt = Date.now();
+    let lastProgress = -1;
+    let lastProgressChangeAt = Date.now();
+    const HARD_TIMEOUT_MS = 120_000; // 2 минуты — общий потолок
+    const STALE_PROGRESS_MS = 60_000; // 1 минута без изменения прогресса
     const poll = async () => {
       if (!mountedRef.current) return;
       try {
         const status = await getScanStatus(id);
         if (!mountedRef.current) return;
+        if (status.progress_pct !== lastProgress) {
+          lastProgress = status.progress_pct;
+          lastProgressChangeAt = Date.now();
+        }
         setProgress(status.progress_pct);
         if (status.status === 'done') {
           navigate(`/tools/site-check/result/${id}`);
+          return;
         } else if (status.status === 'error') {
           toast({ title: "Ошибка проверки", description: "Не удалось проанализировать сайт", variant: "destructive" });
           setScanError("Не удалось проанализировать сайт. Попробуйте ещё раз.");
           setScanning(false);
+          return;
+        }
+        const elapsed = Date.now() - startedAt;
+        const stale = Date.now() - lastProgressChangeAt;
+        if (elapsed > HARD_TIMEOUT_MS || stale > STALE_PROGRESS_MS) {
+          toast({
+            title: "Проверка зависла",
+            description: "Сервер не ответил вовремя. Попробуйте ещё раз.",
+            variant: "destructive",
+          });
+          setScanError("Проверка зависла. Попробуйте ещё раз через минуту.");
+          setScanning(false);
+          return;
         } else {
           setTimeout(poll, 2000);
         }
@@ -137,6 +161,13 @@ const SiteCheck = () => {
     };
     poll();
   }, [navigate, toast]);
+
+  const handleCancelScan = useCallback(() => {
+    setScanning(false);
+    setScanError(null);
+    setProgress(0);
+    setScanId(null);
+  }, []);
 
   return (
     <>
@@ -159,7 +190,13 @@ const SiteCheck = () => {
 
           <div className="glass rounded-2xl p-5 md:p-8">
             {scanning ? (
-              <ScanProgress onComplete={() => {}} realProgress={progress} error={scanError} domain={(() => { try { return new URL(searchParams.get("url") || "").hostname; } catch { return undefined; } })()} />
+              <ScanProgress
+                onComplete={() => {}}
+                realProgress={progress}
+                error={scanError}
+                domain={(() => { try { return new URL(searchParams.get("url") || "").hostname; } catch { return undefined; } })()}
+                onCancel={handleCancelScan}
+              />
             ) : (
               <ScanForm onSubmit={handleSubmit} />
             )}

@@ -76,6 +76,56 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 
   const queue = new Queue('site-check', { connection: redis });
 
+  // ============================================================
+  // ADMIN: stuck scans diagnostics
+  // Protected by X-Admin-Token header (matches process.env.ADMIN_TOKEN)
+  // ============================================================
+  const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+
+  function checkAdminToken(req: any, reply: any): boolean {
+    if (!ADMIN_TOKEN) {
+      reply.status(503).send({ success: false, error: 'ADMIN_TOKEN not configured on server' });
+      return false;
+    }
+    const token = (req.headers['x-admin-token'] || req.headers['X-Admin-Token'] || '') as string;
+    if (token !== ADMIN_TOKEN) {
+      reply.status(403).send({ success: false, error: 'Forbidden' });
+      return false;
+    }
+    return true;
+  }
+
+  // GET /api/v1/site-check/admin/stuck-scans
+  app.get('/admin/stuck-scans', async (req, reply) => {
+    if (!checkAdminToken(req, reply)) return;
+    const rows = await sql<Array<any>>`
+      SELECT id, url, progress_pct, status, error_message, created_at, updated_at,
+             EXTRACT(EPOCH FROM (NOW() - updated_at))::int AS stuck_seconds
+      FROM site_check_scans
+      WHERE status = 'running'
+        AND updated_at < NOW() - INTERVAL '5 minutes'
+      ORDER BY updated_at ASC
+      LIMIT 100
+    `;
+    return reply.send({ count: rows.length, scans: rows });
+  });
+
+  // POST /api/v1/site-check/admin/reset-stuck
+  app.post('/admin/reset-stuck', async (req, reply) => {
+    if (!checkAdminToken(req, reply)) return;
+    const result = await sql<Array<{ id: string }>>`
+      UPDATE site_check_scans
+      SET status = 'error',
+          error_message = 'Превышено время выполнения',
+          updated_at = NOW()
+      WHERE status = 'running'
+        AND updated_at < NOW() - INTERVAL '5 minutes'
+      RETURNING id
+    `;
+    logger.info('SITE_CHECK_ADMIN', `Reset ${result.length} stuck scans`);
+    return reply.send({ reset_count: result.length, ids: result.map((r) => r.id) });
+  });
+
   // POST /api/v1/site-check/start
   app.post<{ Body: { url: string; mode?: string; force?: boolean } }>('/start', async (req, reply) => {
     const { url, mode = 'page', force = false } = req.body as { url: string; mode?: string; force?: boolean };
