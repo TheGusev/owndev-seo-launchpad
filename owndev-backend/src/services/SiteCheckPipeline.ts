@@ -200,16 +200,26 @@ export async function validateKeywordsViaSuggest(
   return out;
 }
 
-let issueCounter = 0;
-function makeIssue(partial: Omit<Issue, 'id' | 'impact_score' | 'docs_url' | 'is_auto_fixable'> & { impact_score?: number; docs_url?: string; is_auto_fixable?: boolean }): Issue {
+// Per-scan issue ID factory — avoids race conditions when multiple scans
+// run in parallel inside the same Node process.
+type MakeIssueFn = (
+  partial: Omit<Issue, 'id' | 'impact_score' | 'docs_url' | 'is_auto_fixable'> & {
+    impact_score?: number;
+    docs_url?: string;
+    is_auto_fixable?: boolean;
+  },
+) => Issue;
+
+function createIssueFactory(): MakeIssueFn {
+  let counter = 0;
   const severityScores: Record<string, number> = { critical: 15, high: 10, medium: 5, low: 2 };
-  return {
-    id: `issue_${++issueCounter}`,
+  return (partial) => ({
+    id: `issue_${++counter}`,
     impact_score: partial.impact_score ?? severityScores[partial.severity] ?? 5,
     docs_url: partial.docs_url ?? '',
     is_auto_fixable: partial.is_auto_fixable ?? false,
     ...partial,
-  };
+  });
 }
 
 // ─── Scores ───
