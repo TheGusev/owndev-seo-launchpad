@@ -22,8 +22,8 @@ const stages: Stage[] = [
   { pct: 35,  label: "SEO-данные и robots.txt",     desc: "meta-теги, sitemap, битые ссылки",                      icon: FileText },
   { pct: 60,  label: "Технический и AI-аудит",      desc: "Schema.org, E-E-A-T, llms.txt, контент",                icon: Cpu },
   { pct: 75,  label: "Анализ конкурентов",          desc: "Топ-10 из выдачи Яндекс — это самый долгий шаг",        icon: Users, slow: true, slowHint: "AI-запрос к OpenAI + парсинг выдачи, обычно 20–60 сек. Это нормально." },
-  { pct: 85,  label: "Семантическое ядро",          desc: "AI извлекает 200+ ключевых слов",                       icon: Key,   slow: true, slowHint: "AI-запрос к OpenAI, обычно 15–30 сек. Это нормально." },
-  { pct: 95,  label: "Минус-слова и AI-объявление", desc: "Генерация Direct-объявления",                           icon: Sparkles, slow: true, slowHint: "AI-запрос к OpenAI, обычно 10–20 сек" },
+  { pct: 85,  label: "AI-объявление Директа",       desc: "Генерация рекомендаций для Яндекс.Директ",             icon: Sparkles },
+  { pct: 95,  label: "Финальный расчёт",             desc: "Подсчёт скоров и формирование отчёта",                  icon: Key },
   { pct: 100, label: "Формирование отчёта",         desc: "Сохраняем результат",                                   icon: CheckCircle2 },
 ];
 

@@ -745,16 +745,89 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     if (hasRobots) aiScore += 10;
     if (siteOk) aiScore += 10;
 
+    // IP lookup via ipapi.co (free, no key needed, 1000 req/day)
+    let geoip: Record<string, string> = {};
+    try {
+      const ipResp = await fetch(`https://ipapi.co/${domain}/json/`, {
+        signal: AbortSignal.timeout(6000),
+        headers: { 'User-Agent': 'OWNDEV-TechPassport/1.0' },
+      });
+      if (ipResp.ok) {
+        const ipData = await ipResp.json() as any;
+        if (ipData && !ipData.error) {
+          const countryCode = ipData.country_code || '';
+          const countryFlag = countryCode
+            ? countryCode.toUpperCase().split('').map((c: string) => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('')
+            : '';
+          geoip = {
+            ip: ipData.ip || '',
+            country_code: countryCode,
+            country_flag: countryFlag,
+            country_name: ipData.country_name || '',
+            city: ipData.city || '',
+            region: ipData.region || '',
+            org: ipData.org || '',
+            hosting: ipData.org || '',
+            asn: ipData.asn || '',
+          };
+          // Определяем хостинг по ASN/org
+          const orgLower = (ipData.org || '').toLowerCase();
+          if (/selectel|сервак|serverspace/.test(orgLower)) geoip.hosting_name = 'Selectel';
+          else if (/timeweb|таймвеб/.test(orgLower)) geoip.hosting_name = 'Timeweb';
+          else if (/beget|бегет/.test(orgLower)) geoip.hosting_name = 'Beget';
+          else if (/reg\.ru|рег\.ру/.test(orgLower)) geoip.hosting_name = 'Reg.ru';
+          else if (/hetzner/.test(orgLower)) geoip.hosting_name = 'Hetzner';
+          else if (/cloudflare/.test(orgLower)) geoip.hosting_name = 'Cloudflare';
+          else if (/digitalocean/.test(orgLower)) geoip.hosting_name = 'DigitalOcean';
+          else if (/amazon|aws/.test(orgLower)) geoip.hosting_name = 'AWS';
+          else if (/google/.test(orgLower)) geoip.hosting_name = 'Google Cloud';
+          else if (/microsoft|azure/.test(orgLower)) geoip.hosting_name = 'Azure';
+          else if (/yandex|яндекс/.test(orgLower)) geoip.hosting_name = 'Yandex Cloud';
+          else if (ipData.org) geoip.hosting_name = ipData.org.replace(/^AS\d+\s*/, '').split(' ').slice(0, 3).join(' ');
+          if (geoip.hosting_name) geoip.hosting = geoip.hosting_name;
+        }
+      }
+    } catch (e) {
+      logger.warn('TECH_PASSPORT', `IP lookup failed: ${(e as Error).message}`);
+    }
+
+    // SSL / TLS detection (HTTPS + HSTS = valid SSL)
+    const isHttps = baseUrl.startsWith('https://');
+    const hasHsts = !!siteHeaders['strict-transport-security'];
+    const sslInfo = isHttps ? (hasHsts ? 'SSL + HSTS' : 'SSL (HTTPS)') : 'Нет SSL';
+
+    // Analytics detection — fetch homepage HTML
+    let analyticsDetected: string[] = [];
+    let htmlForAnalytics = '';
+    try {
+      const htmlResp = await fetch(baseUrl, {
+        signal: AbortSignal.timeout(8000),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OWNDEV/1.0)' },
+      });
+      if (htmlResp.ok) htmlForAnalytics = await htmlResp.text();
+    } catch {}
+    if (htmlForAnalytics) {
+      if (/mc\.yandex\.ru\/metrika|ym\(|yandex\.ru\/metrika/i.test(htmlForAnalytics)) analyticsDetected.push('Яндекс.Метрика');
+      if (/www\.googletagmanager\.com|gtag|UA-\d|G-[A-Z0-9]/i.test(htmlForAnalytics)) analyticsDetected.push('Google Analytics');
+      if (/connect\.facebook\.net|fbq\(/i.test(htmlForAnalytics)) analyticsDetected.push('Facebook Pixel');
+      if (/vk\.com\/js\/api\/openapi|vk_pixel/i.test(htmlForAnalytics)) analyticsDetected.push('VK Pixel');
+      if (/top-fwz1\.mail\.ru|counter\.yadro/i.test(htmlForAnalytics)) analyticsDetected.push('Mail.ru Counter');
+      if (/calltouch|calltracking/i.test(htmlForAnalytics)) analyticsDetected.push('CallTouch');
+      if (/roistat/i.test(htmlForAnalytics)) analyticsDetected.push('Roistat');
+    }
+
+    // Enrich tech with SSL and analytics
+    const techFull: Record<string, any> = { ...techObj };
+    if (sslInfo) techFull.ssl = sslInfo;
+    if (analyticsDetected.length > 0) techFull.analytics = analyticsDetected;
+
     return reply.send({
       success: true,
       domain,
       url: baseUrl,
       accessible: siteOk,
-      // tech object — structured for TechPassport.tsx component
-      tech: techObj,
-      // geoip placeholder (no IP lookup without external service — return empty)
-      geoip: {},
-      // raw list for backwards compat
+      tech: techFull,
+      geoip,
       tech_list: Object.values(techObj).filter(Boolean),
       headers: siteHeaders,
       files: {
@@ -769,11 +842,12 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         ai_score: aiScore,
       },
       security: {
-        has_hsts: !!siteHeaders['strict-transport-security'],
+        has_hsts: hasHsts,
         has_x_frame: !!siteHeaders['x-frame-options'],
         has_xcto: !!siteHeaders['x-content-type-options'],
         has_csp: !!siteHeaders['content-security-policy'],
         score: securityScore,
+        ssl: sslInfo,
       },
     });
   });

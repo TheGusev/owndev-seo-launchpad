@@ -1185,24 +1185,14 @@ export async function runPipeline(
 
   await onProgress(75);
 
-  // STEP 5: Keywords
-  const competitorPhrases = compResult.competitors.flatMap(c => c.top_phrases).slice(0, 30);
-  let keywords: KeywordEntry[] = [];
-  try {
-    keywords = await extractKeywords(html, theme, parsedUrl.toString(), competitorPhrases, apiKey);
-    await onProgress(85, { keywords });
-  } catch (e: any) {
-    logger.error('PIPELINE', `extractKeywords failed: ${e.message}`);
-    await onProgress(85, { keywords: [] });
-  }
+  // STEP 5: Keywords — отключено из GEO-аудита (тяжёлый LLM-вызов).
+  // Функции extractKeywords / generateMinusWords сохранены ниже для
+  // будущего Директ-инструмента. Пайплайн возвращает пустые массивы.
+  const keywords: KeywordEntry[] = [];
+  await onProgress(85, { keywords: [] });
 
-  // STEP 6: Minus words
-  let minusWords: MinusWord[] = [];
-  try {
-    minusWords = await generateMinusWords(theme, keywords, apiKey);
-  } catch (e: any) {
-    logger.error('PIPELINE', `generateMinusWords failed: ${e.message}`);
-  }
+  // STEP 6: Minus words — отключено аналогично
+  const minusWords: MinusWord[] = [];
 
   const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
 
