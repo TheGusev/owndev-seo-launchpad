@@ -191,13 +191,14 @@ const Tools = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.4, delay: i * 0.08 }}
+                        className="h-full"
                       >
                         <Link
                           to={card.href}
                           style={glowStyle}
-                          className={`glass rounded-2xl p-5 transition-all group block h-full border ${borderClass}`}
+                          className={`glass rounded-2xl p-5 transition-all group flex flex-col h-full border ${borderClass}`}
                         >
-                          <div className="flex items-start gap-4">
+                          <div className="flex items-start gap-4 flex-1">
                             <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                               <card.tool.icon className={`w-5 h-5 ${iconColor}`} />
                             </div>
@@ -211,7 +212,7 @@ const Tools = () => {
                                   <Star className="w-2.5 h-2.5" /> Флагман
                                 </span>
                               </div>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{card.tagline}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{card.tagline}</p>
                             </div>
                           </div>
                           <div className={`mt-4 flex items-center gap-1 text-sm font-medium ${linkColor}`}>
