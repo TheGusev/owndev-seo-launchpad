@@ -138,15 +138,24 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
         const displayName = result.seo_data?.title?.trim() || hostname;
         const hasLlmsTxtIssue = (result.issues || []).some((i: any) => /llms\.txt/i.test(i.title || ''));
         const hasSchemaIssue = (result.issues || []).some((i: any) => i.module === 'schema' && /JSON-LD не найден/i.test(i.title || ''));
-        const hasFaqIssue = (result.issues || []).some((i: any) => /faqpage/i.test(i.found || ''));
+        // Прямая проверка реальной разметки: поле hasFaq и schemaTypes приходят из extractSeoData,
+        // который парсит все <script type="application/ld+json"> со страницы.
+        const schemaTypes: string[] = Array.isArray((result.seo_data as any)?.schemaTypes) ? (result.seo_data as any).schemaTypes : [];
+        const hasFaqInSchemas = schemaTypes.some((t) => typeof t === 'string' && /faqpage/i.test(t));
+        const hasFaqInHtml = /FAQPage/i.test(JSON.stringify((result as any).blocks || []));
+        const hasFaqPage = Boolean((result.seo_data as any)?.hasFaq) || hasFaqInSchemas || hasFaqInHtml;
         const topErrors = (result.issues || [])
           .filter((i: any) => i.severity === 'critical' || i.severity === 'high')
           .slice(0, 5)
           .map((i: any) => i.title);
 
+        // TODO: маппить result.theme в фиксированные категории каталога (Сервисы / Магазин / Медиа / B2B...)
+        // Сейчас сохраняем тему как есть; если темы нет — fallback 'Сервисы'.
+        const category = (typeof result.theme === 'string' && result.theme.trim()) ? result.theme.trim().slice(0, 80) : 'Сервисы';
+
         await sql`
           INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)
-          VALUES (${hostname}, ${displayName}, ${'Сервисы'}, ${scores.ai ?? 0}, ${scores.seo ?? 0}, ${scores.schema ?? 0}, ${scores.direct ?? 0}, ${!hasLlmsTxtIssue}, ${!hasFaqIssue}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
+          VALUES (${hostname}, ${displayName}, ${category}, ${scores.ai ?? 0}, ${scores.seo ?? 0}, ${scores.schema ?? 0}, ${scores.direct ?? 0}, ${!hasLlmsTxtIssue}, ${hasFaqPage}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
           ON CONFLICT (domain) DO UPDATE SET
             display_name = EXCLUDED.display_name,
             llm_score = EXCLUDED.llm_score,
