@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 import { Search, LayoutTemplate, ShoppingBag, ArrowRight } from "lucide-react";
 
 const flagships = [
@@ -51,11 +52,40 @@ const flagships = [
 ];
 
 const FlagshipTools = () => {
+  const itemListLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Флагманские инструменты OWNDEV",
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
+    numberOfItems: flagships.length,
+    itemListElement: flagships.map((t, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `https://owndev.ru${t.href}`,
+      item: {
+        "@type": "SoftwareApplication",
+        name: t.title,
+        description: t.desc,
+        url: `https://owndev.ru${t.href}`,
+        applicationCategory: "SEOApplication",
+        operatingSystem: "Web",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "RUB" },
+      },
+    })),
+  };
+
   return (
-    <section className="py-16 md:py-20">
+    <section
+      id="flagship-tools"
+      aria-labelledby="flagship-heading"
+      className="py-16 md:py-20"
+    >
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(itemListLd)}</script>
+      </Helmet>
       <div className="container px-4 md:px-6 max-w-6xl mx-auto">
         <div className="text-center mb-10 md:mb-12">
-          <h2 className="text-2xl md:text-4xl font-bold font-serif mb-3">
+          <h2 id="flagship-heading" className="text-2xl md:text-4xl font-bold font-serif mb-3">
             С чего начать
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -76,6 +106,7 @@ const FlagshipTools = () => {
               >
                 <Link
                   to={tool.href}
+                  aria-label={`${tool.title} — ${tool.cta}`}
                   className={`group relative flex flex-col h-full p-6 rounded-2xl bg-card/40 backdrop-blur-sm border transition-all duration-300 ${tool.accent.border} ${tool.accent.glow}`}
                 >
                   <div className="flex items-start justify-between mb-5">
