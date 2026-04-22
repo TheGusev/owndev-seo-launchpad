@@ -158,46 +158,10 @@ interface Issue {
   rule_id?: string;
 }
 
-// ─── Google Suggest validator ───
-// Verifies that LLM-generated keywords are real search queries by
-// querying the public Google Suggest endpoint. No API key required.
-// Returns each keyword with `verified: boolean` + up to 3 real suggestions.
-export interface ValidatedKeyword {
-  keyword: string;
-  verified: boolean;
-  suggestions: string[];
-}
-
-export async function validateKeywordsViaSuggest(
-  keywords: string[]
-): Promise<ValidatedKeyword[]> {
-  const out: ValidatedKeyword[] = [];
-  const slice = keywords.slice(0, 20);
-  for (const kw of slice) {
-    if (!kw || typeof kw !== 'string') {
-      out.push({ keyword: String(kw ?? ''), verified: false, suggestions: [] });
-      continue;
-    }
-    try {
-      const r = await fetchWithTimeout(
-        `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(kw)}&hl=ru`,
-        5000,
-      );
-      if (!r.ok) {
-        out.push({ keyword: kw, verified: false, suggestions: [] });
-        continue;
-      }
-      const data: any = await r.json();
-      const suggestions: string[] = Array.isArray(data?.[1])
-        ? data[1].slice(0, 3).filter((s: any) => typeof s === 'string')
-        : [];
-      out.push({ keyword: kw, verified: suggestions.length > 0, suggestions });
-    } catch {
-      out.push({ keyword: kw, verified: false, suggestions: [] });
-    }
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  return out;
+// ─── Sprint 2: keyword validator removed (LLM keyword extraction is gone).
+// extractKeywords / generateMinusWords / validateKeywordsViaSuggest were
+// removed because the LLM-generated keywords were unreliable and the
+// audit no longer ships keyword/minus-word lists.
 }
 
 // Per-scan issue ID factory — avoids race conditions when multiple scans
