@@ -2,127 +2,222 @@
 
 ## Цель
 
-Дожать GEO-аудит до реальной точности ~99% **без LLM-блока** (Perplexity отложен). Фокус на детерминированных сигналах: валидация ключей через Google Suggest, история сканов с графиком, сбор signals для будущей калибровки. LLM-judge оставляем как есть (`simulated: true` уже честно помечен).
+Применить 16 правок из аудита в строгой последовательности 3 приоритетов, не сломав текущий пайплайн. Никаких архитектурных изменений — только точечные фиксы багов, метрик и 6 новых проверок. После каждого приоритета — `tsc --noEmit` и smoke-тест сканом.
 
-## Что делаем (3 этапа вместо 4)
+## Файлы, которые меняются
 
-### Этап 1. Валидация ключевых слов через Google Suggest
+- `owndev-backend/src/services/SiteCheckPipeline.ts` — 15 из 16 правок
+- `owndev-backend/src/api/routes/siteCheck.ts` — 1 правка (rate limit /start)
+- `owndev-backend/CHANGELOG.md` — запись Unreleased
+- Фронт: проверить `LlmJudgeSection`, `ScoreCards`, `IssueCard`, `KeywordsSection` — изменений данных нет, но если у issue поменялось `title` (LCP→TTFB) и появились новые модули `low/medium` — убедиться что фронт их рендерит. Скорее всего правок не нужно (новые issue идут общим списком).
 
-**Файл:** `owndev-backend/src/services/SiteCheckPipeline.ts`
+---
 
-Добавить функцию-валидатор:
-```ts
-async function validateKeywordsViaSuggest(
-  keywords: string[]
-): Promise<Array<{ keyword: string; verified: boolean; suggestions: string[] }>> {
-  const out = [];
-  for (const kw of keywords.slice(0, 20)) {
-    try {
-      const r = await fetch(
-        `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(kw)}&hl=ru`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (!r.ok) { out.push({ keyword: kw, verified: false, suggestions: [] }); continue; }
-      const data = await r.json();
-      const suggestions = Array.isArray(data?.[1]) ? data[1].slice(0, 3) : [];
-      out.push({ keyword: kw, verified: suggestions.length > 0, suggestions });
-    } catch {
-      out.push({ keyword: kw, verified: false, suggestions: [] });
-    }
-    await new Promise(r => setTimeout(r, 100));
+## Приоритет 1 — критичные баги (5 шагов)
+
+### Шаг 1. БАГ 1 — `issueCounter` race condition
+
+В `SiteCheckPipeline.ts`:
+- Удалить строку `let issueCounter = 0;` на уровне модуля (строка 191).
+- Сделать `makeIssue` фабрикой, создаваемой внутри `runPipeline`:
+  ```ts
+  function createIssueFactory() {
+    let counter = 0;
+    return (partial) => ({ id: `issue_${++counter}`, ... });
   }
-  return out;
+  ```
+- В `runPipeline` первой строкой: `const makeIssue = createIssueFactory();` и удалить старый `issueCounter = 0;`.
+- Все вспомогательные функции (`technicalAudit`, `contentAudit`, `directAudit`, `schemaAudit`, `aiAudit`, `competitorAnalysis`) — принимают `makeIssue` параметром и используют его. Тип параметра — `MakeIssueFn`.
+
+### Шаг 2. БАГ 2 — noMixedContent ложные срабатывания
+
+В `detectSeoFailuresFromHtml` (строка 343):
+```ts
+const hasMixedRes = /(?:src|action|data|poster)=["']http:\/\//i.test(html)
+  || /<link[^>]*rel=["']stylesheet["'][^>]*href=["']http:\/\//i.test(html)
+  || /<script[^>]*src=["']http:\/\//i.test(html);
+```
+
+### Шаг 3. БАГ 3 — двойной /llms.txt
+
+- Сигнатура: `aiAudit(html, origin, pageUrl, isSpa, spaRenderFailed, hasLlmsTxt: boolean, makeIssue)`.
+- Внутри `aiAudit` блок `try { fetchWithTimeout(/llms.txt) }` заменить на:
+  ```ts
+  if (!hasLlmsTxt) { issues.push(makeIssue({ ... тот же issue ... })); }
+  ```
+- В `runPipeline` вызов: `await aiAudit(html, origin, parsedUrl.toString(), isSpa, spaRenderFailed, hasLlmsTxt, makeIssue)`.
+
+### Шаг 4. БАГ 4 — robots.txt User-agent группировка
+
+В `SiteCheckPipeline.ts` добавить функцию `parseRobotsDisallowForAll(robotsTxt: string): string[]` (только блок `User-agent: *`).
+
+В `technicalAudit` (строки 622-626) заменить ручную фильтрацию:
+```ts
+const blockedPaths = parseRobotsDisallowForAll(robotsTxt);
+const currentPath = parsedUrl.pathname;
+if (blockedPaths.some(p => p && currentPath.startsWith(p))) { /* prev critical issue */ }
+```
+
+### Шаг 5. БАГ 5 — HEAD → GET fallback
+
+Заменить функцию `checkUrl` (строки 34-39):
+```ts
+async function checkUrl(url) {
+  try {
+    const resp = await fetchWithTimeout(url, 5000, { method: 'HEAD', redirect: 'follow' });
+    if (resp.status === 405) {
+      const getResp = await fetchWithTimeout(url, 5000, { method: 'GET', redirect: 'follow' });
+      return { ok: getResp.ok, status: getResp.status };
+    }
+    return { ok: resp.ok, status: resp.status };
+  } catch { return { ok: false, status: 0 }; }
 }
 ```
 
-После генерации `result.keywords` LLM'ом — прогнать через валидатор, обогатить каждый ключ полями `verified: boolean` и `suggestions: string[]`. Старая структура (массив строк) превращается в массив объектов — нужна миграция формата в `result.keywords`.
+**Проверка после Шагов 1–5:** `cd owndev-backend && npx tsc --noEmit` → 0 ошибок.
 
-**Фронт:** `src/components/site-check/KeywordsSection.tsx`
-- Поддержать оба формата (string или {keyword, verified, suggestions}) для обратной совместимости со старыми скан-результатами.
-- Зелёная галка ✓ если `verified: true`, серый ⚠ если `false`.
-- В expandable показать `suggestions` как «реальные варианты от Google».
+---
 
-**Лимит:** 20 ключей × 100ms задержки = ~2.5 сек на скан. Приемлемо.
+## Приоритет 2 — точность метрик (6 шагов)
 
-### Этап 2. История сканов и график динамики
+### Шаг 6. ТОЧНОСТЬ 1 — TTFB вместо LCP
 
-**Бэкенд:** новый эндпоинт в `owndev-backend/src/api/routes/siteCheck.ts`:
+В `technicalAudit` (строки 658-662):
+- 4с блок: `title: 'Медленный ответ сервера (TTFB ${...}с)'`, `why_it_matters: 'Высокий TTFB (время до первого байта) замедляет загрузку для всех пользователей и снижает LCP'`.
+- 2.5с блок: `title: 'Медленный TTFB (${...}с)'`, аналогичный текст.
+
+### Шаг 7. ТОЧНОСТЬ 2 — OG-теги с непустым content
+
+Заменить три проверки `hasOgTitle/hasOgDesc/hasOgImage` в **двух** местах:
+- `detectSeoFailuresFromHtml` (строки 306-309)
+- `contentAudit` (строки 732-734)
+
+На вариант, требующий `content=["'][^"']+["']` с поддержкой обратного порядка атрибутов (как в промпте).
+
+### Шаг 8. ТОЧНОСТЬ 3 — wordCount Unicode
+
+Найти все вхождения `.filter(w => w.length > 1).length` и заменить на `.filter(w => /[\p{L}\p{N}]/u.test(w)).length`. Точки замены:
+- `isSpaPage` (строка 51)
+- `detectSeoFailuresFromHtml` (строка 320)
+- `detectLlmFailuresFromHtml` — там используется `bodyText.split` без filter, не трогаем
+- `contentAudit` (строка 694)
+- `directAudit` (строка 769)
+- Проверить также `parseCompetitorHtml` и `competitorAnalysis` — там `length > 2`, оставляем как есть (это другая логика отбора фраз).
+
+### Шаг 9. ТОЧНОСТЬ 4 — SPA detection SSR false positives
+
+В `isSpaPage` (строка 54):
 ```ts
-app.get('/history/:domain', async (req, reply) => {
-  const { domain } = req.params as { domain: string };
-  const limit = Math.min(50, Number((req.query as any).limit) || 20);
-  const rows = await sql`
-    SELECT id, created_at, theme,
-           scores->>'total' as total,
-           scores->>'seo' as seo,
-           scores->>'ai' as ai,
-           scores->>'schema' as schema_score,
-           scores->>'direct' as direct
-    FROM site_check_scans
-    WHERE url ILIKE ${'%' + domain + '%'}
-      AND status = 'done'
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `;
-  return reply.send({ success: true, domain, history: rows.reverse() });
-});
+const hasServerRendered = /data-server-rendered=["']true["']/i.test(html)
+  || /<script[^>]*id=["']__NEXT_DATA__["']/i.test(html)
+  || /data-reactroot/i.test(html)
+  || /window\.__NUXT__/i.test(html);
+return wordCount < 150 && (hasAppRoot || hasFrameworkBundle) && !hasServerRendered;
 ```
 
-**API клиент:** `src/lib/api/scan.ts` — добавить `getDomainHistory(domain: string, limit?: number)`.
+### Шаг 10. ТОЧНОСТЬ 5 — Schema required fields
 
-**Фронт:** новый компонент `src/components/site-check/HistoryChart.tsx` на Recharts (уже в проекте):
-- LineChart с 5 линиями: Total / SEO / AI / Schema / Direct.
-- Подключается в `SiteCheckResult.tsx` под `ScoreCards`.
-- Если `history.length < 2` → плашка «Сделайте повторный скан через 1–2 недели, чтобы увидеть динамику».
-- Если динамика положительная — зелёная подпись «+N баллов за {дней}», отрицательная — красная.
+В `schemaAudit` после блока с `schemaTypes` (после строки 966) добавить парсинг `jsonLdMatches` с проверкой `Organization`/`LocalBusiness` на наличие `name` + `url`. Эмитить medium issue если не хватает. Существующую логику не удалять.
 
-### Этап 3. Сбор сигналов для будущей калибровки
+### Шаг 11. ТОЧНОСТЬ 6 — CTA pattern расширение
 
-**Файл:** `owndev-backend/src/services/SiteCheckPipeline.ts`
+В `directAudit` (строка 807) заменить `ctaPattern` на расширенный (как в промпте — `узнать цену|рассчитать|скачать|попробовать|подобрать|оформить|начать|отправить|связаться|обратиться|демо|trial|download|order|buy|request`).
 
-В финальный `result` добавить блок `signals` (всё уже считается, просто структурно складываем):
+**Проверка после Шагов 6–11:** `tsc --noEmit` → 0 ошибок. Тестовый скан → новые тексты TTFB видны в UI без правок фронта.
+
+---
+
+## Приоритет 3 — новые проверки (5 шагов, НОВОЕ 5 уже сделано ранее)
+
+### Шаг 12. НОВОЕ 1 — Twitter Card
+
+В `contentAudit` перед `return issues;` добавить проверку `twitter:card` (с непустым content). Severity `low`.
+
+### Шаг 13. НОВОЕ 2+3 — Security + Cache-Control headers
+
+- В `runPipeline` после `fetchWithTimeout` собрать `responseHeaders: Record<string,string>`.
+- Сигнатура: `technicalAudit(..., loadTimeMs, responseHeaders)`.
+- В конце `technicalAudit` — проверка `x-content-type-options`, `x-frame-options` (severity low) + Cache-Control (low).
+- **ОСТОРОЖНО:** в `responseHeaders` уже хранится lowercased, и парсинг `forEach((v,k) => ...)` корректен для Node fetch.
+
+### Шаг 14. НОВОЕ 4 — Rate limit /start (5/час на IP)
+
+В `siteCheck.ts` POST `/start` после валидации URL, перед cache check (строка ~127):
 ```ts
-result.signals = {
-  has_llms_txt: !hasLlmsTxtIssue,
-  has_faqpage: hasFaqPage,
-  has_schema_org: !hasSchemaIssue,
-  has_organization_jsonld: schemaTypes.includes('Organization'),
-  word_count: parsedHtml?.text?.length ?? 0,
-  schema_types_count: schemaTypes.length,
-  internal_links_count: internalLinksCount ?? 0,
-  external_links_count: externalLinksCount ?? 0,
-  has_meta_description: Boolean(seoData?.description),
-  has_og_tags: Boolean(seoData?.ogTitle),
-  title_length: seoData?.title?.length ?? 0,
-};
+const scanKey = `scan_limit:${req.ip}`;
+const scanCount = await redis.incr(scanKey);
+if (scanCount === 1) await redis.expire(scanKey, 3600);
+if (scanCount > 5) {
+  return reply.status(429).send({ success: false, error: 'Превышен лимит: максимум 5 сканов в час.', code: 'SCAN_LIMIT' });
+}
 ```
+`redis` уже импортирован. Это ad-hoc лимитер поверх Redis — пользователь явно просит, делаем.
 
-Падает в `site_check_scans.result` JSONB. Никаких миграций. Через 2–4 недели накопления — отдельным offline-скриптом можно будет регрессировать веса.
+### Шаг 15. НОВОЕ 6 — Sitemap lastmod актуальность
 
-### CHANGELOG
+В `technicalAudit` в блоке `else if (sitemapBody)` (после строки 638) добавить проверку `<lastmod>YYYY-MM-DD>` → если > 6 мес назад → medium issue.
 
-В `owndev-backend/CHANGELOG.md` под `## [Unreleased]` дописать:
-- **Added:** валидация ключевых слов через Google Suggest API (`verified` + `suggestions` в `result.keywords`).
-- **Added:** эндпоинт `GET /api/v1/site-check/history/:domain` для истории сканов по домену.
-- **Added:** график динамики оценок (Recharts) в `SiteCheckResult` при ≥2 сканах.
-- **Added:** блок `result.signals` со структурированными сигналами для будущей калибровки весов.
+### Шаг 16. НОВОЕ 7 — Viewport content check
+
+В `technicalAudit` (строки 664-667) уже есть `vpMatch` с захватом content. Добавить `else { if (!/width=device-width/i.test(vpMatch[1])) issues.push(...) }`.
+
+**НОВОЕ 5** (`site_check` queue в `/health`) — уже выполнено в предыдущей итерации, пропускаем.
+
+---
+
+## CHANGELOG
+
+В `owndev-backend/CHANGELOG.md` под `## [Unreleased]`:
+
+**Fixed (критичные баги):**
+- Race condition `issueCounter` при параллельных сканах (фабрика на скан).
+- Mixed Content false positives на внешних `<a href="http://">`.
+- Двойной fetch `/llms.txt` в `runPipeline` + `aiAudit` — теперь один HEAD.
+- robots.txt Disallow теперь учитывает группировку по `User-agent: *`.
+- HEAD 405 → fallback на GET в `checkUrl`.
+
+**Fixed (точность метрик):**
+- TTFB больше не называется LCP в issue title/description.
+- OG-теги проверяются по непустому `content`, а не наличию атрибута.
+- `wordCount` фильтрует пунктуацию через `/[\p{L}\p{N}]/u`.
+- SPA detection: исключены false positives на Next.js SSR / Nuxt / Vue SSR.
+- `schemaAudit` проверяет `name`+`url` у Organization/LocalBusiness.
+- CTA pattern расширен (узнать цену, рассчитать, demo, trial, скачать и др.).
+
+**Added:**
+- Twitter Card проверка (low) в `contentAudit`.
+- Security headers `X-Content-Type-Options`, `X-Frame-Options` (low).
+- `Cache-Control` проверка (отсутствие/no-store/no-cache).
+- Rate limit `/start`: 5 сканов/час на IP.
+- Sitemap.xml `<lastmod>` старше 6 месяцев → medium issue.
+- Viewport без `width=device-width` → medium issue.
+
+---
 
 ## Что НЕ трогаем
 
-- Perplexity API — отложено по решению пользователя.
-- LLM-judge блок — уже честно помечен `simulated: true`.
-- `OVERALL_WEIGHTS` — не меняем, только собираем данные для будущего пересмотра.
-- Миграции БД, header, навигация, эмулированные AI-системы.
+- `OVERALL_WEIGHTS` — синхронизированы.
+- `geo_rating` — структура и записи.
+- LLM-judge (`simulated: true`).
+- Фронтенд-компоненты — все правки на бэке возвращают новые issue в существующем формате `IssueCard`. Фронт уже умеет рендерить любой `severity`/`module`. Новые issue появятся автоматически.
+- Header, навигация, мобильный drawer.
 
-## Что нужно от пользователя
+---
 
-Ничего перед стартом — все 3 этапа работают без новых ключей и connector'ов. После выполнения пользователь обещал прислать промпты — обработаем отдельной итерацией.
+## Порядок и проверка
 
-## Проверка
-
-1. `cd owndev-backend && npx tsc --noEmit` → 0 ошибок.
-2. Скан любого сайта → в `result.keywords` элементы вида `{ keyword, verified, suggestions }`; в UI зелёные/серые иконки.
-3. `curl $API/api/v1/site-check/history/owndev.ru` → JSON с массивом сканов.
-4. 2 скана одного домена → в отчёте появляется `HistoryChart` с 5 линиями.
-5. `psql -c "SELECT result->'signals' FROM site_check_scans ORDER BY created_at DESC LIMIT 1"` → структурированный объект с 11 полями.
+1. Шаги 1–5 → `tsc --noEmit` → запустить локальный скан `owndev.ru` → убедиться, что:
+   - `issue_*` ID идут по порядку, без коллизий;
+   - сайт с внешним http-линком не теряет noMixedContent;
+   - `/llms.txt` фетчится один раз (логи);
+   - robots.txt с `User-agent: Googlebot` не блокирует страницу;
+   - HEAD 405 → GET fallback срабатывает.
+2. Шаги 6–11 → `tsc --noEmit` → скан → в UI:
+   - issue говорит «TTFB», не «LCP»;
+   - сайт с пустым `og:title content=""` теперь fail;
+   - SPA на Next.js SSR не уходит в Jina;
+   - Organization без name → новый medium issue;
+   - сайт с CTA «узнать цену» проходит commercialSignals.
+3. Шаги 12–16 → `tsc --noEmit` → скан → в UI появляются low/medium issues для twitter:card, security headers, cache-control, viewport, lastmod. 6-й scan с того же IP → 429 SCAN_LIMIT.
+4. Финал: `grep -rn "issueCounter" owndev-backend/src` → пусто (только в фабрике); `grep -rn "fetchWithTimeout(.*llms.txt" owndev-backend/src` → одно вхождение.
 
