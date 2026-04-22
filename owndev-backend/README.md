@@ -9,7 +9,6 @@ Node.js backend для GEO/AEO платформы OWNDEV.
 - **БД**: PostgreSQL (pg)
 - **Кэш**: Redis (ioredis)
 - **Очереди**: BullMQ
-- **Рендеринг**: Puppeteer
 - **Валидация**: Zod
 - **Cron**: node-cron
 
@@ -35,11 +34,9 @@ npm start       # node dist/index.js
 ```
 src/
 ├── api/            # Fastify сервер, routes, middleware
-│   ├── routes/     # health, audit, monitor
+│   ├── routes/     # health, monitor, site-check, marketplace-audit, site-formula, tools, events, alice
 │   └── middleware/  # auth (API-key), rateLimit (Redis)
 ├── services/       # Бизнес-логика
-│   ├── AuditService    # Оркестрация аудита
-│   ├── CrawlerService  # Puppeteer рендеринг
 │   ├── SchemaService   # Валидация JSON-LD
 │   ├── LlmsService     # Проверка llms.txt / robots.txt
 │   └── MonitorService  # Cron-задачи
@@ -58,13 +55,17 @@ src/
 | Method | Path | Описание |
 |--------|------|----------|
 | GET | `/health` | Статус PG + Redis |
-| POST | `/api/v1/audit` | Создать аудит `{ url }` |
-| GET | `/api/v1/audit/:id` | Получить результат аудита |
 | POST | `/api/v1/monitor` | Начать мониторинг `{ url }` |
 | GET | `/api/v1/monitor/:domain` | История аудитов домена |
+| POST | `/api/v1/site-check/*` | Site-check сканирование и отчёты |
+| POST | `/api/v1/marketplace-audit/*` | Аудит карточек маркетплейсов |
 
 ## Миграции
 
 ```bash
 psql $DATABASE_URL < src/db/migrations/001_initial.sql
 ```
+
+## Legacy
+
+Таблицы `audits` и `audit_results` остались в БД (миграция `001_initial.sql`), но **больше не используются**: legacy-стек на Puppeteer (`AuditService`, `CrawlerService`, `AuditWorker`, `routes/audit`, очередь `audit`) удалён. Миграции **намеренно не трогаются** — исторические данные сохраняются, новые записи добавляются только через `MonitorService` для истории доменов. Очистка таблиц/типов/queries — отдельной задачей.
