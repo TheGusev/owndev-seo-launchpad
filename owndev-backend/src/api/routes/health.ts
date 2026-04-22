@@ -1,13 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { testConnection } from '../../db/client.js';
 import { testRedis } from '../../cache/redis.js';
-import { monitorQueue } from '../../queue/queues.js';
+import { monitorQueue, siteCheckQueue } from '../../queue/queues.js';
 
 export async function healthRoutes(app: FastifyInstance) {
   app.get('/api/v1/health', async (_req, reply) => {
     const [pg, rd] = await Promise.all([testConnection(), testRedis()]);
 
-    const mq = await monitorQueue.getJobCounts('waiting', 'active', 'completed');
+    const [mq, sq] = await Promise.all([
+      monitorQueue.getJobCounts('waiting', 'active', 'completed', 'failed'),
+      siteCheckQueue.getJobCounts('waiting', 'active', 'completed', 'failed'),
+    ]);
 
     const ok = pg && rd;
     return reply.status(ok ? 200 : 503).send({
@@ -22,6 +25,7 @@ export async function healthRoutes(app: FastifyInstance) {
         },
         queues: {
           monitor: mq,
+          site_check: sq,
         },
       },
     });

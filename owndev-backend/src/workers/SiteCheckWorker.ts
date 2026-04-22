@@ -12,6 +12,21 @@ interface SiteCheckJobData {
 
 const API_KEY = process.env.OPENAI_API_KEY || '';
 
+/**
+ * Маппит произвольную тему от LLM в фиксированную категорию каталога geo_rating.
+ * Возвращает 'Сервисы' как fallback.
+ */
+function normalizeCategoryFromTheme(theme: string): string {
+  const t = theme.toLowerCase();
+  if (/магазин|shop|интернет-магазин|маркет|товар/i.test(t)) return 'Магазин';
+  if (/медиа|блог|новост|журнал|сми|издани/i.test(t)) return 'Медиа';
+  if (/обучен|образован|курс|школа|академия|edtech/i.test(t)) return 'Образование';
+  if (/агентств|студия|seo|маркетинг|реклам/i.test(t)) return 'Маркетинг';
+  if (/b2b|бизнес|корпоратив|enterprise|crm|erp/i.test(t)) return 'B2B';
+  if (/финанс|банк|инвест|крипт|страхов/i.test(t)) return 'Финансы';
+  return 'Сервисы';
+}
+
 async function loadDbRules(): Promise<any[]> {
   try {
     const rows = await sql`SELECT * FROM scan_rules WHERE active = true`;
@@ -149,9 +164,9 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           .slice(0, 5)
           .map((i: any) => i.title);
 
-        // TODO: маппить result.theme в фиксированные категории каталога (Сервисы / Магазин / Медиа / B2B...)
-        // Сейчас сохраняем тему как есть; если темы нет — fallback 'Сервисы'.
-        const category = (typeof result.theme === 'string' && result.theme.trim()) ? result.theme.trim().slice(0, 80) : 'Сервисы';
+        const category = (typeof result.theme === 'string' && result.theme.trim())
+          ? normalizeCategoryFromTheme(result.theme.trim())
+          : 'Сервисы';
 
         await sql`
           INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)

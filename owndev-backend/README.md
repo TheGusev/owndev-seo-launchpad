@@ -10,7 +10,6 @@ Node.js backend для GEO/AEO платформы OWNDEV.
 - **Кэш**: Redis (ioredis)
 - **Очереди**: BullMQ
 - **Валидация**: Zod
-- **Cron**: node-cron
 
 ## Быстрый старт
 
@@ -37,7 +36,6 @@ src/
 │   ├── routes/     # health, monitor, site-check, marketplace-audit, site-formula, tools, events, alice
 │   └── middleware/  # auth (API-key), rateLimit (Redis)
 ├── services/       # Бизнес-логика
-│   ├── SchemaService   # Валидация JSON-LD
 │   ├── LlmsService     # Проверка llms.txt / robots.txt
 │   └── MonitorService  # Cron-задачи
 ├── workers/        # BullMQ workers

@@ -66,8 +66,8 @@ export const SCHEMA_CRITERIA: ScoreCriterion[] = [
 export const OVERALL_WEIGHTS = {
   seo: 0.35,
   direct: 0.20,
-  schema: 0.20,
-  ai: 0.25,
+  schema: 0.15, // совпадает с backend calcScoresWeighted
+  ai: 0.30,     // совпадает с backend calcScoresWeighted
 };
 
 export const SEO_MAX = SEO_CRITERIA.reduce((s, c) => s + c.weight, 0);

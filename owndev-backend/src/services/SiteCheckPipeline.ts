@@ -1083,7 +1083,15 @@ async function competitorAnalysis(url: string, theme: string, html: string, mode
   // Fetch and parse competitors
   const competitors: CompetitorProfile[] = [];
   let posCounter = 0;
-  const fetchPromises = [...competitorUrls].map(async (compUrl) => {
+  // Verify URL existence before parsing — отсекает 404-галлюцинации LLM
+  const verifiedUrls: string[] = [];
+  await Promise.allSettled(
+    [...competitorUrls].map(async (cu) => {
+      const check = await checkUrl(cu);
+      if (check.ok) verifiedUrls.push(cu);
+    })
+  );
+  const fetchPromises = verifiedUrls.map(async (compUrl) => {
     const pos = ++posCounter;
     try {
       const start = Date.now();
