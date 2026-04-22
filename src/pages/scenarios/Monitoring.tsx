@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 
 const breadcrumbLd = {
   "@context": "https://schema.org",
@@ -57,6 +58,22 @@ const Monitoring = () => (
           accentColor="amber"
           icon={PlusCircle}
         />
+
+        <div className="mt-8 mb-12 max-w-2xl mx-auto">
+          <TypingCodeBlock
+            title="monitoring.cron"
+            language="bash"
+            speed={26}
+            lines={[
+              "# Weekly GEO snapshot",
+              "0 4 * * 1  owndev rescan --all",
+              "→ scanning 12 domains…",
+              "✓ +3 LLM Score on owndev.ru",
+              "✗ -5 SEO Score on legacy.ru",
+              "→ alert sent to Telegram",
+            ]}
+          />
+        </div>
 
         <section className="mb-16">
           <h2 className="text-xl font-bold font-serif text-center mb-8">Как работает сценарий</h2>

@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 
 const breadcrumbLd = {
   "@context": "https://schema.org",
@@ -60,6 +61,23 @@ const AiReadyContent = () => (
           accentColor="violet"
           icon={FileText}
         />
+
+        <div className="mt-8 mb-12 max-w-2xl mx-auto">
+          <TypingCodeBlock
+            title="content-brief.json"
+            language="json"
+            speed={24}
+            lines={[
+              "{",
+              '  "topic": "GEO для интернет-магазина",',
+              '  "h2": ["Как AI видит карточку", "FAQ", "EEAT"],',
+              '  "schema": ["Article", "FAQPage"],',
+              '  "questions": 12,',
+              '  "tone": "expert"',
+              "}",
+            ]}
+          />
+        </div>
 
         <section className="mb-16">
           <h2 className="text-xl font-bold font-serif text-center mb-8">Как работает сценарий</h2>
