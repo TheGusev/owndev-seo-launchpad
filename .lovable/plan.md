@@ -2,140 +2,225 @@
 
 ## Цель
 
-Перенести «программистский» вайб (печатающийся код, Matrix-дождь, плавающие сниппеты, бинарные ленты, scan-line) **в мобильную версию**. Сейчас почти все декоративные эффекты отключены на ≤768px → мобилка выглядит пусто. На ПК всё ок — туда ничего не добавляем, только адаптируем существующее под мобилку.
+Перестроить Site Check с 5 фейковых скоров (`total/seo/direct/schema/ai`) на 3 честных независимых (`geoScore/seoScore/croScore`). Удалить галлюцинации (конкуренты, LLM-keywords, минус-слова, Direct в аудите). Добавить 20 детерминированных детекторов на сервере. Разбить монолит 1770 строк на 12 модулей. Синхронизировать фронт.
 
-## Принцип
+Документ принят как ТЗ. Реализую по спринтам 2→6 (Sprint 1 уже выполнен). Каждый спринт = отдельная итерация с проверкой `tsc --noEmit` и smoke-сканом перед переходом к следующему.
 
-1. Снять mobile-блокировки с уже существующих компонентов (`TypingCodeBlock`, `NeuralNetworkBg`, `GeometricRays`).
-2. Создать **lite-режим** для каждого эффекта — меньше плотность, меньше элементов, меньше CPU.
-3. Добавить 4 новых эффекта (`MatrixRain`, `FloatingCodeSnippets`, `BinaryStream`, `ScanLine`) сразу с mobile-first вариантами.
-4. Сохранить производительность: mobile = canvas off, только CSS-анимации; reduced-motion работает.
+## Sprint 2 — Удаление мусора (1 итерация)
 
-## Что меняем в существующих компонентах
+**Бэкенд (`owndev-backend/src/services/SiteCheckPipeline.ts`):**
+- Удалить функции: `competitorAnalysis`, `parseCompetitorHtml`, `isExcludedUrl`, `generateDirectAd`, `extractKeywords`, `generateMinusWords`.
+- Из `PipelineResult` убрать поля: `competitors`, `keywords`, `minus_words`.
+- Убрать stage 4 (конкуренты) и связанные progress callbacks из `runPipeline`.
 
-### `TypingCodeBlock` (`src/components/ui/typing-code-block.tsx`)
-- **Убрать** `if (isMobile) return null;` — компонент рендерится на мобилке.
-- На mobile: уменьшить шрифт до 11px, padding 12px, скрыть нумерацию строк, ширина 100%.
-- Ограничить высоту `max-h-[180px] overflow-hidden` чтобы не растягивал страницу.
-- На mobile: ускорить анимацию (`speed=18`, `lineDelay=120`) — короче ждать.
-- Добавить prop `mobileVariant?: "compact" | "hidden"` — где код не критичен, передаём `"hidden"`.
+**Бэкенд (`owndev-backend/src/api/routes/siteCheck.ts`):**
+- Убрать поля `competitors`, `keywords`, `minus_words` из ответа `/result/:scanId`.
 
-### `NeuralNetworkBg` (`src/components/ui/neural-network-bg.tsx`)
-- На mobile: `density="low"` принудительно, узлов 8 вместо 18, линий меньше.
-- Не отключать полностью — должен дышать на фоне.
+**Бэкенд (`owndev-backend/src/workers/SiteCheckWorker.ts`):**
+- Убрать `competitors`, `keywords`, `minus_words` из SQL upsert и `resultJsonb`.
 
-### `GeometricRays` (`src/components/ui/geometric-rays.tsx`)
-- На mobile: оставить только 2 угла (top-left + bottom-right) вместо 4, opacity 0.3 → 0.2.
+**БД:** колонки в `site_check_scans` оставляем — это безопаснее для отката, новый код просто их не пишет/читает.
 
-### `AuroraBackground` — уже работает на mobile (1 слой). Не трогаем.
+**Фронтенд — удалить файлы:**
+- `src/components/site-check/CompetitorsTable.tsx`
+- `src/components/site-check/MinusWordsSection.tsx`
+- `src/components/site-check/KeywordsSection.tsx`
+- `src/types/audit.ts` (legacy)
 
-## 4 новых эффекта (mobile-first)
+**Фронтенд — перенести в отдельную страницу:**
+- `src/components/site-check/DirectAdPreview.tsx` → `src/components/tools/DirectAdPreview.tsx`
+- `src/components/site-check/DirectMeta.tsx` → `src/components/tools/DirectMeta.tsx`
+- Создать `src/pages/tools/DirectAd.tsx` + роут `/tools/direct-ad` + добавить в `tools-registry`.
 
-### 1. `MatrixRain` — `src/components/ui/matrix-rain.tsx`
-- **Mobile (≤768px):** CSS-only версия — 8 вертикальных колонок с `<span>` символами, анимация `translateY -100% → 100%` через CSS keyframes (12s loop). Никакого canvas, минимум CPU.
-- **Desktop:** canvas версия (как в плане) — 35 колонок.
-- Цвет cyan, opacity 0.12 mobile / 0.18 desktop.
+**Фронтенд — удалить ссылки:**
+- В `SiteCheckResult.tsx`, `SiteCheckReport.tsx`, `FullAudit.tsx`, `FullReportView.tsx` — убрать импорты и рендер удалённых компонентов и блока «Конкуренты»/«Объявление Директа».
 
-### 2. `FloatingCodeSnippets` — `src/components/ui/floating-code-snippets.tsx`
-- **Mobile:** 2 сниппета вместо 5, шрифт 10px, opacity 0.15.
-- **Desktop:** 5 сниппетов, шрифт 12px, opacity 0.2.
-- Чистый CSS (translateY + opacity loop, 15-25s).
+**Проверка:** `tsc --noEmit` (фронт + бэк), один скан `/tools/site-check` → результат рендерится без секций конкурентов/keywords/Директ.
 
-### 3. `BinaryStream` — `src/components/ui/binary-stream.tsx`
-- Работает одинаково везде — лента 0/1 с `translateX -50% → 0` infinite.
-- **Mobile:** скорость 40s (медленнее), opacity 0.1, шрифт 9px.
-- **Desktop:** 30s, opacity 0.12, шрифт 10px.
+## Sprint 3 — Новые детекторы в бэкенде (1-2 итерации)
 
-### 4. `ScanLine` — `src/components/ui/scan-line.tsx`
-- Чистый CSS, работает одинаково. Mobile: opacity 0.25 вместо 0.4 (меньше отвлекает на маленьком экране).
+Все добавляются ПОКА в существующий монолит `SiteCheckPipeline.ts` (рефакторинг — Sprint 4).
 
-## CSS (`src/index.css`)
+**Stage 0 — Headers + Redirects (новый):**
+- `traceRedirects(url, maxHops=5)` через `fetch(redirect:'manual')`.
+- `extractHeaders()` → `Stage0Data` (httpStatus, redirectChain, redirectCount, ttfbMs, isHttps, hasHsts, hasCSP, hasXCTO, hasXFO, compression, cacheControl, server, poweredBy).
 
-Новые keyframes под `@layer utilities`:
-- `binary-scroll`, `code-float-1/2/3`, `scan-line-sweep`, `matrix-fall-1..8` (8 колонок с разной скоростью/delay для CSS-варианта Matrix).
-- Глобальный `@media (prefers-reduced-motion: reduce)` отключает всё.
+**Stage 2 — Aux files (расширить существующие):**
+- `analyzeRobots()` — парсер по User-agent группам, AI-боты: GPTBot, ClaudeBot, PerplexityBot, GoogleBot, YandexBot, Applebot, anthropic-ai → `RobotsData`.
+- `analyzeSitemap()` — XML-парсинг: urlCount, hasLastmod, avgLastmodDaysAgo, oldestPage, newestPage, stalePages, indexSitemapOnly → `SitemapData`.
+- `analyzeLlmsTxt()` — quality scoring по llmstxt.org стандарту → `LlmsTxtData`.
+- Дополнительно проверить `/llms-full.txt` и `/.well-known/security.txt` (boolean ok).
 
-## Куда подключаем (с фокусом на мобилку)
+**Stage 3 — Deep HTML (новые регекспы):**
+- `analyzeResources()` → `ResourcesData` (blockingCss/Js, htmlSizeKB, modernImageRatio, lazyImages, fontDisplaySwap, preloadHints).
+- `checkAiPermissionsInHtml()` → metaRobots анализ.
+- `analyzeGeoSignals()` → `GeoSignalsData` (citationReadyRatio, semanticScore, semanticTags, questionHeadingRatio, readabilityGrade, avgWordsPerSentence, authorityLinks, paragraphCount).
+- `analyzeCRO()` → `CROData` (полный набор из ТЗ: trust, CTA, forms, price, social proof, urgency, channels).
 
-| Страница / Секция | Что добавить | Mobile поведение |
-|---|---|---|
-| `Hero` (Index) | `MatrixRain` (CSS на mobile) | Виден на мобилке, opacity 0.12 |
-| `HowItWorks` (Index) | `ScanLine` + inline `TypingCodeBlock` | Typing block compact 11px |
-| `FlagshipTools` (Index) | `ScanLine` + `FloatingCodeSnippets` mobile=2 шт | |
-| `ToolsShowcase` (Index) | `BinaryStream` сверху + снизу | Видно на mobile, тонкая лента |
-| `ServicesTeaser` (Index) | `FloatingCodeSnippets` mobile=2 | |
-| `ComparisonSection` (Index) | `ScanLine` сверху | |
-| `ReportValue` (Index) | `TypingCodeBlock variant="ide"` mobile=compact (под карточками, не справа) | На mobile — снизу, не сбоку |
-| `BlogPreview` (Index) | `BinaryStream` сверху | |
-| `Tools` (`/tools`) | `MatrixRain` + `FloatingCodeSnippets` за hero | Mobile видит фон |
-| `MarketplaceAudit` hero | `FloatingCodeSnippets` + `BinaryStream` снизу hero | Mobile=2 сниппета |
-| `SiteFormula` hero | `TypingCodeBlock variant="ide"` под заголовком на mobile (а не справа) + `FloatingCodeSnippets` | |
-| `SiteCheck` | `MatrixRain` + типинг-блок (на mobile под формой, compact) | Сейчас скрыт — раскрываем |
-| `Academy` hero | `TypingCodeBlock variant="minimal"` под заголовком на mobile | |
-| `GeoRating` hero | `BinaryStream` + `FloatingCodeSnippets` mobile=2 | |
-| `scenarios/*` (4 шт) | `MatrixRain` + `TypingCodeBlock` (compact на mobile, под текстом) | Сейчас typing скрыт — раскрываем |
-| `Contacts` | `FloatingCodeSnippets` mobile=2 | |
-| `Privacy/Terms/Refund/Offer` | НЕ трогаем | Юр. документы без декора |
+**Benchmarks (`benchmarks.ts`):**
+- Таблица `BENCHMARKS` по категориям (Сервисы / Магазин / Медиа / Образование / Маркетинг / B2B / Финансы) с полями minWords, minH2, minSchemas, cronLlmsTxt, faqRequired, trustSignals, ctaRequired, priceRequired, eDateRequired, authorRequired.
+- Функция `calcBenchmark(category, signals)` → `BenchmarkData` (gaps array).
 
-Везде: декоры `z-[0..3]`, контент `z-10`, `pointer-events-none`, `aria-hidden`.
+**Scoring — 3 новых калькулятора:**
+- `calcGeoScore(robots, llmsTxt, schemaTypes, geoSignals, eeatSignals)` — 7 компонентов × веса (25+20+15+15+10+10+5).
+- `calcSeoScore(stage0, contentSignals, resources, schemaSignals, robots, sitemap)` — 5 компонентов × веса (30+25+20+15+10).
+- `calcCroScore(cro)` — 6 компонентов × веса (25+25+15+15+10+10).
 
-## Расширение `TypingCodeBlock` props
+**Issues — расширить:**
+- Новые модули: `'geo'`, `'cro'` (в дополнение к technical/content/schema/ai).
+- Все новые детекторы генерируют issues через существующую `createIssueFactory()`.
+- Каждый issue: `id`, `module`, `severity`, `title`, `found`, `location`, `why_it_matters`, `how_to_fix`, `example_fix`, `visible_in_preview`, `impact_score`, `docs_url`, `is_auto_fixable`, опционально `rule_id`.
 
-```ts
-variant?: "ide" | "minimal" | "inline";  // "ide" default
-mobileVariant?: "compact" | "hidden";     // "compact" default
+**Обновить `PipelineResult`:**
+- Добавить: `geoScore`, `seoScore`, `croScore`, `stage0`, `robots` (как объект `RobotsData`, не boolean), `sitemap` (как `SitemapData`), `llmsTxt` (как `LlmsTxtData`), `resources`, `geoSignals`, `cro`, `benchmark`.
+- Сохранить: `theme`, `is_spa`, `seo_data` (для TechPassport), `signals` (сырые), `issues`, `summary`, `blocks`.
+
+**Обновить `runPipeline`:**
+- Стадии: 0→1→2 (parallel)→3→4 (1 LLM)→5 (scoring).
+- Прогресс: 5→15→35→55→75→95→100.
+- Параметр `includeDirect?: boolean` — опционально оставляет старый `directAudit()` для будущего инструмента `/tools/direct-ad` (по умолчанию `false`).
+
+**SQL миграция:** новая колонка не нужна (все новые поля идут в `result` JSONB), но добавим `scores` и `result.geoScore/seoScore/croScore` через worker.
+
+**SiteCheckWorker.ts:** обновить SQL upsert для `geo_rating` — взять `result.geoScore` вместо `scores.ai`, `result.seoScore` вместо `scores.seo` (mapping старых колонок таблицы `geo_rating` на новые поля).
+
+**Проверка:** `tsc --noEmit` бэкенд → запустить скан 3 разных сайтов (магазин, сервис, медиа) → проверить логи на отсутствие ошибок → API `/result/:scanId` отдаёт все новые поля.
+
+## Sprint 4 — Рефакторинг монолита (1 итерация)
+
+Создать структуру (по аналогии с `services/MarketplaceAudit/` и `services/SiteFormula/`):
+
+```text
+owndev-backend/src/services/SiteCheck/
+├── types.ts                    (Issue, PipelineResult + 8 Data-интерфейсов)
+├── benchmarks.ts               (таблица BENCHMARKS + calcBenchmark)
+├── steps/
+│   ├── stage0.ts               (fetchWithTimeout, traceRedirects, extractHeaders)
+│   ├── stage1_technical.ts     (technicalAudit, contentAudit обновлённые)
+│   ├── stage2_auxFiles.ts      (analyzeRobots, analyzeSitemap, analyzeLlmsTxt)
+│   ├── stage3_deepHtml.ts      (analyzeResources, checkAiPermissionsInHtml,
+│   │                            analyzeGeoSignals, analyzeCRO, schemaAudit)
+│   ├── stage4_llm.ts           (detectTheme, aiAudit — 1 LLM-вызов)
+│   └── stage5_scoring.ts       (вызов calc* + сборка issues)
+├── scoring/
+│   ├── geoScore.ts
+│   ├── seoScore.ts
+│   └── croScore.ts
+├── utils/
+│   ├── issueFactory.ts         (createIssueFactory из Sprint 1)
+│   └── htmlExtractors.ts       (общие regex-хелперы)
+└── index.ts                    (runPipeline — оркестратор)
 ```
 
-- `compact` — уменьшенный IDE-блок без нумерации строк, max-height 180px.
-- `hidden` — для случаев, где блок занимает слишком много на мобилке.
+**Замена импортов:**
+- `SiteCheckWorker.ts`: `import { runPipeline } from '../services/SiteCheck/index.js'`.
+- Старый `SiteCheckPipeline.ts` удалить после успешного `tsc --noEmit`.
 
-## Технические детали (производительность mobile)
+**Проверка:** `tsc --noEmit` бэкенд → скан с теми же URL что в Sprint 3 → результаты идентичные → удалить старый монолит.
 
-- **Никаких canvas на mobile** — `MatrixRain` mobile использует CSS-only версию.
-- **`will-change: transform`** только на анимирующихся элементах.
-- **`contain: layout paint`** на всех декоративных обёртках.
-- **Reduced-motion**: глобально отключает все keyframes, canvas (на ПК) не запускает RAF.
-- **Intersection Observer**: `MatrixRain` (даже CSS) запускается только в viewport, чтобы не жрал CPU когда секция не видна.
-- **Цвета**: только токены `--primary`, `--accent`, `--secondary`, `--muted-foreground`. Никаких хардкод-hex.
+## Sprint 5 — Фронтенд (1-2 итерации)
 
-## Что НЕ трогаем
+**Типы (`src/lib/site-check-types.ts`):**
+- `IssueModule = "technical" | "content" | "schema" | "ai" | "geo" | "cro"`.
+- `ScanScores = { geo: number; seo: number; cro: number }`.
+- Добавить экспорт `Stage0Data`, `RobotsData`, `SitemapData`, `LlmsTxtData`, `ResourcesData`, `GeoSignalsData`, `CROData`, `BenchmarkData` (зеркало бэка).
+- `IssueCard.impact_score` → `number` (required, sync с бэком).
+- Добавить `IssueCard.rule_id?: string`.
 
-- ПК версию — она и так нормально выглядит. Все правки добавляют mobile-варианты, не меняют desktop.
-- `Header`, мобильный drawer, `Footer` (правило памяти).
-- `AuroraBackground`, `FloatingParticles`, `Starfield`, `MouseGradient`, `ClickRipple` — они уже корректно работают на mobile.
-- Бизнес-логика, формы, состояние, API.
-- Контент, тексты, h1/h2, CTA.
-- `Privacy/Terms/Refund/Offer` страницы.
-- `Tools.tsx` структура карточек (только проверим что новые фоны не пересекают карточки на mobile).
+**API client (`src/lib/api/scan.ts`):**
+- `getFullScan(scanId): Promise<PipelineResult>` — заменить `any` на типизированный возврат.
 
-## Порядок выполнения
+**ScoreCards.tsx — переделать:**
+- Props: `{ geoScore, seoScore, croScore, previousScores? }`.
+- 3 карточки в ряд (GEO / SEO / CRO), каждая кликабельна → открывает `ScoreDetailsModal` с breakdown.
 
-1. **Шаг 1 — фундамент:**
-   - Добавить keyframes (`binary-scroll`, `code-float-*`, `scan-line-sweep`, `matrix-fall-1..8`) в `src/index.css` с reduced-motion guard.
-   - Создать 4 новых компонента: `MatrixRain` (CSS-mobile + canvas-desktop), `FloatingCodeSnippets`, `BinaryStream`, `ScanLine`.
-   - Обновить `TypingCodeBlock` — снять mobile guard, добавить props `variant` и `mobileVariant`, compact-стили.
-   - Обновить `NeuralNetworkBg` и `GeometricRays` — mobile lite-режим.
+**ScoreDetailsModal.tsx — обновить:**
+- Поддержка трёх режимов (geo/seo/cro), показ компонентов с весами.
 
-2. **Шаг 2 — Index landing (mobile в первую очередь):**
-   - Hero, HowItWorks, FlagshipTools, ToolsShowcase, ServicesTeaser, ComparisonSection, ReportValue, BlogPreview.
+**ScanProgress.tsx — 9→6 стадий:**
+- 5% Запуск → 15% Загрузка+Headers → 35% Aux Files → 55% Deep HTML → 75% LLM тема+контент → 95% Scoring → 100% Готово.
+- Heartbeat-логика остаётся, но станет менее заметной (скан 15-25с вместо 45-90с).
 
-3. **Шаг 3 — флагманские страницы:**
-   - SiteCheck, MarketplaceAudit, SiteFormula.
+**TechPassport.tsx:**
+- Добавить prop `stage0?: Stage0Data`.
+- Новый блок «Производительность»: redirectChain визуализация, compression badge, cacheControl quality, TTFB.
 
-4. **Шаг 4 — остальные страницы:**
-   - Tools, Academy, GeoRating, 4 scenarios, Contacts.
+**FullReportView.tsx:**
+- Фильтры: добавить `'geo'`, `'cro'`, убрать `'direct'`, `'competitors'`, `'semantics'`.
 
-## Проверка после правок
+**Новые компоненты (создать в `src/components/site-check/`):**
+- `RobotsAudit.tsx` — таблица AI-ботов из `RobotsData`.
+- `LlmsTxtQuality.tsx` — quality score, missingElements, прогресс-бар.
+- `ResourcesAudit.tsx` — blockingCss/Js/modernImages с цветовыми индикаторами.
+- `GeoSignals.tsx` — citationReadyRatio, semanticScore (radar/bars), readabilityGrade.
+- `CROSignals.tsx` — trustScore, CTA presence, formFriction, channels.
+- `BenchmarkCard.tsx` — сравнение со стандартом категории (вместо конкурентов).
+- `RedirectChain.tsx` — визуализация цепочки `url1 → url2 → url3`.
 
-1. **Mobile 375×812** (главное!):
-   - `/` — за hero CSS-Matrix дождь виден; HowItWorks с inline typing-блоком; ToolsShowcase с бинарной лентой; ReportValue имеет typing-блок снизу карточек (не справа).
-   - `/tools/site-check` — Matrix фон + typing-блок compact под формой (не скрыт).
-   - `/marketplace-audit` — 2 плавающих сниппета `wb_id`/JSON в hero, бинарная лента снизу.
-   - `/site-formula` — typing-блок под заголовком (не сбоку).
-   - `/scenario/*` — Matrix + typing-блок compact под текстом.
-   - `/academy`, `/geo-rating` — лёгкие декоры в hero.
-2. **Desktop 1336×906**: всё что было — осталось, ничего не сломано, layout прежний.
-3. **DevTools Performance mobile emulation**: CPU ≤ 30%, FPS ≥ 50, no long tasks.
-4. **`prefers-reduced-motion: reduce`**: все анимации останавливаются на обоих устройствах.
-5. **Layout**: typing-блоки не растягивают страницу, не вылезают за viewport, не пересекают CTA-кнопки.
+Все в дизайн-системе проекта (cyan/primary токены, dark theme, никакого хардкода цветов).
+
+**Родительские страницы (`SiteCheckResult.tsx`, `SiteCheckReport.tsx`, `FullAudit.tsx`):**
+- Новый порядок секций:
+  1. ScoreCards (GEO/SEO/CRO)
+  2. TechPassport + RedirectChain
+  3. RobotsAudit
+  4. LlmsTxtQuality
+  5. ResourcesAudit
+  6. GeoSignals
+  7. CROSignals
+  8. BenchmarkCard
+  9. LlmJudgeSection (без изменений)
+  10. AiBoostSection (без изменений)
+  11. HistoryChart (без изменений)
+  12. FullReportView (issues list)
+
+**Проверка:** `tsc --noEmit` фронт → ручной обход всех 3 страниц с реальным `scanId` → скриншоты desktop+mobile.
+
+## Sprint 6 — QA (1 итерация)
+
+- Прогон на 10 сайтах разных категорий: магазин (wildberries-like), сервис, медиа (rbc), образование, b2b, финансы, маркетинг.
+- Проверить `geoScore/seoScore/croScore` в разумных диапазонах.
+- Проверить `BenchmarkCard` показывает реальные gaps.
+- Калибровка весов скоринга (если средние скоры выходят за 30-90 — корректировка коэффициентов).
+- E2E SSE: подписка на `/events/:scanId` → 6 событий прогресса → `done`.
+- Проверить mobile responsive всех новых компонентов.
+
+## Что НЕ меняем (фиксируем явно)
+
+- `IssueCard.tsx` рендер — формат issue совместим.
+- `HistoryChart.tsx` — поля совместимы (`total` берём из `(geo+seo+cro)/3` в worker).
+- `LlmJudgeSection.tsx`, `AiBoostSection.tsx` — lazy-endpoints не трогаем.
+- SSE `/events/:scanId` — механика та же, меняются только labels.
+- Redis cache, очереди BullMQ, воркеры (только импорт runPipeline).
+- Авторизация (`auth.ts`), rate limit (`rateLimit.ts`).
+- БД миграции, RLS, таблица `site_check_scans` (только не пишем удалённые поля).
+- `/report/*` эндпоинты, `/llm-judge`, `/ai-boost`.
+- Header, Footer, мобильный drawer.
+- Все недавние декоративные эффекты (`MatrixRain`, `FloatingCodeSnippets` и т.д.).
+
+## Технический контракт типов (фиксируется в Sprint 3, синхронизируется в Sprint 5)
+
+`PipelineResult` (бэк) ≡ `FullScanResponse` (фронт). Единый источник правды — `services/SiteCheck/types.ts`. Поля строго по документу:
+
+```text
+status, url, mode, theme, is_spa,
+geoScore, seoScore, croScore,
+issues[],
+stage0, robots, sitemap, llmsTxt, resources, geoSignals, cro, benchmark,
+seo_data, signals, summary?, blocks?
+```
+
+## Порядок выполнения по запросу пользователя
+
+После аппрува плана я начинаю **только Sprint 2** (удаление мусора). После проверки `tsc --noEmit` + smoke-теста жду команды «дальше» → Sprint 3 → проверка → Sprint 4 → проверка → Sprint 5 → проверка → Sprint 6.
+
+Это даёт контролируемые точки отката: на любом этапе можно остановиться и сайт продолжит работать с уже применёнными изменениями. Никаких «больших rewrite в одной итерации».
+
+## Риски и митигации
+
+1. **БД совместимость** — таблица `site_check_scans` имеет колонки `competitors`, `keywords`, `minus_words`. Не дропаем, просто перестаём писать. Старые scan_id остаются читаемыми.
+2. **`geo_rating` upsert** — текущий маппинг `scores.ai → llm_score, scores.seo → seo_score`. После Sprint 3 маппим: `result.geoScore → llm_score`, `result.seoScore → seo_score`. Старые записи не ломаются.
+3. **Кэшированные сканы в Redis** — после Sprint 3 структура ответа меняется. Прогрев кэша через bypass `force=true` на первых сканах после деплоя, либо просто очистка ключей с префиксом site-check.
+4. **PDF/Word экспорт** (`generatePdfReport.ts`, `generateWordReport.ts`) — читают `scores.total/seo/direct/schema/ai`. В Sprint 5 обновить на `geoScore/seoScore/croScore` (в плане эти файлы упомянуты в «не трогаем шаблон», но логика чтения скоров требует правки — добавляю в Sprint 5).
+5. **SiteCheckBanner.tsx, ScoreBreakdown.tsx, ScoreCards.tsx** — все компоненты, читающие старые скоры, перечислю и обновлю в Sprint 5.
 
