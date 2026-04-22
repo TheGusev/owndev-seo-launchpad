@@ -2,7 +2,6 @@ import { Helmet } from "react-helmet-async";
 import { lazy, Suspense } from "react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import ServicesTeaser from "@/components/ServicesTeaser";
 import ToolsShowcase from "@/components/ToolsShowcase";
 import Footer from "@/components/Footer";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
@@ -12,6 +11,7 @@ import HowItWorks from "@/components/landing/HowItWorks";
 import ReportValue from "@/components/landing/ReportValue";
 import ComparisonSection from "@/components/landing/ComparisonSection";
 import Testimonials from "@/components/landing/Testimonials";
+import FlagshipTools from "@/components/landing/FlagshipTools";
 
 const FAQ = lazy(() => import("@/components/FAQ"));
 const ContactForm = lazy(() => import("@/components/ContactForm"));
@@ -74,12 +74,12 @@ const Index = () => {
       <Header />
       <main>
         <Hero />
-        <ServicesTeaser />
+        <FlagshipTools />
         <GeoScenarios />
         <HowItWorks />
-        <Testimonials />
-        <ReportValue />
         <ToolsShowcase />
+        <ReportValue />
+        <Testimonials />
         <ComparisonSection />
         <Suspense fallback={<div className="min-h-[200px]" />}>
           <BlogPreview />
