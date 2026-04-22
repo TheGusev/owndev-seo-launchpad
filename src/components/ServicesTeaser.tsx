@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Search, Code2, Sparkles, Bot, Target, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
 
 const directions = [
   {
@@ -44,8 +45,15 @@ const ServicesTeaser = () => {
   const navigate = useNavigate();
 
   return (
-    <section className="py-12 md:py-20 relative">
-      <div className="container px-4 md:px-6 max-w-5xl mx-auto">
+    <section className="py-12 md:py-20 relative overflow-hidden">
+      <FloatingCodeSnippets
+        className="z-0"
+        snippets={['"@type": "Article"', "lighthouse: 98", '<meta name="description" />', "llms.txt ✓", "E-E-A-T: pass"]}
+        mobileCount={2}
+        desktopCount={5}
+        opacity={0.85}
+      />
+      <div className="container px-4 md:px-6 max-w-5xl mx-auto relative z-10">
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 16 }}

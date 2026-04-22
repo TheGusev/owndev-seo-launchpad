@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Helmet } from "react-helmet-async";
 import { Search, LayoutTemplate, ShoppingBag, ArrowRight } from "lucide-react";
 import { GeometricRays } from "@/components/ui/geometric-rays";
+import { ScanLine } from "@/components/ui/scan-line";
+import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
 
 const flagships = [
   {
@@ -85,6 +87,14 @@ const FlagshipTools = () => {
         <script type="application/ld+json">{JSON.stringify(itemListLd)}</script>
       </Helmet>
       <GeometricRays className="z-0 opacity-50" opacity={0.25} />
+      <ScanLine className="z-[1]" duration={11} opacity={0.3} />
+      <FloatingCodeSnippets
+        className="z-[1]"
+        snippets={["score: 87", "wb_id: 12345", "blueprint.json", "{ \"ready\": true }"]}
+        mobileCount={2}
+        desktopCount={4}
+        opacity={0.7}
+      />
       <div className="container px-4 md:px-6 max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-10 md:mb-12">
           <h2 id="flagship-heading" className="text-2xl md:text-4xl font-bold font-serif mb-3">
