@@ -260,7 +260,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     const { scanId } = req.params;
     const rows = await sql<Array<any>>`
       SELECT id, url, mode, status, progress_pct, theme, is_spa,
-             scores, issues, competitors, keywords, minus_words,
+             scores, issues,
              seo_data, result, error_message, created_at
       FROM site_check_scans
       WHERE id = ${scanId}
@@ -316,9 +316,6 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       issues,
       blocks,
       theme: result?.theme ?? row.theme ?? null,
-      competitors: result?.competitors ?? (typeof row.competitors === 'string' ? JSON.parse(row.competitors) : (row.competitors ?? [])),
-      keywords: result?.keywords ?? (typeof row.keywords === 'string' ? JSON.parse(row.keywords) : (row.keywords ?? [])),
-      minus_words: result?.minus_words ?? (typeof row.minus_words === 'string' ? JSON.parse(row.minus_words) : (row.minus_words ?? [])),
       seo_data: result?.seo_data ?? (typeof row.seo_data === 'string' ? JSON.parse(row.seo_data) : (row.seo_data ?? null)),
       llm_judge: result?.llm_judge ?? null,
       ai_boost: result?.ai_boost ?? null,
