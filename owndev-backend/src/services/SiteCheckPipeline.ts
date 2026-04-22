@@ -1042,31 +1042,8 @@ function directAudit(html: string, theme: string, makeIssue: MakeIssueFn): { iss
   return { issues, ad_headline, autotargeting_categories, readiness_score, checks };
 }
 
-// ═══ STEP 3b: AI Direct Ad ═══
-async function generateDirectAd(html: string, theme: string, url: string, apiKey: string): Promise<DirectAdSuggestion | null> {
-  if (!apiKey) return null;
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim() : '';
-  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1500) : '';
-
-  const parsed = await llmToolCall(apiKey, 'gpt-4o-mini', 
-    `Ты — эксперт по Яндекс.Директу. Сгенерируй полное объявление.\nОГРАНИЧЕНИЯ: headline1 до 35 символов, headline2 до 30, ad_text до 81, sitelinks: 4 (title до 30, description до 60), callouts: 4 (до 25). Пиши на русском.`,
-    `URL: ${url}\nТематика: ${theme}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 800)}`,
-    { type: 'function', function: { name: 'create_direct_ad', description: 'Создаёт объявление', parameters: { type: 'object', properties: { headline1: { type: 'string' }, headline2: { type: 'string' }, ad_text: { type: 'string' }, sitelinks: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' } }, required: ['title', 'description'] } }, callouts: { type: 'array', items: { type: 'string' } } }, required: ['headline1', 'headline2', 'ad_text', 'sitelinks', 'callouts'] } } }
-  );
-
-  if (!parsed) return null;
-  return {
-    headline1: (parsed.headline1 || '').slice(0, 35),
-    headline2: (parsed.headline2 || '').slice(0, 30),
-    ad_text: (parsed.ad_text || '').slice(0, 81),
-    sitelinks: (parsed.sitelinks || []).slice(0, 4).map((s: any) => ({ title: (s.title || '').slice(0, 30), description: (s.description || '').slice(0, 60) })),
-    callouts: (parsed.callouts || []).slice(0, 4).map((c: string) => (c || '').slice(0, 25)),
-  };
-}
+// ═══ STEP 3b removed in Sprint 2 — generateDirectAd belongs to a future
+// /tools/direct-ad standalone tool (Sprint 3, behind includeDirect flag).
 
 // ═══ STEP 7: Schema Audit ═══
 function schemaAudit(html: string, makeIssue: MakeIssueFn): Issue[] {
