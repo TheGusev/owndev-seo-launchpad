@@ -34,6 +34,12 @@ async function fetchText(url: string, timeoutMs = 5000): Promise<{ ok: boolean; 
 async function checkUrl(url: string): Promise<{ ok: boolean; status: number }> {
   try {
     const resp = await fetchWithTimeout(url, 5000, { method: 'HEAD', redirect: 'follow' });
+    // Some servers (PHP/Bitrix) reject HEAD with 405 — fallback to GET so we
+    // don't mark perfectly valid pages as "broken".
+    if (resp.status === 405) {
+      const getResp = await fetchWithTimeout(url, 5000, { method: 'GET', redirect: 'follow' });
+      return { ok: getResp.ok, status: getResp.status };
+    }
     return { ok: resp.ok, status: resp.status };
   } catch { return { ok: false, status: 0 }; }
 }
@@ -48,10 +54,16 @@ function isSpaPage(html: string): boolean {
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  const wordCount = bodyContent.split(/\s+/).filter((w: string) => w.length > 1).length;
+  const wordCount = bodyContent.split(/\s+/).filter((w: string) => /[\p{L}\p{N}]/u.test(w)).length;
   const hasAppRoot = /<div[^>]*id=["'](root|app|__next|__nuxt|___gatsby|__svelte)["']/i.test(html);
   const hasFrameworkBundle = /(\/assets\/index[\w.-]+\.js|\/static\/js\/|\/chunks\/|_next\/static)/i.test(html);
-  return wordCount < 150 && (hasAppRoot || hasFrameworkBundle);
+  // Exclude SSR frameworks (Next.js, Nuxt, Vue SSR) — they ship a thin shell
+  // with full server-rendered content already in the HTML.
+  const hasServerRendered = /data-server-rendered=["']true["']/i.test(html)
+    || /<script[^>]*id=["']__NEXT_DATA__["']/i.test(html)
+    || /data-reactroot/i.test(html)
+    || /window\.__NUXT__/i.test(html);
+  return wordCount < 150 && (hasAppRoot || hasFrameworkBundle) && !hasServerRendered;
 }
 
 // ─── Fetch rendered content via Jina Reader for SPA pages ───
