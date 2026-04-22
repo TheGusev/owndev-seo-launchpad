@@ -122,14 +122,25 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
 
   // Score cards as a simple table
   y += 20;
-  const scoreCards = [
-    { label: 'Общий', value: data.scores.total },
-    { label: 'SEO', value: data.scores.seo },
-    { label: 'Директ', value: data.scores.direct },
-    { label: 'Schema', value: data.scores.schema },
-    { label: 'AI', value: data.scores.ai },
-  ];
-  const cardW = CONTENT_W / 5;
+  // Sprint 6: показываем три честных скора если они есть, иначе legacy 5
+  const hasTriScore =
+    typeof data.scores.geo === 'number' ||
+    typeof data.scores.cro === 'number';
+  const scoreCards = hasTriScore
+    ? [
+        { label: 'Общий', value: data.scores.total },
+        { label: 'GEO / AI', value: data.scores.geo ?? 0 },
+        { label: 'SEO', value: data.scores.seo },
+        { label: 'Конверсия', value: data.scores.cro ?? 0 },
+      ]
+    : [
+        { label: 'Общий', value: data.scores.total },
+        { label: 'SEO', value: data.scores.seo },
+        { label: 'Директ', value: data.scores.direct },
+        { label: 'Schema', value: data.scores.schema },
+        { label: 'AI', value: data.scores.ai },
+      ];
+  const cardW = CONTENT_W / scoreCards.length;
 
   scoreCards.forEach((card, i) => {
     const x = MARGIN + i * cardW;
