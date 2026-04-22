@@ -1326,6 +1326,7 @@ export interface PipelineResult {
   summary?: string | null;
   blocks?: any[];
   error_message?: string;
+  signals?: Record<string, number | boolean>;
 }
 
 export async function runPipeline(
