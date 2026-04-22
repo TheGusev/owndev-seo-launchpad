@@ -25,10 +25,37 @@ const SCORE_FILTERS = [
   { label: "<40", min: 0, max: 39 },
 ];
 const SORT_OPTIONS = [
-  { label: "LLM Score ↓", key: "llmScore" as const },
-  { label: "SEO Score ↓", key: "seoScore" as const },
+  { label: "Средний ↓", key: "avgScore" as const },
+  { label: "LLM ↓", key: "llmScore" as const },
+  { label: "SEO ↓", key: "seoScore" as const },
+  { label: "Schema ↓", key: "schemaScore" as const },
+  { label: "Direct ↓", key: "directScore" as const },
   { label: "Алфавит", key: "brandName" as const },
 ];
+
+type SortKey = "avgScore" | "llmScore" | "seoScore" | "schemaScore" | "directScore" | "brandName";
+
+const computeAvg = (r: any) =>
+  Math.round(((r.llm_score ?? 0) + (r.seo_score ?? 0) + (r.schema_score ?? 0) + (r.direct_score ?? 0)) / 4);
+
+const isEmptyRow = (r: any) =>
+  (r.llm_score ?? 0) === 0 && (r.seo_score ?? 0) === 0 &&
+  (r.schema_score ?? 0) === 0 && (r.direct_score ?? 0) === 0;
+
+const isStaleRow = (r: any) => {
+  if (!r.last_checked_at) return true;
+  const days = (Date.now() - new Date(r.last_checked_at).getTime()) / 86400000;
+  return days > 7;
+};
+
+const formatLast = (iso: string) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days < 1) return "сегодня";
+  if (days < 7) return `${days}д`;
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+};
 
 const scoreColor = (s: number) =>
   s >= 71 ? "text-emerald-400" : s >= 41 ? "text-yellow-400" : "text-red-400";
@@ -44,7 +71,7 @@ const GeoRating = () => {
   const { toast } = useToast();
   const [cat, setCat] = useState("Все");
   const [scoreFi, setScoreFi] = useState(0);
-  const [sortKey, setSortKey] = useState<"llmScore" | "seoScore" | "brandName">("llmScore");
+  const [sortKey, setSortKey] = useState<SortKey>("avgScore");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const { data: rawRows = [], isLoading, refetch, isFetching } = useQuery({
@@ -76,22 +103,32 @@ const GeoRating = () => {
             } catch { return []; }
           })(),
       }))
-      .filter(
-        (r: any) =>
-          (cat === "Все" || r.category === cat) &&
-          r.llm_score >= f.min &&
-          r.llm_score <= f.max
-      );
+      .filter((r: any) => {
+        const a = computeAvg(r);
+        return (cat === "Все" || r.category === cat) && a >= f.min && a <= f.max;
+      });
+
+    const sortDbKey: Record<Exclude<SortKey, "brandName" | "avgScore">, string> = {
+      llmScore: "llm_score",
+      seoScore: "seo_score",
+      schemaScore: "schema_score",
+      directScore: "direct_score",
+    };
 
     list.sort((a: any, b: any) => {
+      const ae = isEmptyRow(a), be = isEmptyRow(b);
+      if (ae && !be) return 1;
+      if (!ae && be) return -1;
       if (sortKey === "brandName") return a.display_name.localeCompare(b.display_name);
-      const dbKey = sortKey === "llmScore" ? "llm_score" : "seo_score";
-      return b[dbKey] - a[dbKey];
+      if (sortKey === "avgScore") return computeAvg(b) - computeAvg(a);
+      const k = sortDbKey[sortKey];
+      return (b[k] ?? 0) - (a[k] ?? 0);
     });
 
     return list.map((r: any, idx: number) => ({
       id: r.id,
       entry: mapDbRowToEntry(r, idx + 1),
+      raw: r,
     }));
   }, [rawRows, cat, scoreFi, sortKey]);
 
@@ -100,14 +137,16 @@ const GeoRating = () => {
     return ["Все", ...cats];
   }, [rawRows]);
 
-  const avgLlm = rawRows.length
-    ? Math.round(rawRows.reduce((s: number, r: any) => s + r.llm_score, 0) / rawRows.length)
-    : 0;
+  const nonEmpty = useMemo(() => rawRows.filter((r: any) => !isEmptyRow(r)), [rawRows]);
+  const avgOf = (key: string) =>
+    nonEmpty.length
+      ? Math.round(nonEmpty.reduce((s: number, r: any) => s + (r[key] ?? 0), 0) / nonEmpty.length)
+      : 0;
+  const avgLlm = avgOf("llm_score");
+  const avgSchema = avgOf("schema_score");
+  const avgDirect = avgOf("direct_score");
   const pctLlms = rawRows.length
     ? Math.round((rawRows.filter((r: any) => r.has_llms_txt).length / rawRows.length) * 100)
-    : 0;
-  const pctFaq = rawRows.length
-    ? Math.round((rawRows.filter((r: any) => r.has_faqpage).length / rawRows.length) * 100)
     : 0;
 
   const lastUpdate = rawRows.length
