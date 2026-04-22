@@ -5,6 +5,7 @@
  */
 
 import { logger } from '../utils/logger.js';
+import { withRetry, HttpError } from '../utils/retry.js';
 
 const UA = 'OWNDEV-SiteCheck/2.0';
 
