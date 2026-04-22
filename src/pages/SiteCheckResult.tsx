@@ -137,24 +137,26 @@ const SiteCheckResult = () => {
     </>
   );
 
-  const defaultScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 };
+  const defaultScores: ScanScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 };
   const rawScores = data.scores;
-  const scores = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
-    ? { ...defaultScores, ...(rawScores as any) } : null;
-  const breakdown = (rawScores?.breakdown || rawScores?.seoBreakdown)
+  const scores: ScanScores | null = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
+    ? { ...defaultScores, ...rawScores } : null;
+  // Backend returns breakdown as `scores.breakdown.{seo,ai,direct,schema}`.
+  // Legacy `seoBreakdown` is no longer produced; we keep null fallback.
+  const breakdown: ScoreBreakdown | undefined = rawScores?.breakdown
     ? {
-        seo: rawScores?.seoBreakdown || rawScores?.breakdown?.seo || null,
-        ai: rawScores?.breakdown?.ai || null,
-        direct: rawScores?.breakdown?.direct || null,
-        schema: rawScores?.breakdown?.schema || null,
+        seo: rawScores.breakdown.seo ?? null,
+        ai: rawScores.breakdown.ai ?? null,
+        direct: rawScores.breakdown.direct ?? null,
+        schema: rawScores.breakdown.schema ?? null,
       }
     : undefined;
 
-  const issues = Array.isArray(data.issues) ? data.issues : [];
-  const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
-  const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor');
-  const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table') || null;
-  const directMeta = rawCompetitors.find((c: any) => c._type === 'direct_meta') || null;
+  const issues: IssueCard[] = Array.isArray(data.issues) ? data.issues : [];
+  const rawCompetitors: CompetitorEntry[] = Array.isArray(data.competitors) ? data.competitors : [];
+  const competitors = rawCompetitors.filter((c) => c._type === 'competitor');
+  const comparisonTable = rawCompetitors.find((c) => c._type === 'comparison_table') || null;
+  const directMeta = rawCompetitors.find((c) => c._type === 'direct_meta') || null;
   const directAdMeta = rawCompetitors.find((c: any) =>
     c._type === 'direct_ad_meta' ||
     c._direct_meta === true ||
@@ -164,7 +166,7 @@ const SiteCheckResult = () => {
   const directAdSuggestion = directAdMeta?.ad_suggestion || null;
   const directReadinessScore = directAdMeta?.readiness_score ?? null;
   const directChecks = directAdMeta?.direct_checks || data?.seo_data?.direct_checks || null;
-  const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
+  const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: KeywordEntry & Record<string, any>) => ({
     keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
     volume: kw.frequency ?? kw.volume ?? 0,
     cluster: kw.cluster ?? kw.category ?? 'Общие',
@@ -303,7 +305,12 @@ const SiteCheckResult = () => {
           {/* 7. Competitors */}
           {competitors.length > 0 && (
             <ResultAccordion title={`Конкуренты в AI-выдаче (${competitors.length})`} defaultOpen={false}>
-              <CompetitorsTable competitors={competitors} comparisonTable={comparisonTable} directMeta={directMeta} userUrl={data.url} />
+              <CompetitorsTable
+                competitors={competitors as any}
+                comparisonTable={comparisonTable as any}
+                directMeta={directMeta as any}
+                userUrl={data.url}
+              />
             </ResultAccordion>
           )}
           {data?.competitors && competitors.length === 0 && rawCompetitors.length > 0 && (
