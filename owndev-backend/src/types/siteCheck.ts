@@ -1,12 +1,17 @@
 /**
- * Frontend mirror of owndev-backend/src/types/siteCheck.ts.
- * Keep both files in sync — this is the single source of truth contract
- * between Site Check pipeline and UI.
+ * Single source of truth for the Site Check result contract.
+ *
+ * IMPORTANT: This file is mirrored on the frontend at
+ *   src/lib/site-check-types.ts
+ *
+ * Any change here MUST be reflected in the frontend file (and vice versa).
+ * The pipeline (`SiteCheckPipeline.ts`) and route (`siteCheck.ts`) MUST
+ * conform to `SiteCheckResult` so that the frontend never receives
+ * fields in unexpected shapes.
  */
 
 export type ScanMode = 'page' | 'site';
 export type ScanStatus = 'pending' | 'running' | 'done' | 'error';
-export type PaymentStatus = 'pending' | 'paid' | 'failed';
 export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low';
 export type IssueModule =
   | 'technical'
@@ -28,10 +33,9 @@ export interface IssueCard {
   how_to_fix: string;
   example_fix: string;
   visible_in_preview: boolean;
-  /** Always returned by backend (default: severity-based fallback). Optional on FE for legacy compat. */
-  impact_score?: number;
-  docs_url?: string;
-  is_auto_fixable?: boolean;
+  impact_score: number;
+  docs_url: string;
+  is_auto_fixable: boolean;
   rule_id?: string;
 }
 
@@ -55,21 +59,19 @@ export interface ScanScores {
   direct: number;
   schema: number;
   ai: number;
+  /** Optional confidence interval, may be null */
   confidence?: number | null;
+  /** Optional issues count cached at write time */
   issues_count?: number | null;
   breakdown?: ScoreBreakdown | null;
 }
 
 export interface KeywordEntry {
-  phrase?: string;
-  /** Legacy alias used by some FE callers */
-  keyword?: string;
-  cluster?: string;
-  intent?: string;
-  frequency?: number;
-  /** Legacy alias used by some FE callers */
-  volume?: number;
-  landing_needed?: boolean;
+  phrase: string;
+  cluster: string;
+  intent: string;
+  frequency: number;
+  landing_needed: boolean;
   verified?: boolean;
   suggestions?: string[];
 }
@@ -80,18 +82,26 @@ export interface MinusWord {
   reason: string;
 }
 
+/**
+ * Competitors array is heterogeneous: it contains real competitor entries
+ * plus several "meta" envelopes (`_type: 'comparison_table' | 'direct_meta'
+ * | 'direct_ad_meta' | 'competitor'`). The frontend filters by `_type`.
+ */
 export interface CompetitorEntry {
   _type?: 'competitor' | 'comparison_table' | 'direct_meta' | 'direct_ad_meta';
+  // Common competitor fields (when _type === 'competitor' or undefined)
   url?: string;
   position?: number;
   domain?: string;
   title?: string;
   description?: string;
+  // Direct ad meta fields
   ad_headline?: string;
-  ad_suggestion?: any;
+  ad_suggestion?: unknown;
   readiness_score?: number;
-  direct_checks?: any;
+  direct_checks?: unknown;
   autotargeting_categories?: Record<string, boolean>;
+  // free-form for forward compatibility
   [key: string]: unknown;
 }
 
@@ -121,11 +131,11 @@ export interface SeoData {
   httpStatus?: number;
   hasRobotsTxt?: boolean;
   hasSitemap?: boolean;
-  direct_checks?: any;
+  direct_checks?: unknown;
   [key: string]: unknown;
 }
 
-/** Response shape of GET /api/v1/site-check/result/:scanId */
+/** Shape returned by GET /api/v1/site-check/result/:scanId */
 export interface SiteCheckResult {
   id: string;
   scan_id: string;
@@ -135,7 +145,9 @@ export interface SiteCheckResult {
   progress_pct: number;
 
   scores: ScanScores | null;
+  /** Convenience alias of scores.total */
   score?: number | null;
+
   summary?: string | null;
   issues: IssueCard[];
   blocks?: unknown[];
@@ -143,42 +155,37 @@ export interface SiteCheckResult {
   theme: string | null;
   competitors: CompetitorEntry[];
   keywords: KeywordEntry[];
-  minus_words: (MinusWord | string)[];
+  minus_words: MinusWord[];
   seo_data: SeoData | null;
 
-  llm_judge?: any | null;
-  ai_boost?: { items?: any[] } | null;
+  llm_judge?: unknown | null;
+  ai_boost?: { items?: unknown[] } | null;
 
-  result?: any | null;
-  raw_scores?: any | null;
+  /** Raw pipeline result blob, kept for forward compatibility */
+  result?: unknown | null;
+  /** Raw scores from DB before normalization */
+  raw_scores?: unknown | null;
 
   is_spa: boolean;
   error_message: string | null;
   created_at: string;
 }
 
-/** Legacy summary type used by older payment flow */
-export interface Scan {
-  scan_id: string;
+/** Shape returned directly by the pipeline (before route normalization) */
+export interface PipelineResult {
+  status: 'done' | 'error';
   url: string;
-  mode: ScanMode;
-  status: ScanStatus;
-  created_at: string;
+  mode: string;
+  theme: string;
+  is_spa: boolean;
   scores: ScanScores;
   issues: IssueCard[];
-  theme: string;
   competitors: CompetitorEntry[];
   keywords: KeywordEntry[];
-  minus_words: string[];
-  expires_at: string;
-}
-
-export interface Report {
-  report_id: string;
-  scan_id: string;
-  email: string;
-  payment_status: PaymentStatus;
-  payment_id: string;
-  download_token: string;
-  created_at: string;
+  minus_words: MinusWord[];
+  seo_data: SeoData | null;
+  summary?: string | null;
+  blocks?: unknown[];
+  error_message?: string;
+  signals?: Record<string, number | boolean>;
 }
