@@ -2,69 +2,91 @@
 
 ## Цель
 
-Починить два места в `owndev-backend/src/workers/SiteCheckWorker.ts` для upsert в `geo_rating`:
-
-1. `category` — больше не хардкодить `'Сервисы'` в `INSERT VALUES`. Брать из `result.theme`, fallback `'Сервисы'`.
-2. `has_faqpage` — определять по реальной разметке (`result.seo_data.hasFaq` / `schemaTypes`), а не через инверсию issue.
+Сделать честным эндпоинт `POST /api/v1/site-check/llm-judge`: пометить, что оценки 6 AI-систем — это эвристическая эмуляция через `gpt-4o-mini`, а не реальные запросы к ChatGPT/Perplexity/Яндексу/Gemini/GigaChat/Алисе.
 
 ## Файл
 
-`owndev-backend/src/workers/SiteCheckWorker.ts` — единственная правка. Контракт `PipelineResult` (`SiteCheckPipeline.ts`) уже отдаёт нужные поля — менять пайплайн не нужно.
-
-## Контекст из пайплайна (без правок)
-
-В `extractSeoData` (строки 1236–1260 `SiteCheckPipeline.ts`) уже считаются:
-- `seo_data.schemaTypes: string[]` — список `@type` всех JSON-LD блоков (включая `@graph`)
-- `seo_data.hasFaq: boolean` — true если среди типов встречается что-либо с `faq` (case-insensitive)
-- `result.theme: string` — тема сайта из пайплайна
+`owndev-backend/src/api/routes/siteCheck.ts` — единственная правка. Фронт (`LlmJudgeSection.tsx`) не трогаем: новые поля просто доедут в payload.
 
 ## Правки
 
-### 1. Category — берём из `result.theme`
+### 1. `queryAiSystem` — успех (строка 495)
 
-Перед `INSERT` (рядом со строкой 145, где собираются `topErrors`) добавить:
-
-```ts
-// TODO: маппить result.theme в фиксированные категории каталога (Сервисы / Магазин / Медиа / B2B...)
-// Сейчас сохраняем тему как есть; если темы нет — fallback 'Сервисы'.
-const category = (typeof result.theme === 'string' && result.theme.trim()) ? result.theme.trim().slice(0, 80) : 'Сервисы';
-```
-
-В `INSERT … VALUES` (строка 149) заменить `${'Сервисы'}` на `${category}`. `DO UPDATE SET` не трогаем (категория обновляется только при первом INSERT — поведение по ТЗ сохраняется, потому что в `EXCLUDED` её и так нет).
-
-### 2. has_faqpage — прямая проверка HTML/schemas
-
-Заменить строку 141:
+В возвращаемый объект добавить `simulated: true` и пометку в `verdict`:
 
 ```ts
-const hasFaqIssue = (result.issues || []).some((i: any) => /faqpage/i.test(i.found || ''));
+return {
+  id: system.id, name: system.name, icon: system.icon, color: system.color,
+  score: Number(parsed.score) || 0,
+  verdict: `${parsed.verdict || 'Нет данных'} (эмуляция на основе анализа сайта)`,
+  reason: parsed.reason || '',
+  suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+  simulated: true,
+};
 ```
 
-на:
+### 2. `queryAiSystem` — fallback при ошибке (строка 498)
 
 ```ts
-// Прямая проверка реальной разметки: поле hasFaq и schemaTypes приходят из extractSeoData,
-// который парсит все <script type="application/ld+json"> со страницы.
-const schemaTypes: string[] = Array.isArray(result.seo_data?.schemaTypes) ? result.seo_data.schemaTypes : [];
-const hasFaqInSchemas = schemaTypes.some((t) => typeof t === 'string' && /faqpage/i.test(t));
-const hasFaqInHtml = /FAQPage/i.test(JSON.stringify(result.blocks || []));
-const hasFaqPage = Boolean(result.seo_data?.hasFaq) || hasFaqInSchemas || hasFaqInHtml;
+return {
+  id: system.id, name: system.name, icon: system.icon, color: system.color,
+  score: 0,
+  verdict: 'Ошибка анализа (эмуляция на основе анализа сайта)',
+  reason: 'Не удалось получить оценку',
+  suggestions: [],
+  simulated: true,
+};
 ```
 
-В `INSERT … VALUES` заменить аргумент `${!hasFaqIssue}` на `${hasFaqPage}` (строка 149, 9-й параметр).
+### 3. Финальный `payload` (строка 503)
+
+```ts
+const payload = {
+  success: true,
+  url, domain,
+  avg_score: avgScore,
+  systems: results,
+  disclaimer: 'Оценки рассчитаны эвристически на основе анализа сайта. Реальные запросы к AI-системам не выполняются.',
+  _pending: false,
+};
+```
+
+`disclaimer` пишется в БД вместе с payload (через тот же `JSON.stringify(payload)` на строке 510) — кэшированные ответы тоже автоматически получат поле при следующем сохранении.
+
+### 4. Кэш-хит (строка 428) — обогащаем старые записи на лету
+
+Старые закэшированные результаты в `site_check_scans.result.llm_judge` не содержат `simulated`/`disclaimer`. Чтобы пользователь не видел «честные» и «нечестные» ответы вперемешку, добавляем поля при отдаче из кэша:
+
+```ts
+const enriched = {
+  ...(cachedJudge as any),
+  systems: Array.isArray((cachedJudge as any).systems)
+    ? (cachedJudge as any).systems.map((s: any) => ({
+        ...s,
+        simulated: true,
+        verdict: typeof s.verdict === 'string' && !/эмуляция/i.test(s.verdict)
+          ? `${s.verdict} (эмуляция на основе анализа сайта)`
+          : s.verdict,
+      }))
+    : (cachedJudge as any).systems,
+  disclaimer: (cachedJudge as any).disclaimer
+    || 'Оценки рассчитаны эвристически на основе анализа сайта. Реальные запросы к AI-системам не выполняются.',
+  _cached: true,
+};
+return reply.send(enriched);
+```
 
 ## Что НЕ трогаем
 
-- `DO UPDATE SET` — структура остаётся, поле `category` намеренно не апдейтится при rescan.
-- Логика `has_llms_txt` и `has_schema` (определяются через issues) — вне ТЗ.
-- `CREATE TABLE IF NOT EXISTS` (строка 117) — `category` остаётся с дефолтом `'Сервисы'` на уровне DDL.
-- `SiteCheckPipeline.ts` и тип `PipelineResult` — поля уже есть.
-- Любые другие места в воркере и проекте.
+- Промпты, модель `gpt-4o-mini`, retry-логика, температура, таймаут.
+- Структура `aiSystems`, парсинг JSON, кэш-запись в БД.
+- Эндпоинт `/ai-boost` и любые другие роуты.
+- Фронтенд (`src/components/site-check/LlmJudgeSection.tsx`) — новые поля совместимы, отображать дисклеймер можно отдельной задачей.
 
 ## Проверка
 
-1. `cd owndev-backend && npx tsc --noEmit` — 0 ошибок (используем `any`-приведение через `result.seo_data?.…`, типы совместимы).
-2. Скан сайта с темой "Магазин кондиционеров" → в БД `geo_rating.category = 'Магазин кондиционеров'` для нового домена; для уже существующего — категория не меняется (как было).
-3. Скан сайта с реальным `<script type="application/ld+json">{"@type":"FAQPage", …}</script>` → `has_faqpage = true`, даже если по какой-то причине issue с `faqpage` оказался в списке.
-4. Скан сайта без FAQPage и без `schemaTypes` с FAQ → `has_faqpage = false`.
+1. `cd owndev-backend && npx tsc --noEmit` — 0 ошибок.
+2. `POST /api/v1/site-check/llm-judge { url: "https://example.com" }` — каждый объект в `systems[]` содержит `simulated: true`, `verdict` оканчивается на `(эмуляция…)`, в корне есть `disclaimer`.
+3. Повторный запрос с тем же `scan_id` — `_cached: true`, поля `simulated`/`disclaimer` тоже на месте (даже если в БД старая запись без них).
+4. Принудительный сбой OpenAI (mock 400) — fallback-объект тоже содержит `simulated: true`.
 
