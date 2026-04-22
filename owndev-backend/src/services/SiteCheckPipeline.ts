@@ -1410,6 +1410,638 @@ function extractSeoData(html: string, parsedUrl: URL, httpStatus: number, loadTi
   };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — Stage 0: Headers & Redirect chain
+// ═══════════════════════════════════════════════════════════════
+async function traceRedirects(startUrl: string, maxHops = 5): Promise<{ chain: RedirectHop[]; finalUrl: string; finalStatus: number; ttfbMs: number; finalHeaders: Headers | null }> {
+  const chain: RedirectHop[] = [];
+  let currentUrl = startUrl;
+  let finalStatus = 0;
+  let ttfbMs = 0;
+  let finalHeaders: Headers | null = null;
+
+  for (let i = 0; i < maxHops; i++) {
+    const t0 = Date.now();
+    let resp: Response;
+    try {
+      resp = await fetchWithTimeout(currentUrl, 8000, { redirect: 'manual' });
+    } catch {
+      finalStatus = 0;
+      break;
+    }
+    const elapsed = Date.now() - t0;
+    if (i === 0) ttfbMs = elapsed;
+    finalStatus = resp.status;
+    finalHeaders = resp.headers;
+
+    if (resp.status >= 300 && resp.status < 400) {
+      const loc = resp.headers.get('location');
+      if (!loc) break;
+      let nextUrl: string;
+      try {
+        nextUrl = new URL(loc, currentUrl).toString();
+      } catch {
+        break;
+      }
+      chain.push({ from: currentUrl, to: nextUrl, status: resp.status });
+      currentUrl = nextUrl;
+      continue;
+    }
+    break;
+  }
+
+  return { chain, finalUrl: currentUrl, finalStatus, ttfbMs, finalHeaders };
+}
+
+function extractStage0(parsedUrl: URL, finalStatus: number, redirectChain: RedirectHop[], ttfbMs: number, headers: Record<string, string>): Stage0Data {
+  const h = (k: string) => headers[k.toLowerCase()] ?? null;
+  const enc = (h('content-encoding') || '').toLowerCase();
+  const compression: Stage0Data['compression'] = enc.includes('br') ? 'br' : enc.includes('gzip') ? 'gzip' : enc.includes('deflate') ? 'deflate' : 'none';
+  return {
+    httpStatus: finalStatus,
+    redirectChain,
+    redirectCount: redirectChain.length,
+    ttfbMs,
+    isHttps: parsedUrl.protocol === 'https:',
+    hasHsts: Boolean(h('strict-transport-security')),
+    hasCSP: Boolean(h('content-security-policy')),
+    hasXCTO: Boolean(h('x-content-type-options')),
+    hasXFO: Boolean(h('x-frame-options')),
+    compression,
+    cacheControl: h('cache-control'),
+    server: h('server'),
+    poweredBy: h('x-powered-by'),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — Robots.txt analyzer (per AI bot)
+// ═══════════════════════════════════════════════════════════════
+const AI_BOTS = ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'PerplexityBot', 'Googlebot', 'YandexBot', 'Applebot', 'CCBot', 'Bingbot'] as const;
+
+function analyzeRobots(robotsText: string, ok: boolean, status: number): RobotsData {
+  if (!ok || !robotsText) {
+    return { exists: false, status, size: 0, hasSitemap: false, sitemapUrls: [], bots: AI_BOTS.map(b => ({ bot: b, allowed: true, rule: 'no robots.txt → default allow' })), errors: ok ? [] : ['robots.txt недоступен'] };
+  }
+  const sitemapUrls = [...robotsText.matchAll(/^\s*Sitemap:\s*(.+)$/gim)].map(m => m[1].trim());
+  // Парсим группы по User-agent.
+  const lines = robotsText.split(/\r?\n/);
+  type Group = { uas: string[]; rules: Array<{ type: 'allow' | 'disallow'; path: string }> };
+  const groups: Group[] = [];
+  let cur: Group | null = null;
+  let lastWasUa = false;
+  for (const raw of lines) {
+    const line = raw.replace(/#.*$/, '').trim();
+    if (!line) { lastWasUa = false; continue; }
+    const uaMatch = line.match(/^User-agent:\s*(.+)$/i);
+    if (uaMatch) {
+      if (!cur || !lastWasUa) {
+        cur = { uas: [], rules: [] };
+        groups.push(cur);
+      }
+      cur.uas.push(uaMatch[1].trim());
+      lastWasUa = true;
+      continue;
+    }
+    lastWasUa = false;
+    if (!cur) continue;
+    const dis = line.match(/^Disallow:\s*(.*)$/i);
+    if (dis) { cur.rules.push({ type: 'disallow', path: dis[1].trim() }); continue; }
+    const allow = line.match(/^Allow:\s*(.*)$/i);
+    if (allow) { cur.rules.push({ type: 'allow', path: allow[1].trim() }); continue; }
+  }
+
+  const findGroup = (bot: string): Group | null => {
+    const lower = bot.toLowerCase();
+    return groups.find(g => g.uas.some(u => u.toLowerCase() === lower)) ?? groups.find(g => g.uas.some(u => u === '*')) ?? null;
+  };
+
+  const bots = AI_BOTS.map(bot => {
+    const g = findGroup(bot);
+    if (!g) return { bot, allowed: true, rule: 'нет правил' };
+    const blanketDisallow = g.rules.some(r => r.type === 'disallow' && r.path === '/');
+    const blanketAllow = g.rules.some(r => r.type === 'allow' && r.path === '/');
+    if (blanketDisallow && !blanketAllow) return { bot, allowed: false, rule: 'Disallow: /' };
+    return { bot, allowed: true, rule: g.rules.length ? `${g.rules.length} правил` : 'без ограничений' };
+  });
+
+  return {
+    exists: true,
+    status,
+    size: robotsText.length,
+    hasSitemap: sitemapUrls.length > 0,
+    sitemapUrls,
+    bots,
+    errors: [],
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — Sitemap analyzer
+// ═══════════════════════════════════════════════════════════════
+function analyzeSitemap(sitemapText: string, ok: boolean, status: number): SitemapData {
+  if (!ok || !sitemapText) {
+    return { exists: false, status, isIndex: false, urlCount: 0, hasLastmod: false, avgLastmodDaysAgo: null, oldestPage: null, newestPage: null, stalePagesCount: 0, errors: ok ? [] : ['sitemap.xml недоступен'] };
+  }
+  const isIndex = /<sitemapindex/i.test(sitemapText);
+  const urlEntries = [...sitemapText.matchAll(/<url>([\s\S]*?)<\/url>/gi)];
+  const lastmodMatches = [...sitemapText.matchAll(/<lastmod>\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/gi)];
+  const dates = lastmodMatches.map(m => Date.parse(m[1])).filter(t => !Number.isNaN(t));
+  const now = Date.now();
+  let avgDays: number | null = null;
+  let oldest: string | null = null;
+  let newest: string | null = null;
+  let stale = 0;
+  if (dates.length) {
+    const ages = dates.map(d => Math.round((now - d) / (1000 * 60 * 60 * 24)));
+    avgDays = Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
+    const min = Math.min(...dates);
+    const max = Math.max(...dates);
+    oldest = new Date(min).toISOString().slice(0, 10);
+    newest = new Date(max).toISOString().slice(0, 10);
+    stale = ages.filter(a => a > 180).length;
+  }
+  return {
+    exists: true,
+    status,
+    isIndex,
+    urlCount: isIndex ? [...sitemapText.matchAll(/<sitemap>/gi)].length : urlEntries.length,
+    hasLastmod: lastmodMatches.length > 0,
+    avgLastmodDaysAgo: avgDays,
+    oldestPage: oldest,
+    newestPage: newest,
+    stalePagesCount: stale,
+    errors: [],
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — llms.txt quality analyzer
+// ═══════════════════════════════════════════════════════════════
+function analyzeLlmsTxt(text: string, ok: boolean, status: number, hasLlmsFull: boolean, hasSecurityTxt: boolean): LlmsTxtData {
+  if (!ok || !text) {
+    return { exists: false, status, size: 0, hasH1: false, hasBlockquote: false, hasH2: false, hasLinks: false, qualityScore: 0, missingElements: ['файл отсутствует'], hasLlmsFull, hasSecurityTxt };
+  }
+  const hasH1 = /^#\s+\S/m.test(text);
+  const hasBlockquote = /^>\s+\S/m.test(text);
+  const hasH2 = /^##\s+\S/m.test(text);
+  const hasLinks = /\[[^\]]+\]\([^)]+\)/.test(text);
+  const missing: string[] = [];
+  if (!hasH1) missing.push('# Заголовок');
+  if (!hasBlockquote) missing.push('> Краткое описание');
+  if (!hasH2) missing.push('## Разделы');
+  if (!hasLinks) missing.push('Markdown-ссылки на разделы');
+  // Quality: 4 элемента × 25
+  const qualityScore = Math.round(((hasH1 ? 1 : 0) + (hasBlockquote ? 1 : 0) + (hasH2 ? 1 : 0) + (hasLinks ? 1 : 0)) * 25);
+  return { exists: true, status, size: text.length, hasH1, hasBlockquote, hasH2, hasLinks, qualityScore, missingElements: missing, hasLlmsFull, hasSecurityTxt };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — Resources analyzer (blocking CSS/JS, modern images)
+// ═══════════════════════════════════════════════════════════════
+function analyzeResources(html: string): ResourcesData {
+  const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+  const head = headMatch ? headMatch[1] : '';
+  const blockingCss = (head.match(/<link[^>]*rel=["']stylesheet["'][^>]*>/gi) || [])
+    .filter(t => !/media=["'](print|none)["']/i.test(t) && !/\bonload=/i.test(t))
+    .length;
+  const blockingJs = (head.match(/<script[^>]*src=["'][^"']+["'][^>]*>/gi) || [])
+    .filter(t => !/\b(async|defer|type=["']module["'])/i.test(t))
+    .length;
+  const htmlSizeKB = Math.round(html.length / 1024);
+  const imgs = html.match(/<img[^>]*>/gi) || [];
+  const sources = html.match(/<source[^>]*>/gi) || [];
+  const totalImages = imgs.length;
+  const modernCount =
+    imgs.filter(t => /\.(webp|avif)/i.test(t)).length +
+    sources.filter(t => /type=["']image\/(webp|avif)["']/i.test(t)).length;
+  const lazy = imgs.filter(t => /loading=["']lazy["']/i.test(t)).length;
+  const fontDisplaySwap = /font-display\s*:\s*swap/i.test(html) || /&font-display=swap/i.test(html);
+  const preloadHints = (head.match(/<link[^>]*rel=["'](preload|preconnect|dns-prefetch)["']/gi) || []).length;
+  return {
+    blockingCss,
+    blockingJs,
+    htmlSizeKB,
+    modernImageRatio: totalImages > 0 ? Math.round((modernCount / Math.max(totalImages, modernCount)) * 100) / 100 : 0,
+    lazyImagesRatio: totalImages > 0 ? Math.round((lazy / totalImages) * 100) / 100 : 0,
+    fontDisplaySwap,
+    preloadHints,
+    totalImages,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — Geo signals analyzer (semantic HTML, citation-readiness)
+// ═══════════════════════════════════════════════════════════════
+function analyzeGeoSignals(html: string): GeoSignalsData {
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyHtml = bodyMatch ? bodyMatch[1] : html;
+  const bodyText = bodyHtml
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const sentences = bodyText.split(/[.!?…]+\s+/).filter(s => s.trim().length > 4);
+  const avgWords = sentences.length
+    ? Math.round(sentences.reduce((a, s) => a + s.split(/\s+/).length, 0) / sentences.length)
+    : 0;
+  const clearSentences = sentences.filter(s => {
+    const w = s.split(/\s+/).length;
+    return w >= 5 && w <= 25;
+  }).length;
+  const citationReadyRatio = sentences.length ? Math.round((clearSentences / sentences.length) * 100) / 100 : 0;
+
+  const semanticTags = {
+    article: /<article[\s>]/i.test(html),
+    section: /<section[\s>]/i.test(html),
+    main: /<main[\s>]/i.test(html),
+    nav: /<nav[\s>]/i.test(html),
+    aside: /<aside[\s>]/i.test(html),
+    figure: /<figure[\s>]/i.test(html),
+  };
+  const semanticScore = Math.round(
+    (semanticTags.article ? 25 : 0) +
+    (semanticTags.main ? 20 : 0) +
+    (semanticTags.section ? 15 : 0) +
+    (semanticTags.nav ? 15 : 0) +
+    (semanticTags.aside ? 10 : 0) +
+    (semanticTags.figure ? 15 : 0),
+  );
+
+  const headings = [...html.matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)]
+    .map(m => m[1].replace(/<[^>]+>/g, '').trim())
+    .filter(Boolean);
+  const questions = headings.filter(t => /\?$/.test(t) || /^(как|что|зачем|почему|когда|где|сколько|who|what|how|why|when)/i.test(t));
+  const questionHeadingRatio = headings.length ? Math.round((questions.length / headings.length) * 100) / 100 : 0;
+
+  // Простая мера читаемости: чем длиннее в среднем предложение — тем хуже.
+  // Маппим в "учебный класс" грубо: 8 слов = 5 класс, 30 слов = 12+ класс.
+  const readabilityGrade = avgWords ? Math.min(15, Math.max(4, Math.round(avgWords * 0.5))) : 0;
+
+  const allHrefs = [...html.matchAll(/<a[^>]*href=["'](https?:\/\/[^"']+)["']/gi)].map(m => m[1]);
+  const authorityLinks = allHrefs.filter(h => !/(advert|utm_|tracker|ad\.|pixel|stats?\.)/i.test(h)).length;
+
+  const paragraphCount = (bodyHtml.match(/<p[\s>]/gi) || []).length;
+
+  return { citationReadyRatio, semanticScore, semanticTags, questionHeadingRatio, readabilityGrade, avgWordsPerSentence: avgWords, authorityLinks, paragraphCount };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — CRO analyzer
+// ═══════════════════════════════════════════════════════════════
+function analyzeCRO(html: string): CROData {
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyText = bodyMatch
+    ? bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+
+  const hasPhone = /\+?\d[\d\s\-()]{8,}\d/.test(bodyText) || /tel:/i.test(html);
+  const hasEmail = /\b[\w.-]+@[\w.-]+\.\w{2,}\b/.test(bodyText) || /mailto:/i.test(html);
+  const hasAddress = /(адрес|г\.\s*[А-ЯA-Z]|ул\.\s*|[А-Я][а-я]+ская обл)/i.test(bodyText) || /<address[\s>]/i.test(html);
+  const hasLegalInfo = /(огрн|инн\s*[\d]{10,}|кпп|ооо\s|ип\s|самозанятый)/i.test(bodyText);
+  const hasGuarantee = /гарант|возврат\s*денег|refund|guarantee/i.test(bodyText);
+
+  const ctaPattern = /заказ|купи|оставь\s*заявк|записа|получи|звони|оформ|consultation|консультац|корзин|добавить в|узнать\s*цен|рассчита|подобрат|связат|обрат|демо\b|trial|order|buy|request|скачат/i;
+  const ctaMatches = bodyText.match(new RegExp(ctaPattern.source, 'gi')) || [];
+  const ctaCount = ctaMatches.length;
+  // first 1500 chars ~ above-the-fold proxy
+  const aboveFoldHtml = html.slice(0, 4000);
+  const ctaAboveFold = ctaPattern.test(aboveFoldHtml.replace(/<[^>]+>/g, ' '));
+  const hasPrimary = /<button[\s>]|class=["'][^"']*\b(btn|cta|primary)\b/i.test(html);
+
+  const formCount = (html.match(/<form[\s>]/gi) || []).length;
+  const allFields = (html.match(/<(input|textarea|select)[\s>]/gi) || []).length;
+  const avgFields = formCount ? Math.round(allFields / formCount) : 0;
+  const hasContactForm = /<form[\s>]/i.test(html) && (/email|name|phone|телефон|имя/i.test(html));
+
+  const hasPrice = /(\d[\d\s]{2,}\s*(₽|руб|rub|usd|\$|€|eur))/i.test(bodyText) || /class=["'][^"']*(price|cost|стоимость)/i.test(html);
+  const hasCalculator = /(калькулятор|calculator|рассчита.{0,30}стоимость)/i.test(bodyText) || /<input[^>]*type=["']range["']/i.test(html);
+
+  const hasReviews = /(отзыв|review|testimonial)/i.test(html);
+  const hasCases = /(кейс|case|portfolio|портфолио)/i.test(html);
+  const hasLogos = /(client.*logo|logos|наши\s*клиент)/i.test(html);
+
+  const hasCountdown = /countdown|таймер|осталось\s+\d/i.test(html);
+  const hasLimited = /(ограниченное\s*предложение|limited\s*time|до\s*конца\s*(акции|месяца|дня))/i.test(bodyText);
+
+  const hasMessenger = /(t\.me\/|wa\.me\/|whatsapp|telegram|viber)/i.test(html);
+  const hasCallback = /(заказать\s*звонок|callback|обратный\s*звонок)/i.test(bodyText);
+  const hasChat = /(jivosite|carrotquest|tawk\.to|webim|livechat|crisp|intercom|tidio|chatra)/i.test(html);
+
+  const trustCount = [hasPhone, hasEmail, hasAddress, hasLegalInfo, hasGuarantee].filter(Boolean).length;
+  const trustScore = Math.round((trustCount / 5) * 100);
+
+  return {
+    trustScore,
+    trust: { hasPhone, hasEmail, hasAddress, hasLegalInfo, hasGuarantee },
+    cta: { count: ctaCount, aboveFold: ctaAboveFold, hasPrimary },
+    forms: { count: formCount, avgFields, hasContactForm },
+    pricing: { hasPrice, hasCalculator },
+    socialProof: { hasReviews, hasCases, hasLogos },
+    urgency: { hasCountdown, hasLimited },
+    channels: { hasMessenger, hasCallback, hasChat },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — Score calculators (GEO / SEO / CRO) — 3 honest metrics
+// ═══════════════════════════════════════════════════════════════
+function calcGeoScore(input: {
+  robots: RobotsData;
+  llmsTxt: LlmsTxtData;
+  schemaTypes: string[];
+  geoSignals: GeoSignalsData;
+  hasFaq: boolean;
+  hasAuthor: boolean;
+  hasDate: boolean;
+}): { score: number; breakdown: Array<{ key: string; weight: number; earned: number }> } {
+  const breakdown: Array<{ key: string; weight: number; earned: number }> = [];
+
+  // 1. AI bot access via robots (weight 25)
+  const aiBotsAllowed = input.robots.bots.filter(b => /^(GPTBot|ClaudeBot|anthropic-ai|PerplexityBot|Applebot|CCBot)$/i.test(b.bot)).filter(b => b.allowed).length;
+  const aiBotMax = 6;
+  breakdown.push({ key: 'ai_bot_access', weight: 25, earned: Math.round((aiBotsAllowed / aiBotMax) * 25) });
+
+  // 2. llms.txt quality (weight 20)
+  breakdown.push({ key: 'llms_txt_quality', weight: 20, earned: Math.round(input.llmsTxt.qualityScore * 0.20) });
+
+  // 3. Structured data (weight 15)
+  const schemaPts = Math.min(15, input.schemaTypes.length * 4 + (input.schemaTypes.includes('FAQPage') ? 5 : 0));
+  breakdown.push({ key: 'structured_data', weight: 15, earned: schemaPts });
+
+  // 4. Citation-ready content (weight 15)
+  breakdown.push({ key: 'citation_ready', weight: 15, earned: Math.round(input.geoSignals.citationReadyRatio * 15) });
+
+  // 5. Semantic HTML (weight 10)
+  breakdown.push({ key: 'semantic_html', weight: 10, earned: Math.round(input.geoSignals.semanticScore * 0.1) });
+
+  // 6. E-E-A-T signals (weight 10)
+  const eeat = (input.hasAuthor ? 5 : 0) + (input.hasDate ? 5 : 0);
+  breakdown.push({ key: 'eeat', weight: 10, earned: eeat });
+
+  // 7. Question headings / FAQ (weight 5)
+  const qPts = Math.round(input.geoSignals.questionHeadingRatio * 3) + (input.hasFaq ? 2 : 0);
+  breakdown.push({ key: 'qa_format', weight: 5, earned: Math.min(5, qPts) });
+
+  const score = breakdown.reduce((s, b) => s + b.earned, 0);
+  return { score: Math.min(100, score), breakdown };
+}
+
+function calcSeoScore(input: {
+  stage0: Stage0Data;
+  seoData: any;
+  resources: ResourcesData;
+  schemaTypes: string[];
+  robots: RobotsData;
+  sitemap: SitemapData;
+}): { score: number; breakdown: Array<{ key: string; weight: number; earned: number }> } {
+  const breakdown: Array<{ key: string; weight: number; earned: number }> = [];
+
+  // 1. Technical foundation (weight 30): https + 200 + redirect chain ok + headers
+  let tech = 0;
+  if (input.stage0.isHttps) tech += 8;
+  if (input.stage0.httpStatus === 200) tech += 8;
+  if (input.stage0.redirectCount <= 1) tech += 4;
+  if (input.stage0.ttfbMs < 800) tech += 4; else if (input.stage0.ttfbMs < 1500) tech += 2;
+  if (input.stage0.compression !== 'none') tech += 3;
+  if (input.stage0.hasHsts) tech += 3;
+  breakdown.push({ key: 'technical', weight: 30, earned: Math.min(30, tech) });
+
+  // 2. Content basics (weight 25): title, desc, h1, words
+  let content = 0;
+  const titleLen = input.seoData?.titleLength || 0;
+  if (titleLen >= 30 && titleLen <= 70) content += 6;
+  else if (titleLen > 0) content += 3;
+  const descLen = input.seoData?.descriptionLength || 0;
+  if (descLen >= 120 && descLen <= 160) content += 6;
+  else if (descLen > 0) content += 3;
+  if (input.seoData?.h1Count === 1) content += 6;
+  const words = input.seoData?.wordCount || 0;
+  if (words >= 600) content += 7; else if (words >= 300) content += 4; else if (words > 0) content += 2;
+  breakdown.push({ key: 'content', weight: 25, earned: Math.min(25, content) });
+
+  // 3. Performance (weight 20): blocking resources, modern images
+  let perf = 0;
+  if (input.resources.blockingCss <= 2) perf += 5; else if (input.resources.blockingCss <= 4) perf += 3;
+  if (input.resources.blockingJs <= 2) perf += 5; else if (input.resources.blockingJs <= 4) perf += 3;
+  if (input.resources.modernImageRatio >= 0.5) perf += 5; else if (input.resources.modernImageRatio > 0) perf += 3;
+  if (input.resources.lazyImagesRatio >= 0.5) perf += 3;
+  if (input.resources.fontDisplaySwap) perf += 2;
+  breakdown.push({ key: 'performance', weight: 20, earned: Math.min(20, perf) });
+
+  // 4. Schema (weight 15)
+  let sch = 0;
+  if (input.schemaTypes.length > 0) sch += 5;
+  if (input.schemaTypes.length >= 3) sch += 4;
+  if (input.schemaTypes.includes('Organization') || input.schemaTypes.includes('LocalBusiness')) sch += 3;
+  if (input.schemaTypes.includes('BreadcrumbList')) sch += 3;
+  breakdown.push({ key: 'schema', weight: 15, earned: Math.min(15, sch) });
+
+  // 5. Crawl signals (weight 10): robots OK, sitemap OK, no SPA-failure proxy
+  let crawl = 0;
+  if (input.robots.exists) crawl += 4;
+  if (input.sitemap.exists) crawl += 4;
+  if (input.robots.hasSitemap) crawl += 2;
+  breakdown.push({ key: 'crawl', weight: 10, earned: Math.min(10, crawl) });
+
+  const score = breakdown.reduce((s, b) => s + b.earned, 0);
+  return { score: Math.min(100, score), breakdown };
+}
+
+function calcCroScore(cro: CROData): { score: number; breakdown: Array<{ key: string; weight: number; earned: number }> } {
+  const b: Array<{ key: string; weight: number; earned: number }> = [];
+
+  // 1. Trust (weight 25)
+  b.push({ key: 'trust', weight: 25, earned: Math.round(cro.trustScore * 0.25) });
+
+  // 2. CTA (weight 25)
+  let cta = 0;
+  if (cro.cta.count > 0) cta += 8;
+  if (cro.cta.count >= 3) cta += 5;
+  if (cro.cta.aboveFold) cta += 7;
+  if (cro.cta.hasPrimary) cta += 5;
+  b.push({ key: 'cta', weight: 25, earned: Math.min(25, cta) });
+
+  // 3. Forms (weight 15)
+  let forms = 0;
+  if (cro.forms.count > 0) forms += 6;
+  if (cro.forms.hasContactForm) forms += 5;
+  if (cro.forms.avgFields > 0 && cro.forms.avgFields <= 5) forms += 4;
+  b.push({ key: 'forms', weight: 15, earned: Math.min(15, forms) });
+
+  // 4. Pricing (weight 15)
+  let pr = 0;
+  if (cro.pricing.hasPrice) pr += 10;
+  if (cro.pricing.hasCalculator) pr += 5;
+  b.push({ key: 'pricing', weight: 15, earned: Math.min(15, pr) });
+
+  // 5. Social proof (weight 10)
+  const sp = (cro.socialProof.hasReviews ? 4 : 0) + (cro.socialProof.hasCases ? 4 : 0) + (cro.socialProof.hasLogos ? 2 : 0);
+  b.push({ key: 'social_proof', weight: 10, earned: Math.min(10, sp) });
+
+  // 6. Channels (weight 10)
+  const ch = (cro.channels.hasMessenger ? 4 : 0) + (cro.channels.hasCallback ? 3 : 0) + (cro.channels.hasChat ? 3 : 0);
+  b.push({ key: 'channels', weight: 10, earned: Math.min(10, ch) });
+
+  const score = b.reduce((s, x) => s + x.earned, 0);
+  return { score: Math.min(100, score), breakdown: b };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — Issues from new detectors (geo / cro modules)
+// ═══════════════════════════════════════════════════════════════
+function buildGeoCroIssues(
+  robots: RobotsData,
+  llmsTxt: LlmsTxtData,
+  resources: ResourcesData,
+  cro: CROData,
+  stage0: Stage0Data,
+  benchmark: BenchmarkData,
+  makeIssue: MakeIssueFn,
+): Issue[] {
+  const issues: Issue[] = [];
+
+  // robots — заблокированные AI-боты
+  const blockedAi = robots.bots.filter(b => !b.allowed && /^(GPTBot|ClaudeBot|anthropic-ai|PerplexityBot|Applebot|CCBot)$/i.test(b.bot));
+  if (blockedAi.length) {
+    issues.push(makeIssue({
+      module: 'ai', severity: 'high',
+      title: `AI-боты заблокированы в robots.txt (${blockedAi.length} шт.)`,
+      found: blockedAi.map(b => `${b.bot}: ${b.rule}`).join('; '),
+      location: '/robots.txt',
+      why_it_matters: 'Если GPTBot/ClaudeBot/PerplexityBot не имеют доступа — сайт не появится в ChatGPT, Claude и Perplexity.',
+      how_to_fix: 'Удалите Disallow: / для AI-ботов или добавьте Allow: /',
+      example_fix: 'User-agent: GPTBot\nAllow: /',
+      visible_in_preview: true,
+      impact_score: 12,
+    }));
+  }
+
+  // llms.txt — низкое качество
+  if (llmsTxt.exists && llmsTxt.qualityScore < 75) {
+    issues.push(makeIssue({
+      module: 'ai', severity: 'medium',
+      title: `llms.txt неполный (${llmsTxt.qualityScore}/100)`,
+      found: `Отсутствует: ${llmsTxt.missingElements.join(', ')}`,
+      location: '/llms.txt',
+      why_it_matters: 'Неполный llms.txt не даёт AI-краулерам структурированной карты сайта.',
+      how_to_fix: 'Добавьте недостающие элементы по стандарту llmstxt.org',
+      example_fix: '# Название\n> Краткое описание\n## Разделы\n- [Главная](/)',
+      visible_in_preview: false,
+    }));
+  }
+
+  // Resources — слишком много блокирующих ресурсов
+  if (resources.blockingCss > 4) {
+    issues.push(makeIssue({
+      module: 'technical', severity: 'medium',
+      title: `Много блокирующего CSS (${resources.blockingCss} файлов)`,
+      found: `${resources.blockingCss} <link rel="stylesheet"> в <head>`,
+      location: '<head>',
+      why_it_matters: 'Блокирующий CSS задерживает FCP/LCP — снижается мобильный SEO-рейтинг.',
+      how_to_fix: 'Объедините CSS, используйте critical CSS inline, отложите некритичные стили.',
+      example_fix: '<link rel="preload" as="style" href="..." onload="this.rel=\'stylesheet\'">',
+      visible_in_preview: false,
+    }));
+  }
+  if (resources.blockingJs > 4) {
+    issues.push(makeIssue({
+      module: 'technical', severity: 'medium',
+      title: `Много блокирующего JS (${resources.blockingJs} файлов)`,
+      found: `${resources.blockingJs} <script src> без async/defer в <head>`,
+      location: '<head>',
+      why_it_matters: 'Блокирующий JS задерживает рендер — увеличивается LCP.',
+      how_to_fix: 'Добавьте async или defer ко всем скриптам в <head>.',
+      example_fix: '<script src="..." defer></script>',
+      visible_in_preview: false,
+    }));
+  }
+
+  // CRO — нет CTA above-fold
+  if (!cro.cta.aboveFold) {
+    issues.push(makeIssue({
+      module: 'cro', severity: 'high',
+      title: 'Нет CTA в первом экране',
+      found: 'В первых ~4 КБ HTML не найдено призывов к действию',
+      location: 'Первый экран',
+      why_it_matters: 'Большинство посетителей не скроллят. Без CTA above-the-fold конверсия падает в 2-3 раза.',
+      how_to_fix: 'Разместите главную кнопку CTA в hero-блоке.',
+      example_fix: '<button class="primary">Оставить заявку</button>',
+      visible_in_preview: true,
+      impact_score: 12,
+    }));
+  }
+  // CRO — нет trust signals
+  if (cro.trustScore < 40) {
+    issues.push(makeIssue({
+      module: 'cro', severity: 'high',
+      title: `Мало сигналов доверия (${cro.trustScore}/100)`,
+      found: `Phone:${cro.trust.hasPhone?'✓':'✗'} Email:${cro.trust.hasEmail?'✓':'✗'} Address:${cro.trust.hasAddress?'✓':'✗'} Legal:${cro.trust.hasLegalInfo?'✓':'✗'} Guarantee:${cro.trust.hasGuarantee?'✓':'✗'}`,
+      location: 'Контакты / футер',
+      why_it_matters: 'Без телефона, юр. данных и гарантий пользователи не оставляют заявки на незнакомом сайте.',
+      how_to_fix: 'Добавьте телефон, email, адрес, ИНН/ОГРН и гарантию в футер или контактный блок.',
+      example_fix: '<address>ООО "..." ИНН ... Тел: +7...</address>',
+      visible_in_preview: true,
+    }));
+  }
+  if (cro.forms.count > 0 && cro.forms.avgFields > 6) {
+    issues.push(makeIssue({
+      module: 'cro', severity: 'medium',
+      title: `Слишком длинные формы (в среднем ${cro.forms.avgFields} полей)`,
+      found: `${cro.forms.count} форм со средней длиной ${cro.forms.avgFields} полей`,
+      location: 'Формы',
+      why_it_matters: 'Каждое лишнее поле формы снижает конверсию на ~7%.',
+      how_to_fix: 'Уберите необязательные поля, оставьте только имя + контакт.',
+      example_fix: '<input name="name"><input name="phone">',
+      visible_in_preview: false,
+    }));
+  }
+
+  // Stage0 — длинная цепочка редиректов
+  if (stage0.redirectCount >= 2) {
+    issues.push(makeIssue({
+      module: 'technical', severity: 'high',
+      title: `Длинная цепочка редиректов (${stage0.redirectCount} переходов)`,
+      found: stage0.redirectChain.map(h => `${h.from} → ${h.to} (${h.status})`).join('; '),
+      location: 'HTTP redirect',
+      why_it_matters: 'Цепочки редиректов добавляют 100-500мс к каждому открытию страницы и тратят бюджет краулинга.',
+      how_to_fix: 'Сделайте один прямой 301 редирект вместо цепочки.',
+      example_fix: 'http://example → https://example/page (1 hop)',
+      visible_in_preview: true,
+    }));
+  }
+  if (!stage0.hasHsts && stage0.isHttps) {
+    issues.push(makeIssue({
+      module: 'technical', severity: 'low',
+      title: 'Нет HSTS-заголовка',
+      found: 'Strict-Transport-Security не отдаётся',
+      location: 'HTTP-заголовки',
+      why_it_matters: 'Без HSTS возможны атаки downgrade на HTTP.',
+      how_to_fix: 'Добавьте Strict-Transport-Security: max-age=31536000; includeSubDomains',
+      example_fix: 'Strict-Transport-Security: max-age=31536000',
+      visible_in_preview: false,
+    }));
+  }
+
+  // Benchmark gaps → issues
+  for (const gap of benchmark.gaps) {
+    issues.push(makeIssue({
+      module: gap.key === 'hasFaq' || gap.key === 'hasAuthor' ? 'content' : (gap.key === 'hasCta' || gap.key === 'hasPrice' || gap.key === 'trustSignals') ? 'cro' : 'content',
+      severity: gap.severity,
+      title: `[Benchmark «${benchmark.category}»] не достигнут "${gap.key}"`,
+      found: `Ожидается ${gap.expected}, получено ${gap.actual}`,
+      location: 'Benchmark категории',
+      why_it_matters: `Сайты этой категории, попадающие в выдачу, обычно соответствуют этому критерию.`,
+      how_to_fix: `Подтяните "${gap.key}" до уровня ${gap.expected}`,
+      example_fix: '',
+      visible_in_preview: false,
+    }));
+  }
+
+  return issues;
+}
+
 // ═══ Main pipeline export ═══
 export interface PipelineResult {
   status: 'done' | 'error';
@@ -1418,6 +2050,24 @@ export interface PipelineResult {
   theme: string;
   is_spa: boolean;
   scores: { total: number; seo: number; direct: number; schema: number; ai: number; breakdown?: any };
+  // Sprint 3 — три честных скора (фронт переедет на них в Sprint 5):
+  geoScore: number;
+  seoScore: number;
+  croScore: number;
+  scoresBreakdown?: {
+    geo: Array<{ key: string; weight: number; earned: number }>;
+    seo: Array<{ key: string; weight: number; earned: number }>;
+    cro: Array<{ key: string; weight: number; earned: number }>;
+  };
+  // Sprint 3 — структурированные данные:
+  stage0?: Stage0Data;
+  robots?: RobotsData;
+  sitemap?: SitemapData;
+  llmsTxt?: LlmsTxtData;
+  resources?: ResourcesData;
+  geoSignals?: GeoSignalsData;
+  cro?: CROData;
+  benchmark?: BenchmarkData;
   issues: Issue[];
   seo_data: any;
   summary?: string | null;
