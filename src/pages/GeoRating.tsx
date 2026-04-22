@@ -200,9 +200,10 @@ const GeoRating = () => {
             <div className="flex flex-wrap justify-center gap-3 mb-6">
               {[
                 { label: "Сайтов в выборке", value: rawRows.length },
-                { label: "Ср. LLM Score", value: avgLlm },
+                { label: "Ср. LLM", value: avgLlm },
+                { label: "Ср. Schema", value: avgSchema },
+                { label: "Ср. Direct", value: avgDirect },
                 { label: "С llms.txt", value: `${pctLlms}%` },
-                { label: "С FAQPage", value: `${pctFaq}%` },
               ].map((s) => (
                 <div key={s.label} className="border border-border/30 rounded-lg px-5 py-3 min-w-[120px] bg-card/40">
                   <div className="text-xl font-bold text-primary">{s.value}</div>
