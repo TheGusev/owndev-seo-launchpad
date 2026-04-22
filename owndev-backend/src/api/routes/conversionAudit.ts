@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { logger } from '../../utils/logger.js';
 import { sql } from '../../db/client.js';
+import { withRetry, HttpError } from '../../utils/retry.js';
 
 let cacheTableReady = false;
 async function ensureCacheTable(): Promise<void> {
@@ -115,11 +116,12 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
     const tid2 = setTimeout(() => controller2.abort(), 45000);
 
     try {
-      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        signal: controller2.signal,
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const resp = await withRetry(async () => {
+        const r = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          signal: controller2.signal,
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
             {
@@ -166,10 +168,17 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
           ],
           temperature: 0.3,
           max_tokens: 2500,
-        }),
-      });
+          }),
+        });
+        if (!r.ok) {
+          if ([429, 500, 502, 503, 504].includes(r.status)) {
+            throw new HttpError(r.status, `OpenAI ${r.status}`);
+          }
+          throw new Error(`OpenAI ${r.status}`);
+        }
+        return r;
+      }, { label: 'CONVERSION_AUDIT' });
       clearTimeout(tid2);
-      if (!resp.ok) throw new Error(`OpenAI ${resp.status}`);
       const data = await resp.json();
       const content = data?.choices?.[0]?.message?.content || '{}';
       const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());

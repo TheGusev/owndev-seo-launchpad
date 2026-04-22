@@ -5,6 +5,7 @@
  */
 
 import { logger } from '../utils/logger.js';
+import { withRetry, HttpError } from '../utils/retry.js';
 
 const UA = 'OWNDEV-SiteCheck/2.0';
 
@@ -467,32 +468,39 @@ function getLlmConfig(_apiKey: string): { url: string; headers: Record<string, s
 // ─── LLM helper ───
 async function llmCall(apiKey: string, _model: string, systemPrompt: string, userPrompt: string, maxTokens = 4000, temperature = 0.1): Promise<string> {
   const config = getLlmConfig(apiKey);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 сек таймаут
   try {
-    const resp = await fetch(config.url, {
-      method: 'POST',
-      headers: config.headers,
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-        max_tokens: maxTokens, temperature, top_p: 0.85,
-      }),
-    });
-    clearTimeout(timeoutId);
-    if (!resp.ok) {
-      const errText = await resp.text();
-      logger.error('PIPELINE', `LLM HTTP ${resp.status} [${LLM_PROVIDER}]: ${errText.slice(0, 300)}`);
-      return '';
-    }
-    const data = await resp.json();
-    return data.choices?.[0]?.message?.content?.trim() || '';
+    return await withRetry(async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 сек таймаут на каждую попытку
+      try {
+        const resp = await fetch(config.url, {
+          method: 'POST',
+          headers: config.headers,
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+            max_tokens: maxTokens, temperature, top_p: 0.85,
+          }),
+        });
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          if ([429, 500, 502, 503, 504].includes(resp.status)) {
+            throw new HttpError(resp.status, errText.slice(0, 300));
+          }
+          logger.error('PIPELINE', `LLM HTTP ${resp.status} [${LLM_PROVIDER}]: ${errText.slice(0, 300)}`);
+          return '';
+        }
+        const data = await resp.json();
+        return data.choices?.[0]?.message?.content?.trim() || '';
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }, { label: 'PIPELINE_LLM' });
   } catch (e: any) {
-    clearTimeout(timeoutId);
-    if (e.name === 'AbortError') {
+    if (e?.name === 'AbortError') {
       logger.error('PIPELINE', `LLM call TIMEOUT after 45s [${LLM_PROVIDER}]`);
     } else {
-      logger.error('PIPELINE', `LLM call failed [${LLM_PROVIDER}]: ${e.message}`);
+      logger.error('PIPELINE', `LLM call failed after retries [${LLM_PROVIDER}]: ${e?.message || e}`);
     }
     return '';
   }
@@ -500,38 +508,45 @@ async function llmCall(apiKey: string, _model: string, systemPrompt: string, use
 
 async function llmToolCall(apiKey: string, _model: string, systemPrompt: string, userPrompt: string, tool: any): Promise<any> {
   const config = getLlmConfig(apiKey);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 сек таймаут
   try {
-    const resp = await fetch(config.url, {
-      method: 'POST',
-      headers: config.headers,
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-        tools: [tool], tool_choice: { type: 'function', function: { name: tool.function.name } },
-        temperature: 0.4,
-      }),
-    });
-    clearTimeout(timeoutId);
-    if (!resp.ok) {
-      const errText = await resp.text();
-      logger.error('PIPELINE', `LLM tool HTTP ${resp.status} [${LLM_PROVIDER}]: ${errText.slice(0, 300)}`);
-      return null;
-    }
-    const data = await resp.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      const content = data.choices?.[0]?.message?.content;
-      return content ? safeParseJson(content, null) : null;
-    }
-    return typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments;
+    return await withRetry(async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 сек таймаут на каждую попытку
+      try {
+        const resp = await fetch(config.url, {
+          method: 'POST',
+          headers: config.headers,
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: config.defaultModel, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+            tools: [tool], tool_choice: { type: 'function', function: { name: tool.function.name } },
+            temperature: 0.4,
+          }),
+        });
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          if ([429, 500, 502, 503, 504].includes(resp.status)) {
+            throw new HttpError(resp.status, errText.slice(0, 300));
+          }
+          logger.error('PIPELINE', `LLM tool HTTP ${resp.status} [${LLM_PROVIDER}]: ${errText.slice(0, 300)}`);
+          return null;
+        }
+        const data = await resp.json();
+        const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+        if (!toolCall?.function?.arguments) {
+          const content = data.choices?.[0]?.message?.content;
+          return content ? safeParseJson(content, null) : null;
+        }
+        return typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }, { label: 'PIPELINE_LLM_TOOL' });
   } catch (e: any) {
-    clearTimeout(timeoutId);
-    if (e.name === 'AbortError') {
+    if (e?.name === 'AbortError') {
       logger.error('PIPELINE', `LLM tool call TIMEOUT after 45s [${LLM_PROVIDER}]`);
     } else {
-      logger.error('PIPELINE', `LLM tool call failed [${LLM_PROVIDER}]: ${e.message}`);
+      logger.error('PIPELINE', `LLM tool call failed after retries [${LLM_PROVIDER}]: ${e?.message || e}`);
     }
     return null;
   }

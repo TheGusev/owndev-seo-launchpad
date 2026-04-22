@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { redis } from '../../cache/redis.js';
 import { logger } from '../../utils/logger.js';
 import { isValidUrl, normalizeUrl } from '../../utils/url.js';
+import { withRetry, HttpError } from '../../utils/retry.js';
 
 const CONCURRENCY_LIMIT = Number(process.env.SITE_CHECK_CONCURRENCY ?? 10);
 
@@ -465,21 +466,29 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       ];
       async function queryAiSystem(system: typeof aiSystems[0]) {
         try {
-          const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            signal: AbortSignal.timeout(30000),
-            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [
-                { role: 'system', content: 'Ты эксперт по GEO (Generative Engine Optimization). Всегда отвечай ТОЛЬКО валидным JSON без markdown.' },
-                { role: 'user', content: system.prompt },
-              ],
-              temperature: 0.3,
-              max_tokens: 500,
-            }),
-          });
-          if (!resp.ok) throw new Error(`OpenAI ${resp.status}`);
+          const resp = await withRetry(async () => {
+            const r = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              signal: AbortSignal.timeout(30000),
+              headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                  { role: 'system', content: 'Ты эксперт по GEO (Generative Engine Optimization). Всегда отвечай ТОЛЬКО валидным JSON без markdown.' },
+                  { role: 'user', content: system.prompt },
+                ],
+                temperature: 0.3,
+                max_tokens: 500,
+              }),
+            });
+            if (!r.ok) {
+              if ([429, 500, 502, 503, 504].includes(r.status)) {
+                throw new HttpError(r.status, `OpenAI ${r.status}`);
+              }
+              throw new Error(`OpenAI ${r.status}`);
+            }
+            return r;
+          }, { label: 'LLM_JUDGE' });
           const data = await resp.json();
           const content = data?.choices?.[0]?.message?.content || '{}';
           const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
@@ -569,20 +578,28 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 Верни JSON-массив из ровно 10 объектов. Без markdown, без пояснений — только массив.`;
 
       try {
-        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            temperature: 0.2,
-            max_tokens: 2000,
-          }),
-        });
-        if (!resp.ok) throw new Error(`OpenAI ${resp.status}`);
+        const resp = await withRetry(async () => {
+          const r = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+              ],
+              temperature: 0.2,
+              max_tokens: 2000,
+            }),
+          });
+          if (!r.ok) {
+            if ([429, 500, 502, 503, 504].includes(r.status)) {
+              throw new HttpError(r.status, `OpenAI ${r.status}`);
+            }
+            throw new Error(`OpenAI ${r.status}`);
+          }
+          return r;
+        }, { label: 'AI_BOOST' });
         const data = await resp.json();
         const content = data?.choices?.[0]?.message?.content || '[]';
         const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());

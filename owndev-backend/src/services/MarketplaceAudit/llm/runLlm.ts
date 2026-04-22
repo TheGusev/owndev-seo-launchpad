@@ -1,4 +1,5 @@
 import { logger } from '../../../utils/logger.js';
+import { withRetry, HttpError } from '../../../utils/retry.js';
 
 const GATEWAY_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_MODEL = 'gpt-4o-mini';
@@ -22,19 +23,25 @@ export async function callJsonLlm<T = any>(opts: LlmCallOptions): Promise<T | nu
     return null;
   }
   try {
-    const r = await fetch(GATEWAY_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: opts.model ?? DEFAULT_MODEL,
-        messages: opts.messages,
-        tools: [opts.tool],
-        tool_choice: { type: 'function', function: { name: opts.toolName } },
-      }),
-    });
+    const r = await withRetry(async () => {
+      const resp = await fetch(GATEWAY_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: opts.model ?? DEFAULT_MODEL,
+          messages: opts.messages,
+          tools: [opts.tool],
+          tool_choice: { type: 'function', function: { name: opts.toolName } },
+        }),
+      });
+      if (!resp.ok && [429, 500, 502, 503, 504].includes(resp.status)) {
+        throw new HttpError(resp.status, `Gateway ${resp.status}`);
+      }
+      return resp;
+    }, { label: 'MA_LLM' });
     if (!r.ok) {
       logger.warn('MA_LLM', `Gateway returned ${r.status}`);
       return null;
