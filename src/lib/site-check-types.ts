@@ -2,7 +2,7 @@ export type ScanMode = "page" | "site";
 export type ScanStatus = "pending" | "running" | "done" | "error";
 export type PaymentStatus = "pending" | "paid" | "failed";
 export type IssueSeverity = "critical" | "high" | "medium" | "low";
-export type IssueModule = "technical" | "content" | "direct" | "competitors" | "semantics" | "schema" | "ai";
+export type IssueModule = "technical" | "content" | "schema" | "ai" | "geo" | "cro";
 
 export interface IssueCard {
   id: string;
