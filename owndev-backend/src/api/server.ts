@@ -1,7 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { healthRoutes } from './routes/health.js';
-import { auditRoutes } from './routes/audit.js';
 import { monitorRoutes } from './routes/monitor.js';
 import { eventRoutes } from './routes/events.js';
 import { siteCheckRoutes } from './routes/siteCheck.js';
@@ -38,7 +37,6 @@ export async function startServer() {
   });
 
   await app.register(healthRoutes);
-  await app.register(auditRoutes);
   await app.register(monitorRoutes);
   await app.register(eventRoutes);
     await app.register(siteCheckRoutes, { prefix: '/api/v1/site-check' });

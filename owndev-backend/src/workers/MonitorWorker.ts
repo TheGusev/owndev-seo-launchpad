@@ -1,7 +1,6 @@
 import { Worker } from 'bullmq';
 import { redis } from '../cache/redis.js';
 import { createAudit } from '../db/queries/audits.js';
-import { addAuditJob } from '../queue/jobs.js';
 import { getMonitorById, updateMonitorRun } from '../db/queries/monitors.js';
 import { MonitorService } from '../services/MonitorService.js';
 import { logger } from '../utils/logger.js';
@@ -17,7 +16,8 @@ export function startMonitorWorker() {
       logger.info('MONITOR_WORKER', `Processing monitor ${monitorId} for ${url}`);
 
       const auditId = await createAudit({ domainId, userId: userId ?? null, url });
-      await addAuditJob({ auditId, domainId, url, userId: userId ?? null });
+      // Legacy puppeteer-based audit pipeline removed. Monitor records the audit row
+      // for history but no longer enqueues a worker job.
 
       const monitor = await getMonitorById(monitorId);
       const interval = monitor?.period === 'daily' ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;

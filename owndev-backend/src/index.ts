@@ -2,7 +2,6 @@ import 'dotenv/config';
 import { startServer } from './api/server.js';
 import { redis } from './cache/redis.js';
 import { sql, testConnection } from './db/client.js';
-import { startAuditWorker } from './workers/AuditWorker.js';
 import { startMonitorWorker } from './workers/MonitorWorker.js';
 import { startSiteCheckWorker } from './workers/SiteCheckWorker.js';
 import { startMarketplaceAuditWorker } from './workers/MarketplaceAuditWorker.js';
@@ -23,7 +22,6 @@ async function main() {
   const server = await startServer();
 
   // Start workers
-  const auditWorker = startAuditWorker();
   const monitorWorker = startMonitorWorker();
   const siteCheckWorker = startSiteCheckWorker();
   const marketplaceAuditWorker = startMarketplaceAuditWorker();
@@ -36,7 +34,6 @@ async function main() {
   const shutdown = async (signal: string) => {
     logger.info('BOOT', `${signal} received, shutting down...`);
     await server.close();
-    await auditWorker.close();
     await monitorWorker.close();
     await siteCheckWorker.close();
     await marketplaceAuditWorker.close();

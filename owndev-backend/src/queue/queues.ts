@@ -8,11 +8,6 @@ const defaultJobOptions = {
   removeOnFail: 50,
 };
 
-export const auditQueue = new Queue('audit', {
-  connection: redis,
-  defaultJobOptions,
-});
-
 export const monitorQueue = new Queue('monitor', {
   connection: redis,
   defaultJobOptions,
