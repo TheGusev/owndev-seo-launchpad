@@ -43,6 +43,15 @@ const TOOL_GROUPS: Array<{ title: string; icon: LucideIcon; slugs: string[]; col
 
 const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);
 
+const getGridCols = (count: number): string => {
+  if (count <= 1) return "grid-cols-1 max-w-2xl mx-auto";
+  if (count === 2) return "grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto";
+  if (count === 3) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+  if (count === 4) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+  if (count === 6) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+  return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+};
+
 const Tools = () => {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const flagship = getToolBySlug(FLAGSHIP_SLUG);
@@ -76,7 +85,9 @@ const Tools = () => {
           <AnimatedGrid theme="accent" lineCount={{ h: 6, v: 8 }} />
           <FloatingParticles count={12} className="absolute inset-0" />
           <AuroraBackground className="opacity-60" intensity="subtle" />
-          <GeometricRays opacity={0.25} />
+          <div className="absolute top-0 left-0 right-0 h-[700px] pointer-events-none overflow-hidden">
+            <GeometricRays opacity={0.25} />
+          </div>
           <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
         </div>
 
