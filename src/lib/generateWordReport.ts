@@ -123,11 +123,28 @@ export async function generateWordReport(data: ReportData): Promise<void> {
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300, after: 100 }, children: [new TextRun({ text: 'ИТОГОВЫЕ ОЦЕНКИ', bold: true, size: 24, color: W.accent, font: 'Arial' })] }),
   );
 
-  children.push(createStyledTable(
-    ['Общий', 'SEO', 'Директ', 'Schema', 'AI'],
-    [[String(data.scores.total), String(data.scores.seo), String(data.scores.direct), String(data.scores.schema), String(data.scores.ai)]],
-    [20, 20, 20, 20, 20],
-  ));
+  // Sprint 6: три честных скора если есть, иначе legacy
+  const hasTriScore =
+    typeof data.scores.geo === 'number' ||
+    typeof data.scores.cro === 'number';
+  if (hasTriScore) {
+    children.push(createStyledTable(
+      ['Общий', 'GEO / AI', 'SEO', 'Конверсия'],
+      [[
+        String(data.scores.total),
+        String(data.scores.geo ?? 0),
+        String(data.scores.seo),
+        String(data.scores.cro ?? 0),
+      ]],
+      [25, 25, 25, 25],
+    ));
+  } else {
+    children.push(createStyledTable(
+      ['Общий', 'SEO', 'Директ', 'Schema', 'AI'],
+      [[String(data.scores.total), String(data.scores.seo), String(data.scores.direct), String(data.scores.schema), String(data.scores.ai)]],
+      [20, 20, 20, 20, 20],
+    ));
+  }
 
   children.push(
     new Paragraph({ spacing: { before: 200 }, children: [] }),

@@ -277,7 +277,6 @@ const SiteCheckResult = () => {
           {/* 12. Export */}
           <DownloadButtons
             url={data.url} theme={data.theme} scores={scores} issues={issues}
-            keywords={[]} minusWords={[]} competitors={[]}
             scanDate={data.created_at} seoData={data.seo_data}
           />
         </div>
