@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface GeometricRaysProps {
@@ -11,7 +12,18 @@ interface GeometricRaysProps {
  * Inspired by cyberpunk HUD overlays — purely decorative.
  */
 export const GeometricRays = ({ className, opacity = 0.4 }: GeometricRaysProps) => {
-  const stroke = `hsl(var(--primary) / ${opacity})`;
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const effOpacity = isMobile ? Math.min(opacity, 0.22) : opacity;
+  const stroke = `hsl(var(--primary) / ${effOpacity})`;
   const filter = "drop-shadow(0 0 4px hsl(var(--primary) / 0.5))";
 
   return (
@@ -29,8 +41,8 @@ export const GeometricRays = ({ className, opacity = 0.4 }: GeometricRaysProps) 
         </g>
       </svg>
 
-      {/* Top-right */}
-      <svg className="absolute top-0 right-0 w-[40vw] max-w-[520px] h-auto" viewBox="0 0 400 300" fill="none">
+      {/* Top-right (hidden on mobile) */}
+      <svg className={cn("absolute top-0 right-0 w-[40vw] max-w-[520px] h-auto", isMobile && "hidden")} viewBox="0 0 400 300" fill="none">
         <g style={{ filter, transform: "scaleX(-1)", transformOrigin: "center" }}>
           <polyline className="ray-line" points="0,60 90,60 130,100 240,100" stroke={stroke} strokeWidth="1" style={{ animationDelay: "0.2s" }} />
           <polyline className="ray-line" points="0,140 70,140 110,180 200,180" stroke={stroke} strokeWidth="1" style={{ animationDelay: "0.5s" }} />
@@ -38,8 +50,8 @@ export const GeometricRays = ({ className, opacity = 0.4 }: GeometricRaysProps) 
         </g>
       </svg>
 
-      {/* Bottom-left */}
-      <svg className="absolute bottom-0 left-0 w-[35vw] max-w-[460px] h-auto" viewBox="0 0 400 300" fill="none">
+      {/* Bottom-left (hidden on mobile) */}
+      <svg className={cn("absolute bottom-0 left-0 w-[35vw] max-w-[460px] h-auto", isMobile && "hidden")} viewBox="0 0 400 300" fill="none">
         <g style={{ filter, transform: "scaleY(-1)", transformOrigin: "center" }}>
           <polyline className="ray-line" points="0,50 70,50 100,80 180,80" stroke={stroke} strokeWidth="1" style={{ animationDelay: "0.3s" }} />
           <polyline className="ray-line" points="0,130 50,130 90,170 170,170" stroke={stroke} strokeWidth="1" style={{ animationDelay: "0.6s" }} />
