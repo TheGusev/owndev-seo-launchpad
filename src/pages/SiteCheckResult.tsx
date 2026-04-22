@@ -19,15 +19,6 @@ import ResultAccordion from "@/components/site-check/ResultAccordion";
 import { getFullScan } from "@/lib/site-check-api";
 import { judgeLlm, getTechPassport, getAiBoost } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
-import type {
-  SiteCheckResult as SiteCheckResultData,
-  ScanScores,
-  ScoreBreakdown,
-  IssueCard,
-  CompetitorEntry,
-  KeywordEntry,
-  MinusWord,
-} from "@/lib/site-check-types";
 import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonResultsGrid } from "@/components/ui/skeleton-card";
@@ -37,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
-  const [data, setData] = useState<SiteCheckResultData | null>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [llmJudge, setLlmJudge] = useState<LlmJudgeData | null>(null);
@@ -59,12 +50,11 @@ const SiteCheckResult = () => {
   useEffect(() => {
     if (!scanId) { setError("ID скана не найден"); setLoading(false); return; }
     getFullScan(scanId)
-      .then((raw) => {
-        const d = raw as SiteCheckResultData;
+      .then((d) => {
         setData(d);
         if (d && scanId) addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
-        if (d?.llm_judge) setLlmJudge(d.llm_judge as LlmJudgeData);
-        else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme ?? undefined);
+        if (d?.llm_judge) setLlmJudge(d.llm_judge);
+        else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme);
         if (d?.ai_boost?.items) setAiBoost(d.ai_boost.items);
         if (d?.url) triggerTechPassport(d.url);
       })
@@ -75,11 +65,11 @@ const SiteCheckResult = () => {
       .finally(() => setLoading(false));
   }, [scanId, toast]);
 
-  const triggerLlmJudge = async (id: string, url: string, theme?: string | null) => {
+  const triggerLlmJudge = async (id: string, url: string, theme?: string) => {
     setLlmJudgeLoading(true);
     setLlmJudgeError(null);
     try {
-      const result = await judgeLlm(id, url, theme ?? undefined);
+      const result = await judgeLlm(id, url, theme);
       if (result) setLlmJudge(result);
     } catch (e: any) {
       console.error('LLM Judge error:', e);
@@ -93,7 +83,7 @@ const SiteCheckResult = () => {
     setAiBoostLoading(true);
     setAiBoostError(null);
     try {
-      const result = await getAiBoost(data.url, data.theme ?? undefined, data.scores ?? undefined, data.issues, scanId);
+      const result = await getAiBoost(data.url, data.theme, data.scores, data.issues, scanId);
       if (result?.items) setAiBoost(result.items);
       else setAiBoostError('Не удалось получить план');
     } catch (e: any) {
@@ -137,26 +127,24 @@ const SiteCheckResult = () => {
     </>
   );
 
-  const defaultScores: ScanScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 };
+  const defaultScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 };
   const rawScores = data.scores;
-  const scores: ScanScores | null = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
-    ? { ...defaultScores, ...rawScores } : null;
-  // Backend returns breakdown as `scores.breakdown.{seo,ai,direct,schema}`.
-  // Legacy `seoBreakdown` is no longer produced; we keep null fallback.
-  const breakdown: ScoreBreakdown | undefined = rawScores?.breakdown
+  const scores = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
+    ? { ...defaultScores, ...(rawScores as any) } : null;
+  const breakdown = (rawScores?.breakdown || rawScores?.seoBreakdown)
     ? {
-        seo: rawScores.breakdown.seo ?? null,
-        ai: rawScores.breakdown.ai ?? null,
-        direct: rawScores.breakdown.direct ?? null,
-        schema: rawScores.breakdown.schema ?? null,
+        seo: rawScores?.seoBreakdown || rawScores?.breakdown?.seo || null,
+        ai: rawScores?.breakdown?.ai || null,
+        direct: rawScores?.breakdown?.direct || null,
+        schema: rawScores?.breakdown?.schema || null,
       }
     : undefined;
 
-  const issues: IssueCard[] = Array.isArray(data.issues) ? data.issues : [];
-  const rawCompetitors: CompetitorEntry[] = Array.isArray(data.competitors) ? data.competitors : [];
-  const competitors = rawCompetitors.filter((c) => c._type === 'competitor');
-  const comparisonTable = rawCompetitors.find((c) => c._type === 'comparison_table') || null;
-  const directMeta = rawCompetitors.find((c) => c._type === 'direct_meta') || null;
+  const issues = Array.isArray(data.issues) ? data.issues : [];
+  const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
+  const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor');
+  const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table') || null;
+  const directMeta = rawCompetitors.find((c: any) => c._type === 'direct_meta') || null;
   const directAdMeta = rawCompetitors.find((c: any) =>
     c._type === 'direct_ad_meta' ||
     c._direct_meta === true ||
@@ -166,7 +154,7 @@ const SiteCheckResult = () => {
   const directAdSuggestion = directAdMeta?.ad_suggestion || null;
   const directReadinessScore = directAdMeta?.readiness_score ?? null;
   const directChecks = directAdMeta?.direct_checks || data?.seo_data?.direct_checks || null;
-  const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: KeywordEntry & Record<string, any>) => ({
+  const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
     keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
     volume: kw.frequency ?? kw.volume ?? 0,
     cluster: kw.cluster ?? kw.category ?? 'Общие',
@@ -305,12 +293,7 @@ const SiteCheckResult = () => {
           {/* 7. Competitors */}
           {competitors.length > 0 && (
             <ResultAccordion title={`Конкуренты в AI-выдаче (${competitors.length})`} defaultOpen={false}>
-              <CompetitorsTable
-                competitors={competitors as any}
-                comparisonTable={comparisonTable as any}
-                directMeta={directMeta as any}
-                userUrl={data.url}
-              />
+              <CompetitorsTable competitors={competitors} comparisonTable={comparisonTable} directMeta={directMeta} userUrl={data.url} />
             </ResultAccordion>
           )}
           {data?.competitors && competitors.length === 0 && rawCompetitors.length > 0 && (
