@@ -158,6 +158,178 @@ interface Issue {
   rule_id?: string;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Sprint 3 — Structured data interfaces (Stage0 / Robots / Sitemap /
+// LlmsTxt / Resources / GeoSignals / CRO / Benchmark).
+// Будут вынесены в services/SiteCheck/types.ts на Sprint 4.
+// ═══════════════════════════════════════════════════════════════
+
+export interface RedirectHop { from: string; to: string; status: number; }
+
+export interface Stage0Data {
+  httpStatus: number;
+  redirectChain: RedirectHop[];
+  redirectCount: number;
+  ttfbMs: number;
+  isHttps: boolean;
+  hasHsts: boolean;
+  hasCSP: boolean;
+  hasXCTO: boolean;
+  hasXFO: boolean;
+  compression: 'br' | 'gzip' | 'deflate' | 'none';
+  cacheControl: string | null;
+  server: string | null;
+  poweredBy: string | null;
+}
+
+export interface RobotsBotEntry {
+  bot: string;
+  allowed: boolean;
+  rule: string;
+}
+export interface RobotsData {
+  exists: boolean;
+  status: number;
+  size: number;
+  hasSitemap: boolean;
+  sitemapUrls: string[];
+  bots: RobotsBotEntry[];
+  errors: string[];
+}
+
+export interface SitemapData {
+  exists: boolean;
+  status: number;
+  isIndex: boolean;
+  urlCount: number;
+  hasLastmod: boolean;
+  avgLastmodDaysAgo: number | null;
+  oldestPage: string | null;
+  newestPage: string | null;
+  stalePagesCount: number;
+  errors: string[];
+}
+
+export interface LlmsTxtData {
+  exists: boolean;
+  status: number;
+  size: number;
+  hasH1: boolean;
+  hasBlockquote: boolean;
+  hasH2: boolean;
+  hasLinks: boolean;
+  qualityScore: number; // 0-100
+  missingElements: string[];
+  hasLlmsFull: boolean;
+  hasSecurityTxt: boolean;
+}
+
+export interface ResourcesData {
+  blockingCss: number;
+  blockingJs: number;
+  htmlSizeKB: number;
+  modernImageRatio: number; // 0-1, share of webp/avif vs total <img>
+  lazyImagesRatio: number;  // 0-1
+  fontDisplaySwap: boolean;
+  preloadHints: number;
+  totalImages: number;
+}
+
+export interface GeoSignalsData {
+  citationReadyRatio: number;     // 0-1: avg, sentence-clear ratio
+  semanticScore: number;          // 0-100 weighted semantic tag presence
+  semanticTags: { article: boolean; section: boolean; main: boolean; nav: boolean; aside: boolean; figure: boolean };
+  questionHeadingRatio: number;   // 0-1: H2/H3 in question form
+  readabilityGrade: number;       // approx (avg sentence length proxy)
+  avgWordsPerSentence: number;
+  authorityLinks: number;         // outgoing https links count
+  paragraphCount: number;
+}
+
+export interface CROData {
+  trustScore: number;             // 0-100
+  trust: { hasPhone: boolean; hasEmail: boolean; hasAddress: boolean; hasLegalInfo: boolean; hasGuarantee: boolean };
+  cta: { count: number; aboveFold: boolean; hasPrimary: boolean };
+  forms: { count: number; avgFields: number; hasContactForm: boolean };
+  pricing: { hasPrice: boolean; hasCalculator: boolean };
+  socialProof: { hasReviews: boolean; hasCases: boolean; hasLogos: boolean };
+  urgency: { hasCountdown: boolean; hasLimited: boolean };
+  channels: { hasMessenger: boolean; hasCallback: boolean; hasChat: boolean };
+}
+
+export interface BenchmarkGap { key: string; expected: string | number; actual: string | number; severity: 'critical' | 'high' | 'medium' | 'low'; }
+export interface BenchmarkData {
+  category: string;
+  gaps: BenchmarkGap[];
+  passed: number;
+  total: number;
+  percent: number;
+}
+
+// ─── Benchmarks table ────────────────────────────────────────────
+interface BenchmarkProfile {
+  minWords: number;
+  minH2: number;
+  minSchemas: number;
+  faqRequired: boolean;
+  trustSignals: number;       // min trust signals (phone/email/address/legal/guarantee)
+  ctaRequired: boolean;
+  priceRequired: boolean;
+  authorRequired: boolean;
+  llmsTxtRequired: boolean;
+}
+
+const BENCHMARKS: Record<string, BenchmarkProfile> = {
+  'Сервисы':     { minWords: 600,  minH2: 3, minSchemas: 2, faqRequired: true,  trustSignals: 3, ctaRequired: true,  priceRequired: false, authorRequired: false, llmsTxtRequired: true },
+  'Магазин':     { minWords: 400,  minH2: 2, minSchemas: 3, faqRequired: false, trustSignals: 3, ctaRequired: true,  priceRequired: true,  authorRequired: false, llmsTxtRequired: false },
+  'Медиа':       { minWords: 1200, minH2: 4, minSchemas: 2, faqRequired: false, trustSignals: 2, ctaRequired: false, priceRequired: false, authorRequired: true,  llmsTxtRequired: true },
+  'Образование': { minWords: 800,  minH2: 4, minSchemas: 2, faqRequired: true,  trustSignals: 3, ctaRequired: true,  priceRequired: true,  authorRequired: true,  llmsTxtRequired: true },
+  'Маркетинг':   { minWords: 700,  minH2: 3, minSchemas: 2, faqRequired: true,  trustSignals: 3, ctaRequired: true,  priceRequired: false, authorRequired: false, llmsTxtRequired: true },
+  'B2B':         { minWords: 800,  minH2: 3, minSchemas: 2, faqRequired: true,  trustSignals: 4, ctaRequired: true,  priceRequired: false, authorRequired: false, llmsTxtRequired: true },
+  'Финансы':     { minWords: 900,  minH2: 4, minSchemas: 3, faqRequired: true,  trustSignals: 4, ctaRequired: true,  priceRequired: false, authorRequired: true,  llmsTxtRequired: true },
+};
+
+function calcBenchmark(
+  category: string,
+  signals: {
+    wordCount: number;
+    h2Count: number;
+    schemaCount: number;
+    hasFaq: boolean;
+    trustSignals: number;
+    hasCta: boolean;
+    hasPrice: boolean;
+    hasAuthor: boolean;
+    hasLlmsTxt: boolean;
+  },
+): BenchmarkData {
+  const profile = BENCHMARKS[category] || BENCHMARKS['Сервисы'];
+  const gaps: BenchmarkGap[] = [];
+  const checks: Array<[boolean, BenchmarkGap]> = [
+    [signals.wordCount >= profile.minWords, { key: 'wordCount',    expected: `≥ ${profile.minWords}`, actual: signals.wordCount,    severity: 'high' as const }],
+    [signals.h2Count >= profile.minH2,      { key: 'h2Count',      expected: `≥ ${profile.minH2}`,    actual: signals.h2Count,      severity: 'medium' as const }],
+    [signals.schemaCount >= profile.minSchemas, { key: 'schemaCount', expected: `≥ ${profile.minSchemas}`, actual: signals.schemaCount, severity: 'high' as const }],
+    [!profile.faqRequired || signals.hasFaq,    { key: 'hasFaq',      expected: 'Да',                    actual: signals.hasFaq ? 'Да' : 'Нет', severity: 'high' as const }],
+    [signals.trustSignals >= profile.trustSignals, { key: 'trustSignals', expected: `≥ ${profile.trustSignals}`, actual: signals.trustSignals, severity: 'high' as const }],
+    [!profile.ctaRequired || signals.hasCta,    { key: 'hasCta',      expected: 'Да',                    actual: signals.hasCta ? 'Да' : 'Нет', severity: 'critical' as const }],
+    [!profile.priceRequired || signals.hasPrice,{ key: 'hasPrice',    expected: 'Да',                    actual: signals.hasPrice ? 'Да' : 'Нет', severity: 'high' as const }],
+    [!profile.authorRequired || signals.hasAuthor, { key: 'hasAuthor', expected: 'Да',                  actual: signals.hasAuthor ? 'Да' : 'Нет', severity: 'medium' as const }],
+    [!profile.llmsTxtRequired || signals.hasLlmsTxt, { key: 'hasLlmsTxt', expected: 'Да',               actual: signals.hasLlmsTxt ? 'Да' : 'Нет', severity: 'medium' as const }],
+  ];
+  let passed = 0;
+  for (const [ok, gap] of checks) {
+    if (ok) passed++;
+    else gaps.push(gap);
+  }
+  return {
+    category,
+    gaps,
+    passed,
+    total: checks.length,
+    percent: Math.round((passed / checks.length) * 100),
+  };
+}
+
 // ─── Sprint 2: keyword validator removed (LLM keyword extraction is gone).
 // extractKeywords / generateMinusWords / validateKeywordsViaSuggest were
 // removed because the LLM-generated keywords were unreliable and the
