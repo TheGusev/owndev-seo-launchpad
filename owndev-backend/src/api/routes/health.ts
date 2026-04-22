@@ -15,10 +15,14 @@ export async function healthRoutes(app: FastifyInstance) {
       data: {
         status: ok ? 'ok' : 'degraded',
         version: '1.0.0',
-        db: pg ? 'connected' : 'error',
-        redis: rd ? 'connected' : 'error',
-        queues: { monitor: mq },
         timestamp: new Date().toISOString(),
+        services: {
+          db: pg ? 'connected' : 'error',
+          redis: rd ? 'connected' : 'error',
+        },
+        queues: {
+          monitor: mq,
+        },
       },
     });
   });
