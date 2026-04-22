@@ -1,11 +1,10 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { FileText, Layers, BookOpen, Code2, ArrowRight, Sparkles, PenTool, Braces } from "lucide-react";
+import { FileText, Layers, BookOpen, Code2, Sparkles, PenTool, Braces } from "lucide-react";
 import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 const breadcrumbLd = {
@@ -48,12 +47,9 @@ const AiReadyContent = () => (
           <h1 className="text-3xl md:text-4xl font-bold font-serif mb-4">
             Создайте контент, который цитируют нейросети
           </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
+          <p className="text-muted-foreground max-w-2xl mx-auto">
             Структурированный контент с E-E-A-T сигналами, FAQ-блоками и Schema-разметкой — именно то, что ищут AI-модели.
           </p>
-          <Button asChild variant="hero" size="lg">
-            <Link to="/tools/content-brief">Создать контент-бриф <ArrowRight className="w-4 h-4" /></Link>
-          </Button>
         </motion.div>
 
         <ScenarioDemoForm

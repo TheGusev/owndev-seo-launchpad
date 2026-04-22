@@ -42,15 +42,23 @@ const ScenarioDemoForm = ({ placeholder, buttonText, targetPath, queryParam, acc
       transition={{ delay: 0.2 }}
       className={`mx-auto max-w-xl p-6 rounded-2xl bg-card/40 backdrop-blur-sm border ${accent.border} ${accent.glow} mb-16`}
     >
-      <div className="flex gap-3 items-center">
-        <Icon className={`w-5 h-5 shrink-0 ${accent.text}`} />
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 bg-background/60"
-        />
-        <Button type="submit" variant="hero" size="lg" disabled={!value.trim()}>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Icon className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${accent.text}`} />
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            className="w-full h-12 pl-10 bg-background/60"
+          />
+        </div>
+        <Button
+          type="submit"
+          variant="hero"
+          size="lg"
+          disabled={!value.trim()}
+          className="w-full sm:w-auto h-12 shrink-0"
+        >
           {buttonText}
         </Button>
       </div>

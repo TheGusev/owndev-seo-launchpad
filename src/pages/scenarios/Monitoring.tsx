@@ -1,11 +1,10 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { BarChart3, PlusCircle, Activity, Bell, ArrowRight, TrendingUp, Construction } from "lucide-react";
+import { BarChart3, PlusCircle, Activity, Bell, TrendingUp, Construction } from "lucide-react";
 import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 const breadcrumbLd = {
@@ -45,12 +44,9 @@ const Monitoring = () => (
           <h1 className="text-3xl md:text-4xl font-bold font-serif mb-4">
             Отслеживайте AI-видимость еженедельно
           </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
+          <p className="text-muted-foreground max-w-2xl mx-auto">
             Регулярный мониторинг SEO Score и LLM Score. Замечайте изменения, сравнивайте с конкурентами и управляйте AI-видимостью.
           </p>
-          <Button asChild variant="hero" size="lg">
-            <Link to="/geo-rating">Открыть рейтинг <ArrowRight className="w-4 h-4" /></Link>
-          </Button>
         </motion.div>
 
         <ScenarioDemoForm
