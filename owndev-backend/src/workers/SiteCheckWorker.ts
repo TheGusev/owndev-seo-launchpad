@@ -149,9 +149,9 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           .slice(0, 5)
           .map((i: any) => i.title);
 
-        // TODO: маппить result.theme в фиксированные категории каталога (Сервисы / Магазин / Медиа / B2B...)
-        // Сейчас сохраняем тему как есть; если темы нет — fallback 'Сервисы'.
-        const category = (typeof result.theme === 'string' && result.theme.trim()) ? result.theme.trim().slice(0, 80) : 'Сервисы';
+        const category = (typeof result.theme === 'string' && result.theme.trim())
+          ? normalizeCategoryFromTheme(result.theme.trim())
+          : 'Сервисы';
 
         await sql`
           INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)

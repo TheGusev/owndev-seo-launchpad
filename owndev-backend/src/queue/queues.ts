@@ -12,3 +12,8 @@ export const monitorQueue = new Queue('monitor', {
   connection: redis,
   defaultJobOptions,
 });
+
+export const siteCheckQueue = new Queue('site-check', {
+  connection: redis,
+  defaultJobOptions,
+});
