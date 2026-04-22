@@ -281,7 +281,7 @@ const FullAudit = () => {
           if (status.status === "done") {
             if (pollRef.current) window.clearInterval(pollRef.current);
             const result = await getFullScan(id);
-            setSiteCheckData(result as Scan);
+            setSiteCheckData(result as unknown as Scan);
             setSiteCheckProgress(100);
             setSiteCheckDone(true);
             setRunning(false);

@@ -48,9 +48,9 @@ const SiteCheckResult = () => {
       .then((d) => {
         setData(d);
         if (d && scanId) addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
-        if (d?.llm_judge) setLlmJudge(d.llm_judge);
+        if (d?.llm_judge) setLlmJudge(d.llm_judge as any);
         else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme);
-        if (d?.ai_boost?.items) setAiBoost(d.ai_boost.items);
+        if ((d?.ai_boost as any)?.items) setAiBoost((d.ai_boost as any).items);
         if (d?.url) triggerTechPassport(d.url);
       })
       .catch((e) => {
