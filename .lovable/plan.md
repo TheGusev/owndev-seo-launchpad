@@ -1,83 +1,141 @@
 
 
-## Проблема
+## Цель
 
-На `/tools` карточки в группах визуально рваные:
-- **«Флагманский аудит» (1 карточка)** в `lg:grid-cols-3` занимает 1/3 ширины — узкая колонка слева, остальные 2/3 — пустота.
-- **«Аудит и анализ» (5)** и **«Генерация и контент» (5)** в сетке 3-в-ряд → 3+2 с дыркой во второй строке.
-- **«AI-видимость» (3)** карточки разной высоты из-за разной длины описания → CTA «Открыть» прыгает по вертикали.
-- `GeometricRays` рисуются `inset-0` и пересекают карточки в случайных местах — выглядит как мусор.
-- На full-HD (1336+) карточки слишком узкие, иконка + заголовок + бейджи WB/OZON ломаются на 3 строки.
+Перенести «программистский» вайб (печатающийся код, Matrix-дождь, плавающие сниппеты, бинарные ленты, scan-line) **в мобильную версию**. Сейчас почти все декоративные эффекты отключены на ≤768px → мобилка выглядит пусто. На ПК всё ок — туда ничего не добавляем, только адаптируем существующее под мобилку.
 
-## Решение (только `src/pages/Tools.tsx`, без изменения данных и логики)
+## Принцип
 
-### 1. Адаптивная сетка по числу карточек в группе
+1. Снять mobile-блокировки с уже существующих компонентов (`TypingCodeBlock`, `NeuralNetworkBg`, `GeometricRays`).
+2. Создать **lite-режим** для каждого эффекта — меньше плотность, меньше элементов, меньше CPU.
+3. Добавить 4 новых эффекта (`MatrixRain`, `FloatingCodeSnippets`, `BinaryStream`, `ScanLine`) сразу с mobile-first вариантами.
+4. Сохранить производительность: mobile = canvas off, только CSS-анимации; reduced-motion работает.
 
-Заменить хардкод `lg:grid-cols-3` на функцию, выбирающую сетку под количество элементов:
+## Что меняем в существующих компонентах
+
+### `TypingCodeBlock` (`src/components/ui/typing-code-block.tsx`)
+- **Убрать** `if (isMobile) return null;` — компонент рендерится на мобилке.
+- На mobile: уменьшить шрифт до 11px, padding 12px, скрыть нумерацию строк, ширина 100%.
+- Ограничить высоту `max-h-[180px] overflow-hidden` чтобы не растягивал страницу.
+- На mobile: ускорить анимацию (`speed=18`, `lineDelay=120`) — короче ждать.
+- Добавить prop `mobileVariant?: "compact" | "hidden"` — где код не критичен, передаём `"hidden"`.
+
+### `NeuralNetworkBg` (`src/components/ui/neural-network-bg.tsx`)
+- На mobile: `density="low"` принудительно, узлов 8 вместо 18, линий меньше.
+- Не отключать полностью — должен дышать на фоне.
+
+### `GeometricRays` (`src/components/ui/geometric-rays.tsx`)
+- На mobile: оставить только 2 угла (top-left + bottom-right) вместо 4, opacity 0.3 → 0.2.
+
+### `AuroraBackground` — уже работает на mobile (1 слой). Не трогаем.
+
+## 4 новых эффекта (mobile-first)
+
+### 1. `MatrixRain` — `src/components/ui/matrix-rain.tsx`
+- **Mobile (≤768px):** CSS-only версия — 8 вертикальных колонок с `<span>` символами, анимация `translateY -100% → 100%` через CSS keyframes (12s loop). Никакого canvas, минимум CPU.
+- **Desktop:** canvas версия (как в плане) — 35 колонок.
+- Цвет cyan, opacity 0.12 mobile / 0.18 desktop.
+
+### 2. `FloatingCodeSnippets` — `src/components/ui/floating-code-snippets.tsx`
+- **Mobile:** 2 сниппета вместо 5, шрифт 10px, opacity 0.15.
+- **Desktop:** 5 сниппетов, шрифт 12px, opacity 0.2.
+- Чистый CSS (translateY + opacity loop, 15-25s).
+
+### 3. `BinaryStream` — `src/components/ui/binary-stream.tsx`
+- Работает одинаково везде — лента 0/1 с `translateX -50% → 0` infinite.
+- **Mobile:** скорость 40s (медленнее), opacity 0.1, шрифт 9px.
+- **Desktop:** 30s, opacity 0.12, шрифт 10px.
+
+### 4. `ScanLine` — `src/components/ui/scan-line.tsx`
+- Чистый CSS, работает одинаково. Mobile: opacity 0.25 вместо 0.4 (меньше отвлекает на маленьком экране).
+
+## CSS (`src/index.css`)
+
+Новые keyframes под `@layer utilities`:
+- `binary-scroll`, `code-float-1/2/3`, `scan-line-sweep`, `matrix-fall-1..8` (8 колонок с разной скоростью/delay для CSS-варианта Matrix).
+- Глобальный `@media (prefers-reduced-motion: reduce)` отключает всё.
+
+## Куда подключаем (с фокусом на мобилку)
+
+| Страница / Секция | Что добавить | Mobile поведение |
+|---|---|---|
+| `Hero` (Index) | `MatrixRain` (CSS на mobile) | Виден на мобилке, opacity 0.12 |
+| `HowItWorks` (Index) | `ScanLine` + inline `TypingCodeBlock` | Typing block compact 11px |
+| `FlagshipTools` (Index) | `ScanLine` + `FloatingCodeSnippets` mobile=2 шт | |
+| `ToolsShowcase` (Index) | `BinaryStream` сверху + снизу | Видно на mobile, тонкая лента |
+| `ServicesTeaser` (Index) | `FloatingCodeSnippets` mobile=2 | |
+| `ComparisonSection` (Index) | `ScanLine` сверху | |
+| `ReportValue` (Index) | `TypingCodeBlock variant="ide"` mobile=compact (под карточками, не справа) | На mobile — снизу, не сбоку |
+| `BlogPreview` (Index) | `BinaryStream` сверху | |
+| `Tools` (`/tools`) | `MatrixRain` + `FloatingCodeSnippets` за hero | Mobile видит фон |
+| `MarketplaceAudit` hero | `FloatingCodeSnippets` + `BinaryStream` снизу hero | Mobile=2 сниппета |
+| `SiteFormula` hero | `TypingCodeBlock variant="ide"` под заголовком на mobile (а не справа) + `FloatingCodeSnippets` | |
+| `SiteCheck` | `MatrixRain` + типинг-блок (на mobile под формой, compact) | Сейчас скрыт — раскрываем |
+| `Academy` hero | `TypingCodeBlock variant="minimal"` под заголовком на mobile | |
+| `GeoRating` hero | `BinaryStream` + `FloatingCodeSnippets` mobile=2 | |
+| `scenarios/*` (4 шт) | `MatrixRain` + `TypingCodeBlock` (compact на mobile, под текстом) | Сейчас typing скрыт — раскрываем |
+| `Contacts` | `FloatingCodeSnippets` mobile=2 | |
+| `Privacy/Terms/Refund/Offer` | НЕ трогаем | Юр. документы без декора |
+
+Везде: декоры `z-[0..3]`, контент `z-10`, `pointer-events-none`, `aria-hidden`.
+
+## Расширение `TypingCodeBlock` props
 
 ```ts
-const getGridCols = (count: number) => {
-  if (count === 1) return "grid-cols-1 max-w-2xl mx-auto";       // одна по центру, не на всю ширину
-  if (count === 2) return "grid-cols-1 md:grid-cols-2";
-  if (count === 4) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4";
-  if (count === 5) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"; // 3+2 — но карточки 5 центрируем во второй строке
-  if (count === 6) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
-  return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
-};
+variant?: "ide" | "minimal" | "inline";  // "ide" default
+mobileVariant?: "compact" | "hidden";     // "compact" default
 ```
 
-Для **5 карточек** дополнительно: обернуть последние 2 в `lg:col-start-*` нельзя без хака → проще **поднять до 4-в-ряд на xl** (`xl:grid-cols-4` → 4+1, последняя одна), либо **разбить группу** на 2 ряда: первые 3 в `lg:grid-cols-3`, последние 2 в `lg:grid-cols-2` контейнере с `max-w-[66%] mx-auto` чтобы сохранить ширину карточек. Выбираю второй путь — гармоничнее визуально (карточки одного размера, центрированный второй ряд).
+- `compact` — уменьшенный IDE-блок без нумерации строк, max-height 180px.
+- `hidden` — для случаев, где блок занимает слишком много на мобилке.
 
-### 2. Выравнивание высоты карточек
+## Технические детали (производительность mobile)
 
-На контейнере сетки добавить `items-stretch` (по умолчанию grid-items уже stretch — но нужно убедиться что `motion.div` обёртка тоже `h-full`). В `<motion.div>` добавить `className="h-full"`. Сейчас `Link` уже имеет `h-full`, а `motion.div` — нет, поэтому высота не передаётся.
-
-В сам `<Link>` добавить `flex flex-col` + блок описания обернуть в `flex-1` → CTA «Открыть» прижмётся к низу одинаково на всех карточках.
-
-### 3. Флагманский аудит (1 карточка)
-
-Использовать `max-w-2xl mx-auto` на контейнере сетки → карточка по центру, ширина как у двух карточек ниже. Не оставляет «дыру» справа.
-
-### 4. WB/OZON бейджи
-
-Бейджи `WB`/`OZON` сейчас рендерятся внутри блока с описанием → ломают высоту первой карточки в группе из 5. Решение: оставить их inline снизу описания, но дать описанию `min-h-[2.5rem]` (под 2 строки `line-clamp-2`) — высота стабилизируется.
-
-### 5. Декоративные `GeometricRays`
-
-Сейчас `<GeometricRays opacity={0.25} />` — `inset-0` поверх всего контента. Лучи пересекают карточки. Решение: переместить `GeometricRays` в верхний абсолютный слой за hero (top: 0, height: 600px, `pointer-events-none`), не перекрывает карточки. Конкретно — обернуть в `<div className="absolute top-0 left-0 right-0 h-[700px] pointer-events-none">` внутри блока background.
-
-### 6. Внешний контейнер
-
-Увеличить max-ширину контента: `container` (1200px) → на больших экранах оставляем как есть, но добавляем горизонтальный air. Карточки уже не будут сплющиваться благодаря пунктам 1-2.
-
-## Файлы
-
-Только **`src/pages/Tools.tsx`**:
-- Добавить `getGridCols(count)` helper.
-- Спецлогика для 5 карточек: разбить рендер на 2 grid-блока (3 + 2 центрированных).
-- На `motion.div` обёртках карточек — `h-full`.
-- На `<Link>` — `flex flex-col`, на параграфе с описанием — `flex-1` + `min-h-[2.5rem]`.
-- Флагманская секция: `max-w-2xl mx-auto` если 1 карточка.
-- Перенести `GeometricRays` в верхний 700px слой.
-
-Никакие данные, типы, маршруты, API не трогаем. Никаких новых файлов и зависимостей.
+- **Никаких canvas на mobile** — `MatrixRain` mobile использует CSS-only версию.
+- **`will-change: transform`** только на анимирующихся элементах.
+- **`contain: layout paint`** на всех декоративных обёртках.
+- **Reduced-motion**: глобально отключает все keyframes, canvas (на ПК) не запускает RAF.
+- **Intersection Observer**: `MatrixRain` (даже CSS) запускается только в viewport, чтобы не жрал CPU когда секция не видна.
+- **Цвета**: только токены `--primary`, `--accent`, `--secondary`, `--muted-foreground`. Никаких хардкод-hex.
 
 ## Что НЕ трогаем
 
-- `tools-registry.ts`, состав групп, тексты, иконки.
-- Header, Footer, навигация (правило памяти).
-- `AuroraBackground`, `FloatingParticles`, `MouseGradient`, `ClickRipple` — оставляем как есть.
-- Анимации входа карточек (framer-motion stagger).
-- Mobile (sm < 640) и tablet (md 768) — там 1 и 2 колонки, всё уже норм; правки касаются `lg`/`xl`.
+- ПК версию — она и так нормально выглядит. Все правки добавляют mobile-варианты, не меняют desktop.
+- `Header`, мобильный drawer, `Footer` (правило памяти).
+- `AuroraBackground`, `FloatingParticles`, `Starfield`, `MouseGradient`, `ClickRipple` — они уже корректно работают на mobile.
+- Бизнес-логика, формы, состояние, API.
+- Контент, тексты, h1/h2, CTA.
+- `Privacy/Terms/Refund/Offer` страницы.
+- `Tools.tsx` структура карточек (только проверим что новые фоны не пересекают карточки на mobile).
+
+## Порядок выполнения
+
+1. **Шаг 1 — фундамент:**
+   - Добавить keyframes (`binary-scroll`, `code-float-*`, `scan-line-sweep`, `matrix-fall-1..8`) в `src/index.css` с reduced-motion guard.
+   - Создать 4 новых компонента: `MatrixRain` (CSS-mobile + canvas-desktop), `FloatingCodeSnippets`, `BinaryStream`, `ScanLine`.
+   - Обновить `TypingCodeBlock` — снять mobile guard, добавить props `variant` и `mobileVariant`, compact-стили.
+   - Обновить `NeuralNetworkBg` и `GeometricRays` — mobile lite-режим.
+
+2. **Шаг 2 — Index landing (mobile в первую очередь):**
+   - Hero, HowItWorks, FlagshipTools, ToolsShowcase, ServicesTeaser, ComparisonSection, ReportValue, BlogPreview.
+
+3. **Шаг 3 — флагманские страницы:**
+   - SiteCheck, MarketplaceAudit, SiteFormula.
+
+4. **Шаг 4 — остальные страницы:**
+   - Tools, Academy, GeoRating, 4 scenarios, Contacts.
 
 ## Проверка после правок
 
-1. `/tools` на 1336×906 (текущий вьюпорт):
-   - Флагманский аудит — 1 центрированная карточка ширины ~2/3 viewport.
-   - Аудит и анализ (5) — 3 в первом ряду + 2 центрированных во втором, все одной высоты.
-   - AI-видимость (3) — ровный ряд из 3, CTA на одной линии снизу.
-   - Генерация и контент (5) — аналогично «Аудит и анализ».
-2. Mobile 375 — все карточки в 1 колонку (без изменений).
-3. Tablet 768 — 2 в ряд (без изменений).
-4. `GeometricRays` не пересекают карточки ниже первого экрана.
+1. **Mobile 375×812** (главное!):
+   - `/` — за hero CSS-Matrix дождь виден; HowItWorks с inline typing-блоком; ToolsShowcase с бинарной лентой; ReportValue имеет typing-блок снизу карточек (не справа).
+   - `/tools/site-check` — Matrix фон + typing-блок compact под формой (не скрыт).
+   - `/marketplace-audit` — 2 плавающих сниппета `wb_id`/JSON в hero, бинарная лента снизу.
+   - `/site-formula` — typing-блок под заголовком (не сбоку).
+   - `/scenario/*` — Matrix + typing-блок compact под текстом.
+   - `/academy`, `/geo-rating` — лёгкие декоры в hero.
+2. **Desktop 1336×906**: всё что было — осталось, ничего не сломано, layout прежний.
+3. **DevTools Performance mobile emulation**: CPU ≤ 30%, FPS ≥ 50, no long tasks.
+4. **`prefers-reduced-motion: reduce`**: все анимации останавливаются на обоих устройствах.
+5. **Layout**: typing-блоки не растягивают страницу, не вылезают за viewport, не пересекают CTA-кнопки.
 
