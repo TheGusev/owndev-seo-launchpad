@@ -697,8 +697,8 @@ const DIRECT_CHECKS_META = [
   { key: 'h1Specificity', label: 'Конкретность H1', weight: 20 },
   { key: 'textCoherence', label: 'Объём контента', weight: 15 },
   { key: 'commercialSignals', label: 'Коммерческие сигналы (CTA)', weight: 15 },
-  { key: 'noMixedTopics', label: 'Яндекс.Метрика установлена', weight: 15 },
-  { key: 'adHeadlineReady', label: 'Адаптация под мобильные', weight: 15 },
+  { key: 'noMixedTopics', label: 'Тематическая однородность', weight: 15 },
+  { key: 'adHeadlineReady', label: 'H1 готов для Директа', weight: 15 },
 ];
 
 function directAudit(html: string, theme: string): { issues: Issue[]; ad_headline: string; autotargeting_categories: Record<string, boolean>; readiness_score: number; checks: DirectCheck[] } {
