@@ -1482,7 +1482,7 @@ function extractSeoData(html: string, parsedUrl: URL, httpStatus: number, loadTi
   const h3Count = (html.match(/<h3[\s>]/gi) || []).length;
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-  const wordCount = bodyText.split(/\s+/).filter(w => w.length > 1).length;
+  const wordCount = bodyText.split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
   const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']*)["']/i);
   const canonical = canonicalMatch ? canonicalMatch[1] : '';
   const ogTitle = (html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']*)["']/i) || [])[1] || '';
@@ -1546,8 +1546,9 @@ export async function runPipeline(
   apiKey: string,
   dbRules: DbRule[] = [],
 ): Promise<PipelineResult> {
-  issueCounter = 0;
-  
+  // Per-scan factory — нет race condition между параллельными сканами.
+  const makeIssue = createIssueFactory();
+
   await onProgress(5);
 
   // Fetch page HTML
@@ -1556,6 +1557,7 @@ export async function runPipeline(
   let html: string;
   let httpStatus: number;
   let loadTimeMs: number;
+  let responseHeaders: Record<string, string> = {};
 
   try {
     const startTime = Date.now();
@@ -1563,6 +1565,12 @@ export async function runPipeline(
     loadTimeMs = Date.now() - startTime;
     httpStatus = response.status;
     html = await response.text();
+    // Сохраняем заголовки в lower-case для проверок security/cache.
+    try {
+      response.headers.forEach((value, key) => {
+        responseHeaders[key.toLowerCase()] = value;
+      });
+    } catch {}
   } catch (e: any) {
     const unavailableIssue = makeIssue({ module: 'technical', severity: 'critical', title: 'Сайт недоступен', found: `Ошибка: ${e.message}`, location: 'HTTP запрос', why_it_matters: 'Невозможно проанализировать недоступный сайт', how_to_fix: 'Убедитесь что сайт доступен', example_fix: 'Проверьте WAF/Cloudflare', visible_in_preview: true });
     return {
@@ -1618,22 +1626,22 @@ export async function runPipeline(
   await onProgress(35, { seo_data: seoData });
 
   // STEP 1: Technical SEO
-  const techIssues = technicalAudit(html, parsedUrl, httpStatus, robotsResult.ok, robotsResult.text, sitemapResult.ok, sitemapResult.text, brokenLinks, loadTimeMs);
+  const techIssues = technicalAudit(html, parsedUrl, httpStatus, robotsResult.ok, robotsResult.text, sitemapResult.ok, sitemapResult.text, brokenLinks, loadTimeMs, makeIssue, responseHeaders);
 
   // STEP 2: Content
-  const contentIssues = contentAudit(html, theme);
+  const contentIssues = contentAudit(html, theme, makeIssue);
 
   // STEP 3: Direct
-  const directResult = directAudit(html, theme);
+  const directResult = directAudit(html, theme, makeIssue);
 
   // STEP 3b: AI ad (async)
   const adSuggestionPromise = generateDirectAd(html, theme, parsedUrl.toString(), apiKey);
 
   // STEP 7: Schema
-  const schemaIssues = schemaAudit(html);
+  const schemaIssues = schemaAudit(html, makeIssue);
 
   // STEP 8: AI
-  const aiIssues = await aiAudit(html, origin, parsedUrl.toString(), isSpa, spaRenderFailed);
+  const aiIssues = await aiAudit(html, origin, parsedUrl.toString(), isSpa, spaRenderFailed, hasLlmsTxt, makeIssue);
 
   let allIssues = [...techIssues, ...contentIssues, ...directResult.issues, ...schemaIssues, ...aiIssues];
 
@@ -1669,7 +1677,7 @@ export async function runPipeline(
   await onProgress(60, { scores, issues: allIssues });
 
   // STEP 4: Competitors
-  const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, apiKey);
+  const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, apiKey, makeIssue);
   allIssues = [...allIssues, ...compResult.gap_issues];
 
   await onProgress(75);
