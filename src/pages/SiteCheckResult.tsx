@@ -19,6 +19,15 @@ import ResultAccordion from "@/components/site-check/ResultAccordion";
 import { getFullScan } from "@/lib/site-check-api";
 import { judgeLlm, getTechPassport, getAiBoost } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
+import type {
+  SiteCheckResult as SiteCheckResultData,
+  ScanScores,
+  ScoreBreakdown,
+  IssueCard,
+  CompetitorEntry,
+  KeywordEntry,
+  MinusWord,
+} from "@/lib/site-check-types";
 import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonResultsGrid } from "@/components/ui/skeleton-card";
@@ -28,7 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
   const { toast } = useToast();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<SiteCheckResultData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [llmJudge, setLlmJudge] = useState<LlmJudgeData | null>(null);
@@ -50,11 +59,12 @@ const SiteCheckResult = () => {
   useEffect(() => {
     if (!scanId) { setError("ID скана не найден"); setLoading(false); return; }
     getFullScan(scanId)
-      .then((d) => {
+      .then((raw) => {
+        const d = raw as SiteCheckResultData;
         setData(d);
         if (d && scanId) addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
-        if (d?.llm_judge) setLlmJudge(d.llm_judge);
-        else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme);
+        if (d?.llm_judge) setLlmJudge(d.llm_judge as LlmJudgeData);
+        else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme ?? undefined);
         if (d?.ai_boost?.items) setAiBoost(d.ai_boost.items);
         if (d?.url) triggerTechPassport(d.url);
       })
@@ -65,11 +75,11 @@ const SiteCheckResult = () => {
       .finally(() => setLoading(false));
   }, [scanId, toast]);
 
-  const triggerLlmJudge = async (id: string, url: string, theme?: string) => {
+  const triggerLlmJudge = async (id: string, url: string, theme?: string | null) => {
     setLlmJudgeLoading(true);
     setLlmJudgeError(null);
     try {
-      const result = await judgeLlm(id, url, theme);
+      const result = await judgeLlm(id, url, theme ?? undefined);
       if (result) setLlmJudge(result);
     } catch (e: any) {
       console.error('LLM Judge error:', e);
@@ -83,7 +93,7 @@ const SiteCheckResult = () => {
     setAiBoostLoading(true);
     setAiBoostError(null);
     try {
-      const result = await getAiBoost(data.url, data.theme, data.scores, data.issues, scanId);
+      const result = await getAiBoost(data.url, data.theme ?? undefined, data.scores ?? undefined, data.issues, scanId);
       if (result?.items) setAiBoost(result.items);
       else setAiBoostError('Не удалось получить план');
     } catch (e: any) {
