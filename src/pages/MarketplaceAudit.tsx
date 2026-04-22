@@ -86,13 +86,13 @@ export default function MarketplaceAudit() {
         <Card className="p-6 md:p-8 glass">
           <div className="mb-6">
             <Label className="mb-3 block">Площадка</Label>
-            <div className="inline-flex rounded-lg border border-border p-1 bg-card">
+            <div className="flex w-full max-w-sm mx-auto rounded-lg border border-border p-1 bg-card">
               {(['wb', 'ozon'] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setPlatform(p)}
-                  className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex-1 px-5 py-2 rounded-md text-sm font-medium transition-colors ${
                     platform === p ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -103,10 +103,10 @@ export default function MarketplaceAudit() {
           </div>
 
           <Tabs value={mode} onValueChange={(v) => setMode(v as MarketplaceInputType)}>
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="url">Ссылка</TabsTrigger>
-              <TabsTrigger value="sku">Артикул</TabsTrigger>
-              <TabsTrigger value="manual">Заполнить вручную</TabsTrigger>
+            <TabsList className="grid grid-cols-3 w-full h-auto gap-1">
+              <TabsTrigger value="url" className="py-2.5 whitespace-normal text-xs sm:text-sm">Ссылка</TabsTrigger>
+              <TabsTrigger value="sku" className="py-2.5 whitespace-normal text-xs sm:text-sm">Артикул</TabsTrigger>
+              <TabsTrigger value="manual" className="py-2.5 whitespace-normal text-xs sm:text-sm">Вручную</TabsTrigger>
             </TabsList>
 
             <TabsContent value="url" className="mt-6">

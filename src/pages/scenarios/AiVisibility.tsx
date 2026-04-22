@@ -1,11 +1,10 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { Eye, Search, AlertTriangle, CheckCircle, ArrowRight, BarChart3, FileCheck, BrainCircuit, Activity } from "lucide-react";
+import { Eye, Search, AlertTriangle, CheckCircle, BarChart3, FileCheck, BrainCircuit, Activity } from "lucide-react";
 import ScenarioDemoForm from "@/components/scenarios/ScenarioDemoForm";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 const breadcrumbLd = {
@@ -49,12 +48,9 @@ const AiVisibility = () => (
           <h1 className="text-3xl md:text-4xl font-bold font-serif mb-4">
             Узнайте, видит ли ваш сайт AI-поиск
           </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
+          <p className="text-muted-foreground max-w-2xl mx-auto">
             Проверьте, как ChatGPT, Perplexity и Яндекс Нейро воспринимают ваш сайт. Получите SEO Score, LLM Score и конкретный план исправлений.
           </p>
-          <Button asChild variant="hero" size="lg">
-            <Link to="/tools/site-check">Запустить аудит <ArrowRight className="w-4 h-4" /></Link>
-          </Button>
         </motion.div>
 
         <ScenarioDemoForm
