@@ -255,7 +255,7 @@ const GeoRating = () => {
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="text-xs text-muted-foreground self-center mr-2">LLM Score:</span>
+              <span className="text-xs text-muted-foreground self-center mr-2">Средний скор:</span>
               {SCORE_FILTERS.map((f, i) => (
                 <button key={f.label} onClick={() => setScoreFi(i)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${scoreFi === i ? "bg-primary/20 text-primary border-primary/30" : "bg-card/40 text-muted-foreground border-border/30 hover:bg-card/60"}`}>{f.label}</button>
               ))}
