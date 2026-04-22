@@ -2113,6 +2113,7 @@ export async function runPipeline(
     return {
       status: 'done', url: parsedUrl.toString(), mode, theme: '', is_spa: false,
       scores: { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
+      geoScore: 0, seoScore: 0, croScore: 0,
       issues: [unavailableIssue], seo_data: null,
     };
   }
@@ -2155,9 +2156,33 @@ export async function runPipeline(
   const linkResults = await Promise.all(uniqueHrefs.map(h => checkUrl(h)));
   const brokenLinks = uniqueHrefs.filter((_, i) => !linkResults[i].ok && linkResults[i].status !== 0);
 
-  // SEO data
-  let hasLlmsTxt = false;
-  try { const llmsCheck = await fetchWithTimeout(`${origin}/llms.txt`, 5000, { method: 'HEAD' }); hasLlmsTxt = llmsCheck.ok; } catch {}
+  // Sprint 3 — Stage 0 (redirect chain + headers) + aux files in parallel
+  const [redirectInfo, llmsTxtRes, llmsFullRes, securityRes] = await Promise.all([
+    traceRedirects(parsedUrl.toString(), 5),
+    fetchText(`${origin}/llms.txt`, 5000),
+    fetchWithTimeout(`${origin}/llms-full.txt`, 5000, { method: 'HEAD' }).then(r => r.ok).catch(() => false),
+    fetchWithTimeout(`${origin}/.well-known/security.txt`, 5000, { method: 'HEAD' }).then(r => r.ok).catch(() => false),
+  ]);
+  const hasLlmsTxt = llmsTxtRes.ok;
+  const stage0HeadersObj: Record<string, string> = {};
+  try {
+    redirectInfo.finalHeaders?.forEach((v, k) => { stage0HeadersObj[k.toLowerCase()] = v; });
+  } catch {}
+  // Если редирект-трассировщик дал результат — используем его, иначе fallback на основной fetch.
+  const stage0 = extractStage0(
+    parsedUrl,
+    redirectInfo.finalStatus || httpStatus,
+    redirectInfo.chain,
+    redirectInfo.ttfbMs || loadTimeMs,
+    Object.keys(stage0HeadersObj).length ? stage0HeadersObj : responseHeaders,
+  );
+  const robotsAnalysis = analyzeRobots(robotsResult.text, robotsResult.ok, robotsResult.ok ? 200 : 0);
+  const sitemapAnalysis = analyzeSitemap(sitemapResult.text, sitemapResult.ok, sitemapResult.ok ? 200 : 0);
+  const llmsTxtAnalysis = analyzeLlmsTxt(llmsTxtRes.text, llmsTxtRes.ok, llmsTxtRes.ok ? 200 : 0, llmsFullRes, securityRes);
+  const resourcesAnalysis = analyzeResources(html);
+  const geoSignalsAnalysis = analyzeGeoSignals(html);
+  const croAnalysis = analyzeCRO(html);
+
   const seoData = extractSeoData(html, parsedUrl, httpStatus, loadTimeMs, robotsResult, sitemapResult, hasLlmsTxt);
 
   await onProgress(35, { seo_data: seoData });
@@ -2210,6 +2235,53 @@ export async function runPipeline(
   const scores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
   await onProgress(60, { scores, issues: allIssues });
 
+  // Sprint 3 — три честных скора
+  const schemaTypesArr: string[] = Array.isArray((seoData as any)?.schemaTypes) ? (seoData as any).schemaTypes : [];
+  const themeCategory = (() => {
+    const t = (theme || '').toLowerCase();
+    if (/магазин|shop|маркет|товар/.test(t)) return 'Магазин';
+    if (/медиа|блог|новост|журнал|сми/.test(t)) return 'Медиа';
+    if (/обучен|образован|курс|школа|академия/.test(t)) return 'Образование';
+    if (/агентств|студия|seo|маркетинг|реклам/.test(t)) return 'Маркетинг';
+    if (/b2b|корпоратив|enterprise|crm|erp/.test(t)) return 'B2B';
+    if (/финанс|банк|инвест|крипт|страхов/.test(t)) return 'Финансы';
+    return 'Сервисы';
+  })();
+
+  const benchmark = calcBenchmark(themeCategory, {
+    wordCount: (seoData as any)?.wordCount || 0,
+    h2Count: (seoData as any)?.h2Count || 0,
+    schemaCount: schemaTypesArr.length,
+    hasFaq: Boolean((seoData as any)?.hasFaq),
+    trustSignals: [croAnalysis.trust.hasPhone, croAnalysis.trust.hasEmail, croAnalysis.trust.hasAddress, croAnalysis.trust.hasLegalInfo, croAnalysis.trust.hasGuarantee].filter(Boolean).length,
+    hasCta: croAnalysis.cta.count > 0,
+    hasPrice: croAnalysis.pricing.hasPrice,
+    hasAuthor: /author|автор/i.test(html) || schemaTypesArr.includes('Person'),
+    hasLlmsTxt,
+  });
+
+  const newDetectorIssues = buildGeoCroIssues(robotsAnalysis, llmsTxtAnalysis, resourcesAnalysis, croAnalysis, stage0, benchmark, makeIssue);
+  allIssues = [...allIssues, ...newDetectorIssues];
+
+  const geoCalc = calcGeoScore({
+    robots: robotsAnalysis,
+    llmsTxt: llmsTxtAnalysis,
+    schemaTypes: schemaTypesArr,
+    geoSignals: geoSignalsAnalysis,
+    hasFaq: Boolean((seoData as any)?.hasFaq),
+    hasAuthor: /author|автор/i.test(html) || schemaTypesArr.includes('Person'),
+    hasDate: /datePublished|dateModified|<time[^>]*datetime/i.test(html),
+  });
+  const seoCalc = calcSeoScore({
+    stage0,
+    seoData,
+    resources: resourcesAnalysis,
+    schemaTypes: schemaTypesArr,
+    robots: robotsAnalysis,
+    sitemap: sitemapAnalysis,
+  });
+  const croCalc = calcCroScore(croAnalysis);
+
   await onProgress(85);
 
   const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
@@ -2244,6 +2316,18 @@ export async function runPipeline(
     theme,
     is_spa: isSpa,
     scores: finalScores,
+    geoScore: geoCalc.score,
+    seoScore: seoCalc.score,
+    croScore: croCalc.score,
+    scoresBreakdown: { geo: geoCalc.breakdown, seo: seoCalc.breakdown, cro: croCalc.breakdown },
+    stage0,
+    robots: robotsAnalysis,
+    sitemap: sitemapAnalysis,
+    llmsTxt: llmsTxtAnalysis,
+    resources: resourcesAnalysis,
+    geoSignals: geoSignalsAnalysis,
+    cro: croAnalysis,
+    benchmark,
     issues: allIssues,
     seo_data: { ...seoData, direct_checks: directResult.checks },
     signals,
