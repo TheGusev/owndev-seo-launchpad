@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Keyword {
@@ -8,6 +8,8 @@ interface Keyword {
   cluster: string;
   intent?: string;
   landing_needed?: boolean;
+  verified?: boolean;
+  suggestions?: string[];
 }
 
 interface KeywordsSectionProps {
@@ -106,7 +108,26 @@ const KeywordsSection = ({ keywords }: KeywordsSectionProps) => {
                 <tbody>
                   {shown.map((kw, i) => (
                     <tr key={i} className="border-b border-border/10">
-                      <td className="py-1 text-foreground">{kw.keyword}</td>
+                      <td className="py-1 text-foreground">
+                        <div className="flex items-center gap-1.5">
+                          {kw.verified === true && (
+                            <span title="Подтверждено Google Suggest" className="inline-flex">
+                              <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                            </span>
+                          )}
+                          {kw.verified === false && (
+                            <span title="Нет в подсказках Google — проверьте релевантность" className="inline-flex">
+                              <AlertTriangle className="w-3 h-3 text-muted-foreground shrink-0" />
+                            </span>
+                          )}
+                          <span>{kw.keyword}</span>
+                        </div>
+                        {kw.verified && kw.suggestions && kw.suggestions.length > 0 && (
+                          <div className="mt-0.5 text-[10px] text-muted-foreground/70 truncate">
+                            Google: {kw.suggestions.slice(0, 3).join(" · ")}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-1 px-2 text-right text-muted-foreground">{kw.volume?.toLocaleString("ru-RU") ?? "—"}</td>
                       <td className="py-1">
                         {kw.intent && (
