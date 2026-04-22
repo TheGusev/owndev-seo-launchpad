@@ -11,6 +11,10 @@ export interface AuditIssue {
   rule_id?: string;
   module: string;
   type?: string;
+  category?: string;
+  message?: string;
+  fix?: string;
+  description?: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
   title: string;
   found?: string;
