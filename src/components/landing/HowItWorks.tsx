@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Globe, Zap, FileText } from "lucide-react";
 import { NeuralNetworkBg } from "@/components/ui/neural-network-bg";
+import { ScanLine } from "@/components/ui/scan-line";
+import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 
 const steps = [
   { num: "01", icon: Globe, title: "Введите URL сайта", desc: "Вставьте адрес любого сайта — своего или конкурента. Мы запустим анализ немедленно." },
@@ -15,6 +17,7 @@ const HowItWorks = () => {
   return (
     <section className="py-12 md:py-20 relative overflow-hidden">
       <NeuralNetworkBg className="z-0" density="low" opacity={0.55} />
+      <ScanLine className="z-[1]" duration={9} />
       <div className="container px-4 md:px-6 max-w-4xl mx-auto relative z-10">
         <motion.div
           ref={ref}
@@ -48,6 +51,21 @@ const HowItWorks = () => {
               </div>
             </motion.div>
           ))}
+        </div>
+
+        <div className="mt-10 flex justify-center">
+          <TypingCodeBlock
+            variant="inline"
+            loop
+            speed={32}
+            lineDelay={350}
+            lines={[
+              "owndev scan https://yoursite.ru",
+              "→ crawling pages... ✓",
+              "→ analyzing schema.org... ✓",
+              "→ generating report... ✓ done",
+            ]}
+          />
         </div>
       </div>
     </section>

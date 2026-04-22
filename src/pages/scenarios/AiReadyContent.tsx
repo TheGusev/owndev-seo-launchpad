@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { TypingCodeBlock } from "@/components/ui/typing-code-block";
+import { MatrixRain } from "@/components/ui/matrix-rain";
 
 const breadcrumbLd = {
   "@context": "https://schema.org",
@@ -39,8 +40,9 @@ const AiReadyContent = () => (
       <script type="application/ld+json">{JSON.stringify(breadcrumbLd)}</script>
     </Helmet>
     <Header />
-    <main className="min-h-screen bg-background pt-24 pb-16">
-      <div className="container px-4 md:px-6 max-w-5xl mx-auto">
+    <main className="min-h-screen bg-background pt-24 pb-16 relative overflow-hidden">
+      <MatrixRain className="z-0" density="low" opacity={0.13} />
+      <div className="container px-4 md:px-6 max-w-5xl mx-auto relative z-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
           <Badge variant="outline" className="mb-4 border-violet-500/30 text-violet-400">
             <FileText className="w-3 h-3 mr-1" /> Сценарий 2

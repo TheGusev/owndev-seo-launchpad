@@ -6,6 +6,8 @@ import { FloatingParticles } from "@/components/ui/floating-particles";
 import { StarfieldBackground } from "@/components/ui/starfield-background";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { GeometricRays } from "@/components/ui/geometric-rays";
+import { MatrixRain } from "@/components/ui/matrix-rain";
+import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -65,6 +67,14 @@ const Hero = () => {
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
 
       <StarfieldBackground count={100} className="absolute inset-0 z-[2]" />
+      <MatrixRain className="z-[2]" density="low" opacity={0.18} />
+      <FloatingCodeSnippets
+        className="z-[2]"
+        snippets={["{ \"ai_ready\": true }", "lighthouse: 98", "llms.txt ✓", "schema.org/FAQPage", "User-agent: *"]}
+        mobileCount={2}
+        desktopCount={4}
+        opacity={0.9}
+      />
       <GeometricRays className="z-[3] opacity-70" opacity={0.35} />
 
       <div className="container relative z-10 px-4 md:px-6">

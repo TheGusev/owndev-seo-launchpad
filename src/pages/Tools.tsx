@@ -12,6 +12,8 @@ import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { GeometricRays } from "@/components/ui/geometric-rays";
+import { MatrixRain } from "@/components/ui/matrix-rain";
+import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -127,6 +129,13 @@ const Tools = () => {
           <AuroraBackground className="opacity-60" intensity="subtle" />
           <div className="absolute top-0 left-0 right-0 h-[700px] pointer-events-none overflow-hidden">
             <GeometricRays opacity={0.25} />
+            <MatrixRain density="low" opacity={0.15} />
+            <FloatingCodeSnippets
+              snippets={['"tool": "site-check"', '"score": 87', "{ \"ai_ready\": true }", "lighthouse: 98"]}
+              mobileCount={2}
+              desktopCount={4}
+              opacity={0.7}
+            />
           </div>
           <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
         </div>

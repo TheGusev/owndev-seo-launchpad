@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
+import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
 
 const contacts = [
   { icon: Mail, label: "Email", value: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
@@ -39,6 +40,12 @@ const Contacts = () => {
       <main className="pt-24 pb-16 relative">
         <div className="absolute inset-0 pointer-events-none">
           <AnimatedGrid theme="primary" lineCount={{ h: 3, v: 4 }} />
+          <FloatingCodeSnippets
+            snippets={["mailto:west-centro@mail.ru", "tg://@one_help", "tel:+79939289488", "// support 24/7"]}
+            mobileCount={2}
+            desktopCount={4}
+            opacity={0.6}
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
         </div>
 

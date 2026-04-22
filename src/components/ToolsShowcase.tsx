@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Search, Code2, Sparkles, Bot, Swords, ScanSearch, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, LayoutDashboard, LayoutTemplate, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { BinaryStream } from "@/components/ui/binary-stream";
 
 const tools = [
   { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check", flagship: true, accent: "primary" as const },
@@ -25,6 +26,8 @@ const ToolsShowcase = () => {
   return (
     <section id="tools-showcase" className="py-16 md:py-24 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(217_91%_60%_/_0.05),transparent_50%)]" />
+      <BinaryStream position="top" />
+      <BinaryStream position="bottom" />
 
       <div className="container px-4 md:px-6 relative z-10">
         <motion.div

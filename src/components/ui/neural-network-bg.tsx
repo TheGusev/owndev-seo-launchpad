@@ -67,7 +67,7 @@ export const NeuralNetworkBg = ({
 
   const count = useMemo(() => {
     const base = density === "low" ? 14 : density === "high" ? 26 : 20;
-    return isMobile ? Math.max(8, Math.round(base * 0.5)) : base;
+    return isMobile ? Math.max(6, Math.round(base * 0.4)) : base;
   }, [density, isMobile]);
 
   const { nodes, edges } = useMemo(() => buildGraph(count, 42), [count]);

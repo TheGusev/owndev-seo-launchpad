@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
+import { ScanLine } from "@/components/ui/scan-line";
 
 const rows = [
   { feature: "GEO / AI-ready аудит", owndev: true, semrush: false, screaming: false, arsenkin: false },
@@ -24,8 +25,9 @@ const ComparisonSection = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
 
   return (
-    <section className="py-12 md:py-20 relative">
-      <div className="container px-4 md:px-6 max-w-5xl mx-auto">
+    <section className="py-12 md:py-20 relative overflow-hidden">
+      <ScanLine className="z-0" duration={12} opacity={0.22} />
+      <div className="container px-4 md:px-6 max-w-5xl mx-auto relative z-10">
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 16 }}

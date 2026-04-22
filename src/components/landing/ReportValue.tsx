@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { FileDown, FileText } from "lucide-react";
+import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 
 const pdfItems = [
   "Титульный лист с оценками",
@@ -89,6 +90,24 @@ const ReportValue = () => {
         <p className="text-center text-muted-foreground/60 text-xs mt-6">
           Также: CSV ключевых слов · TXT минус-слов
         </p>
+
+        <div className="mt-8 max-w-2xl mx-auto">
+          <TypingCodeBlock
+            title="report.json"
+            variant="ide"
+            mobileVariant="compact"
+            speed={26}
+            lineDelay={180}
+            lines={[
+              "// OWNDEV audit export",
+              '{ "url": "https://yoursite.ru",',
+              '  "seo_score": 87,',
+              '  "llm_score": 74,',
+              '  "issues": 12, "fixes": 12,',
+              '  "exports": ["pdf", "docx", "csv"] }',
+            ]}
+          />
+        </div>
 
         <div className="text-center mt-8">
           <button

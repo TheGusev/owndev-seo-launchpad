@@ -6,12 +6,14 @@ import { ArrowRight, Clock } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { motion } from "framer-motion";
 import DefaultBlogCover from "@/components/blog/DefaultBlogCover";
+import { BinaryStream } from "@/components/ui/binary-stream";
 
 const BlogPreview = () => {
   const latestPosts = blogPosts.slice(0, 3);
 
   return (
-    <section className="py-10 md:py-24">
+    <section className="py-10 md:py-24 relative">
+      <BinaryStream position="top" />
       <div className="container px-4 md:px-6">
         <motion.div
           className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between mb-6 md:mb-10"

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Layers, Shield, Target, Zap, FileText, CheckCircle2 } from 'lucide-react';
 import { AuroraBackground } from '@/components/ui/aurora-background';
+import { TypingCodeBlock } from '@/components/ui/typing-code-block';
+import { FloatingCodeSnippets } from '@/components/ui/floating-code-snippets';
 
 const FORMULA_LAYERS = [
   { icon: Target, title: 'Карта спроса', desc: 'Анализ реального спроса и кластеризация запросов' },
@@ -28,6 +30,13 @@ export default function SiteFormula() {
         {/* Hero */}
         <section className="relative overflow-hidden py-16 sm:py-24">
           <AuroraBackground className="z-0 opacity-70" intensity="normal" />
+          <FloatingCodeSnippets
+            className="z-0"
+            snippets={['"intent": "service"', '"city": "Москва"', '"index_policy": "strict"', 'blueprint.json', '"pages": 24']}
+            mobileCount={2}
+            desktopCount={4}
+            opacity={0.85}
+          />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.08),transparent_60%)]" />
           <div className="container relative z-10 mx-auto max-w-4xl px-4 text-center space-y-6">
             <Badge variant="outline" className="border-primary/30 text-primary">
@@ -49,6 +58,24 @@ export default function SiteFormula() {
                   Начать анализ <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
+            </div>
+
+            <div className="mx-auto max-w-2xl pt-4 text-left">
+              <TypingCodeBlock
+                title="blueprint.json"
+                variant="ide"
+                mobileVariant="compact"
+                speed={28}
+                lineDelay={200}
+                lines={[
+                  "// Site Formula output",
+                  '{ "vertical": "ремонт",',
+                  '  "city": "Москва",',
+                  '  "intent_layers": ["service","price","case"],',
+                  '  "pages_to_create": 24,',
+                  '  "index_policy": "strict" }',
+                ]}
+              />
             </div>
           </div>
         </section>
