@@ -425,7 +425,22 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
           const cachedJudge = cached[0]?.llm_judge;
           if (cachedJudge && typeof cachedJudge === 'object' && Array.isArray((cachedJudge as any).systems) && (cachedJudge as any).systems.length > 0) {
             logger.info('LLM_JUDGE', `Cache hit for scan ${scan_id}`);
-            return reply.send({ ...(cachedJudge as object), _cached: true });
+            const enriched = {
+              ...(cachedJudge as any),
+              systems: Array.isArray((cachedJudge as any).systems)
+                ? (cachedJudge as any).systems.map((s: any) => ({
+                    ...s,
+                    simulated: true,
+                    verdict: typeof s.verdict === 'string' && !/эмуляция/i.test(s.verdict)
+                      ? `${s.verdict} (эмуляция на основе анализа сайта)`
+                      : s.verdict,
+                  }))
+                : (cachedJudge as any).systems,
+              disclaimer: (cachedJudge as any).disclaimer
+                || 'Оценки рассчитаны эвристически на основе анализа сайта. Реальные запросы к AI-системам не выполняются.',
+              _cached: true,
+            };
+            return reply.send(enriched);
           }
         } catch (e) {
           logger.warn('LLM_JUDGE', `Cache read failed: ${(e as Error).message}`);
@@ -492,15 +507,43 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
           const data = await resp.json();
           const content = data?.choices?.[0]?.message?.content || '{}';
           const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
-          return { id: system.id, name: system.name, icon: system.icon, color: system.color, score: Number(parsed.score) || 0, verdict: parsed.verdict || 'Нет данных', reason: parsed.reason || '', suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [] };
+          return {
+            id: system.id,
+            name: system.name,
+            icon: system.icon,
+            color: system.color,
+            score: Number(parsed.score) || 0,
+            verdict: `${parsed.verdict || 'Нет данных'} (эмуляция на основе анализа сайта)`,
+            reason: parsed.reason || '',
+            suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
+            simulated: true,
+          };
         } catch (e) {
           logger.warn('LLM_JUDGE', `${system.name} failed: ${(e as Error).message}`);
-          return { id: system.id, name: system.name, icon: system.icon, color: system.color, score: 0, verdict: 'Ошибка анализа', reason: 'Не удалось получить оценку', suggestions: [] };
+          return {
+            id: system.id,
+            name: system.name,
+            icon: system.icon,
+            color: system.color,
+            score: 0,
+            verdict: 'Ошибка анализа (эмуляция на основе анализа сайта)',
+            reason: 'Не удалось получить оценку',
+            suggestions: [],
+            simulated: true,
+          };
         }
       }
       const results = await Promise.all(aiSystems.map(queryAiSystem));
       const avgScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
-      const payload = { success: true, url, domain, avg_score: avgScore, systems: results, _pending: false };
+      const payload = {
+        success: true,
+        url,
+        domain,
+        avg_score: avgScore,
+        systems: results,
+        disclaimer: 'Оценки рассчитаны эвристически на основе анализа сайта. Реальные запросы к AI-системам не выполняются.',
+        _pending: false,
+      };
 
       // Persist to DB inside result.llm_judge for next page load
       if (scan_id) {
