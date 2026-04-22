@@ -1,22 +1,10 @@
-import { auditQueue, monitorQueue } from './queues.js';
-
-export interface AuditJobData {
-  auditId: string;
-  domainId: string;
-  url: string;
-  userId: string | null;
-  toolId?: string;
-}
+import { monitorQueue } from './queues.js';
 
 export interface MonitorJobData {
   monitorId: string;
   domainId: string;
   url: string;
   userId?: string;
-}
-
-export async function addAuditJob(data: AuditJobData) {
-  return auditQueue.add('run-audit', data);
 }
 
 export async function addMonitorJob(data: MonitorJobData, delay?: number) {
