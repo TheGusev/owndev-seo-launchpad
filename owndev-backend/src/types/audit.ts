@@ -25,6 +25,8 @@ export interface AuditIssue {
   example_fix?: string;
   visible_in_preview?: boolean;
   impact_score?: number;
+  // Legacy code (LlmsService и т.п.) добавляет произвольные поля
+  [key: string]: unknown;
 }
 
 export interface AuditResult {
