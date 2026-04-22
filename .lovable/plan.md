@@ -2,91 +2,67 @@
 
 ## Цель
 
-Сделать честным эндпоинт `POST /api/v1/site-check/llm-judge`: пометить, что оценки 6 AI-систем — это эвристическая эмуляция через `gpt-4o-mini`, а не реальные запросы к ChatGPT/Perplexity/Яндексу/Gemini/GigaChat/Алисе.
+Удалить мёртвый legacy-аудит-стек на Puppeteer (~300 MB chromium): сервисы, воркер, REST-роут, регистрацию и саму зависимость. Site-check, marketplace-audit, monitor — НЕ затрагиваем.
 
-## Файл
+## Подтверждение grep'ом (что действительно безопасно удалять)
 
-`owndev-backend/src/api/routes/siteCheck.ts` — единственная правка. Фронт (`LlmJudgeSection.tsx`) не трогаем: новые поля просто доедут в payload.
+- `AuditService` импортируется только из `AuditWorker.ts`.
+- `CrawlerService` импортируется только из `AuditService.ts`.
+- `AuditWorker` (`startAuditWorker`) импортируется только из `src/index.ts`.
+- `routes/audit.ts` (`auditRoutes`) импортируется только из `src/api/server.ts`.
+- `puppeteer` импортируется ровно в одном месте — `CrawlerService.ts`.
+- Фронт **не вызывает** `/api/v1/audit` (поиск `apiUrl('/audit')` / `'/api/v1/audit'` пуст). Все клиенты SEO-аудита идут через Edge Function / `useAudit` хук.
 
-## Правки
+Дополнительно найдено:
 
-### 1. `queryAiSystem` — успех (строка 495)
+- `addAuditJob` / `auditQueue` используются только в legacy-цепочке + одно место в `routes/health.ts` (показ counts очереди `audit`).
+- `LlmsService`, `SchemaService`, `db/queries/audits.ts`, `checkUserCredits`/`incrementUserCredits` после удаления станут «висячими», но **типобезопасны** (никто не импортирует — TS не упадёт). Их чистку — отдельной задачей.
 
-В возвращаемый объект добавить `simulated: true` и пометку в `verdict`:
+## Файлы и правки
 
-```ts
-return {
-  id: system.id, name: system.name, icon: system.icon, color: system.color,
-  score: Number(parsed.score) || 0,
-  verdict: `${parsed.verdict || 'Нет данных'} (эмуляция на основе анализа сайта)`,
-  reason: parsed.reason || '',
-  suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
-  simulated: true,
-};
-```
+### 1. Удалить файлы
+- `owndev-backend/src/services/AuditService.ts`
+- `owndev-backend/src/services/CrawlerService.ts`
+- `owndev-backend/src/workers/AuditWorker.ts`
+- `owndev-backend/src/api/routes/audit.ts`
 
-### 2. `queryAiSystem` — fallback при ошибке (строка 498)
+### 2. `owndev-backend/src/api/server.ts`
+- Удалить импорт `import { auditRoutes } from './routes/audit.js';`
+- Удалить регистрацию `await app.register(auditRoutes);`
 
-```ts
-return {
-  id: system.id, name: system.name, icon: system.icon, color: system.color,
-  score: 0,
-  verdict: 'Ошибка анализа (эмуляция на основе анализа сайта)',
-  reason: 'Не удалось получить оценку',
-  suggestions: [],
-  simulated: true,
-};
-```
+### 3. `owndev-backend/src/index.ts`
+- Удалить импорт `import { startAuditWorker } from './workers/AuditWorker.js';`
+- Удалить `const auditWorker = startAuditWorker();`
+- Удалить `await auditWorker.close();` в `shutdown`.
 
-### 3. Финальный `payload` (строка 503)
+### 4. `owndev-backend/src/api/routes/health.ts`
+- Убрать использование `auditQueue` из health-эндпоинта (импорт и обращение в `Promise.all`/payload). Останется только `monitorQueue`. Это нужно, чтобы корректно удалить очередь без падения health.
 
-```ts
-const payload = {
-  success: true,
-  url, domain,
-  avg_score: avgScore,
-  systems: results,
-  disclaimer: 'Оценки рассчитаны эвристически на основе анализа сайта. Реальные запросы к AI-системам не выполняются.',
-  _pending: false,
-};
-```
+### 5. `owndev-backend/src/queue/queues.ts`
+- Удалить экспорт `auditQueue` (очередь больше не нужна, её писатель и читатель удалены). Оставить только `monitorQueue`.
 
-`disclaimer` пишется в БД вместе с payload (через тот же `JSON.stringify(payload)` на строке 510) — кэшированные ответы тоже автоматически получат поле при следующем сохранении.
+### 6. `owndev-backend/src/queue/jobs.ts`
+- Удалить интерфейс `AuditJobData` и функцию `addAuditJob`, а также `auditQueue` из импорта `./queues.js`. Оставить `MonitorJobData` и `addMonitorJob`.
 
-### 4. Кэш-хит (строка 428) — обогащаем старые записи на лету
+### 7. Зависимости
+- В `owndev-backend` выполнить `npm uninstall puppeteer`. Это уберёт `puppeteer` из `dependencies` и снесёт chromium из `node_modules`.
 
-Старые закэшированные результаты в `site_check_scans.result.llm_judge` не содержат `simulated`/`disclaimer`. Чтобы пользователь не видел «честные» и «нечестные» ответы вперемешку, добавляем поля при отдаче из кэша:
-
-```ts
-const enriched = {
-  ...(cachedJudge as any),
-  systems: Array.isArray((cachedJudge as any).systems)
-    ? (cachedJudge as any).systems.map((s: any) => ({
-        ...s,
-        simulated: true,
-        verdict: typeof s.verdict === 'string' && !/эмуляция/i.test(s.verdict)
-          ? `${s.verdict} (эмуляция на основе анализа сайта)`
-          : s.verdict,
-      }))
-    : (cachedJudge as any).systems,
-  disclaimer: (cachedJudge as any).disclaimer
-    || 'Оценки рассчитаны эвристически на основе анализа сайта. Реальные запросы к AI-системам не выполняются.',
-  _cached: true,
-};
-return reply.send(enriched);
-```
+### 8. README (косметика, по желанию)
+- В `owndev-backend/README.md` строки `POST /api/v1/audit` и `GET /api/v1/audit/:id` — пометить как устаревшие или убрать, чтобы не вводить в заблуждение. (Не критично для работы.)
 
 ## Что НЕ трогаем
 
-- Промпты, модель `gpt-4o-mini`, retry-логика, температура, таймаут.
-- Структура `aiSystems`, парсинг JSON, кэш-запись в БД.
-- Эндпоинт `/ai-boost` и любые другие роуты.
-- Фронтенд (`src/components/site-check/LlmJudgeSection.tsx`) — новые поля совместимы, отображать дисклеймер можно отдельной задачей.
+- `owndev-backend/src/types/audit.ts` (используется в `LlmsService`/`SchemaService`/`db/queries/audits.ts` — оставим, чтобы не разрастаться).
+- `owndev-backend/src/db/queries/audits.ts` и `users.ts` — остаются, но de facto не вызываются. Чистка — отдельной задачей.
+- Таблицы `audits` / `audit_results` в БД — миграции и данные не трогаем.
+- `SiteCheckPipeline.ts`, marketplace-audit, monitor, conversion-audit, alice — без изменений.
+- Frontend — без изменений.
 
 ## Проверка
 
-1. `cd owndev-backend && npx tsc --noEmit` — 0 ошибок.
-2. `POST /api/v1/site-check/llm-judge { url: "https://example.com" }` — каждый объект в `systems[]` содержит `simulated: true`, `verdict` оканчивается на `(эмуляция…)`, в корне есть `disclaimer`.
-3. Повторный запрос с тем же `scan_id` — `_cached: true`, поля `simulated`/`disclaimer` тоже на месте (даже если в БД старая запись без них).
-4. Принудительный сбой OpenAI (mock 400) — fallback-объект тоже содержит `simulated: true`.
+1. `cd owndev-backend && npx tsc --noEmit` → 0 ошибок (после правок п.4–6 единственный потребитель `auditQueue` — health — тоже починен).
+2. `grep -rn "puppeteer\|AuditService\|CrawlerService\|AuditWorker\|routes/audit\|addAuditJob\|auditQueue" owndev-backend/src` → пусто (кроме, возможно, упоминания в комментариях `SiteCheckPipeline.ts`).
+3. `du -sh owndev-backend/node_modules` до/после `npm uninstall puppeteer` — ожидаемое падение ~300 MB.
+4. `npm run dev` поднимается; `GET /health` отвечает 200 и больше не показывает `audit` queue counts.
+5. Site-check / marketplace-audit / monitor продолжают работать (smoke на любом сайте).
 
