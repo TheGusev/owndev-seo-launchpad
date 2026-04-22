@@ -1,141 +1,71 @@
 
 
-## Цель
+## Что происходит и почему накопился беспорядок
 
-Перенести «программистский» вайб (печатающийся код, Matrix-дождь, плавающие сниппеты, бинарные ленты, scan-line) **в мобильную версию**. Сейчас почти все декоративные эффекты отключены на ≤768px → мобилка выглядит пусто. На ПК всё ок — туда ничего не добавляем, только адаптируем существующее под мобилку.
+Я тебя понимаю — мы за последние сессии сделали много визуальных правок (мобильные эффекты, карточки, layout) и параллельно у нас в бэкенде остался **монолит на 1770 строк** + рассинхрон типов с фронтом. Ты потерял ощущение контроля, потому что:
 
-## Принцип
+1. **Никто не смотрел реально работает ли скан целиком после всех правок.** Мы фиксили UI, типы дрейфовали, но повторный аудит /tools/site-check никто не прогонял end-to-end.
+2. **Backend `Issue` ≠ frontend `IssueCard`** — поля называются по-разному, фронт использует `data: any`, поэтому ошибки молча превращаются в пустые блоки вместо красных алертов.
+3. **Фронт-компоненты разрослись**: `ScoreCards`, `FullReportView`, `TechPassport`, `IssueCard` каждый ждёт свою форму данных, и если бэк прислал что-то чуть иначе — блок показывается пустым, без ошибки.
 
-1. Снять mobile-блокировки с уже существующих компонентов (`TypingCodeBlock`, `NeuralNetworkBg`, `GeometricRays`).
-2. Создать **lite-режим** для каждого эффекта — меньше плотность, меньше элементов, меньше CPU.
-3. Добавить 4 новых эффекта (`MatrixRain`, `FloatingCodeSnippets`, `BinaryStream`, `ScanLine`) сразу с mobile-first вариантами.
-4. Сохранить производительность: mobile = canvas off, только CSS-анимации; reduced-motion работает.
+Чтобы не гадать «что и где сломано», предлагаю простой план в 3 шага. **Сначала диагностика, потом точечные правки, без больших рефакторингов.**
 
-## Что меняем в существующих компонентах
+## План: «Привести скан в работоспособное состояние»
 
-### `TypingCodeBlock` (`src/components/ui/typing-code-block.tsx`)
-- **Убрать** `if (isMobile) return null;` — компонент рендерится на мобилке.
-- На mobile: уменьшить шрифт до 11px, padding 12px, скрыть нумерацию строк, ширина 100%.
-- Ограничить высоту `max-h-[180px] overflow-hidden` чтобы не растягивал страницу.
-- На mobile: ускорить анимацию (`speed=18`, `lineDelay=120`) — короче ждать.
-- Добавить prop `mobileVariant?: "compact" | "hidden"` — где код не критичен, передаём `"hidden"`.
+### Шаг 1. Диагностика (один прогон, чтобы увидеть факты)
 
-### `NeuralNetworkBg` (`src/components/ui/neural-network-bg.tsx`)
-- На mobile: `density="low"` принудительно, узлов 8 вместо 18, линий меньше.
-- Не отключать полностью — должен дышать на фоне.
+Запускаю реальный скан на тестовом URL через прод-API и фиксирую:
+- какие поля реально приходят в `GET /api/v1/site-check/result/:scanId`
+- какие из них фронт ждёт но не получает (или получает в другом формате)
+- какие компоненты падают молча (показывают пустоту вместо данных)
+- логи воркера в PM2: доходит ли пайплайн до конца, какие шаги падают
 
-### `GeometricRays` (`src/components/ui/geometric-rays.tsx`)
-- На mobile: оставить только 2 угла (top-left + bottom-right) вместо 4, opacity 0.3 → 0.2.
+**Результат:** короткий список конкретных рассинхронов с точными именами полей. Не больше 1 экрана текста.
 
-### `AuroraBackground` — уже работает на mobile (1 слой). Не трогаем.
+### Шаг 2. Создать единый source of truth для типа результата
 
-## 4 новых эффекта (mobile-first)
+Завожу файл `owndev-backend/src/types/siteCheck.ts` — единый интерфейс `SiteCheckResult` (scores, issues, competitors, keywords, tech_passport, theme и т.д.). Этот же файл копируется на фронт как `src/lib/site-check-types.ts` (заменяет текущий с расхождениями).
 
-### 1. `MatrixRain` — `src/components/ui/matrix-rain.tsx`
-- **Mobile (≤768px):** CSS-only версия — 8 вертикальных колонок с `<span>` символами, анимация `translateY -100% → 100%` через CSS keyframes (12s loop). Никакого canvas, минимум CPU.
-- **Desktop:** canvas версия (как в плане) — 35 колонок.
-- Цвет cyan, opacity 0.12 mobile / 0.18 desktop.
+После этого:
+- `SiteCheckPipeline.ts` возвращает строго `SiteCheckResult`
+- `siteCheck.ts` route отдаёт строго `SiteCheckResult`
+- Фронт `SiteCheckResult.tsx` принимает строго `SiteCheckResult` (убираем `data: any`)
+- TypeScript сразу подсветит все места где раньше был дрейф
 
-### 2. `FloatingCodeSnippets` — `src/components/ui/floating-code-snippets.tsx`
-- **Mobile:** 2 сниппета вместо 5, шрифт 10px, opacity 0.15.
-- **Desktop:** 5 сниппетов, шрифт 12px, opacity 0.2.
-- Чистый CSS (translateY + opacity loop, 15-25s).
+### Шаг 3. Починить каждый рассинхрон, найденный в шаге 1
 
-### 3. `BinaryStream` — `src/components/ui/binary-stream.tsx`
-- Работает одинаково везде — лента 0/1 с `translateX -50% → 0` infinite.
-- **Mobile:** скорость 40s (медленнее), opacity 0.1, шрифт 9px.
-- **Desktop:** 30s, opacity 0.12, шрифт 10px.
+Для каждого пункта из списка диагностики — точечная правка либо на бэке (если поле не отдаётся), либо на фронте (если поле называется иначе). Без переписывания пайплайна, без затрагивания UI и декоративных эффектов.
 
-### 4. `ScanLine` — `src/components/ui/scan-line.tsx`
-- Чистый CSS, работает одинаково. Mobile: opacity 0.25 вместо 0.4 (меньше отвлекает на маленьком экране).
-
-## CSS (`src/index.css`)
-
-Новые keyframes под `@layer utilities`:
-- `binary-scroll`, `code-float-1/2/3`, `scan-line-sweep`, `matrix-fall-1..8` (8 колонок с разной скоростью/delay для CSS-варианта Matrix).
-- Глобальный `@media (prefers-reduced-motion: reduce)` отключает всё.
-
-## Куда подключаем (с фокусом на мобилку)
-
-| Страница / Секция | Что добавить | Mobile поведение |
-|---|---|---|
-| `Hero` (Index) | `MatrixRain` (CSS на mobile) | Виден на мобилке, opacity 0.12 |
-| `HowItWorks` (Index) | `ScanLine` + inline `TypingCodeBlock` | Typing block compact 11px |
-| `FlagshipTools` (Index) | `ScanLine` + `FloatingCodeSnippets` mobile=2 шт | |
-| `ToolsShowcase` (Index) | `BinaryStream` сверху + снизу | Видно на mobile, тонкая лента |
-| `ServicesTeaser` (Index) | `FloatingCodeSnippets` mobile=2 | |
-| `ComparisonSection` (Index) | `ScanLine` сверху | |
-| `ReportValue` (Index) | `TypingCodeBlock variant="ide"` mobile=compact (под карточками, не справа) | На mobile — снизу, не сбоку |
-| `BlogPreview` (Index) | `BinaryStream` сверху | |
-| `Tools` (`/tools`) | `MatrixRain` + `FloatingCodeSnippets` за hero | Mobile видит фон |
-| `MarketplaceAudit` hero | `FloatingCodeSnippets` + `BinaryStream` снизу hero | Mobile=2 сниппета |
-| `SiteFormula` hero | `TypingCodeBlock variant="ide"` под заголовком на mobile (а не справа) + `FloatingCodeSnippets` | |
-| `SiteCheck` | `MatrixRain` + типинг-блок (на mobile под формой, compact) | Сейчас скрыт — раскрываем |
-| `Academy` hero | `TypingCodeBlock variant="minimal"` под заголовком на mobile | |
-| `GeoRating` hero | `BinaryStream` + `FloatingCodeSnippets` mobile=2 | |
-| `scenarios/*` (4 шт) | `MatrixRain` + `TypingCodeBlock` (compact на mobile, под текстом) | Сейчас typing скрыт — раскрываем |
-| `Contacts` | `FloatingCodeSnippets` mobile=2 | |
-| `Privacy/Terms/Refund/Offer` | НЕ трогаем | Юр. документы без декора |
-
-Везде: декоры `z-[0..3]`, контент `z-10`, `pointer-events-none`, `aria-hidden`.
-
-## Расширение `TypingCodeBlock` props
-
-```ts
-variant?: "ide" | "minimal" | "inline";  // "ide" default
-mobileVariant?: "compact" | "hidden";     // "compact" default
-```
-
-- `compact` — уменьшенный IDE-блок без нумерации строк, max-height 180px.
-- `hidden` — для случаев, где блок занимает слишком много на мобилке.
-
-## Технические детали (производительность mobile)
-
-- **Никаких canvas на mobile** — `MatrixRain` mobile использует CSS-only версию.
-- **`will-change: transform`** только на анимирующихся элементах.
-- **`contain: layout paint`** на всех декоративных обёртках.
-- **Reduced-motion**: глобально отключает все keyframes, canvas (на ПК) не запускает RAF.
-- **Intersection Observer**: `MatrixRain` (даже CSS) запускается только в viewport, чтобы не жрал CPU когда секция не видна.
-- **Цвета**: только токены `--primary`, `--accent`, `--secondary`, `--muted-foreground`. Никаких хардкод-hex.
+После этого прогоняю тот же скан повторно и проверяю что:
+- Total / SEO / Direct / Schema / AI скоры все ≠ 0 и ≠ null
+- ScoreCards рендерит 5 кружков с числами
+- FullReportView показывает issues со всеми полями (title, fix, severity)
+- TechPassport показывает CMS, гео, заголовки безопасности
+- Конкуренты приходят, keywords приходят
+- ScanProgress доходит до 100% без зависаний
 
 ## Что НЕ трогаем
 
-- ПК версию — она и так нормально выглядит. Все правки добавляют mobile-варианты, не меняют desktop.
-- `Header`, мобильный drawer, `Footer` (правило памяти).
-- `AuroraBackground`, `FloatingParticles`, `Starfield`, `MouseGradient`, `ClickRipple` — они уже корректно работают на mobile.
-- Бизнес-логика, формы, состояние, API.
-- Контент, тексты, h1/h2, CTA.
-- `Privacy/Terms/Refund/Offer` страницы.
-- `Tools.tsx` структура карточек (только проверим что новые фоны не пересекают карточки на mobile).
+- Декоративные эффекты (MatrixRain, BinaryStream, typing-блоки) — оставляем как есть, ты их одобрил.
+- Header / Footer / навигация (правило памяти).
+- Логику пайплайна (какие правила применяет, как считает скоры) — только починим контракт данных.
+- Layout страниц, тексты, CTA, монетизацию.
+- Edge функции Supabase.
 
-## Порядок выполнения
+## Файлы которые буду трогать
 
-1. **Шаг 1 — фундамент:**
-   - Добавить keyframes (`binary-scroll`, `code-float-*`, `scan-line-sweep`, `matrix-fall-1..8`) в `src/index.css` с reduced-motion guard.
-   - Создать 4 новых компонента: `MatrixRain` (CSS-mobile + canvas-desktop), `FloatingCodeSnippets`, `BinaryStream`, `ScanLine`.
-   - Обновить `TypingCodeBlock` — снять mobile guard, добавить props `variant` и `mobileVariant`, compact-стили.
-   - Обновить `NeuralNetworkBg` и `GeometricRays` — mobile lite-режим.
+- **Создать:** `owndev-backend/src/types/siteCheck.ts`
+- **Заменить:** `src/lib/site-check-types.ts` (тот же тип, но точно совпадающий с бэком)
+- **Точечно править:** `owndev-backend/src/services/SiteCheckPipeline.ts` (только там где поля не сходятся), `owndev-backend/src/api/routes/siteCheck.ts` (нормализация ответа), `src/pages/SiteCheckResult.tsx` (убрать `any`), и компоненты `ScoreCards.tsx` / `FullReportView.tsx` / `TechPassport.tsx` / `IssueCard.tsx` — только адаптировать под единый тип.
 
-2. **Шаг 2 — Index landing (mobile в первую очередь):**
-   - Hero, HowItWorks, FlagshipTools, ToolsShowcase, ServicesTeaser, ComparisonSection, ReportValue, BlogPreview.
+## Что увидишь после
 
-3. **Шаг 3 — флагманские страницы:**
-   - SiteCheck, MarketplaceAudit, SiteFormula.
+1. Запускаешь /tools/site-check на любом URL → прогресс доходит до 100%.
+2. На странице результата все 5 скоров с числами, не пустые.
+3. Список issues со всеми деталями.
+4. Tech Passport с CMS, гео, безопасностью.
+5. Конкуренты и keywords заполнены.
+6. В консоли браузера — чисто, без ошибок про undefined.
 
-4. **Шаг 4 — остальные страницы:**
-   - Tools, Academy, GeoRating, 4 scenarios, Contacts.
-
-## Проверка после правок
-
-1. **Mobile 375×812** (главное!):
-   - `/` — за hero CSS-Matrix дождь виден; HowItWorks с inline typing-блоком; ToolsShowcase с бинарной лентой; ReportValue имеет typing-блок снизу карточек (не справа).
-   - `/tools/site-check` — Matrix фон + typing-блок compact под формой (не скрыт).
-   - `/marketplace-audit` — 2 плавающих сниппета `wb_id`/JSON в hero, бинарная лента снизу.
-   - `/site-formula` — typing-блок под заголовком (не сбоку).
-   - `/scenario/*` — Matrix + typing-блок compact под текстом.
-   - `/academy`, `/geo-rating` — лёгкие декоры в hero.
-2. **Desktop 1336×906**: всё что было — осталось, ничего не сломано, layout прежний.
-3. **DevTools Performance mobile emulation**: CPU ≤ 30%, FPS ≥ 50, no long tasks.
-4. **`prefers-reduced-motion: reduce`**: все анимации останавливаются на обоих устройствах.
-5. **Layout**: typing-блоки не растягивают страницу, не вылезают за viewport, не пересекают CTA-кнопки.
+Если в шаге 1 диагностика покажет что бэк не отдаёт какие-то данные вообще (например пайплайн падает на Yandex API), я скажу честно: «вот этот блок данных не приходит из-за X, нужно либо чинить интеграцию, либо убирать блок из UI» — и ты выберешь.
 
