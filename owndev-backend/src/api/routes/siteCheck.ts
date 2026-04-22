@@ -320,6 +320,23 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       llm_judge: result?.llm_judge ?? null,
       ai_boost: result?.ai_boost ?? null,
 
+      // Sprint 3 — три честных скора + структурированные данные.
+      // Старые поля (scores.*, score) сохранены для обратной совместимости фронта,
+      // переезд на geoScore/seoScore/croScore идёт в Sprint 5.
+      geoScore: result?.geoScore ?? null,
+      seoScore: result?.seoScore ?? null,
+      croScore: result?.croScore ?? null,
+      scoresBreakdown: result?.scoresBreakdown ?? null,
+      stage0: result?.stage0 ?? null,
+      robots: result?.robots ?? null,
+      sitemap: result?.sitemap ?? null,
+      llmsTxt: result?.llmsTxt ?? null,
+      resources: result?.resources ?? null,
+      geoSignals: result?.geoSignals ?? null,
+      cro: result?.cro ?? null,
+      benchmark: result?.benchmark ?? null,
+      signals: result?.signals ?? null,
+
       result,
       raw_scores: scores,
 
