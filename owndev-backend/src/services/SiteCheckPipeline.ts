@@ -436,7 +436,7 @@ function calcScoresWeighted(issues: Issue[], dbRules: DbRule[], directChecks?: {
   const schemaEarned = schemaBreakdown.reduce((s, c) => s + c.earned, 0);
   const schema = Math.round((schemaEarned / schemaMax) * 100);
 
-  const total = Math.round(seo * 0.3 + direct * 0.2 + schema * 0.25 + ai * 0.25);
+  const total = Math.round(seo * 0.35 + direct * 0.20 + schema * 0.15 + ai * 0.30);
   return {
     total, seo, direct, schema, ai,
     breakdown: { seo: seoBreakdown, ai: llmBreakdown, direct: directBreakdown, schema: schemaBreakdown },
