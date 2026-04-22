@@ -2,145 +2,134 @@
 
 ## Цель
 
-Прокачать страницу `/geo-rating` под реальные данные: показать `schema_score` и `direct_score` как числа, корректно обрабатывать «пустые/устаревшие» строки, фильтровать и сортировать по среднему из 4 скоров, показывать дату последней проверки.
+Заменить две фейковые проверки в `directAudit` (`SiteCheckPipeline.ts`) на настоящие, соответствующие их именам. Метки и issue-сообщения тоже привести в соответствие.
+
+## Файл
+
+`owndev-backend/src/services/SiteCheckPipeline.ts` — единственный затронутый файл.
 
 ## Правки
 
-### 1. `src/data/geo-rating-types.ts`
+### 1. `DIRECT_CHECKS_META` (строки 695–702)
 
-Расширить тип входной row и `GeoRatingEntry`:
+Заменить два неверных label:
 
 ```ts
-export type GeoRatingEntry = {
-  rank: number;
-  brandName: string;
-  domain: string;
-  category: string;
-  llmScore: number;
-  seoScore: number;
-  schemaScore: number;   // NEW
-  directScore: number;   // NEW
-  hasLlmsTxt: boolean;
-  hasSchema: boolean;
-  hasFaq: boolean;
-  issuesCount: number;
-  topErrors: string[];
-  verifiedAt: string;
-};
+{ key: 'noMixedTopics', label: 'Тематическая однородность', weight: 15 },
+{ key: 'adHeadlineReady', label: 'H1 готов для Директа', weight: 15 },
 ```
 
-В `mapDbRowToEntry` добавить:
+Остальные 4 строки не трогаем.
+
+### 2. Блок «5. Яндекс.Метрика» (строки 759–766) → реальная проверка `noMixedTopics`
+
+Заменить целиком на:
+
 ```ts
-schemaScore: row.schema_score,
-directScore: row.direct_score,
+// 5. Тематическая однородность H2/H3 относительно Title → noMixedTopics
+const STOP_WORDS = new Set(['и','в','на','с','по','для','из','от','к','а','но','о','у','же','ли','бы','то','как','что','это']);
+const headingMatches = [...html.matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)]
+  .map(m => m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase())
+  .filter(Boolean);
+
+if (headingMatches.length < 2) {
+  addCheck('noMixedTopics', 'pass', `На странице ${headingMatches.length} заголовков H2/H3 — проверка тематической однородности не требуется`);
+} else {
+  const titleWords = (title || '')
+    .toLowerCase()
+    .split(/[\s,—–\-|:.!?()]+/)
+    .map(w => w.trim())
+    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+  const threshold = Math.ceil(headingMatches.length * 0.5);
+  let bestWord = '';
+  let bestHits = 0;
+  for (const w of titleWords) {
+    const hits = headingMatches.filter(h => h.includes(w)).length;
+    if (hits > bestHits) { bestHits = hits; bestWord = w; }
+  }
+  const homogeneous = bestHits >= threshold;
+  if (!homogeneous) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'medium',
+      title: 'Смешанные темы на странице',
+      found: `Ни одно слово из Title не встречается в ≥50% заголовков H2/H3 (${bestHits}/${headingMatches.length})`,
+      location: 'Заголовки H2/H3',
+      why_it_matters: 'Автотаргетинг Директа хуже работает на страницах со смешанной тематикой — снижается релевантность',
+      how_to_fix: 'Сделайте заголовки H2/H3 тематически связанными с Title страницы',
+      example_fix: `Если Title — "${title.slice(0, 40)}", то H2/H3 должны раскрывать ту же тему`,
+      visible_in_preview: true,
+    }));
+    addCheck('noMixedTopics', 'fail', `Тема Title не прослеживается в заголовках (лучшее совпадение: "${bestWord}" ${bestHits}/${headingMatches.length}, нужно ${threshold})`);
+  } else {
+    addCheck('noMixedTopics', 'pass', `Слово "${bestWord}" из Title встречается в ${bestHits}/${headingMatches.length} заголовках — тема однородна`);
+  }
+}
 ```
-+ расширить тип `row` полями `schema_score: number; direct_score: number;`.
 
-### 2. `src/pages/GeoRating.tsx`
+### 3. Блок «6. Viewport» (строки 768–775) → реальная проверка `adHeadlineReady`
 
-**a) Колонки таблицы (desktop)**
+Заменить целиком на:
 
-Шапка и строки — новая grid-template:
-```text
-[#  Сайт  Категория  LLM  SEO  Schema  Direct  llms.txt  Ошибки  Last]
-```
-- Убрать булевы колонки **Schema** (галочка) и **FAQ** — заменить на цифровые `Schema` и `Direct`.
-- `llms.txt` колонку оставить (полезный бинарный сигнал).
-- Добавить мини-колонку «Last» с относительной датой (`22.04` или «3д»).
-- Цвета чисел через `scoreColor()` как у LLM/SEO.
-
-Новый шаблон сетки: `grid-cols-[2.5rem_1fr_7rem_3.5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.5rem_4rem]` (10 колонок).
-
-**b) Логика «нет данных / устарело»**
-
-Хелпер:
 ```ts
-const isStale = (r: any) => {
-  const days = (Date.now() - new Date(r.last_checked_at).getTime()) / 86400000;
-  return days > 7;
-};
-const isEmpty = (r: any) =>
-  r.llm_score === 0 && r.seo_score === 0 &&
-  r.schema_score === 0 && r.direct_score === 0;
+// 6. Готовность H1 как рекламного заголовка Директа → adHeadlineReady
+const h1Trim = h1.trim();
+let adReady = false;
+let adFailReason = '';
+if (!h1Trim) {
+  adFailReason = 'H1 отсутствует на странице';
+} else if (h1Trim.length < 5 || h1Trim.length > 56) {
+  adFailReason = `Длина H1 ${h1Trim.length} символов — вне допустимого диапазона 5–56 для рекламного заголовка Директа`;
+} else if (/^[\d\W_]/.test(h1Trim)) {
+  adFailReason = `H1 начинается с "${h1Trim[0]}" — рекламный заголовок должен начинаться с буквы`;
+} else {
+  const hasNoun = h1Trim
+    .split(/[\s,—–\-|:.!?()]+/)
+    .some(w => w.replace(/[^\p{L}]/gu, '').length > 4);
+  if (!hasNoun) {
+    adFailReason = 'H1 не содержит ни одного слова длиннее 4 букв — нет смыслового якоря для рекламного заголовка';
+  } else {
+    adReady = true;
+  }
+}
+
+if (!adReady) {
+  issues.push(makeIssue({
+    module: 'direct', severity: 'high',
+    title: 'H1 не готов для рекламного заголовка Директа',
+    found: h1Trim ? `H1: "${h1Trim}" (${h1Trim.length} симв.)` : 'H1 отсутствует',
+    location: '<h1>',
+    why_it_matters: 'Директ часто использует H1 как заголовок объявления. Если H1 длинный, начинается с цифры или слишком общий — заголовок будет обрезан или непривлекательным',
+    how_to_fix: 'Перепишите H1: длина 5–56 символов, начало с буквы, минимум одно содержательное слово (>4 букв)',
+    example_fix: `<h1>${theme || 'Услуги под ключ'} в Москве</h1>`,
+    visible_in_preview: true,
+  }));
+  addCheck('adHeadlineReady', 'fail', adFailReason);
+} else {
+  addCheck('adHeadlineReady', 'pass', `H1 "${h1Trim}" подходит для рекламного заголовка Директа (${h1Trim.length} симв.)`);
+}
 ```
 
-- Строка с `isEmpty` → класс `opacity-40`, числовые скоры заменяются на `—`.
-- В сортировке `isEmpty` всегда уходят в конец (compare-функция: empty → +Infinity).
-- В expanded-блоке для устаревших — `<AlertTriangle/> Данные устарели`.
+### 4. TypeScript
 
-**c) Фильтр по среднему скору**
-
-Заменить текущий фильтр по `llm_score`:
-```ts
-const avgScore = (r: any) =>
-  Math.round((r.llm_score + r.seo_score + r.schema_score + r.direct_score) / 4);
-
-.filter(r => {
-  const a = avgScore(r);
-  return (cat === "Все" || r.category === cat) && a >= f.min && a <= f.max;
-})
-```
-
-Также метку фильтра поменять с «LLM Score:» на «Средний скор:».
-
-**d) Сортировка**
-
-Добавить пресеты `Schema ↓`, `Direct ↓`, `Средний ↓`. Сделать `Средний ↓` дефолтным (вместо `LLM Score`):
-```ts
-{ label: "Средний ↓", key: "avgScore" },
-{ label: "LLM ↓", key: "llmScore" },
-{ label: "SEO ↓", key: "seoScore" },
-{ label: "Schema ↓", key: "schemaScore" },
-{ label: "Direct ↓", key: "directScore" },
-{ label: "Алфавит", key: "brandName" },
-```
-В sort-функции — сначала пушим `isEmpty` в конец, затем сравниваем по выбранному ключу.
-
-**e) Mobile-строка**
-
-В свёрнутом виде (сейчас показывает только LLM-бейдж) — оставить тот же лейаут, но бейдж с числом — это **средний скор**, плюс маленький `<AlertTriangle/>` если устарело или пусто.
-
-**f) Expanded-блок (раскрытая строка)**
-
-Сетка скоров `grid-cols-2 gap-3 mb-4 max-w-md` теперь содержит 4 ячейки (2×2): LLM, SEO, Schema, Direct — с теми же цветами и подписями.
-
-Под списком ошибок добавить блок:
-```tsx
-<div className="text-xs text-muted-foreground/60 mt-3 flex items-center gap-2">
-  Последняя проверка: {new Date(entry.verifiedAt).toLocaleDateString("ru-RU")}
-  {stale && <span className="inline-flex items-center gap-1 text-yellow-400">
-    <AlertTriangle className="w-3 h-3" /> Данные устарели
-  </span>}
-</div>
-```
-
-**g) Топ-метрики хедера**
-
-«Ср. LLM Score» оставить, но добавить рядом «Ср. Schema Score» и «Ср. Direct Score» (обе считаются игнорируя `isEmpty` строки, чтобы не занижать среднее нулями). Если выходит больше 4 плиток — на мобильном они уже flex-wrap, ок.
-
-## Файлы
-
-| Файл | Действие |
-|---|---|
-| `src/data/geo-rating-types.ts` | **Edit** — добавить `schemaScore`/`directScore` в тип и маппинг, расширить тип row |
-| `src/pages/GeoRating.tsx` | **Edit** — новые колонки Schema/Direct/Last, удалить булевы Schema+FAQ, фильтр и сортировка по avgScore, обработка `isEmpty`/`isStale`, 4 скора в expanded, дата проверки + предупреждение об устаревших данных |
+После правок — `cd owndev-backend && npx tsc --noEmit`. Все типы существующие, без `any`-наркомании, должны компилиться чисто.
 
 ## Что НЕ трогаем
 
-- Backend `/api/v1/site-check/geo-rating` — данные уже отдаются с нужными полями.
-- Header / Footer / маршрутизация / другие страницы.
-- Логика номинаций, методологии, шаринга.
-- `SiteCheckWorker` upsert в `geo_rating` — он уже пишет `schema_score`/`direct_score`.
-- Правила памяти.
+- Проверки 1–4 (`h1TitleMatch`, `h1Specificity`, `textCoherence`, `commercialSignals`) — без изменений.
+- Веса в `DIRECT_WEIGHTS` (строки 213–216) — не меняются.
+- `ad_headline`/`autotargeting_categories`/`readiness_score` (строки 777+) — без изменений.
+- Любые другие функции в файле, фронтенд, БД, правила памяти.
+
+## Побочный эффект (важно знать)
+
+- Из `issues` исчезнут текущие записи «Нет Яндекс.Метрики» (critical) и «viewport не найден» (high), а вместо них могут появляться «Смешанные темы» (medium) и «H1 не готов для Директа» (high). Если позже потребуется отдельно проверять Метрику/viewport — сделаем под собственными ключами в новых задачах. Сейчас приоритет — устранить смысловое расхождение между названием и поведением чека.
 
 ## Проверка
 
-1. `/geo-rating` desktop: видны числовые колонки **Schema** и **Direct** после **SEO**, цвета совпадают со схемой scoreColor. Булевых Schema и FAQ больше нет.
-2. Колонка **Last** показывает дату последней проверки.
-3. Сайты с нулевыми скорами — приглушены (opacity-40), показывают `—`, всегда в конце списка независимо от сортировки.
-4. Фильтр «80+» отбирает по среднему из 4 скоров (а не только LLM).
-5. Сортировка по «Schema ↓» / «Direct ↓» / «Средний ↓» работает корректно.
-6. Раскрытие строки → 4 плитки скоров (2×2) + подпись «Последняя проверка: 22.04.2026», для записей старше 7 дней — иконка `AlertTriangle` + «Данные устарели».
-7. Mobile: бейдж в правой части — средний скор; устаревшие/пустые — приглушены, иконка предупреждения.
-8. После следующего ресканирования числа меняются автоматически без релоада (refetch staleTime 30s).
+1. `npx tsc --noEmit` в `owndev-backend` — без ошибок.
+2. На странице с чёткой темой (Title и H2/H3 про одно) `noMixedTopics` → `pass`.
+3. На странице, где H2/H3 «обо всём» — `noMixedTopics` → `fail` с разумным reason.
+4. H1 = «Купить кондиционеры в Москве» (28 симв.) → `adHeadlineReady` pass.
+5. H1 отсутствует / `<h1>123 — главная</h1>` / H1 длиной 80 симв. → `fail` с конкретной причиной.
+6. Лейблы в UI карточек /site-check «Тематическая однородность» и «H1 готов для Директа» отображаются корректно (фронт берёт label из `checks[].label`).
 
