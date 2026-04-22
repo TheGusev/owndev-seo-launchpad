@@ -175,9 +175,17 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           ? normalizeCategoryFromTheme(result.theme.trim())
           : 'Сервисы';
 
+        // Sprint 3 mapping: используем новые честные скоры если они есть,
+        // иначе fallback на legacy scores. llm_score/seo_score колонки в БД
+        // переименовывать не будем — мапим логически.
+        const llmScoreVal = result.geoScore ?? scores.ai ?? 0;
+        const seoScoreVal = result.seoScore ?? scores.seo ?? 0;
+        const schemaScoreVal = scores.schema ?? 0;
+        const directScoreVal = result.croScore ?? scores.direct ?? 0;
+
         await sql`
           INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)
-          VALUES (${hostname}, ${displayName}, ${category}, ${scores.ai ?? 0}, ${scores.seo ?? 0}, ${scores.schema ?? 0}, ${scores.direct ?? 0}, ${!hasLlmsTxtIssue}, ${hasFaqPage}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
+          VALUES (${hostname}, ${displayName}, ${category}, ${llmScoreVal}, ${seoScoreVal}, ${schemaScoreVal}, ${directScoreVal}, ${!hasLlmsTxtIssue}, ${hasFaqPage}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
           ON CONFLICT (domain) DO UPDATE SET
             display_name = EXCLUDED.display_name,
             llm_score = EXCLUDED.llm_score,
