@@ -4,7 +4,10 @@ import type { CriterionResult } from "@/utils/scoreCalculation";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import ScoreDetailsModal from "./ScoreDetailsModal";
 
-const scoreLabels: Record<keyof ScanScores, string> = {
+/** Numeric score keys that we render as circles. */
+type ScoreKey = 'total' | 'seo' | 'direct' | 'schema' | 'ai';
+
+const scoreLabels: Record<ScoreKey, string> = {
   total: "Общий",
   seo: "SEO",
   direct: "Директ",
@@ -75,14 +78,15 @@ interface ScoreCardsProps {
 const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
   const [activeModal, setActiveModal] = useState<ScoreType | null>(null);
 
-  const keys = Object.keys(scoreLabels) as (keyof ScanScores)[];
+  const keys = Object.keys(scoreLabels) as ScoreKey[];
 
   return (
     <>
       {/* Mobile: total full-width + 2x2, Desktop: 5 columns */}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
         {keys.map((key, i) => {
-          const val = scores?.[key] ?? 0;
+          const raw = scores?.[key];
+          const val = typeof raw === 'number' ? raw : 0;
           return (
             <div
               key={key}
@@ -93,7 +97,7 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
               <CircleScore score={val} />
               <p className="mt-1 text-[10px] font-medium text-muted-foreground">{scoreLabels[key]}</p>
               {previousScores && typeof previousScores[key] === "number" && (
-                <DiffBadge diff={val - previousScores[key]} />
+                <DiffBadge diff={val - (previousScores[key] as number)} />
               )}
               <button
                 onClick={() => setActiveModal(key as ScoreType)}
