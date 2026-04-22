@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  Play, Globe, Brain, FileText, Cpu, Users, Key, Sparkles, CheckCircle2,
+  Play, Globe, Brain, FileText, Cpu, Key, CheckCircle2,
   Loader2, AlertCircle, Clock,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
