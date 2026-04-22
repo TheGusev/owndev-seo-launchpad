@@ -15,6 +15,7 @@ export interface AuditIssue {
   message?: string;
   fix?: string;
   description?: string;
+  detail?: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
   title: string;
   found?: string;
