@@ -2,67 +2,74 @@
 
 ## Цель
 
-Удалить мёртвый legacy-аудит-стек на Puppeteer (~300 MB chromium): сервисы, воркер, REST-роут, регистрацию и саму зависимость. Site-check, marketplace-audit, monitor — НЕ затрагиваем.
+Завершить чистку legacy-аудита: структурный `/health`, актуальный README, новый CHANGELOG.
 
-## Подтверждение grep'ом (что действительно безопасно удалять)
+## Правки
 
-- `AuditService` импортируется только из `AuditWorker.ts`.
-- `CrawlerService` импортируется только из `AuditService.ts`.
-- `AuditWorker` (`startAuditWorker`) импортируется только из `src/index.ts`.
-- `routes/audit.ts` (`auditRoutes`) импортируется только из `src/api/server.ts`.
-- `puppeteer` импортируется ровно в одном месте — `CrawlerService.ts`.
-- Фронт **не вызывает** `/api/v1/audit` (поиск `apiUrl('/audit')` / `'/api/v1/audit'` пуст). Все клиенты SEO-аудита идут через Edge Function / `useAudit` хук.
+### 1. `owndev-backend/src/api/routes/health.ts`
 
-Дополнительно найдено:
+Переписать payload в два явных блока:
 
-- `addAuditJob` / `auditQueue` используются только в legacy-цепочке + одно место в `routes/health.ts` (показ counts очереди `audit`).
-- `LlmsService`, `SchemaService`, `db/queries/audits.ts`, `checkUserCredits`/`incrementUserCredits` после удаления станут «висячими», но **типобезопасны** (никто не импортирует — TS не упадёт). Их чистку — отдельной задачей.
+```ts
+return reply.status(ok ? 200 : 503).send({
+  success: true,
+  data: {
+    status: ok ? 'ok' : 'degraded',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    services: {
+      db: pg ? 'connected' : 'error',
+      redis: rd ? 'connected' : 'error',
+    },
+    queues: {
+      monitor: mq,
+    },
+  },
+});
+```
 
-## Файлы и правки
+Никаких полей `auditQueue` — структурно фиксируем разделение «сервисы» vs «очереди».
 
-### 1. Удалить файлы
-- `owndev-backend/src/services/AuditService.ts`
-- `owndev-backend/src/services/CrawlerService.ts`
-- `owndev-backend/src/workers/AuditWorker.ts`
-- `owndev-backend/src/api/routes/audit.ts`
+### 2. `owndev-backend/README.md`
 
-### 2. `owndev-backend/src/api/server.ts`
-- Удалить импорт `import { auditRoutes } from './routes/audit.js';`
-- Удалить регистрацию `await app.register(auditRoutes);`
+- Из секции **Стек** убрать `Puppeteer`.
+- Из секции **Структура** убрать `AuditService`, `CrawlerService`; поправить список `routes/` на актуальный.
+- В таблице **API** удалить строки `POST /api/v1/audit` и `GET /api/v1/audit/:id`. Добавить строки про `/api/v1/site-check/*` и `/api/v1/marketplace-audit/*`.
+- В конец добавить раздел **Legacy**:
 
-### 3. `owndev-backend/src/index.ts`
-- Удалить импорт `import { startAuditWorker } from './workers/AuditWorker.js';`
-- Удалить `const auditWorker = startAuditWorker();`
-- Удалить `await auditWorker.close();` в `shutdown`.
+> Таблицы `audits` и `audit_results` остались в БД (миграция `001_initial.sql`), но больше не используются: legacy-стек на Puppeteer (`AuditService`, `CrawlerService`, `AuditWorker`, `routes/audit`, очередь `audit`) удалён. Миграции намеренно не трогаются — исторические данные сохраняются, новые записи добавляются только через `MonitorService` для истории доменов. Очистка таблиц/типов/queries — отдельной задачей.
 
-### 4. `owndev-backend/src/api/routes/health.ts`
-- Убрать использование `auditQueue` из health-эндпоинта (импорт и обращение в `Promise.all`/payload). Останется только `monitorQueue`. Это нужно, чтобы корректно удалить очередь без падения health.
+### 3. `owndev-backend/CHANGELOG.md` (новый файл)
 
-### 5. `owndev-backend/src/queue/queues.ts`
-- Удалить экспорт `auditQueue` (очередь больше не нужна, её писатель и читатель удалены). Оставить только `monitorQueue`.
+Формат Keep a Changelog:
 
-### 6. `owndev-backend/src/queue/jobs.ts`
-- Удалить интерфейс `AuditJobData` и функцию `addAuditJob`, а также `auditQueue` из импорта `./queues.js`. Оставить `MonitorJobData` и `addMonitorJob`.
+```md
+# Changelog
 
-### 7. Зависимости
-- В `owndev-backend` выполнить `npm uninstall puppeteer`. Это уберёт `puppeteer` из `dependencies` и снесёт chromium из `node_modules`.
+## [Unreleased]
 
-### 8. README (косметика, по желанию)
-- В `owndev-backend/README.md` строки `POST /api/v1/audit` и `GET /api/v1/audit/:id` — пометить как устаревшие или убрать, чтобы не вводить в заблуждение. (Не критично для работы.)
+### Removed
+- Legacy Puppeteer-аудит: `AuditService`, `CrawlerService`, `AuditWorker`, роут `POST/GET /api/v1/audit`, очередь BullMQ `audit`, зависимость `puppeteer` (~300 MB chromium).
+- Поля и счётчики `auditQueue` из ответа `GET /api/v1/health`.
+
+### Changed
+- `GET /api/v1/health` теперь отдаёт два явных блока: `services` (db, redis) и `queues` (monitor).
+- README: убраны упоминания Puppeteer и legacy-роутов аудита, добавлен раздел Legacy.
+
+### Notes
+- Таблицы БД `audits` и `audit_results` сохранены (миграция `001_initial.sql` не изменена). Исторические данные не удаляются.
+- `MonitorService` продолжает писать строки в `audits` для истории доменов.
+```
 
 ## Что НЕ трогаем
 
-- `owndev-backend/src/types/audit.ts` (используется в `LlmsService`/`SchemaService`/`db/queries/audits.ts` — оставим, чтобы не разрастаться).
-- `owndev-backend/src/db/queries/audits.ts` и `users.ts` — остаются, но de facto не вызываются. Чистка — отдельной задачей.
-- Таблицы `audits` / `audit_results` в БД — миграции и данные не трогаем.
-- `SiteCheckPipeline.ts`, marketplace-audit, monitor, conversion-audit, alice — без изменений.
-- Frontend — без изменений.
+- Миграции и таблицы в БД.
+- `MonitorService`, site-check, marketplace-audit, фронтенд.
+- Любые другие роуты/сервисы.
 
 ## Проверка
 
-1. `cd owndev-backend && npx tsc --noEmit` → 0 ошибок (после правок п.4–6 единственный потребитель `auditQueue` — health — тоже починен).
-2. `grep -rn "puppeteer\|AuditService\|CrawlerService\|AuditWorker\|routes/audit\|addAuditJob\|auditQueue" owndev-backend/src` → пусто (кроме, возможно, упоминания в комментариях `SiteCheckPipeline.ts`).
-3. `du -sh owndev-backend/node_modules` до/после `npm uninstall puppeteer` — ожидаемое падение ~300 MB.
-4. `npm run dev` поднимается; `GET /health` отвечает 200 и больше не показывает `audit` queue counts.
-5. Site-check / marketplace-audit / monitor продолжают работать (smoke на любом сайте).
+1. `cd owndev-backend && npx tsc --noEmit` → 0 ошибок.
+2. `curl $API/api/v1/health` → JSON с `data.services.{db,redis}` и `data.queues.monitor`, без `audit*`.
+3. `grep -rn "auditQueue\|/api/v1/audit\b" owndev-backend/src` → пусто.
 
