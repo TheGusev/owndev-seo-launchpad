@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  Play, Globe, Brain, FileText, Cpu, Users, Key, Sparkles, CheckCircle2,
+  Play, Globe, Brain, FileText, Cpu, Key, CheckCircle2,
   Loader2, AlertCircle, Clock,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -16,16 +16,15 @@ type Stage = {
   slowHint?: string;
 };
 
+// Sprint 5 — 6 этапов вместо 9. Соответствуют stage 0/1/2/3/4/5 в бэке.
 const stages: Stage[] = [
   { pct: 5,   label: "Запуск",                      desc: "Инициализация проверки",                                icon: Play },
-  { pct: 10,  label: "Загрузка страницы",           desc: "Скачиваем HTML, проверяем доступность",                 icon: Globe },
-  { pct: 20,  label: "Определение тематики",        desc: "AI анализирует тему сайта",                             icon: Brain, slow: true, slowHint: "AI-запрос к LLM, обычно 5–15 сек" },
-  { pct: 35,  label: "SEO-данные и robots.txt",     desc: "meta-теги, sitemap, битые ссылки",                      icon: FileText },
-  { pct: 60,  label: "Технический и AI-аудит",      desc: "Schema.org, E-E-A-T, llms.txt, контент",                icon: Cpu },
-  { pct: 75,  label: "Анализ конкурентов",          desc: "Топ-10 из выдачи Яндекс — это самый долгий шаг",        icon: Users, slow: true, slowHint: "AI-запрос к OpenAI + парсинг выдачи, обычно 20–60 сек. Это нормально." },
-  { pct: 85,  label: "AI-объявление Директа",       desc: "Генерация рекомендаций для Яндекс.Директ",             icon: Sparkles },
-  { pct: 95,  label: "Финальный расчёт",             desc: "Подсчёт скоров и формирование отчёта",                  icon: Key },
-  { pct: 100, label: "Формирование отчёта",         desc: "Сохраняем результат",                                   icon: CheckCircle2 },
+  { pct: 15,  label: "Загрузка и заголовки",        desc: "HTML, redirects, HTTPS, кэш, безопасность",             icon: Globe },
+  { pct: 35,  label: "Технические файлы",           desc: "robots.txt, sitemap.xml, llms.txt, security.txt",       icon: FileText },
+  { pct: 55,  label: "Глубокий анализ HTML",        desc: "Schema.org, контент, ресурсы, GEO/CRO сигналы",         icon: Cpu },
+  { pct: 75,  label: "AI-анализ темы и контента",   desc: "Один LLM-запрос на тематику и качество",                icon: Brain, slow: true, slowHint: "AI-запрос к LLM, обычно 5–10 сек" },
+  { pct: 95,  label: "Расчёт скоров",                desc: "GEO / SEO / CRO + сравнение с эталоном категории",      icon: Key },
+  { pct: 100, label: "Готово",                       desc: "Сохраняем результат",                                   icon: CheckCircle2 },
 ];
 
 interface ScanProgressProps {
@@ -219,7 +218,7 @@ const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }
             />
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-            <span>Обычно 30–90 секунд, может занять до 2 минут</span>
+            <span>Обычно 15–30 секунд</span>
             {startedAt && (
               <span className="font-mono tabular-nums">
                 Идёт: {formatElapsed(elapsedTotalMs)}

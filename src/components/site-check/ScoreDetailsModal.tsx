@@ -10,7 +10,7 @@ import type { ScanScores } from "@/lib/site-check-types";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ScoreDetailsModalProps {
-  type: 'seo' | 'ai' | 'direct' | 'schema' | 'total';
+  type: 'seo' | 'ai' | 'direct' | 'schema' | 'total' | 'geo' | 'cro';
   score: number;
   scores?: ScanScores;
   breakdown?: CriterionResult[];
@@ -26,6 +26,8 @@ const scoreLabel: Record<string, string> = {
   direct: "Яндекс.Директ",
   schema: "Schema.org",
   total: "Общий",
+  geo: "GEO (AI-видимость)",
+  cro: "CRO (Конверсия)",
 };
 
 function getScoreBadgeColor(score: number) {

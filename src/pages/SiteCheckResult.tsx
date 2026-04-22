@@ -11,6 +11,10 @@ import AiBoostSection from "@/components/site-check/AiBoostSection";
 import GeoRatingNomination from "@/components/site-check/GeoRatingNomination";
 import TechPassport from "@/components/site-check/TechPassport";
 import ResultAccordion from "@/components/site-check/ResultAccordion";
+import RedirectChain from "@/components/site-check/RedirectChain";
+import RobotsAudit from "@/components/site-check/RobotsAudit";
+import CROSignals from "@/components/site-check/CROSignals";
+import BenchmarkCard from "@/components/site-check/BenchmarkCard";
 import { getFullScan } from "@/lib/site-check-api";
 import { judgeLlm, getTechPassport, getAiBoost } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
@@ -48,9 +52,9 @@ const SiteCheckResult = () => {
       .then((d) => {
         setData(d);
         if (d && scanId) addToHistory({ scanId, url: d.url, date: new Date().toISOString(), scores: d.scores as any });
-        if (d?.llm_judge) setLlmJudge(d.llm_judge);
+        if (d?.llm_judge) setLlmJudge(d.llm_judge as any);
         else if (d?.url && d?.status === 'done') triggerLlmJudge(scanId, d.url, d.theme);
-        if (d?.ai_boost?.items) setAiBoost(d.ai_boost.items);
+        if ((d?.ai_boost as any)?.items) setAiBoost((d.ai_boost as any).items);
         if (d?.url) triggerTechPassport(d.url);
       })
       .catch((e) => {
@@ -196,8 +200,32 @@ const SiteCheckResult = () => {
                 {techBadges}
               </div>
               <TechPassport data={techPassport} />
+              {/* Sprint 5 — Redirects + headers */}
+              {data.stage0 && (
+                <div className="pt-2 border-t border-border/30">
+                  <RedirectChain stage0={data.stage0} finalUrl={data.url} />
+                </div>
+              )}
             </div>
           )}
+
+          {/* Sprint 5 — Sprint 3 detector outputs (показываются только если бэк прислал данные) */}
+          {data.robots && (
+            <ResultAccordion title="Доступ AI-ботов (robots.txt)" defaultOpen={false}>
+              <RobotsAudit robots={data.robots} />
+            </ResultAccordion>
+          )}
+          {data.cro && (
+            <ResultAccordion title="CRO-сигналы: доверие, CTA, формы" defaultOpen={false}>
+              <CROSignals cro={data.cro} />
+            </ResultAccordion>
+          )}
+          {data.benchmark && (
+            <ResultAccordion title={`Эталон категории «${data.benchmark.category}»`} defaultOpen={false}>
+              <BenchmarkCard benchmark={data.benchmark} />
+            </ResultAccordion>
+          )}
+
           {techPassportLoading && !techPassport && (
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 flex items-center gap-3">
               <Loader2 className="w-4 h-4 text-primary animate-spin" />

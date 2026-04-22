@@ -4,13 +4,29 @@ import type { CriterionResult } from "@/utils/scoreCalculation";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import ScoreDetailsModal from "./ScoreDetailsModal";
 
-const scoreLabels: Record<keyof ScanScores, string> = {
+/**
+ * Sprint 5 — Карточки скоров.
+ *
+ * Если в скане есть geoScore/seoScore/croScore (новый бэк после Sprint 3) —
+ * показываем 3 честные карточки. Иначе fallback на старый layout (5 карточек:
+ * total/seo/direct/schema/ai) — для старых сохранённых сканов.
+ */
+
+const legacyLabels: Record<keyof ScanScores, string> = {
   total: "Общий",
   seo: "SEO",
   direct: "Директ",
   schema: "Schema",
   ai: "AI",
+  geo: "GEO",
+  cro: "CRO",
 };
+
+const tripleLabels = {
+  geo: { title: "GEO", subtitle: "AI-видимость" },
+  seo: { title: "SEO", subtitle: "Поиск" },
+  cro: { title: "CRO", subtitle: "Конверсия" },
+} as const;
 
 function getScoreColor(score: number) {
   if (score <= 40) return "text-destructive border-destructive/30 bg-destructive/5";
@@ -64,7 +80,7 @@ export interface ScoreBreakdownData {
   total?: CriterionResult[];
 }
 
-type ScoreType = 'seo' | 'ai' | 'direct' | 'schema' | 'total';
+type ScoreType = 'seo' | 'ai' | 'direct' | 'schema' | 'total' | 'geo' | 'cro';
 
 interface ScoreCardsProps {
   scores: ScanScores;
@@ -75,14 +91,63 @@ interface ScoreCardsProps {
 const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
   const [activeModal, setActiveModal] = useState<ScoreType | null>(null);
 
-  const keys = Object.keys(scoreLabels) as (keyof ScanScores)[];
+  const hasTriple =
+    typeof scores?.geo === 'number' &&
+    typeof scores?.seo === 'number' &&
+    typeof scores?.cro === 'number';
+
+  if (hasTriple) {
+    const tripleKeys: Array<'geo' | 'seo' | 'cro'> = ['geo', 'seo', 'cro'];
+    return (
+      <>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {tripleKeys.map((key) => {
+            const val = (scores[key] ?? 0) as number;
+            const meta = tripleLabels[key];
+            return (
+              <div
+                key={key}
+                className={`rounded-2xl border p-5 text-center ${getScoreColor(val)}`}
+              >
+                <CircleScore score={val} />
+                <p className="mt-2 text-sm font-semibold text-foreground">{meta.title}</p>
+                <p className="text-[11px] text-muted-foreground">{meta.subtitle}</p>
+                {previousScores && typeof previousScores[key] === "number" && (
+                  <DiffBadge diff={val - (previousScores[key] as number)} />
+                )}
+                <button
+                  onClick={() => setActiveModal(key)}
+                  className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors underline decoration-dotted mt-2 block mx-auto"
+                >
+                  Как рассчитан?
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {activeModal && (
+          <ScoreDetailsModal
+            type={activeModal as ScoreType}
+            score={(scores[activeModal as 'geo' | 'seo' | 'cro'] ?? 0) as number}
+            scores={scores}
+            breakdown={breakdown?.[activeModal as keyof ScoreBreakdownData]}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Legacy fallback (старые сканы)
+  const keys: Array<keyof ScanScores> = ['total', 'seo', 'direct', 'schema', 'ai'];
 
   return (
     <>
       {/* Mobile: total full-width + 2x2, Desktop: 5 columns */}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
         {keys.map((key, i) => {
-          const val = scores?.[key] ?? 0;
+          const val = (scores?.[key] ?? 0) as number;
           return (
             <div
               key={key}
@@ -91,9 +156,9 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
               }`}
             >
               <CircleScore score={val} />
-              <p className="mt-1 text-[10px] font-medium text-muted-foreground">{scoreLabels[key]}</p>
+              <p className="mt-1 text-[10px] font-medium text-muted-foreground">{legacyLabels[key]}</p>
               {previousScores && typeof previousScores[key] === "number" && (
-                <DiffBadge diff={val - previousScores[key]} />
+                <DiffBadge diff={val - (previousScores[key] as number)} />
               )}
               <button
                 onClick={() => setActiveModal(key as ScoreType)}
@@ -109,9 +174,9 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
       {activeModal && (
         <ScoreDetailsModal
           type={activeModal}
-          score={scores[activeModal] ?? 0}
+          score={(scores[activeModal as keyof ScanScores] ?? 0) as number}
           scores={scores}
-          breakdown={breakdown?.[activeModal]}
+          breakdown={breakdown?.[activeModal as keyof ScoreBreakdownData]}
           onClose={() => setActiveModal(null)}
         />
       )}

@@ -4,6 +4,7 @@
  * Supabase dependency removed.
  */
 import { apiUrl, apiHeaders } from './config';
+import type { FullScanResponse } from '@/lib/site-check-types';
 
 async function apiFetch<T = any>(path: string, options?: RequestInit): Promise<T> {
   const hasBody = options?.body !== undefined && options?.body !== null;
@@ -36,8 +37,8 @@ async function apiFetch<T = any>(path: string, options?: RequestInit): Promise<T
   return resp.json() as Promise<T>;
 }
 
-export async function getFullScan(scanId: string) {
-  return apiFetch(`/site-check/result/${scanId}`);
+export async function getFullScan(scanId: string): Promise<FullScanResponse> {
+  return apiFetch<FullScanResponse>(`/site-check/result/${scanId}`);
 }
 
 export async function startScan(url: string, mode: 'page' | 'site', options?: { force?: boolean }) {
