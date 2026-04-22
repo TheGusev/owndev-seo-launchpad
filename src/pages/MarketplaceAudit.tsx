@@ -86,14 +86,16 @@ export default function MarketplaceAudit() {
         <Card className="p-6 md:p-8 glass">
           <div className="mb-6">
             <Label className="mb-3 block">Площадка</Label>
-            <div className="flex w-full max-w-sm mx-auto rounded-lg border border-border p-1 bg-card">
+            <div className="flex w-full max-w-sm mx-auto rounded-xl border border-border/60 p-1.5 bg-muted/40 gap-1.5">
               {(['wb', 'ozon'] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setPlatform(p)}
-                  className={`flex-1 px-5 py-2 rounded-md text-sm font-medium transition-colors ${
-                    platform === p ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  className={`flex-1 px-5 py-2.5 rounded-lg text-sm font-medium border border-transparent transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    platform === p
+                      ? 'bg-primary text-primary-foreground border-primary/40 shadow-[0_0_18px_hsl(var(--primary)/0.35)] font-semibold'
+                      : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
                   }`}
                 >
                   {p === 'wb' ? 'Wildberries' : 'Ozon'}
@@ -103,10 +105,16 @@ export default function MarketplaceAudit() {
           </div>
 
           <Tabs value={mode} onValueChange={(v) => setMode(v as MarketplaceInputType)}>
-            <TabsList className="grid grid-cols-3 w-full h-auto gap-1">
-              <TabsTrigger value="url" className="py-2.5 whitespace-normal text-xs sm:text-sm">Ссылка</TabsTrigger>
-              <TabsTrigger value="sku" className="py-2.5 whitespace-normal text-xs sm:text-sm">Артикул</TabsTrigger>
-              <TabsTrigger value="manual" className="py-2.5 whitespace-normal text-xs sm:text-sm">Вручную</TabsTrigger>
+            <TabsList className="grid grid-cols-3 w-full h-auto gap-1.5 p-1.5 bg-muted/40 border border-border/60 rounded-xl">
+              {(['url', 'sku', 'manual'] as const).map((tab) => (
+                <TabsTrigger
+                  key={tab}
+                  value={tab}
+                  className="py-3 px-3 whitespace-normal text-xs sm:text-sm font-medium rounded-lg text-muted-foreground border border-transparent transition-all duration-200 hover:bg-card/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary/40 data-[state=active]:shadow-[0_0_18px_hsl(var(--primary)/0.35)] data-[state=active]:font-semibold"
+                >
+                  {tab === 'url' ? 'Ссылка' : tab === 'sku' ? 'Артикул' : 'Вручную'}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             <TabsContent value="url" className="mt-6">
