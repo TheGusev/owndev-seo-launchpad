@@ -4,6 +4,8 @@ import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { StarfieldBackground } from "@/components/ui/starfield-background";
+import { AuroraBackground } from "@/components/ui/aurora-background";
+import { GeometricRays } from "@/components/ui/geometric-rays";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -57,10 +59,13 @@ const Hero = () => {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(var(--accent)/0.06),transparent_50%)]" />
       </div>
 
+      <AuroraBackground className="z-[1] opacity-70" intensity="subtle" />
+
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent z-[1]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent z-[1]" />
 
       <StarfieldBackground count={100} className="absolute inset-0 z-[2]" />
+      <GeometricRays className="z-[3] opacity-70" opacity={0.35} />
 
       <div className="container relative z-10 px-4 md:px-6">
         <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto">
