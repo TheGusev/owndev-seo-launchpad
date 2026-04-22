@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
 import FullReportView from "@/components/site-check/FullReportView";
 import CompetitorsTable from "@/components/site-check/CompetitorsTable";
+import HistoryChart from "@/components/site-check/HistoryChart";
 import DirectMeta from "@/components/site-check/DirectMeta";
 import DirectAdPreview from "@/components/site-check/DirectAdPreview";
 import KeywordsSection from "@/components/site-check/KeywordsSection";
@@ -159,6 +160,8 @@ const SiteCheckResult = () => {
     cluster: kw.cluster ?? kw.category ?? 'Общие',
     intent: kw.intent ?? '—',
     landing_needed: kw.landing_needed ?? false,
+    verified: typeof kw.verified === 'boolean' ? kw.verified : undefined,
+    suggestions: Array.isArray(kw.suggestions) ? kw.suggestions : undefined,
   }));
   const minusWords = (Array.isArray(data.minus_words) ? data.minus_words : []).map((w: any) => {
     if (typeof w === 'string') return { word: w.replace(/^-/, ''), type: 'general', reason: '' };
@@ -215,6 +218,9 @@ const SiteCheckResult = () => {
 
           {/* 2. Scores */}
           {scores && <ScoreCards scores={scores} previousScores={previousScores} breakdown={breakdown} />}
+
+          {/* 2b. History trend chart */}
+          {data?.url && <HistoryChart url={data.url} />}
 
           {/* 3. Яндекс.Директ */}
           {directAdMeta && <DirectMeta data={directAdMeta} />}

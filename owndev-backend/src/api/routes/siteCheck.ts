@@ -351,6 +351,46 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // GET /api/v1/site-check/history/:domain
+  // Returns last N completed scans for a domain (substring match on url),
+  // ordered ASC for chart rendering. Each row has total/seo/ai/schema/direct.
+  app.get<{ Params: { domain: string }; Querystring: { limit?: string } }>(
+    '/history/:domain',
+    async (req, reply) => {
+      const { domain } = req.params;
+      if (!domain || domain.length < 3) {
+        return reply.status(400).send({ success: false, error: 'invalid domain' });
+      }
+      const limit = Math.min(50, Math.max(1, Number(req.query?.limit) || 20));
+      const pattern = `%${domain}%`;
+      const rows = await sql<Array<any>>`
+        SELECT id, created_at, theme,
+               (scores->>'total')::numeric  AS total,
+               (scores->>'seo')::numeric    AS seo,
+               (scores->>'ai')::numeric     AS ai,
+               (scores->>'schema')::numeric AS schema_score,
+               (scores->>'direct')::numeric AS direct
+        FROM site_check_scans
+        WHERE url ILIKE ${pattern}
+          AND status = 'done'
+          AND scores IS NOT NULL
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `;
+      const history = rows.reverse().map((r: any) => ({
+        id: r.id,
+        created_at: r.created_at,
+        theme: r.theme ?? null,
+        total: r.total !== null ? Number(r.total) : null,
+        seo: r.seo !== null ? Number(r.seo) : null,
+        ai: r.ai !== null ? Number(r.ai) : null,
+        schema: r.schema_score !== null ? Number(r.schema_score) : null,
+        direct: r.direct !== null ? Number(r.direct) : null,
+      }));
+      return reply.send({ success: true, domain, history });
+    },
+  );
+
   // POST /api/v1/site-check/report/create
   app.post<{ Body: { scan_id: string; email: string } }>('/report/create', async (req, reply) => {
     const { scan_id, email } = req.body as { scan_id: string; email: string };

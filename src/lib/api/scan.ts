@@ -74,3 +74,21 @@ export async function getReport(reportId: string, token?: string) {
   const params = token ? `?token=${token}` : '';
   return apiFetch(`/site-check/report/${reportId}${params}`);
 }
+
+export interface DomainHistoryPoint {
+  id: string;
+  created_at: string;
+  theme: string | null;
+  total: number | null;
+  seo: number | null;
+  ai: number | null;
+  schema: number | null;
+  direct: number | null;
+}
+
+export async function getDomainHistory(domain: string, limit = 20) {
+  const cleaned = domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
+  return apiFetch<{ success: boolean; domain: string; history: DomainHistoryPoint[] }>(
+    `/site-check/history/${encodeURIComponent(cleaned)}?limit=${limit}`,
+  );
+}
