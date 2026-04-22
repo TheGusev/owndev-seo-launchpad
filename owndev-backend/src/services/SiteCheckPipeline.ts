@@ -150,7 +150,7 @@ function safeParseJson<T>(raw: string, fallback: T): T {
 }
 
 // ─── Issue builder ───
-interface Issue {
+export interface Issue {
   id: string; module: string; severity: string; title: string;
   found: string; location: string; why_it_matters: string;
   how_to_fix: string; example_fix: string; visible_in_preview: boolean;
