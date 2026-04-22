@@ -73,7 +73,6 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           if (partialData.scores) updates.scores = JSON.stringify(partialData.scores);
           if (partialData.issues) updates.issues = JSON.stringify(partialData.issues);
           if (partialData.seo_data) updates.seo_data = JSON.stringify(partialData.seo_data);
-          if (partialData.keywords) updates.keywords = JSON.stringify(partialData.keywords);
         }
         await sql`
           UPDATE site_check_scans
@@ -85,15 +84,12 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
       dbRules,
     );
 
-    // Save final result — сохраняем все данные включая result JSONB для обратной совместимости
+    // Save final result — Sprint 2: removed competitors/keywords/minus_words
     const resultJsonb = {
       theme: result.theme,
       is_spa: result.is_spa,
       scores: result.scores,
       issues: result.issues,
-      competitors: result.competitors,
-      keywords: result.keywords,
-      minus_words: result.minus_words,
       seo_data: result.seo_data,
       summary: result.summary ?? null,
       blocks: result.blocks ?? [],
@@ -106,9 +102,6 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           is_spa = ${result.is_spa},
           scores = ${JSON.stringify(result.scores)}::jsonb,
           issues = ${JSON.stringify(result.issues)}::jsonb,
-          competitors = ${JSON.stringify(result.competitors)}::jsonb,
-          keywords = ${JSON.stringify(result.keywords)}::jsonb,
-          minus_words = ${JSON.stringify(result.minus_words)}::jsonb,
           seo_data = ${JSON.stringify(result.seo_data)}::jsonb,
           result = COALESCE(result, '{}'::jsonb) || ${JSON.stringify(resultJsonb)}::jsonb,
           updated_at = NOW()

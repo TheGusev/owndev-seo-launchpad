@@ -1,4 +1,4 @@
-import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye, ClipboardList, Plug, LayoutTemplate, ShoppingBag, LayoutDashboard, Target } from "lucide-react";
+import { type LucideIcon, Search, Code2, FileCode, Sparkles, Shield, Bot, Swords, ScanSearch, TrendingUp, Link2, BrainCircuit, PenTool, Star, Eye, ClipboardList, Plug, LayoutTemplate, ShoppingBag, LayoutDashboard, Target, Megaphone } from "lucide-react";
 import { lazy, type ComponentType } from "react";
 
 export type ToolStatus = "active" | "coming_soon";
@@ -305,6 +305,22 @@ export const tools: ToolDef[] = [
     seoTitle: "CRO-аудит сайта | OWNDEV",
     seoDescription: "Почему сайт не продаёт: AI-анализ барьеров конверсии и потерь бюджета Директа.",
     seoH1: "CRO-аудит сайта",
+  },
+  // ===== DIRECT AD (extracted from site-check, hidden until Sprint 5+) =====
+  {
+    id: "direct-ad", slug: "direct-ad",
+    name: "Объявление Яндекс.Директ",
+    shortDesc: "Готовое объявление под вашу страницу: заголовки, текст, быстрые ссылки и CSV для Коммандера",
+    category: "generation", icon: Megaphone,
+    component: lazy(() => import("@/pages/tools/DirectAd")),
+    gradient: "bg-gradient-to-br from-pink-950/40 to-rose-950/40",
+    useCases: ["Готовое объявление Директа", "Превью с лимитами символов", "Экспорт в Коммандер (CSV)"],
+    geoEnabled: false, status: "active",
+    hidden: true,
+    customPath: "/tools/direct-ad",
+    seoTitle: "Генератор объявлений Яндекс.Директ | OWNDEV",
+    seoDescription: "Создайте объявление Яндекс.Директ под вашу посадочную страницу с превью, лимитами и экспортом в CSV для Коммандера.",
+    seoH1: "Генератор объявлений Яндекс.Директ",
   },
 ];
 

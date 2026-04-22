@@ -21,11 +21,10 @@ const severityConfig: Record<string, { label: string; emoji: string; borderClass
 const categoryConfig: Record<string, { label: string; className: string }> = {
   technical: { label: "Техника", className: "bg-blue-500/20 text-blue-400" },
   content: { label: "Контент", className: "bg-purple-500/20 text-purple-400" },
-  direct: { label: "Директ", className: "bg-pink-500/20 text-pink-400" },
-  competitors: { label: "Конкуренты", className: "bg-cyan-500/20 text-cyan-400" },
-  semantics: { label: "Семантика", className: "bg-teal-500/20 text-teal-400" },
   schema: { label: "Schema", className: "bg-indigo-500/20 text-indigo-400" },
   ai: { label: "AI", className: "bg-emerald-500/20 text-emerald-400" },
+  geo: { label: "GEO", className: "bg-cyan-500/20 text-cyan-400" },
+  cro: { label: "CRO", className: "bg-pink-500/20 text-pink-400" },
 };
 
 const severityFilterConfig: { key: IssueSeverity | "all"; label: string; className: string }[] = [
@@ -42,8 +41,8 @@ const categoryFilterConfig: { key: IssueModule | "all"; label: string; className
   { key: "content", label: "Контент", className: "bg-purple-500/20 text-purple-400" },
   { key: "schema", label: "Schema", className: "bg-indigo-500/20 text-indigo-400" },
   { key: "ai", label: "AI", className: "bg-emerald-500/20 text-emerald-400" },
-  { key: "direct", label: "Директ", className: "bg-pink-500/20 text-pink-400" },
-  { key: "competitors", label: "Конкуренты", className: "bg-cyan-500/20 text-cyan-400" },
+  { key: "geo", label: "GEO", className: "bg-cyan-500/20 text-cyan-400" },
+  { key: "cro", label: "CRO", className: "bg-pink-500/20 text-pink-400" },
 ];
 
 interface FullReportViewProps {

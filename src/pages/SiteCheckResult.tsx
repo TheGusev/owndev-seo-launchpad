@@ -4,12 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
 import FullReportView from "@/components/site-check/FullReportView";
-import CompetitorsTable from "@/components/site-check/CompetitorsTable";
 import HistoryChart from "@/components/site-check/HistoryChart";
-import DirectMeta from "@/components/site-check/DirectMeta";
-import DirectAdPreview from "@/components/site-check/DirectAdPreview";
-import KeywordsSection from "@/components/site-check/KeywordsSection";
-import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import LlmJudgeSection, { type LlmJudgeData } from "@/components/site-check/LlmJudgeSection";
 import AiBoostSection from "@/components/site-check/AiBoostSection";
@@ -141,36 +136,7 @@ const SiteCheckResult = () => {
     : undefined;
 
   const issues = Array.isArray(data.issues) ? data.issues : [];
-  const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
-  const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor');
-  const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table') || null;
-  const directMeta = rawCompetitors.find((c: any) => c._type === 'direct_meta') || null;
-  const directAdMeta = rawCompetitors.find((c: any) =>
-    c._type === 'direct_ad_meta' ||
-    c._direct_meta === true ||
-    c.ad_suggestion != null ||
-    c.readiness_score != null
-  );
-  const directAdSuggestion = directAdMeta?.ad_suggestion || null;
-  const directReadinessScore = directAdMeta?.readiness_score ?? null;
-  const directChecks = directAdMeta?.direct_checks || data?.seo_data?.direct_checks || null;
-  const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
-    keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
-    volume: kw.frequency ?? kw.volume ?? 0,
-    cluster: kw.cluster ?? kw.category ?? 'Общие',
-    intent: kw.intent ?? '—',
-    landing_needed: kw.landing_needed ?? false,
-    verified: typeof kw.verified === 'boolean' ? kw.verified : undefined,
-    suggestions: Array.isArray(kw.suggestions) ? kw.suggestions : undefined,
-  }));
-  const minusWords = (Array.isArray(data.minus_words) ? data.minus_words : []).map((w: any) => {
-    if (typeof w === 'string') return { word: w.replace(/^-/, ''), type: 'general', reason: '' };
-    return {
-      word: (w.word ?? w.phrase ?? w.value ?? String(w)).replace(/^-/, ''),
-      type: w.type ?? w.category ?? 'general',
-      reason: w.reason ?? w.description ?? '',
-    };
-  });
+  // Sprint 2: competitors / keywords / minus_words / Direct ad — moved out of site-check
 
   // Tech passport summary badges for accordion header
   const techBadges = techPassport ? (
@@ -222,29 +188,6 @@ const SiteCheckResult = () => {
           {/* 2b. History trend chart */}
           {data?.url && <HistoryChart url={data.url} />}
 
-          {/* 3. Яндекс.Директ */}
-          {directAdMeta && <DirectMeta data={directAdMeta} />}
-          {directAdSuggestion && (
-            <ResultAccordion title="Объявление для Яндекс.Директ" defaultOpen={false}>
-              <DirectAdPreview
-                adSuggestion={directAdSuggestion}
-                readinessScore={directReadinessScore ?? 0}
-                url={data.url}
-                checks={directChecks}
-              />
-            </ResultAccordion>
-          )}
-          {!directAdSuggestion && directReadinessScore !== null && (
-            <ResultAccordion title="Готовность к Яндекс.Директ" defaultOpen={true}>
-              <DirectAdPreview
-                adSuggestion={{ headline1: '', headline2: '', ad_text: '', sitelinks: [], callouts: [] }}
-                readinessScore={directReadinessScore}
-                url={data.url}
-                checks={directChecks}
-              />
-            </ResultAccordion>
-          )}
-
           {/* 4. Tech Passport — full width */}
           {techPassport && (
             <div className="rounded-xl border border-border/50 bg-card/40 p-4 md:p-5 space-y-3">
@@ -290,49 +233,13 @@ const SiteCheckResult = () => {
             />
           </ResultAccordion>
 
-          {/* 7. Competitors */}
-          {competitors.length > 0 && (
-            <ResultAccordion title={`Конкуренты в AI-выдаче (${competitors.length})`} defaultOpen={false}>
-              <CompetitorsTable competitors={competitors} comparisonTable={comparisonTable} directMeta={directMeta} userUrl={data.url} />
-            </ResultAccordion>
-          )}
-          {data?.competitors && competitors.length === 0 && rawCompetitors.length > 0 && (
-            <ResultAccordion title="Конкуренты (raw)" defaultOpen={false}>
-              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(rawCompetitors.slice(0, 3), null, 2)}</pre>
-            </ResultAccordion>
-          )}
-
-          {/* 8. Keywords */}
-          {keywords.length > 0 && (
-            <ResultAccordion title={`Ключевые запросы (${keywords.length})`} defaultOpen={false}>
-              <KeywordsSection keywords={keywords} />
-            </ResultAccordion>
-          )}
-          {data?.keywords && keywords.length === 0 && (
-            <ResultAccordion title="Ключевые слова (raw)" defaultOpen={false}>
-              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(Array.isArray(data.keywords) ? data.keywords.slice(0, 5) : data.keywords, null, 2)}</pre>
-            </ResultAccordion>
-          )}
-
-          {/* 9. Minus words */}
-          {minusWords.length > 0 && (
-            <ResultAccordion title={`Минус-фразы (${minusWords.length})`} defaultOpen={false}>
-              <MinusWordsSection minusWords={minusWords} />
-            </ResultAccordion>
-          )}
-          {data?.minus_words && minusWords.length === 0 && (
-            <ResultAccordion title="Минус-фразы (raw)" defaultOpen={false}>
-              <pre className="text-xs overflow-auto p-3 max-h-60">{JSON.stringify(Array.isArray(data.minus_words) ? data.minus_words.slice(0, 5) : data.minus_words, null, 2)}</pre>
-            </ResultAccordion>
-          )}
-
           {/* 10. GEO Rating */}
           {scores && <GeoRatingNomination totalScore={scores.total} url={data.url} scanId={scanId} />}
 
           {/* 11. llms.txt */}
           <div className="flex justify-start">
             <button
-              onClick={() => { import('@/utils/generateLlmsTxt').then(({ downloadLlmsTxt }) => { downloadLlmsTxt({ url: data.url, theme: data.theme, keywords }); }); }}
+              onClick={() => { import('@/utils/generateLlmsTxt').then(({ downloadLlmsTxt }) => { downloadLlmsTxt({ url: data.url, theme: data.theme, keywords: [] }); }); }}
               className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-4"
             >
               <Bot className="w-4 h-4" /> Скачать llms.txt для вашего сайта
@@ -342,9 +249,8 @@ const SiteCheckResult = () => {
           {/* 12. Export */}
           <DownloadButtons
             url={data.url} theme={data.theme} scores={scores} issues={issues}
-            keywords={keywords} minusWords={minusWords} competitors={competitors}
+            keywords={[]} minusWords={[]} competitors={[]}
             scanDate={data.created_at} seoData={data.seo_data}
-            comparisonTable={comparisonTable} directMeta={directMeta}
           />
         </div>
       </main>

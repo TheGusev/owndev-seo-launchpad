@@ -351,11 +351,11 @@ const FullAudit = () => {
         scanDate: new Date().toISOString(),
         scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
         issues: siteCheckData?.issues || [],
-        keywords: siteCheckData?.keywords || [],
-        minusWords: (siteCheckData as any)?.minus_words || [],
-        competitors: siteCheckData?.competitors || [],
-        comparisonTable: (siteCheckData as any)?.comparison_table || null,
-        directMeta: (siteCheckData as any)?.direct_meta || null,
+        keywords: [],
+        minusWords: [],
+        competitors: [],
+        comparisonTable: null,
+        directMeta: null,
         seoData: (siteCheckData as any)?.seo_data || {},
         cro: croData
           ? {
@@ -394,11 +394,11 @@ const FullAudit = () => {
       scanDate: new Date().toISOString(),
       scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
       issues: siteCheckData?.issues || [],
-      keywords: siteCheckData?.keywords || [],
-      minusWords: (siteCheckData as any)?.minus_words || [],
-      competitors: siteCheckData?.competitors || [],
-      comparisonTable: (siteCheckData as any)?.comparison_table || null,
-      directMeta: (siteCheckData as any)?.direct_meta || null,
+      keywords: [],
+      minusWords: [],
+      competitors: [],
+      comparisonTable: null,
+      directMeta: null,
       seoData: (siteCheckData as any)?.seo_data || {},
       cro: croData
         ? {
