@@ -1472,6 +1472,26 @@ export async function runPipeline(
   // STEP 6: Minus words — отключено аналогично
   const minusWords: MinusWord[] = [];
 
+  // STEP 6b: Google Suggest validation — runs only if keywords are present.
+  // Currently keywords[] is empty in pipeline (LLM step disabled), so this
+  // is a no-op now and activates automatically when keywords come back.
+  let validatedKeywords: Array<KeywordEntry & { verified?: boolean; suggestions?: string[] }> = keywords;
+  if (keywords.length > 0) {
+    try {
+      const phrases = keywords.map((k) => k.phrase).filter(Boolean);
+      const validated = await validateKeywordsViaSuggest(phrases);
+      const byPhrase = new Map(validated.map((v) => [v.keyword.toLowerCase(), v]));
+      validatedKeywords = keywords.map((k) => {
+        const v = byPhrase.get((k.phrase || '').toLowerCase());
+        return v
+          ? { ...k, verified: v.verified, suggestions: v.suggestions }
+          : { ...k, verified: false, suggestions: [] };
+      });
+    } catch (e: any) {
+      logger.error('PIPELINE', `Google Suggest validation failed: ${e?.message ?? e}`);
+    }
+  }
+
   const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
 
   // Await ad suggestion
@@ -1491,6 +1511,29 @@ export async function runPipeline(
     },
   ].filter(Boolean);
 
+  // ─── Structured signals for future weight calibration ───
+  // No new DB columns — folded into result JSONB. Used offline to regress
+  // OVERALL_WEIGHTS against measured outcomes (e.g. real Perplexity citations).
+  const jsonLdBlocksRaw = (html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || []).join(' ');
+  const allHrefsForSignals = [...html.matchAll(/<a[^>]*href=["']([^"'#][^"']*)["']/gi)].map((m) => m[1]);
+  const internalLinksCount = allHrefsForSignals.filter(
+    (h) => h.startsWith('/') || (parsedUrl.hostname && h.includes(parsedUrl.hostname)),
+  ).length;
+  const externalLinksCount = allHrefsForSignals.filter((h) => /^https?:\/\//i.test(h)).length - internalLinksCount;
+  const signals = {
+    has_llms_txt: hasLlmsTxt,
+    has_faqpage: /"@type"\s*:\s*"FAQPage"/i.test(jsonLdBlocksRaw),
+    has_schema_org: jsonLdBlocksRaw.length > 0,
+    has_organization_jsonld: /"@type"\s*:\s*"(Organization|LocalBusiness|Corporation)"/i.test(jsonLdBlocksRaw),
+    word_count: seoData?.wordCount ?? 0,
+    schema_types_count: Array.isArray(seoData?.schemaTypes) ? seoData.schemaTypes.length : 0,
+    internal_links_count: internalLinksCount,
+    external_links_count: Math.max(0, externalLinksCount),
+    has_meta_description: Boolean(seoData?.description),
+    has_og_tags: Boolean(seoData?.ogTitle),
+    title_length: typeof seoData?.title === 'string' ? seoData.title.length : 0,
+  };
+
   return {
     status: 'done',
     url: parsedUrl.toString(),
@@ -1500,8 +1543,9 @@ export async function runPipeline(
     scores: finalScores,
     issues: allIssues,
     competitors: competitorsData,
-    keywords,
+    keywords: validatedKeywords as any,
     minus_words: minusWords,
     seo_data: { ...seoData, direct_checks: directResult.checks },
+    signals,
   };
 }
