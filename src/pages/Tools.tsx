@@ -43,6 +43,55 @@ const TOOL_GROUPS: Array<{ title: string; icon: LucideIcon; slugs: string[]; col
 
 const getToolBySlug = (slug: string) => tools.find(t => t.slug === slug);
 
+const getGridCols = (count: number): string => {
+  if (count <= 1) return "grid-cols-1 max-w-2xl mx-auto";
+  if (count === 2) return "grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto";
+  if (count === 3) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+  if (count === 4) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+  if (count === 6) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+  return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+};
+
+const ToolCard = ({ tool, index }: { tool: ToolDef; index: number }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.4, delay: index * 0.06 }}
+    className="h-full"
+  >
+    <Link
+      to={tool.customPath || `/tools/${tool.slug}`}
+      className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group flex flex-col h-full"
+    >
+      <div className="flex items-start gap-4 flex-1">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <tool.icon className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
+            {tool.name}
+            {tool.slug === "mcp-server" && (
+              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-primary/20 text-primary align-middle">NEW</span>
+            )}
+          </h3>
+          <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{tool.shortDesc}</p>
+          {tool.slug === "marketplace-audit" && (
+            <div className="flex gap-2 mt-2">
+              <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ color: '#CB11AB', border: '1px solid #CB11AB' }}>WB</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ color: '#005BFF', border: '1px solid #005BFF' }}>OZON</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
+        Открыть
+        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      </div>
+    </Link>
+  </motion.div>
+);
+
 const Tools = () => {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const flagship = getToolBySlug(FLAGSHIP_SLUG);
@@ -76,7 +125,9 @@ const Tools = () => {
           <AnimatedGrid theme="accent" lineCount={{ h: 6, v: 8 }} />
           <FloatingParticles count={12} className="absolute inset-0" />
           <AuroraBackground className="opacity-60" intensity="subtle" />
-          <GeometricRays opacity={0.25} />
+          <div className="absolute top-0 left-0 right-0 h-[700px] pointer-events-none overflow-hidden">
+            <GeometricRays opacity={0.25} />
+          </div>
           <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
         </div>
 
@@ -180,13 +231,14 @@ const Tools = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.4, delay: i * 0.08 }}
+                        className="h-full"
                       >
                         <Link
                           to={card.href}
                           style={glowStyle}
-                          className={`glass rounded-2xl p-5 transition-all group block h-full border ${borderClass}`}
+                          className={`glass rounded-2xl p-5 transition-all group flex flex-col h-full border ${borderClass}`}
                         >
-                          <div className="flex items-start gap-4">
+                          <div className="flex items-start gap-4 flex-1">
                             <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                               <card.tool.icon className={`w-5 h-5 ${iconColor}`} />
                             </div>
@@ -200,7 +252,7 @@ const Tools = () => {
                                   <Star className="w-2.5 h-2.5" /> Флагман
                                 </span>
                               </div>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{card.tagline}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{card.tagline}</p>
                             </div>
                           </div>
                           <div className={`mt-4 flex items-center gap-1 text-sm font-medium ${linkColor}`}>
@@ -248,43 +300,25 @@ const Tools = () => {
                   )}
                 </div>
 
-                {!isCollapsed && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {!isCollapsed && groupTools.length === 5 && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupTools.slice(0, 3).map((tool, i) => (
+                        <ToolCard key={tool.slug} tool={tool} index={i} />
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:max-w-[66.666%] lg:mx-auto">
+                      {groupTools.slice(3).map((tool, i) => (
+                        <ToolCard key={tool.slug} tool={tool} index={i + 3} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!isCollapsed && groupTools.length !== 5 && (
+                  <div className={`grid gap-4 ${getGridCols(groupTools.length)}`}>
                     {groupTools.map((tool, i) => (
-                      <motion.div
-                        key={tool.slug}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.4, delay: i * 0.06 }}
-                      >
-                        <Link to={tool.customPath || `/tools/${tool.slug}`} className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group block h-full">
-                          <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                              <tool.icon className="w-5 h-5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-                                {tool.name}
-                                {tool.slug === "mcp-server" && (
-                                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-primary/20 text-primary align-middle">NEW</span>
-                                )}
-                              </h3>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{tool.shortDesc}</p>
-                              {tool.slug === "marketplace-audit" && (
-                                <div className="flex gap-2 mt-2">
-                                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{color: '#CB11AB', border: '1px solid #CB11AB'}}>WB</span>
-                                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{color: '#005BFF', border: '1px solid #005BFF'}}>OZON</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
-                            Открыть
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                          </div>
-                        </Link>
-                      </motion.div>
+                      <ToolCard key={tool.slug} tool={tool} index={i} />
                     ))}
                   </div>
                 )}
