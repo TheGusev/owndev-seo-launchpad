@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import SiteBadge from "@/components/ui/site-badge";
 import { type GeoRatingEntry, SNAPSHOT_META, mapDbRowToEntry } from "@/data/geo-rating-types";
+import { NeuralNetworkBg } from "@/components/ui/neural-network-bg";
 
 const DEFAULT_CATEGORIES = ["Все"];
 const SCORE_FILTERS = [
@@ -185,7 +186,9 @@ const GeoRating = () => {
       </Helmet>
       <Header />
       <main className="min-h-screen bg-background pt-24 pb-16">
-        <section className="container mx-auto px-4 mb-12">
+        <section className="relative overflow-hidden mb-12">
+          <NeuralNetworkBg className="z-0 opacity-45" density="medium" />
+          <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">
               GEO Рейтинг <span className="text-primary">Рунета 2026</span>
@@ -243,6 +246,7 @@ const GeoRating = () => {
                 {isFetching ? 'Обновляем...' : 'Обновить'}
               </Button>
             </div>
+          </div>
           </div>
         </section>
 

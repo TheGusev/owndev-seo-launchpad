@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 
 const breadcrumbLd = {
   "@context": "https://schema.org",
@@ -61,6 +62,22 @@ const AiVisibility = () => (
           accentColor="cyan"
           icon={Search}
         />
+
+        <div className="mt-8 mb-12 max-w-2xl mx-auto">
+          <TypingCodeBlock
+            title="GET /api/v1/site-check"
+            language="bash"
+            speed={26}
+            lines={[
+              "$ curl https://api.owndev.ru/check?url=...",
+              "→ Probing AI-visibility…",
+              '✓ "seo_score": 87',
+              '✓ "llm_score": 72',
+              '✓ "schema": ["Organization","FAQPage"]',
+              '→ Verdict: "AI-ready"',
+            ]}
+          />
+        </div>
 
         {/* Steps */}
         <section className="mb-16">

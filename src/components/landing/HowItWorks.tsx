@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { Globe, Zap, FileText } from "lucide-react";
+import { NeuralNetworkBg } from "@/components/ui/neural-network-bg";
 
 const steps = [
   { num: "01", icon: Globe, title: "Введите URL сайта", desc: "Вставьте адрес любого сайта — своего или конкурента. Мы запустим анализ немедленно." },
@@ -12,8 +13,9 @@ const HowItWorks = () => {
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
 
   return (
-    <section className="py-12 md:py-20 relative">
-      <div className="container px-4 md:px-6 max-w-4xl mx-auto">
+    <section className="py-12 md:py-20 relative overflow-hidden">
+      <NeuralNetworkBg className="z-0" density="low" opacity={0.55} />
+      <div className="container px-4 md:px-6 max-w-4xl mx-auto relative z-10">
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 16 }}

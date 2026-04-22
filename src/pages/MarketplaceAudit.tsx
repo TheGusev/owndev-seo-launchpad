@@ -13,6 +13,7 @@ import { startAudit } from '@/lib/api/marketplaceAudit';
 import { toast } from 'sonner';
 import { ShoppingBag, Loader2 } from 'lucide-react';
 import type { MarketplacePlatform, MarketplaceInputType } from '@/lib/marketplace-audit-types';
+import { NeuralNetworkBg } from '@/components/ui/neural-network-bg';
 
 export default function MarketplaceAudit() {
   const navigate = useNavigate();
@@ -70,7 +71,9 @@ export default function MarketplaceAudit() {
         />
       </Helmet>
       <Header />
-      <main className="container px-4 md:px-6 py-12 md:py-16 max-w-4xl mx-auto">
+      <main className="relative overflow-hidden">
+        <NeuralNetworkBg className="z-0 opacity-50" density="medium" />
+        <div className="container px-4 md:px-6 py-12 md:py-16 max-w-4xl mx-auto relative z-10">
         <div className="text-center mb-10">
           <div className="inline-flex p-3 rounded-2xl bg-primary/10 mb-4">
             <ShoppingBag className="w-7 h-7 text-primary" />
@@ -175,6 +178,7 @@ export default function MarketplaceAudit() {
             Бесплатно • Без регистрации • Данные не сохраняются для других продавцов
           </p>
         </Card>
+        </div>
       </main>
       <Footer />
     </div>
