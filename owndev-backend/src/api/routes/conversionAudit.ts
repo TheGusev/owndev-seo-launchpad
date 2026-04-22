@@ -34,10 +34,10 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
     main_problem: 'no_leads' | 'expensive_lead' | 'no_conversion';
   } }>('/analyze', async (req, reply) => {
     const { url, goal, traffic_source, main_problem } = req.body as any;
-    if (!url) return reply.status(400).send({ error: 'url required' });
+    if (!url) return reply.status(400).send({ success: false, error: 'url required' });
 
     const apiKey = process.env.OPENAI_API_KEY || '';
-    if (!apiKey) return reply.status(503).send({ error: 'OpenAI key not set' });
+    if (!apiKey) return reply.status(503).send({ success: false, error: 'OpenAI key not set' });
 
     // Нормализуем домен и удаляем www. префикс для корректного кэш-ключа
     const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
@@ -74,11 +74,38 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
 
     // Extract page text
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    const bodyText = bodyMatch
-      ? bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000)
+    let bodyText = bodyMatch
+      ? bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
       : '';
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    const title = titleMatch ? titleMatch[1].trim() : domain;
+    let title = titleMatch ? titleMatch[1].trim() : domain;
+
+    // Fallback через Jina Reader для SPA-сайтов, где body пуст или почти пуст
+    if (bodyText.length < 500) {
+      try {
+        const jinaController = new AbortController();
+        const jinaTid = setTimeout(() => jinaController.abort(), 20000);
+        const jinaResp = await fetch(`https://r.jina.ai/${url}`, {
+          signal: jinaController.signal,
+          headers: { 'Accept': 'text/plain', 'User-Agent': 'OWNDEV-ConversionAudit/1.0', 'X-Timeout': '15' } as any,
+        });
+        clearTimeout(jinaTid);
+        if (jinaResp.ok) {
+          const md = await jinaResp.text();
+          if (md && md.length > 200) {
+            const jinaTitle = (md.match(/^Title:\s*(.+)$/m) || [])[1];
+            if (jinaTitle && (title === domain || !title)) title = jinaTitle.trim();
+            // Снимаем служебный header (Title/URL Source/Description/…) и берём основной текст
+            const content = md.replace(/^(Title|URL Source|Description|Published Time|Image):.*$/gm, '').replace(/\s+/g, ' ').trim();
+            if (content.length > bodyText.length) bodyText = content;
+          }
+        }
+      } catch (e: any) {
+        logger.error('CONVERSION_AUDIT', `Jina fallback failed: ${e?.message}`);
+      }
+    }
+
+    bodyText = bodyText.slice(0, 3000);
 
     const goalLabels: Record<string, string> = { calls: 'звонки', leads: 'заявки', sales: 'продажи' };
     const trafficLabels: Record<string, string> = { seo: 'SEO (Яндекс/Google)', direct: 'Яндекс.Директ', both: 'SEO + Яндекс.Директ' };
@@ -162,7 +189,7 @@ export async function conversionAuditRoutes(app: FastifyInstance): Promise<void>
     } catch (e: any) {
       clearTimeout(tid2);
       logger.error('CONVERSION_AUDIT', `Analysis failed: ${e?.message}`);
-      return reply.status(500).send({ error: 'Не удалось выполнить анализ' });
+      return reply.status(500).send({ success: false, error: 'Не удалось выполнить анализ' });
     }
   });
 }

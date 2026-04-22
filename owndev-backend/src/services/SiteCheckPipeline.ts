@@ -231,7 +231,156 @@ function buildSchemaBreakdown(html: string): CriterionResult[] {
   }));
 }
 
-function calcScoresWeighted(issues: Issue[], dbRules: DbRule[], directChecks?: { key: string; status: 'pass' | 'fail' }[], html?: string) {
+// ─── Deterministic HTML-based detectors for criteria that don't always emit issues ───
+function detectSeoFailuresFromHtml(html: string): Set<string> {
+  const failed = new Set<string>();
+  if (!html) return failed;
+
+  // titleTag — длина 30-60 = pass, иначе partial/fail
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+  if (!title || title.length < 30 || title.length > 70) failed.add('titleTag');
+
+  // metaDescription — 120-160 = pass
+  const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i)
+    || html.match(/<meta[^>]*content=["']([^"']*)["'][^>]*name=["']description["']/i);
+  const desc = descMatch ? descMatch[1].trim() : '';
+  if (!desc || desc.length < 120 || desc.length > 160) failed.add('metaDescription');
+
+  // h1Tag — ровно 1 H1 = pass
+  const h1Count = (html.match(/<h1[\s>]/gi) || []).length;
+  if (h1Count !== 1) failed.add('h1Tag');
+
+  // headingStructure — H1 есть, H2 есть, нет пропусков вниз
+  const h2Count = (html.match(/<h2[\s>]/gi) || []).length;
+  const h3Count = (html.match(/<h3[\s>]/gi) || []).length;
+  if (h1Count === 0 || (h2Count === 0 && h3Count > 0)) failed.add('headingStructure');
+
+  // canonical
+  if (!/<link[^>]*rel=["']canonical["']/i.test(html)) failed.add('canonical');
+
+  // ogTags — все три
+  const hasOgTitle = /<meta[^>]*property=["']og:title["']/i.test(html);
+  const hasOgDesc = /<meta[^>]*property=["']og:description["']/i.test(html);
+  const hasOgImage = /<meta[^>]*property=["']og:image["']/i.test(html);
+  if (!(hasOgTitle && hasOgDesc && hasOgImage)) failed.add('ogTags');
+
+  // robots — нет noindex
+  const metaRobots = html.match(/<meta[^>]*name=["']robots["'][^>]*content=["']([^"']+)["']/i);
+  if (metaRobots && /noindex/i.test(metaRobots[1])) failed.add('robots');
+
+  // contentLength — 300+ слов
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyText = bodyMatch
+    ? bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+  const wordCount = bodyText.split(/\s+/).filter(w => w.length > 1).length;
+  if (wordCount < 300) failed.add('contentLength');
+
+  // images — процент с alt
+  const imgTags = html.match(/<img[^>]*>/gi) || [];
+  if (imgTags.length > 0) {
+    const withAlt = imgTags.filter(img => /alt=["'][^"']+["']/i.test(img)).length;
+    if (withAlt / imgTags.length < 0.8) failed.add('images');
+  }
+
+  // internalLinks — ≥3
+  const allHrefs = [...html.matchAll(/<a[^>]*href=["']([^"'#][^"']*)["']/gi)].map(m => m[1]);
+  const internal = allHrefs.filter(h => h.startsWith('/') || h.startsWith('#') || (!h.startsWith('http') && !h.startsWith('//')));
+  if (internal.length < 3) failed.add('internalLinks');
+
+  // externalLinks — ≥1 http(s)
+  const external = allHrefs.filter(h => /^https?:\/\//i.test(h));
+  if (external.length < 1) failed.add('externalLinks');
+
+  // mobileViewport
+  if (!/<meta[^>]*name=["']viewport["']/i.test(html)) failed.add('mobileViewport');
+
+  // noMixedContent — на странице с https не должно быть http:// ссылок на ресурсы
+  const hasMixedRes = /(src|href)=["']http:\/\//i.test(html);
+  if (hasMixedRes) failed.add('noMixedContent');
+
+  // favicon
+  if (!/<link[^>]*rel=["'](shortcut icon|icon|apple-touch-icon)["']/i.test(html)) failed.add('favicon');
+
+  // langAttr
+  if (!/<html[^>]*lang=["'][^"']+["']/i.test(html)) failed.add('langAttr');
+
+  return failed;
+}
+
+function detectLlmFailuresFromHtml(html: string, hasLlmsTxt?: boolean): Set<string> {
+  const failed = new Set<string>();
+  if (!html) return failed;
+
+  const jsonBlocks = (html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || []).join(' ');
+
+  // schemaOrg — есть JSON-LD
+  if (!jsonBlocks) failed.add('schemaOrg');
+
+  // faqPresent — FAQPage schema ИЛИ блок FAQ в тексте
+  const hasFaqSchema = /"@type"\s*:\s*"FAQPage"/i.test(jsonBlocks);
+  const hasFaqBlock = /faq|часто\s*задаваемые|вопрос.*ответ/i.test(html) || /<details[\s>]/i.test(html);
+  if (!hasFaqSchema && !hasFaqBlock) failed.add('faqPresent');
+
+  // llmsTxt
+  if (hasLlmsTxt === false) failed.add('llmsTxt');
+
+  // contentStructure — списки/таблицы/заголовки
+  const hasList = /<(ul|ol|dl)[\s>]/i.test(html);
+  const hasTable = /<table[\s>]/i.test(html);
+  const hasSubHeadings = (html.match(/<h[2-6][\s>]/gi) || []).length >= 2;
+  if (!hasList && !hasTable && !hasSubHeadings) failed.add('contentStructure');
+
+  // contentClarity — средняя длина предложения ≤ 25 слов
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyText = bodyMatch
+    ? bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+  const sentences = bodyText.split(/[.!?]+\s/).filter(s => s.trim().length > 0);
+  if (sentences.length > 3) {
+    const avgLen = sentences.reduce((a, s) => a + s.split(/\s+/).length, 0) / sentences.length;
+    if (avgLen > 30) failed.add('contentClarity');
+  }
+
+  // directAnswers — H2/H3 в формате вопроса
+  const h23 = (html.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi) || []).map(m => m.replace(/<[^>]+>/g, '').trim());
+  const questionHeadings = h23.filter(t => /\?$/.test(t) || /^(как|что|зачем|почему|когда|где|сколько|who|what|how|why|when)/i.test(t));
+  if (h23.length > 0 && questionHeadings.length === 0) failed.add('directAnswers');
+
+  // entityMentions — телефон/email/адрес/org schema
+  const hasPhone = /\+?\d[\d\s\-()]{8,}\d/.test(bodyText) || /tel:/i.test(html);
+  const hasEmail = /\b[\w.-]+@[\w.-]+\.\w{2,}\b/.test(bodyText) || /mailto:/i.test(html);
+  const hasOrgSchema = /"@type"\s*:\s*"(Organization|LocalBusiness)"/i.test(jsonBlocks);
+  if (!hasPhone && !hasEmail && !hasOrgSchema) failed.add('entityMentions');
+
+  // citationReady — внешние ссылки / <cite> / sources
+  const hasExternalRefs = /<a[^>]*href=["']https?:\/\//i.test(html) || /<cite[\s>]/i.test(html);
+  if (!hasExternalRefs) failed.add('citationReady');
+
+  // freshness — datePublished / dateModified / <time>
+  const hasDate = /datePublished|dateModified/i.test(html) || /<time[^>]*datetime/i.test(html);
+  if (!hasDate) failed.add('freshness');
+
+  // authorEeat — author / Person / "об авторе"
+  const hasAuthor = /"@type"\s*:\s*"Person"/i.test(jsonBlocks)
+    || /об\s*автор|author|автор\s*стать/i.test(html)
+    || /<meta[^>]*name=["']author["']/i.test(html);
+  if (!hasAuthor) failed.add('authorEeat');
+
+  // semanticHtml — article/section/main/nav/aside
+  const hasSemantic = /<(article|section|main|nav|aside|header|footer)[\s>]/i.test(html);
+  if (!hasSemantic) failed.add('semanticHtml');
+
+  // multimodal — img + (video|table|figure)
+  const hasImg = /<img[\s>]/i.test(html);
+  const hasOther = /<(video|iframe|figure|table|picture)[\s>]/i.test(html);
+  if (!(hasImg && hasOther)) failed.add('multimodal');
+
+  return failed;
+}
+
+function calcScoresWeighted(issues: Issue[], dbRules: DbRule[], directChecks?: { key: string; status: 'pass' | 'fail' }[], html?: string, hasLlmsTxt?: boolean) {
   const failedSeo = new Set<string>();
   const failedLlm = new Set<string>();
   for (const issue of issues) {
@@ -242,6 +391,12 @@ function calcScoresWeighted(issues: Issue[], dbRules: DbRule[], directChecks?: {
     if (issue.module === 'ai' || issue.module === 'schema') {
       for (const [rx, key] of ISSUE_TO_LLM_CRITERION) { if (rx.test(text)) { failedLlm.add(key); break; } }
     }
+  }
+
+  // Дополняем детерминированными HTML-детекторами (даже если issue не был эмитнут)
+  if (html) {
+    for (const k of detectSeoFailuresFromHtml(html)) failedSeo.add(k);
+    for (const k of detectLlmFailuresFromHtml(html, hasLlmsTxt)) failedLlm.add(k);
   }
 
   const seoBreakdown: CriterionResult[] = Object.entries(SEO_WEIGHTS).map(([key, weight]) => {
@@ -1176,7 +1331,7 @@ export async function runPipeline(
     example_fix: issue.example_fix || '',
   }));
 
-  const scores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
+  const scores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
   await onProgress(60, { scores, issues: allIssues });
 
   // STEP 4: Competitors
@@ -1194,7 +1349,7 @@ export async function runPipeline(
   // STEP 6: Minus words — отключено аналогично
   const minusWords: MinusWord[] = [];
 
-  const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html);
+  const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
 
   // Await ad suggestion
   const adSuggestion = await adSuggestionPromise;
