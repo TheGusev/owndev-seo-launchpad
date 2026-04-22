@@ -12,6 +12,21 @@ interface SiteCheckJobData {
 
 const API_KEY = process.env.OPENAI_API_KEY || '';
 
+/**
+ * Маппит произвольную тему от LLM в фиксированную категорию каталога geo_rating.
+ * Возвращает 'Сервисы' как fallback.
+ */
+function normalizeCategoryFromTheme(theme: string): string {
+  const t = theme.toLowerCase();
+  if (/магазин|shop|интернет-магазин|маркет|товар/i.test(t)) return 'Магазин';
+  if (/медиа|блог|новост|журнал|сми|издани/i.test(t)) return 'Медиа';
+  if (/обучен|образован|курс|школа|академия|edtech/i.test(t)) return 'Образование';
+  if (/агентств|студия|seo|маркетинг|реклам/i.test(t)) return 'Маркетинг';
+  if (/b2b|бизнес|корпоратив|enterprise|crm|erp/i.test(t)) return 'B2B';
+  if (/финанс|банк|инвест|крипт|страхов/i.test(t)) return 'Финансы';
+  return 'Сервисы';
+}
+
 async function loadDbRules(): Promise<any[]> {
   try {
     const rows = await sql`SELECT * FROM scan_rules WHERE active = true`;
