@@ -158,47 +158,10 @@ interface Issue {
   rule_id?: string;
 }
 
-// ─── Google Suggest validator ───
-// Verifies that LLM-generated keywords are real search queries by
-// querying the public Google Suggest endpoint. No API key required.
-// Returns each keyword with `verified: boolean` + up to 3 real suggestions.
-export interface ValidatedKeyword {
-  keyword: string;
-  verified: boolean;
-  suggestions: string[];
-}
-
-export async function validateKeywordsViaSuggest(
-  keywords: string[]
-): Promise<ValidatedKeyword[]> {
-  const out: ValidatedKeyword[] = [];
-  const slice = keywords.slice(0, 20);
-  for (const kw of slice) {
-    if (!kw || typeof kw !== 'string') {
-      out.push({ keyword: String(kw ?? ''), verified: false, suggestions: [] });
-      continue;
-    }
-    try {
-      const r = await fetchWithTimeout(
-        `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(kw)}&hl=ru`,
-        5000,
-      );
-      if (!r.ok) {
-        out.push({ keyword: kw, verified: false, suggestions: [] });
-        continue;
-      }
-      const data: any = await r.json();
-      const suggestions: string[] = Array.isArray(data?.[1])
-        ? data[1].slice(0, 3).filter((s: any) => typeof s === 'string')
-        : [];
-      out.push({ keyword: kw, verified: suggestions.length > 0, suggestions });
-    } catch {
-      out.push({ keyword: kw, verified: false, suggestions: [] });
-    }
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  return out;
-}
+// ─── Sprint 2: keyword validator removed (LLM keyword extraction is gone).
+// extractKeywords / generateMinusWords / validateKeywordsViaSuggest were
+// removed because the LLM-generated keywords were unreliable and the
+// audit no longer ships keyword/minus-word lists.
 
 // Per-scan issue ID factory — avoids race conditions when multiple scans
 // run in parallel inside the same Node process.
@@ -916,7 +879,6 @@ function contentAudit(html: string, theme: string, makeIssue: MakeIssueFn): Issu
 }
 
 // ═══ STEP 3: Direct Audit ═══
-interface DirectAdSuggestion { headline1: string; headline2: string; ad_text: string; sitelinks: { title: string; description: string }[]; callouts: string[]; }
 interface DirectCheck { key: string; label: string; description: string; weight: number; status: 'pass' | 'fail'; reason: string; }
 
 const DIRECT_CHECKS_META = [
@@ -1079,31 +1041,8 @@ function directAudit(html: string, theme: string, makeIssue: MakeIssueFn): { iss
   return { issues, ad_headline, autotargeting_categories, readiness_score, checks };
 }
 
-// ═══ STEP 3b: AI Direct Ad ═══
-async function generateDirectAd(html: string, theme: string, url: string, apiKey: string): Promise<DirectAdSuggestion | null> {
-  if (!apiKey) return null;
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim() : '';
-  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1500) : '';
-
-  const parsed = await llmToolCall(apiKey, 'gpt-4o-mini', 
-    `Ты — эксперт по Яндекс.Директу. Сгенерируй полное объявление.\nОГРАНИЧЕНИЯ: headline1 до 35 символов, headline2 до 30, ad_text до 81, sitelinks: 4 (title до 30, description до 60), callouts: 4 (до 25). Пиши на русском.`,
-    `URL: ${url}\nТематика: ${theme}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 800)}`,
-    { type: 'function', function: { name: 'create_direct_ad', description: 'Создаёт объявление', parameters: { type: 'object', properties: { headline1: { type: 'string' }, headline2: { type: 'string' }, ad_text: { type: 'string' }, sitelinks: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' } }, required: ['title', 'description'] } }, callouts: { type: 'array', items: { type: 'string' } } }, required: ['headline1', 'headline2', 'ad_text', 'sitelinks', 'callouts'] } } }
-  );
-
-  if (!parsed) return null;
-  return {
-    headline1: (parsed.headline1 || '').slice(0, 35),
-    headline2: (parsed.headline2 || '').slice(0, 30),
-    ad_text: (parsed.ad_text || '').slice(0, 81),
-    sitelinks: (parsed.sitelinks || []).slice(0, 4).map((s: any) => ({ title: (s.title || '').slice(0, 30), description: (s.description || '').slice(0, 60) })),
-    callouts: (parsed.callouts || []).slice(0, 4).map((c: string) => (c || '').slice(0, 25)),
-  };
-}
+// ═══ STEP 3b removed in Sprint 2 — generateDirectAd belongs to a future
+// /tools/direct-ad standalone tool (Sprint 3, behind includeDirect flag).
 
 // ═══ STEP 7: Schema Audit ═══
 function schemaAudit(html: string, makeIssue: MakeIssueFn): Issue[] {
@@ -1241,233 +1180,12 @@ async function aiAudit(
   return issues;
 }
 
-// ═══ STEP 4: Competitor Analysis ═══
-interface CompetitorProfile {
-  _type: 'competitor'; position: number; url: string; domain: string;
-  title: string | null; h1: string | null; content_length_words: number;
-  has_faq: boolean; has_price_block: boolean; has_reviews: boolean;
-  has_schema: boolean; has_cta_button: boolean; has_video: boolean; has_blog: boolean;
-  load_speed_sec: number | null; h2_count: number; h3_count: number;
-  images_count: number; internal_links_count: number; top_phrases: string[];
-  is_analyzed: boolean;
-}
-
-function parseCompetitorHtml(url: string, html: string, loadMs: number, position: number): CompetitorProfile {
-  const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() || null : null;
-  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() || null : null;
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-  const words = bodyText.split(/\s+/).filter(w => w.length > 2);
-  const htmlLower = html.toLowerCase();
-
-  return {
-    _type: 'competitor', position, url, domain, title, h1,
-    content_length_words: words.length,
-    has_faq: /faq|часто\s*задаваемые/i.test(html) || html.includes('FAQPage') || /<details[\s>]/i.test(html),
-    has_price_block: /прайс|стоимость|цена|руб|₽|\d+\s*р\b/i.test(bodyText),
-    has_reviews: /отзыв|review|testimonial/i.test(bodyText),
-    has_schema: !!html.match(/<script[^>]*type=["']application\/ld\+json["']/i),
-    has_cta_button: /заказ|купи|оставить заявку|запис|получить|корзин/i.test(html),
-    has_video: htmlLower.includes('<video') || htmlLower.includes('youtube.com') || htmlLower.includes('rutube.ru'),
-    has_blog: htmlLower.includes('/blog') || htmlLower.includes('/stati') || htmlLower.includes('/news'),
-    load_speed_sec: loadMs > 0 ? +(loadMs / 1000).toFixed(1) : null,
-    h2_count: (html.match(/<h2[\s>]/gi) || []).length,
-    h3_count: (html.match(/<h3[\s>]/gi) || []).length,
-    images_count: (html.match(/<img[\s>]/gi) || []).length,
-    internal_links_count: (html.match(/<a[^>]*href=["'][^"'#]*["']/gi) || []).length,
-    top_phrases: words.slice(0, 200).filter(w => w.length > 4).reduce((acc: string[], w) => { if (!acc.includes(w.toLowerCase()) && acc.length < 10) acc.push(w.toLowerCase()); return acc; }, []),
-    is_analyzed: words.length > 50,
-  };
-}
-
-function isExcludedUrl(url: string, ownHostname: string): boolean {
-  const excluded = ['youtube.com', 'google.com', 'facebook.com', 'instagram.com', 'twitter.com', 'vk.com', 'ok.ru', 'wikipedia.org', 'yandex.ru', 'maps.google', 'play.google'];
-  try {
-    const hostname = new URL(url).hostname.replace(/^www\./, '');
-    if (hostname === ownHostname) return true;
-    return excluded.some(e => hostname.includes(e));
-  } catch { return true; }
-}
-
-async function competitorAnalysis(url: string, theme: string, html: string, mode: string, loadTimeMs: number, apiKey: string, makeIssue: MakeIssueFn): Promise<{ competitors: CompetitorProfile[]; comparisonTable: any; directMeta: any; gap_issues: Issue[] }> {
-  const parsedUrl = new URL(url);
-  const ownHostname = parsedUrl.hostname.replace(/^www\./, '');
-
-  // Build own profile
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-  const ownWords = bodyText.split(/\s+/).filter(w => w.length > 2);
-  const own = {
-    content_length_words: ownWords.length,
-    h2_count: (html.match(/<h2[\s>]/gi) || []).length,
-    images_count: (html.match(/<img[\s>]/gi) || []).length,
-    has_faq: /faq|часто\s*задаваемые/i.test(html) || html.includes('FAQPage'),
-    has_price_block: /стоимость|цена|руб|₽/i.test(bodyText),
-    has_reviews: /отзыв|review/i.test(bodyText),
-    has_schema: !!html.match(/<script[^>]*type=["']application\/ld\+json["']/i),
-    has_video: /youtube\.com|<video/i.test(html),
-    has_cta_button: /заказ|купи|получить|корзин/i.test(html),
-    domain: ownHostname,
-  };
-
-  // Find competitor URLs via LLM
-  const competitorUrls = new Set<string>();
-  const searchQueries = [theme, `${theme} сайт`, `${theme} компания`];
-
-  if (apiKey) {
-    for (const query of searchQueries.slice(0, 2)) {
-      if (competitorUrls.size >= 10) break;
-      try {
-        const content = await llmCall(apiKey, 'gpt-4o-mini',
-          'Ты — поисковый аналитик. Верни JSON-массив из 5-7 URL-адресов сайтов-конкурентов для данного запроса. Только домашние страницы реальных компаний. Исключи маркетплейсы, соцсети, Wikipedia. Формат: ["https://example.com",...]',
-          `Запрос: "${query}"\nСайт пользователя: ${url}\nНЕ включай ${ownHostname}`, 1000);
-        const urls: string[] = safeParseJson<string[]>(content, []);
-        for (const u of urls) {
-          if (!isExcludedUrl(u, ownHostname) && competitorUrls.size < 10) competitorUrls.add(u);
-        }
-      } catch {}
-    }
-  }
-
-  // Fetch and parse competitors
-  const competitors: CompetitorProfile[] = [];
-  let posCounter = 0;
-  // Verify URL existence before parsing — отсекает 404-галлюцинации LLM
-  const verifiedUrls: string[] = [];
-  await Promise.allSettled(
-    [...competitorUrls].map(async (cu) => {
-      const check = await checkUrl(cu);
-      if (check.ok) verifiedUrls.push(cu);
-    })
-  );
-  const fetchPromises = verifiedUrls.map(async (compUrl) => {
-    const pos = ++posCounter;
-    try {
-      const start = Date.now();
-      const resp = await fetchWithTimeout(compUrl, 8000);
-      const ms = Date.now() - start;
-      if (!resp.ok) return null;
-      const ct = resp.headers.get('content-type') || '';
-      if (!ct.includes('text/html')) return null;
-      const compHtml = await resp.text();
-      return parseCompetitorHtml(compUrl, compHtml, ms, pos);
-    } catch { return null; }
-  });
-  const results = await Promise.all(fetchPromises);
-  for (const r of results) { if (r) competitors.push(r); }
-
-  // Build comparison table
-  const analyzed = competitors.filter(c => c.is_analyzed && c.content_length_words > 50);
-  const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
-  const leader = analyzed.length ? analyzed.reduce((best, c) => c.content_length_words > best.content_length_words ? c : best, analyzed[0]) : null;
-
-  const avgMetrics = {
-    content_length_words: avg(analyzed.map(c => c.content_length_words)),
-    h2_count: avg(analyzed.map(c => c.h2_count)),
-    images_count: avg(analyzed.map(c => c.images_count)),
-    has_faq: analyzed.filter(c => c.has_faq).length >= analyzed.length / 2,
-    has_price_block: analyzed.filter(c => c.has_price_block).length >= analyzed.length / 2,
-    has_reviews: analyzed.filter(c => c.has_reviews).length >= analyzed.length / 2,
-    has_schema: analyzed.filter(c => c.has_schema).length >= analyzed.length / 2,
-    has_video: analyzed.filter(c => c.has_video).length >= analyzed.length / 2,
-  };
-
-  const insights: string[] = [];
-  if (own.content_length_words < avgMetrics.content_length_words - 300) insights.push(`Объём контента ниже среднего на ${avgMetrics.content_length_words - own.content_length_words} слов`);
-  if (!own.has_faq && avgMetrics.has_faq) insights.push('FAQ есть у конкурентов — добавьте');
-  if (!own.has_reviews && avgMetrics.has_reviews) insights.push('Отзывы есть у конкурентов');
-  if (!own.has_schema && avgMetrics.has_schema) insights.push('Schema.org есть у конкурентов');
-  if (insights.length === 0) insights.push('Сайт конкурентоспособен');
-
-  const comparisonTable = {
-    _type: 'comparison_table',
-    your_site: { content_length_words: own.content_length_words, h2_count: own.h2_count, images_count: own.images_count, has_faq: own.has_faq, has_price_block: own.has_price_block, has_reviews: own.has_reviews, has_schema: own.has_schema, has_video: own.has_video },
-    avg_top10: avgMetrics,
-    leader: leader ? { content_length_words: leader.content_length_words, h2_count: leader.h2_count, images_count: leader.images_count, has_faq: leader.has_faq, has_price_block: leader.has_price_block, has_reviews: leader.has_reviews, has_schema: leader.has_schema, has_video: leader.has_video } : avgMetrics,
-    leader_domain: leader?.domain || '',
-    insights,
-  };
-
-  const directMeta = { _type: 'direct_meta', query: searchQueries[0] || theme, region: 'Россия', serp_date: new Date().toISOString().split('T')[0], total_found: competitors.length };
-
-  // Gap issues
-  const gap_issues: Issue[] = [];
-  const total = analyzed.length;
-  if (total >= 3) {
-    const gaps = [
-      { param: 'FAQ', ownHas: own.has_faq, compCount: analyzed.filter(c => c.has_faq).length, fixTitle: 'Нет FAQ — есть у конкурентов', fixHow: 'Добавьте FAQ', fixExample: '<h2>FAQ</h2>' },
-      { param: 'Цены', ownHas: own.has_price_block, compCount: analyzed.filter(c => c.has_price_block).length, fixTitle: 'Нет цен — есть у конкурентов', fixHow: 'Добавьте блок цен', fixExample: '<h2>Стоимость</h2>' },
-      { param: 'Отзывы', ownHas: own.has_reviews, compCount: analyzed.filter(c => c.has_reviews).length, fixTitle: 'Нет отзывов — есть у конкурентов', fixHow: 'Добавьте отзывы', fixExample: '<h2>Отзывы</h2>' },
-      { param: 'Schema', ownHas: own.has_schema, compCount: analyzed.filter(c => c.has_schema).length, fixTitle: 'Нет Schema — есть у конкурентов', fixHow: 'Добавьте JSON-LD', fixExample: '<script type="application/ld+json">...</script>' },
-    ];
-    for (const gap of gaps) {
-      if (gap.ownHas) continue;
-      const threshold = Math.ceil(total * 0.6);
-      if (gap.compCount >= threshold) {
-        gap_issues.push(makeIssue({ module: 'competitors', severity: gap.compCount >= Math.ceil(total * 0.8) ? 'high' : 'medium', title: gap.fixTitle, found: `У вас: нет. У конкурентов: ${gap.compCount}/${total}`, location: 'Контент', why_it_matters: `${gap.compCount} из ${total} конкурентов имеют ${gap.param}`, how_to_fix: gap.fixHow, example_fix: gap.fixExample, visible_in_preview: false }));
-      }
-    }
-
-    const avgWords = avg(analyzed.map(c => c.content_length_words));
-    if (own.content_length_words < avgWords * 0.5 && avgWords > 300) {
-      gap_issues.push(makeIssue({ module: 'competitors', severity: 'high', title: 'Объём контента значительно меньше конкурентов', found: `У вас: ${own.content_length_words} слов. Среднее: ${avgWords}`, location: 'Контент', why_it_matters: 'Конкуренты в топе имеют больше контента', how_to_fix: `Расширьте до ${avgWords}+ слов`, example_fix: 'Добавьте FAQ, кейсы, описания', visible_in_preview: false }));
-    }
-  }
-
-  return { competitors, comparisonTable, directMeta, gap_issues };
-}
-
-// ═══ STEP 5: Keywords ═══
-interface KeywordEntry { phrase: string; cluster: string; intent: string; frequency: number; landing_needed: boolean; }
-
-async function extractKeywords(html: string, theme: string, url: string, competitorPhrases: string[], apiKey: string): Promise<KeywordEntry[]> {
-  if (!apiKey) return [];
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim() : '';
-  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
-  const phrasesBlock = competitorPhrases.length > 0 ? `\nФразы конкурентов: ${competitorPhrases.join(', ')}` : '';
-
-  const allKeywords: KeywordEntry[] = [];
-  for (let batch = 0; batch < 2; batch++) {
-    const userPrompt = batch === 0
-      ? `URL: ${url}\nTitle: ${title}\nH1: ${h1}\nТекст: ${bodyText.slice(0, 1500)}${phrasesBlock}`
-      : `Ещё 100 НОВЫХ запросов для "${theme}". Не дублируй: ${allKeywords.slice(0, 20).map(k => k.phrase).join(', ')}`;
-    const content = await llmCall(apiKey, 'gpt-4o-mini',
-      `Ты — SEO-специалист для Рунета. Сгенерируй 100 ключевых запросов.\nТребования: реальные запросы Яндекса, 7 кластеров max, intent: commercial/informational/navigational/transactional, frequency: 50-50000.\nФормат: JSON-массив [{"phrase":"...","cluster":"...","intent":"commercial","frequency":2400,"landing_needed":false}].\nТолько JSON.`,
-      userPrompt, 8000, 0.1);
-    const parsed = safeParseJson<KeywordEntry[]>(content, []);
-    allKeywords.push(...parsed);
-    if (allKeywords.length >= 200) break;
-  }
-
-  // Deduplicate
-  const seen = new Set<string>();
-  return allKeywords.filter(k => {
-    const key = k.phrase?.toLowerCase()?.trim();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, 400);
-}
-
-// ═══ STEP 6: Minus words ═══
-interface MinusWord { word: string; type: string; reason: string; }
-
-async function generateMinusWords(theme: string, keywords: KeywordEntry[], apiKey: string): Promise<MinusWord[]> {
-  if (!apiKey) return [];
-  const topPhrases = keywords.slice(0, 40).map(k => k.phrase).join(', ');
-  const content = await llmCall(apiKey, 'gpt-4o-mini',
-    `Ты — специалист по Яндекс.Директу. Сгенерируй 50-100 минус-слов для рекламной кампании.\nФормат: JSON-массив [{"word":"бесплатно","type":"informational","reason":"Отсекает некоммерческий трафик"}].\nТолько JSON.`,
-    `Тематика: ${theme}\nКлючевые: ${topPhrases}`, 8000, 0.1);
-  const parsed = safeParseJson<MinusWord[]>(content, []);
-  return parsed.filter(w => w.word && w.word.length > 1).slice(0, 150);
-}
+// ═══ STEPS 4, 5, 6 removed in Sprint 2 ═══
+// - competitorAnalysis / parseCompetitorHtml / isExcludedUrl: top-10 SERP
+//   parsing produced unreliable competitor data (LLM-generated URLs were
+//   often 404s, and Yandex SERP scraping is brittle).
+// - extractKeywords / generateMinusWords: LLM-invented keyword lists with
+//   fake frequencies. To be replaced by deterministic detectors in Sprint 3.
 
 // ─── SEO Data extraction for reports ───
 function extractSeoData(html: string, parsedUrl: URL, httpStatus: number, loadTimeMs: number, robotsResult: { ok: boolean; text: string }, sitemapResult: { ok: boolean; text: string }, hasLlmsTxt: boolean) {
@@ -1529,9 +1247,6 @@ export interface PipelineResult {
   is_spa: boolean;
   scores: { total: number; seo: number; direct: number; schema: number; ai: number; breakdown?: any };
   issues: Issue[];
-  competitors: any[];
-  keywords: KeywordEntry[];
-  minus_words: MinusWord[];
   seo_data: any;
   summary?: string | null;
   blocks?: any[];
@@ -1576,7 +1291,7 @@ export async function runPipeline(
     return {
       status: 'done', url: parsedUrl.toString(), mode, theme: '', is_spa: false,
       scores: { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
-      issues: [unavailableIssue], competitors: [], keywords: [], minus_words: [], seo_data: null,
+      issues: [unavailableIssue], seo_data: null,
     };
   }
 
@@ -1634,9 +1349,6 @@ export async function runPipeline(
   // STEP 3: Direct
   const directResult = directAudit(html, theme, makeIssue);
 
-  // STEP 3b: AI ad (async)
-  const adSuggestionPromise = generateDirectAd(html, theme, parsedUrl.toString(), apiKey);
-
   // STEP 7: Schema
   const schemaIssues = schemaAudit(html, makeIssue);
 
@@ -1676,59 +1388,9 @@ export async function runPipeline(
   const scores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
   await onProgress(60, { scores, issues: allIssues });
 
-  // STEP 4: Competitors
-  const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, apiKey, makeIssue);
-  allIssues = [...allIssues, ...compResult.gap_issues];
-
-  await onProgress(75);
-
-  // STEP 5: Keywords — отключено из GEO-аудита (тяжёлый LLM-вызов).
-  // Функции extractKeywords / generateMinusWords сохранены ниже для
-  // будущего Директ-инструмента. Пайплайн возвращает пустые массивы.
-  const keywords: KeywordEntry[] = [];
-  await onProgress(85, { keywords: [] });
-
-  // STEP 6: Minus words — отключено аналогично
-  const minusWords: MinusWord[] = [];
-
-  // STEP 6b: Google Suggest validation — runs only if keywords are present.
-  // Currently keywords[] is empty in pipeline (LLM step disabled), so this
-  // is a no-op now and activates automatically when keywords come back.
-  let validatedKeywords: Array<KeywordEntry & { verified?: boolean; suggestions?: string[] }> = keywords;
-  if (keywords.length > 0) {
-    try {
-      const phrases = keywords.map((k) => k.phrase).filter(Boolean);
-      const validated = await validateKeywordsViaSuggest(phrases);
-      const byPhrase = new Map(validated.map((v) => [v.keyword.toLowerCase(), v]));
-      validatedKeywords = keywords.map((k) => {
-        const v = byPhrase.get((k.phrase || '').toLowerCase());
-        return v
-          ? { ...k, verified: v.verified, suggestions: v.suggestions }
-          : { ...k, verified: false, suggestions: [] };
-      });
-    } catch (e: any) {
-      logger.error('PIPELINE', `Google Suggest validation failed: ${e?.message ?? e}`);
-    }
-  }
+  await onProgress(85);
 
   const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
-
-  // Await ad suggestion
-  const adSuggestion = await adSuggestionPromise;
-
-  const competitorsData = [
-    compResult.directMeta,
-    ...compResult.competitors,
-    compResult.comparisonTable,
-    {
-      _type: 'direct_ad_meta',
-      ad_headline: directResult.ad_headline,
-      autotargeting_categories: directResult.autotargeting_categories,
-      readiness_score: directResult.readiness_score,
-      direct_checks: directResult.checks,
-      ad_suggestion: adSuggestion,
-    },
-  ].filter(Boolean);
 
   // ─── Structured signals for future weight calibration ───
   // No new DB columns — folded into result JSONB. Used offline to regress
@@ -1761,9 +1423,6 @@ export async function runPipeline(
     is_spa: isSpa,
     scores: finalScores,
     issues: allIssues,
-    competitors: competitorsData,
-    keywords: validatedKeywords as any,
-    minus_words: minusWords,
     seo_data: { ...seoData, direct_checks: directResult.checks },
     signals,
   };
