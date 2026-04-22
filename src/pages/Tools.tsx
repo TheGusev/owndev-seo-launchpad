@@ -52,6 +52,46 @@ const getGridCols = (count: number): string => {
   return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
 };
 
+const ToolCard = ({ tool, index }: { tool: ToolDef; index: number }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.4, delay: index * 0.06 }}
+    className="h-full"
+  >
+    <Link
+      to={tool.customPath || `/tools/${tool.slug}`}
+      className="glass rounded-2xl p-5 hover:border-primary/40 transition-all group flex flex-col h-full"
+    >
+      <div className="flex items-start gap-4 flex-1">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <tool.icon className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
+            {tool.name}
+            {tool.slug === "mcp-server" && (
+              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded bg-primary/20 text-primary align-middle">NEW</span>
+            )}
+          </h3>
+          <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{tool.shortDesc}</p>
+          {tool.slug === "marketplace-audit" && (
+            <div className="flex gap-2 mt-2">
+              <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ color: '#CB11AB', border: '1px solid #CB11AB' }}>WB</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ color: '#005BFF', border: '1px solid #005BFF' }}>OZON</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-1 text-sm text-primary font-medium">
+        Открыть
+        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      </div>
+    </Link>
+  </motion.div>
+);
+
 const Tools = () => {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const flagship = getToolBySlug(FLAGSHIP_SLUG);
