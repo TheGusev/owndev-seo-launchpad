@@ -2,6 +2,34 @@
 
 ## [Unreleased]
 
+### Fixed (Accuracy pass 2 — 11 правок аудита точности)
+- **Race condition `issueCounter`** при параллельных сканах: счётчик id вынесен в фабрику `createIssueFactory()` на каждый запуск `runPipeline`. Все аудиторы (`technicalAudit`, `contentAudit`, `directAudit`, `schemaAudit`, `aiAudit`, `competitorAnalysis`) принимают `makeIssue` параметром.
+- **Mixed Content false positives**: детектор больше не триггерит на обычные `<a href="http://">`, только на `src/action/data/poster`, `<link rel="stylesheet" href="http://">`, `<script src="http://">`.
+- **Двойной fetch `/llms.txt`**: убран повторный запрос в `aiAudit` — теперь один HEAD в `runPipeline`, флаг `hasLlmsTxt` пробрасывается в аудит.
+- **robots.txt User-agent группировка**: новая функция `parseRobotsDisallowForAll()` учитывает только блок `User-agent: *` (раньше правила Googlebot ошибочно блокировали страницу для всех).
+- **HEAD → GET fallback в `checkUrl`**: при HTTP 405 повторяем запрос GET — больше нет ложных «битых ссылок» на серверах PHP/Bitrix без HEAD.
+- **TTFB вместо LCP** в issue про медленный ответ сервера.
+- **OG-теги по непустому `content`** — пустой `og:title content=""` теперь fail.
+- **`wordCount` через `/[\p{L}\p{N}]/u`** — пунктуация (`—`, `:`, `...`) больше не считается словом.
+- **SPA detection — исключены SSR false positives**: Next.js (`__NEXT_DATA__`), Nuxt (`window.__NUXT__`), Vue (`data-server-rendered`), React (`data-reactroot`) больше не уходят в Jina Reader зря.
+- **Schema required fields**: `schemaAudit` дополнительно проверяет `Organization`/`LocalBusiness`/`Corporation` на наличие `name` + `url`.
+- **CTA pattern расширен**: «узнать цену», «рассчитать», «подобрать», «оформить», «связаться», «demo», «trial», «download», «order», «request», «скачать», «попробовать» и др.
+
+### Added (новые проверки)
+- **Twitter Card** (`<meta name="twitter:card" content="...">`) — severity `low` в `contentAudit`.
+- **Security headers**: `X-Content-Type-Options` (nosniff) и `X-Frame-Options`/CSP `frame-ancestors` — severity `low` в `technicalAudit`. Заголовки ответа собираются в `runPipeline`.
+- **`Cache-Control`**: фиксируем отсутствие или жёсткий `no-store/no-cache` без `private` — severity `low`.
+- **Sitemap freshness**: самый свежий `<lastmod>` старше 6 мес → medium issue.
+- **Viewport `width=device-width`**: если meta viewport есть, но без `width=device-width` → medium issue.
+
+### Notes
+- Rate limiting на `POST /start` (5 сканов/час на IP) из плана **не применён**: бэкенд платформы пока не имеет надёжных primitives для rate-limit, фича отложена до общей инфраструктуры.
+- Все 11 fixes + 5 новых проверок не меняют структуру JSONB-результата сканов и не требуют миграций БД. Фронтенд (`IssueCard`, `ScoreCards`) рендерит новые `low/medium` issues автоматически.
+
+---
+
+## [Unreleased — previous]
+
 ### Removed
 - Legacy Puppeteer-аудит: `AuditService`, `CrawlerService`, `AuditWorker`, роут `POST/GET /api/v1/audit`, очередь BullMQ `audit`, зависимость `puppeteer` (~300 MB chromium).
 - Поля и счётчики `auditQueue` из ответа `GET /api/v1/health`.
