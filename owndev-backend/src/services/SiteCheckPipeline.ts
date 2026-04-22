@@ -1248,9 +1248,6 @@ export interface PipelineResult {
   is_spa: boolean;
   scores: { total: number; seo: number; direct: number; schema: number; ai: number; breakdown?: any };
   issues: Issue[];
-  competitors: any[];
-  keywords: KeywordEntry[];
-  minus_words: MinusWord[];
   seo_data: any;
   summary?: string | null;
   blocks?: any[];
@@ -1295,7 +1292,7 @@ export async function runPipeline(
     return {
       status: 'done', url: parsedUrl.toString(), mode, theme: '', is_spa: false,
       scores: { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
-      issues: [unavailableIssue], competitors: [], keywords: [], minus_words: [], seo_data: null,
+      issues: [unavailableIssue], seo_data: null,
     };
   }
 
