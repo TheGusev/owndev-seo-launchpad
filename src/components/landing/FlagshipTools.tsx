@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Helmet } from "react-helmet-async";
 import { Search, LayoutTemplate, ShoppingBag, ArrowRight } from "lucide-react";
+import { GeometricRays } from "@/components/ui/geometric-rays";
 
 const flagships = [
   {
@@ -78,12 +79,13 @@ const FlagshipTools = () => {
     <section
       id="flagship-tools"
       aria-labelledby="flagship-heading"
-      className="py-16 md:py-20"
+      className="py-16 md:py-20 relative overflow-hidden"
     >
       <Helmet>
         <script type="application/ld+json">{JSON.stringify(itemListLd)}</script>
       </Helmet>
-      <div className="container px-4 md:px-6 max-w-6xl mx-auto">
+      <GeometricRays className="z-0 opacity-50" opacity={0.25} />
+      <div className="container px-4 md:px-6 max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-10 md:mb-12">
           <h2 id="flagship-heading" className="text-2xl md:text-4xl font-bold font-serif mb-3">
             С чего начать
