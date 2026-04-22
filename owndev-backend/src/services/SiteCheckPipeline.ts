@@ -879,7 +879,6 @@ function contentAudit(html: string, theme: string, makeIssue: MakeIssueFn): Issu
 }
 
 // ═══ STEP 3: Direct Audit ═══
-interface DirectAdSuggestion { headline1: string; headline2: string; ad_text: string; sitelinks: { title: string; description: string }[]; callouts: string[]; }
 interface DirectCheck { key: string; label: string; description: string; weight: number; status: 'pass' | 'fail'; reason: string; }
 
 const DIRECT_CHECKS_META = [
