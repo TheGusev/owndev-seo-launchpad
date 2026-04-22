@@ -697,8 +697,8 @@ const DIRECT_CHECKS_META = [
   { key: 'h1Specificity', label: 'Конкретность H1', weight: 20 },
   { key: 'textCoherence', label: 'Объём контента', weight: 15 },
   { key: 'commercialSignals', label: 'Коммерческие сигналы (CTA)', weight: 15 },
-  { key: 'noMixedTopics', label: 'Яндекс.Метрика установлена', weight: 15 },
-  { key: 'adHeadlineReady', label: 'Адаптация под мобильные', weight: 15 },
+  { key: 'noMixedTopics', label: 'Тематическая однородность', weight: 15 },
+  { key: 'adHeadlineReady', label: 'H1 готов для Директа', weight: 15 },
 ];
 
 function directAudit(html: string, theme: string): { issues: Issue[]; ad_headline: string; autotargeting_categories: Record<string, boolean>; readiness_score: number; checks: DirectCheck[] } {
@@ -756,22 +756,80 @@ function directAudit(html: string, theme: string): { issues: Issue[]; ad_headlin
     addCheck('commercialSignals', 'pass', 'Найдены коммерческие CTA на странице');
   }
 
-  // 5. Яндекс.Метрика → noMixedTopics (re-используем как "трекинг")
-  const hasMetrika = /mc\.yandex\.ru\/metrika\/tag\.js|mc\.yandex\.ru\/watch\/|ym\(\s*\d+/i.test(html);
-  if (!hasMetrika) {
-    issues.push(makeIssue({ module: 'direct', severity: 'critical', title: 'Нет Яндекс.Метрики', found: 'Счётчик не найден', location: 'Скрипты', why_it_matters: 'Без Метрики невозможно отследить конверсии', how_to_fix: 'Установите счётчик Яндекс.Метрики', example_fix: 'Создайте счётчик на metrika.yandex.ru', impact_score: 15, visible_in_preview: true }));
-    addCheck('noMixedTopics', 'fail', 'Счётчик Яндекс.Метрики не найден — невозможно отслеживать конверсии');
+  // 5. Тематическая однородность H2/H3 относительно Title → noMixedTopics
+  const STOP_WORDS = new Set(['и','в','на','с','по','для','из','от','к','а','но','о','у','же','ли','бы','то','как','что','это']);
+  const headingMatches = [...html.matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)]
+    .map(m => m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase())
+    .filter(Boolean);
+
+  if (headingMatches.length < 2) {
+    addCheck('noMixedTopics', 'pass', `На странице ${headingMatches.length} заголовков H2/H3 — проверка тематической однородности не требуется`);
   } else {
-    addCheck('noMixedTopics', 'pass', 'Яндекс.Метрика установлена и отслеживает конверсии');
+    const titleWords = (title || '')
+      .toLowerCase()
+      .split(/[\s,—–\-|:.!?()]+/)
+      .map(w => w.trim())
+      .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+    const threshold = Math.ceil(headingMatches.length * 0.5);
+    let bestWord = '';
+    let bestHits = 0;
+    for (const w of titleWords) {
+      const hits = headingMatches.filter(h => h.includes(w)).length;
+      if (hits > bestHits) { bestHits = hits; bestWord = w; }
+    }
+    const homogeneous = bestHits >= threshold;
+    if (!homogeneous) {
+      issues.push(makeIssue({
+        module: 'direct', severity: 'medium',
+        title: 'Смешанные темы на странице',
+        found: `Ни одно слово из Title не встречается в ≥50% заголовков H2/H3 (${bestHits}/${headingMatches.length})`,
+        location: 'Заголовки H2/H3',
+        why_it_matters: 'Автотаргетинг Директа хуже работает на страницах со смешанной тематикой — снижается релевантность',
+        how_to_fix: 'Сделайте заголовки H2/H3 тематически связанными с Title страницы',
+        example_fix: `Если Title — "${title.slice(0, 40)}", то H2/H3 должны раскрывать ту же тему`,
+        visible_in_preview: true,
+      }));
+      addCheck('noMixedTopics', 'fail', `Тема Title не прослеживается в заголовках (лучшее совпадение: "${bestWord}" ${bestHits}/${headingMatches.length}, нужно ${threshold})`);
+    } else {
+      addCheck('noMixedTopics', 'pass', `Слово "${bestWord}" из Title встречается в ${bestHits}/${headingMatches.length} заголовках — тема однородна`);
+    }
   }
 
-  // 6. Viewport → adHeadlineReady (мобильная адаптация)
-  const viewportOk = /<meta[^>]*name=["']viewport["']/i.test(html);
-  if (!viewportOk) {
-    issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Страница не адаптирована для мобильного', found: 'viewport не найден', location: '<head>', why_it_matters: '60-70% трафика из Директа — мобильные', how_to_fix: 'Добавьте meta viewport', example_fix: '<meta name="viewport" content="width=device-width, initial-scale=1">', visible_in_preview: true }));
-    addCheck('adHeadlineReady', 'fail', 'Страница не адаптирована для мобильных устройств (нет viewport)');
+  // 6. Готовность H1 как рекламного заголовка Директа → adHeadlineReady
+  const h1Trim = h1.trim();
+  let adReady = false;
+  let adFailReason = '';
+  if (!h1Trim) {
+    adFailReason = 'H1 отсутствует на странице';
+  } else if (h1Trim.length < 5 || h1Trim.length > 56) {
+    adFailReason = `Длина H1 ${h1Trim.length} символов — вне допустимого диапазона 5–56 для рекламного заголовка Директа`;
+  } else if (/^[\d\W_]/.test(h1Trim)) {
+    adFailReason = `H1 начинается с "${h1Trim[0]}" — рекламный заголовок должен начинаться с буквы`;
   } else {
-    addCheck('adHeadlineReady', 'pass', 'Страница адаптирована для мобильных устройств');
+    const hasNoun = h1Trim
+      .split(/[\s,—–\-|:.!?()]+/)
+      .some(w => w.replace(/[^\p{L}]/gu, '').length > 4);
+    if (!hasNoun) {
+      adFailReason = 'H1 не содержит ни одного слова длиннее 4 букв — нет смыслового якоря для рекламного заголовка';
+    } else {
+      adReady = true;
+    }
+  }
+
+  if (!adReady) {
+    issues.push(makeIssue({
+      module: 'direct', severity: 'high',
+      title: 'H1 не готов для рекламного заголовка Директа',
+      found: h1Trim ? `H1: "${h1Trim}" (${h1Trim.length} симв.)` : 'H1 отсутствует',
+      location: '<h1>',
+      why_it_matters: 'Директ часто использует H1 как заголовок объявления. Если H1 длинный, начинается с цифры или слишком общий — заголовок будет обрезан или непривлекательным',
+      how_to_fix: 'Перепишите H1: длина 5–56 символов, начало с буквы, минимум одно содержательное слово (>4 букв)',
+      example_fix: `<h1>${theme || 'Услуги под ключ'} в Москве</h1>`,
+      visible_in_preview: true,
+    }));
+    addCheck('adHeadlineReady', 'fail', adFailReason);
+  } else {
+    addCheck('adHeadlineReady', 'pass', `H1 "${h1Trim}" подходит для рекламного заголовка Директа (${h1Trim.length} симв.)`);
   }
 
   const totalWeight = checks.reduce((s, c) => s + c.weight, 0);
