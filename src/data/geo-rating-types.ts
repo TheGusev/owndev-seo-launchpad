@@ -13,6 +13,8 @@ export type GeoRatingEntry = {
   category: string;
   llmScore: number;
   seoScore: number;
+  schemaScore: number;
+  directScore: number;
   hasLlmsTxt: boolean;
   hasSchema: boolean;
   hasFaq: boolean;
@@ -34,6 +36,8 @@ export function mapDbRowToEntry(
     category: string;
     llm_score: number;
     seo_score: number;
+    schema_score: number;
+    direct_score: number;
     has_llms_txt: boolean;
     has_schema: boolean;
     has_faqpage: boolean;
@@ -50,6 +54,8 @@ export function mapDbRowToEntry(
     category: row.category,
     llmScore: row.llm_score,
     seoScore: row.seo_score,
+    schemaScore: row.schema_score ?? 0,
+    directScore: row.direct_score ?? 0,
     hasLlmsTxt: row.has_llms_txt,
     hasSchema: row.has_schema,
     hasFaq: row.has_faqpage,
