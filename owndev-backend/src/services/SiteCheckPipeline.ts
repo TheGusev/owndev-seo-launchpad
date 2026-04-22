@@ -162,7 +162,6 @@ interface Issue {
 // extractKeywords / generateMinusWords / validateKeywordsViaSuggest were
 // removed because the LLM-generated keywords were unreliable and the
 // audit no longer ships keyword/minus-word lists.
-}
 
 // Per-scan issue ID factory — avoids race conditions when multiple scans
 // run in parallel inside the same Node process.
