@@ -12,6 +12,8 @@ import { ArrowRight, Globe, Trash2, Search, BrainCircuit, Target, Sparkles, User
 import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 import type { LucideIcon } from "lucide-react";
+import { TypingCodeBlock } from "@/components/ui/typing-code-block";
+import { AuroraBackground } from "@/components/ui/aurora-background";
 
 function getPollInterval(elapsedMs: number, progressPct: number): number {
   // Первые 10 секунд — 1 сек (быстрые ранние стадии 5/10/20/35)
@@ -220,8 +222,11 @@ const SiteCheck = () => {
         <link rel="canonical" href="https://owndev.ru/tools/site-check" />
       </Helmet>
       <Header />
-      <main className="min-h-screen pt-24 pb-16">
-        <div className="container max-w-3xl mx-auto px-4">
+      <main className="min-h-screen pt-24 pb-16 relative overflow-hidden">
+        <AuroraBackground className="z-0 opacity-50" intensity="subtle" />
+        <div className="container max-w-6xl mx-auto px-4 relative z-10">
+          <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
+            <div>
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">
               Полный GEO и AI‑ready аудит сайта
@@ -306,6 +311,31 @@ const SiteCheck = () => {
           )}
 
           <CheckList />
+            </div>
+
+            <aside className="hidden lg:block sticky top-24">
+              <TypingCodeBlock
+                title="owndev ~ scanner"
+                language="bash"
+                speed={22}
+                lineDelay={180}
+                lines={[
+                  "$ owndev scan --url example.ru",
+                  "→ Fetching HTML…",
+                  "✓ HTTP 200, 84.2 KB",
+                  "→ Parsing meta tags",
+                  "✓ title, description OK",
+                  "→ Checking Schema.org",
+                  "✓ Organization, FAQPage",
+                  "→ AI-ready check (llms.txt)",
+                  "✓ Found, 12 sections",
+                  "→ Computing SEO Score…",
+                  "→ Computing LLM Score…",
+                  "✓ Report ready in 47s",
+                ]}
+              />
+            </aside>
+          </div>
         </div>
       </main>
       <Footer />

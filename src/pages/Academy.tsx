@@ -8,6 +8,7 @@ import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { BookOpen, Code, FileText, Rocket, TrendingUp, Clock, Layers, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { NeuralNetworkBg } from "@/components/ui/neural-network-bg";
 
 const moduleIcons = [BookOpen, Code, FileText, Rocket, TrendingUp];
 const moduleColors = [
@@ -93,7 +94,9 @@ const Academy = () => {
 
       <main className="pt-24 pb-16">
         {/* Hero */}
-        <section className="container max-w-4xl mx-auto px-4 text-center mb-16">
+        <section className="relative overflow-hidden mb-16 py-4">
+          <NeuralNetworkBg className="z-0 opacity-45" density="low" />
+          <div className="container max-w-4xl mx-auto px-4 text-center relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -122,6 +125,7 @@ const Academy = () => {
               </GradientButton>
             )}
           </motion.div>
+          </div>
         </section>
 
         {/* Module cards */}

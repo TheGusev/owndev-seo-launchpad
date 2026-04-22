@@ -5,6 +5,7 @@ import {
   Loader2, AlertCircle, Clock,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { NeuralNetworkBg } from "@/components/ui/neural-network-bg";
 
 type Stage = {
   pct: number;
@@ -88,7 +89,8 @@ const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="space-y-6 max-w-xl mx-auto">
+      <div className="space-y-6 max-w-xl mx-auto relative">
+        <NeuralNetworkBg className="-z-10 opacity-60 -m-6" density="medium" />
         {/* Header */}
         {domain && (
           <motion.p

@@ -10,6 +10,8 @@ import { FloatingParticles } from "@/components/ui/floating-particles";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
+import { AuroraBackground } from "@/components/ui/aurora-background";
+import { GeometricRays } from "@/components/ui/geometric-rays";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -73,6 +75,8 @@ const Tools = () => {
         <div className="absolute inset-0 pointer-events-none">
           <AnimatedGrid theme="accent" lineCount={{ h: 6, v: 8 }} />
           <FloatingParticles count={12} className="absolute inset-0" />
+          <AuroraBackground className="opacity-60" intensity="subtle" />
+          <GeometricRays opacity={0.25} />
           <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
         </div>
 
