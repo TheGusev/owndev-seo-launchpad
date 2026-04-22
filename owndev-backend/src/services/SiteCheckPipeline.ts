@@ -1350,9 +1350,6 @@ export async function runPipeline(
   // STEP 3: Direct
   const directResult = directAudit(html, theme, makeIssue);
 
-  // STEP 3b: AI ad (async)
-  const adSuggestionPromise = generateDirectAd(html, theme, parsedUrl.toString(), apiKey);
-
   // STEP 7: Schema
   const schemaIssues = schemaAudit(html, makeIssue);
 
@@ -1392,59 +1389,9 @@ export async function runPipeline(
   const scores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
   await onProgress(60, { scores, issues: allIssues });
 
-  // STEP 4: Competitors
-  const compResult = await competitorAnalysis(parsedUrl.toString(), theme, html, mode, loadTimeMs, apiKey, makeIssue);
-  allIssues = [...allIssues, ...compResult.gap_issues];
-
-  await onProgress(75);
-
-  // STEP 5: Keywords — отключено из GEO-аудита (тяжёлый LLM-вызов).
-  // Функции extractKeywords / generateMinusWords сохранены ниже для
-  // будущего Директ-инструмента. Пайплайн возвращает пустые массивы.
-  const keywords: KeywordEntry[] = [];
-  await onProgress(85, { keywords: [] });
-
-  // STEP 6: Minus words — отключено аналогично
-  const minusWords: MinusWord[] = [];
-
-  // STEP 6b: Google Suggest validation — runs only if keywords are present.
-  // Currently keywords[] is empty in pipeline (LLM step disabled), so this
-  // is a no-op now and activates automatically when keywords come back.
-  let validatedKeywords: Array<KeywordEntry & { verified?: boolean; suggestions?: string[] }> = keywords;
-  if (keywords.length > 0) {
-    try {
-      const phrases = keywords.map((k) => k.phrase).filter(Boolean);
-      const validated = await validateKeywordsViaSuggest(phrases);
-      const byPhrase = new Map(validated.map((v) => [v.keyword.toLowerCase(), v]));
-      validatedKeywords = keywords.map((k) => {
-        const v = byPhrase.get((k.phrase || '').toLowerCase());
-        return v
-          ? { ...k, verified: v.verified, suggestions: v.suggestions }
-          : { ...k, verified: false, suggestions: [] };
-      });
-    } catch (e: any) {
-      logger.error('PIPELINE', `Google Suggest validation failed: ${e?.message ?? e}`);
-    }
-  }
+  await onProgress(85);
 
   const finalScores = calcScoresWeighted(allIssues, dbRules, directResult.checks, html, hasLlmsTxt);
-
-  // Await ad suggestion
-  const adSuggestion = await adSuggestionPromise;
-
-  const competitorsData = [
-    compResult.directMeta,
-    ...compResult.competitors,
-    compResult.comparisonTable,
-    {
-      _type: 'direct_ad_meta',
-      ad_headline: directResult.ad_headline,
-      autotargeting_categories: directResult.autotargeting_categories,
-      readiness_score: directResult.readiness_score,
-      direct_checks: directResult.checks,
-      ad_suggestion: adSuggestion,
-    },
-  ].filter(Boolean);
 
   // ─── Structured signals for future weight calibration ───
   // No new DB columns — folded into result JSONB. Used offline to regress
@@ -1477,9 +1424,6 @@ export async function runPipeline(
     is_spa: isSpa,
     scores: finalScores,
     issues: allIssues,
-    competitors: competitorsData,
-    keywords: validatedKeywords as any,
-    minus_words: minusWords,
     seo_data: { ...seoData, direct_checks: directResult.checks },
     signals,
   };
