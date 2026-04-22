@@ -1,7 +1,7 @@
 import { Worker, type Job } from 'bullmq';
 import { redis } from '../cache/redis.js';
 import { sql } from '../db/client.js';
-import { runPipeline } from '../services/SiteCheckPipeline.js';
+import { runPipeline } from '../services/SiteCheck/index.js';
 import { logger } from '../utils/logger.js';
 
 interface SiteCheckJobData {
