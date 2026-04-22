@@ -4,12 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
 import FullReportView from "@/components/site-check/FullReportView";
-import CompetitorsTable from "@/components/site-check/CompetitorsTable";
 import HistoryChart from "@/components/site-check/HistoryChart";
-import DirectMeta from "@/components/site-check/DirectMeta";
-import DirectAdPreview from "@/components/site-check/DirectAdPreview";
-import KeywordsSection from "@/components/site-check/KeywordsSection";
-import MinusWordsSection from "@/components/site-check/MinusWordsSection";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import LlmJudgeSection, { type LlmJudgeData } from "@/components/site-check/LlmJudgeSection";
 import AiBoostSection from "@/components/site-check/AiBoostSection";
@@ -141,36 +136,7 @@ const SiteCheckResult = () => {
     : undefined;
 
   const issues = Array.isArray(data.issues) ? data.issues : [];
-  const rawCompetitors = Array.isArray(data.competitors) ? data.competitors : [];
-  const competitors = rawCompetitors.filter((c: any) => c._type === 'competitor');
-  const comparisonTable = rawCompetitors.find((c: any) => c._type === 'comparison_table') || null;
-  const directMeta = rawCompetitors.find((c: any) => c._type === 'direct_meta') || null;
-  const directAdMeta = rawCompetitors.find((c: any) =>
-    c._type === 'direct_ad_meta' ||
-    c._direct_meta === true ||
-    c.ad_suggestion != null ||
-    c.readiness_score != null
-  );
-  const directAdSuggestion = directAdMeta?.ad_suggestion || null;
-  const directReadinessScore = directAdMeta?.readiness_score ?? null;
-  const directChecks = directAdMeta?.direct_checks || data?.seo_data?.direct_checks || null;
-  const keywords = (Array.isArray(data.keywords) ? data.keywords : []).map((kw: any) => ({
-    keyword: kw.phrase ?? kw.keyword ?? kw.word ?? '',
-    volume: kw.frequency ?? kw.volume ?? 0,
-    cluster: kw.cluster ?? kw.category ?? 'Общие',
-    intent: kw.intent ?? '—',
-    landing_needed: kw.landing_needed ?? false,
-    verified: typeof kw.verified === 'boolean' ? kw.verified : undefined,
-    suggestions: Array.isArray(kw.suggestions) ? kw.suggestions : undefined,
-  }));
-  const minusWords = (Array.isArray(data.minus_words) ? data.minus_words : []).map((w: any) => {
-    if (typeof w === 'string') return { word: w.replace(/^-/, ''), type: 'general', reason: '' };
-    return {
-      word: (w.word ?? w.phrase ?? w.value ?? String(w)).replace(/^-/, ''),
-      type: w.type ?? w.category ?? 'general',
-      reason: w.reason ?? w.description ?? '',
-    };
-  });
+  // Sprint 2: competitors / keywords / minus_words / Direct ad — moved out of site-check
 
   // Tech passport summary badges for accordion header
   const techBadges = techPassport ? (
