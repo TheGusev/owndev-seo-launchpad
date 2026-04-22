@@ -629,8 +629,41 @@ async function detectTheme(html: string, url: string, apiKey: string): Promise<s
   return result || 'Общая тематика';
 }
 
+// ─── robots.txt parser: возвращает Disallow-пути, действующие на User-agent: * ───
+function parseRobotsDisallowForAll(robotsTxt: string): string[] {
+  if (!robotsTxt) return [];
+  const lines = robotsTxt.split(/\r?\n/);
+  const result: string[] = [];
+  let inStarBlock = false;
+  for (const raw of lines) {
+    const line = raw.replace(/#.*$/, '').trim();
+    if (!line) { inStarBlock = false; continue; } // пустая строка завершает блок
+    const uaMatch = line.match(/^User-agent:\s*(.+)$/i);
+    if (uaMatch) {
+      inStarBlock = uaMatch[1].trim() === '*';
+      continue;
+    }
+    if (!inStarBlock) continue;
+    const dis = line.match(/^Disallow:\s*(.*)$/i);
+    if (dis && dis[1].trim()) result.push(dis[1].trim());
+  }
+  return result;
+}
+
 // ═══ STEP 1: Technical SEO ═══
-function technicalAudit(html: string, parsedUrl: URL, httpStatus: number, robotsOk: boolean, robotsTxt: string, sitemapOk: boolean, sitemapBody: string, brokenLinks: string[], loadTimeMs: number): Issue[] {
+function technicalAudit(
+  html: string,
+  parsedUrl: URL,
+  httpStatus: number,
+  robotsOk: boolean,
+  robotsTxt: string,
+  sitemapOk: boolean,
+  sitemapBody: string,
+  brokenLinks: string[],
+  loadTimeMs: number,
+  makeIssue: MakeIssueFn,
+  responseHeaders: Record<string, string> = {},
+): Issue[] {
   const issues: Issue[] = [];
   const origin = parsedUrl.origin;
   const pageUrl = parsedUrl.toString();
@@ -641,8 +674,9 @@ function technicalAudit(html: string, parsedUrl: URL, httpStatus: number, robots
   if (!robotsOk) {
     issues.push(makeIssue({ module: 'technical', severity: 'critical', title: 'robots.txt недоступен', found: `${origin}/robots.txt → ошибка`, location: '/robots.txt', why_it_matters: 'Без robots.txt поисковики не знают что индексировать', how_to_fix: 'Создайте robots.txt', example_fix: `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml`, visible_in_preview: true }));
   } else {
-    const disallowLines = robotsTxt.split('\n').filter(l => /^Disallow:\s*.+/i.test(l));
-    const blockedPaths = disallowLines.map(l => l.replace(/^Disallow:\s*/i, '').trim());
+    // Учитываем только блок User-agent: * — иначе ловим ложные срабатывания
+    // на правилах для конкретных ботов (например Googlebot).
+    const blockedPaths = parseRobotsDisallowForAll(robotsTxt);
     const currentPath = parsedUrl.pathname;
     if (blockedPaths.some(p => p && currentPath.startsWith(p))) {
       issues.push(makeIssue({ module: 'technical', severity: 'critical', title: 'Страница закрыта от индексации в robots.txt', found: `Путь "${currentPath}" попадает под Disallow`, location: '/robots.txt', why_it_matters: 'Страница полностью исчезает из поиска', how_to_fix: 'Удалите или скорректируйте Disallow', example_fix: `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml`, impact_score: 20, visible_in_preview: true }));
@@ -658,6 +692,30 @@ function technicalAudit(html: string, parsedUrl: URL, httpStatus: number, robots
     const normalizedPath = parsedUrl.pathname.replace(/\/$/, '');
     if (!sitemapBody.includes(pageUrl) && !sitemapBody.includes(normalizedPath)) {
       issues.push(makeIssue({ module: 'technical', severity: 'medium', title: 'Страница не найдена в sitemap.xml', found: `URL "${pageUrl}" отсутствует в карте сайта`, location: '/sitemap.xml', why_it_matters: 'Страницы вне sitemap индексируются медленнее', how_to_fix: 'Добавьте URL в sitemap.xml', example_fix: `<url><loc>${pageUrl}</loc></url>`, visible_in_preview: false }));
+    }
+    // Sitemap freshness — самый свежий <lastmod> старше 6 мес = устаревший sitemap.
+    const lastmodMatches = [...sitemapBody.matchAll(/<lastmod>\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/gi)];
+    if (lastmodMatches.length > 0) {
+      const dates = lastmodMatches
+        .map((m) => Date.parse(m[1]))
+        .filter((t) => !Number.isNaN(t));
+      if (dates.length > 0) {
+        const newest = Math.max(...dates);
+        const sixMonthsMs = 1000 * 60 * 60 * 24 * 30 * 6;
+        const ageDays = Math.round((Date.now() - newest) / (1000 * 60 * 60 * 24));
+        if (Date.now() - newest > sixMonthsMs) {
+          issues.push(makeIssue({
+            module: 'technical', severity: 'medium',
+            title: `sitemap.xml устарел (последнее обновление ${ageDays} дней назад)`,
+            found: `Самый свежий <lastmod>: ${new Date(newest).toISOString().slice(0, 10)}`,
+            location: '/sitemap.xml',
+            why_it_matters: 'Поисковики реже переобходят страницы, если sitemap давно не обновлялся.',
+            how_to_fix: 'Регенерируйте sitemap.xml при каждой публикации/обновлении контента.',
+            example_fix: '<lastmod>' + new Date().toISOString().slice(0, 10) + '</lastmod>',
+            visible_in_preview: false,
+          }));
+        }
+      }
     }
   }
 
@@ -678,14 +736,25 @@ function technicalAudit(html: string, parsedUrl: URL, httpStatus: number, robots
   }
 
   if (loadTimeMs > 4000) {
-    issues.push(makeIssue({ module: 'technical', severity: 'critical', title: `Критически медленная загрузка (${(loadTimeMs / 1000).toFixed(1)}с)`, found: `Время ответа: ${loadTimeMs}мс`, location: 'HTTP ответ', why_it_matters: 'LCP > 4с — «плохо» по Core Web Vitals', how_to_fix: 'Оптимизируйте TTFB: кэширование, CDN', example_fix: 'Целевой TTFB < 600мс', visible_in_preview: true }));
+    issues.push(makeIssue({ module: 'technical', severity: 'critical', title: `Критически медленный ответ сервера (TTFB ${(loadTimeMs / 1000).toFixed(1)}с)`, found: `Время до первого байта: ${loadTimeMs}мс`, location: 'HTTP ответ', why_it_matters: 'Высокий TTFB (время до первого байта) замедляет загрузку для всех пользователей и сильно ухудшает LCP в Core Web Vitals.', how_to_fix: 'Оптимизируйте TTFB: серверное кэширование, CDN, ускорение БД-запросов.', example_fix: 'Целевой TTFB < 600мс', visible_in_preview: true }));
   } else if (loadTimeMs > 2500) {
-    issues.push(makeIssue({ module: 'technical', severity: 'high', title: `Медленная загрузка (${(loadTimeMs / 1000).toFixed(1)}с)`, found: `Время ответа: ${loadTimeMs}мс`, location: 'HTTP ответ', why_it_matters: 'LCP > 2.5с — «требует улучшения»', how_to_fix: 'Включите сжатие, кэширование, CDN', example_fix: 'Content-Encoding: br, Cache-Control: max-age=86400', visible_in_preview: true }));
+    issues.push(makeIssue({ module: 'technical', severity: 'high', title: `Медленный TTFB (${(loadTimeMs / 1000).toFixed(1)}с)`, found: `Время до первого байта: ${loadTimeMs}мс`, location: 'HTTP ответ', why_it_matters: 'Высокий TTFB напрямую увеличивает LCP и снижает оценку Core Web Vitals.', how_to_fix: 'Включите сжатие, кэширование, CDN, оптимизируйте серверный рендер.', example_fix: 'Content-Encoding: br, Cache-Control: max-age=86400', visible_in_preview: true }));
   }
 
   const vpMatch = html.match(/<meta[^>]*name=["']viewport["'][^>]*content=["']([^"']+)["']/i);
   if (!vpMatch) {
     issues.push(makeIssue({ module: 'technical', severity: 'critical', title: 'Нет meta viewport — сайт не адаптивный', found: 'viewport не найден', location: '<head>', why_it_matters: 'Без viewport мобильные устройства показывают десктопную версию', how_to_fix: 'Добавьте meta viewport', example_fix: '<meta name="viewport" content="width=device-width, initial-scale=1">', visible_in_preview: true }));
+  } else if (!/width=device-width/i.test(vpMatch[1])) {
+    issues.push(makeIssue({
+      module: 'technical', severity: 'medium',
+      title: 'meta viewport без width=device-width',
+      found: `viewport content="${vpMatch[1]}"`,
+      location: '<head>',
+      why_it_matters: 'Без width=device-width мобильные браузеры могут отрисовывать страницу как десктопную, что ухудшает мобильный UX и Core Web Vitals.',
+      how_to_fix: 'Добавьте width=device-width в content viewport.',
+      example_fix: '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      visible_in_preview: false,
+    }));
   }
 
   const imgTags = html.match(/<img[^>]*>/gi) || [];
@@ -696,6 +765,58 @@ function technicalAudit(html: string, parsedUrl: URL, httpStatus: number, robots
 
   if (brokenLinks.length > 0) {
     issues.push(makeIssue({ module: 'technical', severity: brokenLinks.length >= 3 ? 'critical' : 'high', title: `${brokenLinks.length} битых внутренних ссылок`, found: brokenLinks.slice(0, 5).join('\n'), location: '<a href>', why_it_matters: 'Битые ссылки ухудшают краулинг и UX', how_to_fix: 'Исправьте или удалите нерабочие ссылки', example_fix: `Замените ${brokenLinks[0]} на актуальный URL`, visible_in_preview: true }));
+  }
+
+  // ─── Security & Cache headers (low severity, для финальной полировки) ───
+  if (responseHeaders && Object.keys(responseHeaders).length > 0) {
+    if (!responseHeaders['x-content-type-options']) {
+      issues.push(makeIssue({
+        module: 'technical', severity: 'low',
+        title: 'Нет заголовка X-Content-Type-Options',
+        found: 'X-Content-Type-Options отсутствует в ответе',
+        location: 'HTTP-заголовки',
+        why_it_matters: 'Без nosniff браузер может неверно угадать MIME-тип, что создаёт XSS-риск.',
+        how_to_fix: 'Добавьте на сервере заголовок X-Content-Type-Options: nosniff.',
+        example_fix: 'X-Content-Type-Options: nosniff',
+        visible_in_preview: false,
+      }));
+    }
+    if (!responseHeaders['x-frame-options'] && !/frame-ancestors/i.test(responseHeaders['content-security-policy'] || '')) {
+      issues.push(makeIssue({
+        module: 'technical', severity: 'low',
+        title: 'Нет заголовка X-Frame-Options',
+        found: 'X-Frame-Options отсутствует и нет CSP frame-ancestors',
+        location: 'HTTP-заголовки',
+        why_it_matters: 'Без защиты сайт можно встроить в iframe и провести clickjacking-атаку.',
+        how_to_fix: 'Добавьте X-Frame-Options: SAMEORIGIN или CSP frame-ancestors.',
+        example_fix: 'X-Frame-Options: SAMEORIGIN',
+        visible_in_preview: false,
+      }));
+    }
+    const cacheCtl = responseHeaders['cache-control'] || '';
+    if (!cacheCtl) {
+      issues.push(makeIssue({
+        module: 'technical', severity: 'low',
+        title: 'Нет заголовка Cache-Control',
+        found: 'Cache-Control отсутствует',
+        location: 'HTTP-заголовки',
+        why_it_matters: 'Без Cache-Control браузеры и CDN не могут кэшировать страницу эффективно — растёт нагрузка и время загрузки.',
+        how_to_fix: 'Настройте Cache-Control с разумным max-age для статики и страниц.',
+        example_fix: 'Cache-Control: public, max-age=3600',
+        visible_in_preview: false,
+      }));
+    } else if (/no-store|no-cache/i.test(cacheCtl) && !/private/i.test(cacheCtl)) {
+      issues.push(makeIssue({
+        module: 'technical', severity: 'low',
+        title: 'Cache-Control запрещает кэширование (no-store/no-cache)',
+        found: `Cache-Control: ${cacheCtl}`,
+        location: 'HTTP-заголовки',
+        why_it_matters: 'no-store/no-cache отключают браузерный и CDN кэш — страница загружается медленнее повторно.',
+        how_to_fix: 'Используйте no-store только на действительно приватных страницах. Для публичных задайте public, max-age=...',
+        example_fix: 'Cache-Control: public, max-age=3600',
+        visible_in_preview: false,
+      }));
+    }
   }
 
   return issues;
