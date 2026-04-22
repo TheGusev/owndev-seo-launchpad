@@ -9,7 +9,7 @@ export type AuditStatus = 'pending' | 'running' | 'completed' | 'failed';
 export interface AuditIssue {
   id?: string;
   rule_id?: string;
-  module: string;
+  module?: string;
   type?: string;
   category?: string;
   message?: string;
@@ -17,7 +17,7 @@ export interface AuditIssue {
   description?: string;
   detail?: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
-  title: string;
+  title?: string;
   found?: string;
   location?: string;
   why_it_matters?: string;
