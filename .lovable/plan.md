@@ -1,100 +1,116 @@
 
 
-## Что не так и что чиним
+## Что делаем
 
-Проблемы, которые видно на скринах и в коде:
+Две независимые задачи:
+1. **Единые состояния Tabs на `/marketplace-audit`** — заметный hover/active/focus и контрастная активная вкладка на мобильных.
+2. **SEO-разметка для блока «С чего начать»** — JSON-LD `ItemList` + ссылки в обычном `<a href>` (Link уже рендерит `<a>`, проверим что краулер видит).
 
-1. **Поля ввода ужимаются на мобильных** — `ScenarioDemoForm` использует горизонтальный `flex gap-3 items-center`, из-за чего Input сжимается до «Назв», «Тема или», «https:,». Видно на всех 4 сценарных страницах (`/scenario/ai-visibility`, `/scenario/ai-ready-content`, `/scenario/brand-presence`, `/scenario/monitoring`).
-2. **Дубликат кнопки** на тех же страницах: вверху большая `<Button>Запустить аудит</Button>` (просто ссылка на `/tools/site-check`), сразу под ней — форма с полем + такой же кнопкой. Один CTA должен быть.
-3. **Аудит карточек WB/Ozon** (`/marketplace-audit`):
-   - Кнопки «Wildberries / Ozon» разной ширины (по контенту) — нужно одинаковые, центрировать.
-   - `TabsList grid-cols-3` на мобильном ломается — «Артикул Заполнить вручную» слипается в один текст (видно на скрине).
-4. **Порядок секций главной** + путаница «куда нажимать»:
-   - Сейчас: Hero → ServicesTeaser (4 направления) → GeoScenarios (4 AI-сценария) → HowItWorks → Testimonials → ReportValue → **ToolsShowcase** → Comparison → Blog → FAQ → Contact.
-   - Пользователь видит сначала 4 «направления» (Schema, SEO, GEO, Семантика), которые выглядят как инструменты, но ведут на разрозненные страницы → путаница.
-   - Флагманы (Site Check, Site Formula, Marketplace) спрятаны глубоко внизу.
-   - Нужно: **GEO-сценарии вверх** (как просили на скринах — «4 сценария» в первых блоках), **флагманские инструменты сразу после Hero**, утомительный `ServicesTeaser` (дублирует ToolsShowcase) — убрать с главной.
+## Часть 1. Контрастные Tabs на MarketplaceAudit
 
-## Решение
+Не трогаем глобальный `src/components/ui/tabs.tsx` (его юзают другие места — Hero, scenario-формы и т.п. — глобальная замена сломает консистентность). Стилизуем **локально** через классы на `TabsList` / `TabsTrigger` в `src/pages/MarketplaceAudit.tsx`.
 
-### 1. Новый порядок секций на главной (`src/pages/Index.tsx`)
+**`TabsList`** (заменить текущий `grid grid-cols-3 w-full h-auto gap-1`):
+```tsx
+<TabsList className="grid grid-cols-3 w-full h-auto gap-1.5 p-1.5 bg-muted/40 border border-border/60 rounded-xl">
+```
+Чуть прозрачный фон + явная граница даёт визуальный «контейнер таба» на мобильном.
 
-```text
-Hero
-└─ FlagshipTools (новый компактный блок: 3 карточки — Site Check, Site Formula, Marketplace Audit)
-GeoScenarios (4 сценария AI-видимости — то что просили вверх)
-HowItWorks
-ToolsShowcase (полная сетка из 13 инструментов — переезжает выше)
-ReportValue
-Testimonials
-ComparisonSection
-BlogPreview / FAQ / ContactForm
+**`TabsTrigger`** — единые состояния (заменить класс на каждом из трёх):
+```tsx
+className="
+  py-3 px-3 whitespace-normal text-xs sm:text-sm font-medium rounded-lg
+  text-muted-foreground border border-transparent
+  transition-all duration-200
+  hover:bg-card/60 hover:text-foreground
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background
+  data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+  data-[state=active]:border-primary/40 data-[state=active]:shadow-[0_0_18px_hsl(var(--primary)/0.35)]
+  data-[state=active]:font-semibold
+"
 ```
 
-`ServicesTeaser` **удаляем с главной** — он дублирует ToolsShowcase и сбивает с толку (4 «направления» которые на самом деле ссылки на 4 разных тула). Сам файл оставляем — вдруг используется ещё где-то (проверю при имплементации, если только Index.tsx — удалим).
+Что это даёт:
+- **active**: фон `--primary` (бренд-cyan), белый текст, мягкий glow — на мобильном видно за версту, в отличие от текущего `bg-background` (он почти сливается с карточкой).
+- **hover**: подсветка `bg-card/60` + переход цвета.
+- **focus-visible**: единое cyan-кольцо для клавиатурной навигации.
+- Радиус `rounded-lg` синхронен с TabsList `rounded-xl`.
 
-### 2. Новый компонент `FlagshipTools` (`src/components/landing/FlagshipTools.tsx`)
+Аналогично применяем к кнопкам **Wildberries / Ozon** (строки 89-102) — они написаны вручную, не через Tabs, но визуально это тот же паттерн «сегментный контрол». Унифицируем:
+- Обёртка: `bg-muted/40 border-border/60 rounded-xl p-1.5`.
+- Кнопка: `flex-1 px-5 py-2.5 rounded-lg text-sm font-medium transition-all` + active state с тем же `bg-primary text-primary-foreground shadow-[0_0_18px_hsl(var(--primary)/0.35)]`, hover — `bg-card/60 text-foreground`, focus-visible с cyan-ring.
 
-3 крупные карточки в ряд (на мобильном — стек), сразу после Hero. Это даст пользователю мгновенный ответ «куда нажимать»:
+## Часть 2. SEO-разметка для «С чего начать»
 
-- **Site Check** (cyan, иконка Search) — «GEO + AI-ready аудит за 2 минуты» → `/tools/site-check`
-- **Site Formula** (violet, LayoutTemplate) — «Архитектурный blueprint сайта» → `/site-formula`
-- **Marketplace Audit** (emerald, ShoppingBag) — «Аудит карточек WB и Ozon» → `/marketplace-audit`
+В `src/components/landing/FlagshipTools.tsx`:
 
-Каждая карточка — крупный CTA «Запустить →», бейдж «Флагман», glow по hover. Это визуально снимает «куда жать после Hero».
+1. **Семантика**: добавить `id="flagship-tools"`, `aria-labelledby` на `<section>`, `id="flagship-heading"` на `<h2>`. Это уже улучшает доступность и краулинг.
 
-### 3. Чиним `ScenarioDemoForm.tsx`
+2. **JSON-LD `ItemList`** через `react-helmet-async` — три SoftwareApplication item-ы с url, name, description, applicationCategory:
 
-- Layout: `flex flex-col sm:flex-row gap-3` (вертикально на мобильном, горизонтально с sm).
-- Иконка убирается внутрь Input (абсолютное позиционирование) или переезжает в Label сверху — чтобы не «съедала» ширину поля.
-- Кнопка `w-full sm:w-auto` + одинаковая высота `h-12` с Input.
-- Input и Button получают `min-h-[48px]`, чтобы тач-таргеты были корректными.
+```tsx
+import { Helmet } from "react-helmet-async";
 
-### 4. Убираем дубликат CTA на 4 сценарных страницах
+const itemListLd = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: "Флагманские инструменты OWNDEV",
+  itemListOrder: "https://schema.org/ItemListOrderAscending",
+  numberOfItems: 3,
+  itemListElement: flagships.map((t, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    url: `https://owndev.ru${t.href}`,
+    item: {
+      "@type": "SoftwareApplication",
+      name: t.title,
+      description: t.desc,
+      url: `https://owndev.ru${t.href}`,
+      applicationCategory: "SEOApplication",
+      operatingSystem: "Web",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "RUB" },
+    },
+  })),
+};
+```
 
-В `AiVisibility.tsx`, `AiReadyContent.tsx`, `BrandPresence.tsx`, `Monitoring.tsx`:
+Внутрь компонента:
+```tsx
+<Helmet>
+  <script type="application/ld+json">{JSON.stringify(itemListLd)}</script>
+</Helmet>
+```
 
-- Удалить большую `<Button asChild variant="hero">` в Hero-блоке (та что просто ссылка).
-- Оставить только `ScenarioDemoForm` ниже подзаголовка — это и есть основной CTA с полем + кнопкой.
+Это валидная микроразметка для Google `Carousel`/`ItemList` rich results и Яндексовых сниппетов.
 
-### 5. Чиним `MarketplaceAudit.tsx`
+3. **Индексация ссылок**:
+   - `react-router-dom` `<Link to="/...">` рендерит `<a href="/...">` в DOM — Googlebot и YandexBot прекрасно его читают (после JS prerender + статика SSG из vite-plugin-sitemap уже генерирует `index.html` со ссылками).
+   - Добавить `aria-label` на каждую ссылку для скрин-ридеров: `aria-label={`${tool.title} — ${tool.cta}`}`.
+   - Добавить **видимый `<h3>` с обёрнутым в Link** заголовком — сейчас вся карточка ссылка, но для краулера полезно иметь явный текст ссылки. Оборачивание h3 в дополнительный link плодит дубли — оставим как есть (вся карточка — `<a>`, текст внутри: `Site Check ... Запустить аудит`).
+   - Проверить что `/site-formula`, `/marketplace-audit`, `/tools/site-check` присутствуют в `vite-plugin-sitemap.ts` `staticPages` — они там уже есть (читал раньше).
 
-- **Кнопки WB / Ozon**: дать им `flex-1 min-w-[140px]` внутри `flex w-full max-w-sm mx-auto`, чтобы обе одинаковой ширины и центрированы.
-- **TabsList**: на мобильном — стек или вертикальный список через `grid grid-cols-1 sm:grid-cols-3 gap-2 h-auto`. TabsTrigger — `py-3 whitespace-normal`, чтобы «Заполнить вручную» не слипалось с «Артикул».
-- Текст «Заполнить вручную» сократить до «Вручную» — три коротких ровных таба читаются лучше.
-
-### 6. Hero — оставляем как есть
-
-Форма уже корректная (`flex-col sm:flex-row`). Не трогаем.
+4. **Доп. сигнал — `Organization` уже есть на главной (`src/pages/Index.tsx`)**. Дублировать не нужно. `ItemList` живёт прямо в компоненте, рендерится только когда `FlagshipTools` на странице.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/landing/FlagshipTools.tsx` | **New** — 3 крупные карточки флагманов сразу после Hero |
-| `src/pages/Index.tsx` | **Edit** — убрать `ServicesTeaser`, добавить `FlagshipTools`, переставить порядок (GeoScenarios + ToolsShowcase выше) |
-| `src/components/scenarios/ScenarioDemoForm.tsx` | **Edit** — `flex-col sm:flex-row`, иконка не съедает ширину, Input/Button одной высоты, кнопка под полем на мобильном |
-| `src/pages/scenarios/AiVisibility.tsx` | **Edit** — убрать дубликат `<Button>Запустить аудит</Button>` в Hero |
-| `src/pages/scenarios/AiReadyContent.tsx` | **Edit** — убрать дубликат CTA |
-| `src/pages/scenarios/BrandPresence.tsx` | **Edit** — убрать дубликат CTA |
-| `src/pages/scenarios/Monitoring.tsx` | **Edit** — убрать дубликат CTA |
-| `src/pages/MarketplaceAudit.tsx` | **Edit** — кнопки WB/Ozon одинаковой ширины и по центру; TabsList адаптивный (стек на мобильном); сокращение «Заполнить вручную» → «Вручную» |
+| `src/pages/MarketplaceAudit.tsx` | **Edit** — единые контрастные классы на `TabsList`/`TabsTrigger` и кнопках WB/Ozon (active=primary с glow, hover, focus-visible) |
+| `src/components/landing/FlagshipTools.tsx` | **Edit** — добавить `id`/`aria-labelledby`, `aria-label` на ссылках, JSON-LD `ItemList` через Helmet |
 
 ## Что НЕ трогаем
 
-- Header / Footer / маршруты — не пересекаются.
-- `Hero.tsx` — форма уже корректная.
-- `ToolsShowcase.tsx` — сама сетка ок, только её **позиция** в Index меняется.
-- `ServicesTeaser.tsx` — файл оставляю в репозитории (если используется в pSEO/GEO-страницах — не сломаем; уберу только импорт в Index).
-- Бэкенд / SSE / правила памяти.
-- Тексты статей блога.
+- `src/components/ui/tabs.tsx` — глобальный компонент, изменения локальные.
+- Другие места с Tabs (Hero, scenario-формы и т.д.).
+- `vite-plugin-sitemap.ts`, `Index.tsx` — Organization/Website LD уже на месте, sitemap содержит все три URL.
+- Бэкенд / правила памяти.
 
 ## Проверка
 
-1. **Главная**: после Hero сразу видно 3 крупные карточки флагманов (Site Check, Site Formula, Marketplace Audit) с понятными CTA «Запустить». Дальше — 4 GEO-сценария, потом полная сетка из 13 инструментов.
-2. **Мобильный (375px)**: все формы на сценарных страницах — поле сверху на всю ширину, кнопка снизу на всю ширину, иконка читаема (не «Назв», а полное название).
-3. **`/scenario/ai-visibility`**: один CTA вместо двух — только форма с полем + кнопкой.
-4. **`/marketplace-audit` мобильный**: кнопки WB и Ozon одинаковой ширины, центрированы. Три таба «Ссылка / Артикул / Вручную» — каждый на своей строке (или в три ровные колонки), без слипания текста.
-5. **Десктоп (1336px)**: визуально ничего не сломано, флагман-карточки в ряд по 3, табы в ряд по 3.
-6. **Клик «Инструменты» в меню** по-прежнему ведёт на `/tools` — без изменений.
+1. **Mobile (375px)** `/marketplace-audit`: активный таб «Ссылка» — cyan фон, белый текст, заметный glow. Tap по «Артикул» — мгновенная смена активного состояния. Hover на десктопе — подсветка фона.
+2. **Keyboard**: Tab → cyan ring вокруг таба, Enter переключает. То же для кнопок WB/Ozon.
+3. **Кнопки WB/Ozon**: одинаковая ширина, активная — cyan с glow, неактивная — мягкий hover.
+4. **Главная** → DevTools → `<head>`: новый `<script type="application/ld+json">` с `@type: "ItemList"` и тремя `SoftwareApplication`. Валидация на validator.schema.org / Яндекс.Вебмастер — без ошибок.
+5. **View Source** главной: ссылки `<a href="/tools/site-check">`, `<a href="/site-formula">`, `<a href="/marketplace-audit">` присутствуют в HTML (vite-plugin-sitemap делает SSG).
+6. **Google Rich Results Test** для `https://owndev.ru/` — детектит ItemList с тремя элементами.
 
