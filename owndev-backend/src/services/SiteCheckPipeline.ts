@@ -830,7 +830,7 @@ function technicalAudit(
 }
 
 // ═══ STEP 2: Content Audit ═══
-function contentAudit(html: string, theme: string): Issue[] {
+function contentAudit(html: string, theme: string, makeIssue: MakeIssueFn): Issue[] {
   const issues: Issue[] = [];
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
@@ -841,7 +841,7 @@ function contentAudit(html: string, theme: string): Issue[] {
   const h1 = h1Texts[0] || '';
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-  const wordCount = bodyText.split(/\s+/).filter(w => w.length > 1).length;
+  const wordCount = bodyText.split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
   const themeWords = theme.toLowerCase().split(/[\s,—–\-]+/).filter(w => w.length > 3);
 
   if (!title) {
@@ -879,9 +879,14 @@ function contentAudit(html: string, theme: string): Issue[] {
   }
 
   // OG tags
-  const hasOgTitle = /<meta[^>]*property=["']og:title["']/i.test(html);
-  const hasOgDesc = /<meta[^>]*property=["']og:description["']/i.test(html);
-  const hasOgImage = /<meta[^>]*property=["']og:image["']/i.test(html);
+  // Требуем непустой content (в обоих порядках атрибутов).
+  const ogContentRe = (prop: string) => new RegExp(
+    `<meta[^>]*property=["']${prop}["'][^>]*content=["'][^"']+["']|<meta[^>]*content=["'][^"']+["'][^>]*property=["']${prop}["']`,
+    'i',
+  );
+  const hasOgTitle = ogContentRe('og:title').test(html);
+  const hasOgDesc = ogContentRe('og:description').test(html);
+  const hasOgImage = ogContentRe('og:image').test(html);
   if (!hasOgTitle || !hasOgDesc || !hasOgImage) {
     const missing = [!hasOgTitle && 'og:title', !hasOgDesc && 'og:description', !hasOgImage && 'og:image'].filter(Boolean).join(', ');
     issues.push(makeIssue({ module: 'content', severity: 'medium', title: 'Неполные Open Graph теги', found: `Отсутствуют: ${missing}`, location: '<head>', why_it_matters: 'OG теги управляют отображением при расшаривании в соцсетях', how_to_fix: 'Добавьте все OG теги', example_fix: '<meta property="og:title" content="...">\n<meta property="og:description" content="...">\n<meta property="og:image" content="...">', visible_in_preview: false }));
@@ -890,6 +895,21 @@ function contentAudit(html: string, theme: string): Issue[] {
   // lang attribute
   if (!/<html[^>]*lang=["'][^"']+["']/i.test(html)) {
     issues.push(makeIssue({ module: 'content', severity: 'low', title: 'Нет атрибута lang у <html>', found: '<html> без lang', location: '<html>', why_it_matters: 'lang помогает поисковикам определить язык страницы', how_to_fix: 'Добавьте lang="ru"', example_fix: '<html lang="ru">', visible_in_preview: false }));
+  }
+
+  // Twitter Card — рекомендуем для красивых превью в Twitter/X.
+  const hasTwitterCard = /<meta[^>]*name=["']twitter:card["'][^>]*content=["'][^"']+["']|<meta[^>]*content=["'][^"']+["'][^>]*name=["']twitter:card["']/i.test(html);
+  if (!hasTwitterCard) {
+    issues.push(makeIssue({
+      module: 'content', severity: 'low',
+      title: 'Нет meta twitter:card',
+      found: 'Тег twitter:card отсутствует или с пустым content',
+      location: '<head>',
+      why_it_matters: 'Без twitter:card ссылки на сайт в Twitter/X отображаются без превью — снижается CTR.',
+      how_to_fix: 'Добавьте meta twitter:card (обычно summary_large_image).',
+      example_fix: '<meta name="twitter:card" content="summary_large_image">',
+      visible_in_preview: false,
+    }));
   }
 
   return issues;
@@ -908,7 +928,7 @@ const DIRECT_CHECKS_META = [
   { key: 'adHeadlineReady', label: 'H1 готов для Директа', weight: 15 },
 ];
 
-function directAudit(html: string, theme: string): { issues: Issue[]; ad_headline: string; autotargeting_categories: Record<string, boolean>; readiness_score: number; checks: DirectCheck[] } {
+function directAudit(html: string, theme: string, makeIssue: MakeIssueFn): { issues: Issue[]; ad_headline: string; autotargeting_categories: Record<string, boolean>; readiness_score: number; checks: DirectCheck[] } {
   const issues: Issue[] = [];
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
@@ -916,7 +936,7 @@ function directAudit(html: string, theme: string): { issues: Issue[]; ad_headlin
   const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, '').trim() : '';
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const bodyText = bodyMatch ? bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-  const wordCount = bodyText.split(/\s+/).filter(w => w.length > 1).length;
+  const wordCount = bodyText.split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
   const themeWords = theme.toLowerCase().split(/[\s,—–\-]+/).filter(w => w.length > 3);
   const genericH1 = /^(главная|home|добро пожаловать|welcome)/i;
 
@@ -954,7 +974,9 @@ function directAudit(html: string, theme: string): { issues: Issue[]; ad_headlin
   }
 
   // 4. CTA → commercialSignals
-  const ctaPattern = /заказ|купи|оставь|запис|получи|звони|консультац|заявк|корзин|добавить в/i;
+  // Расширенный набор: не только «заказать/купить», но и узкие коммерческие
+  // глаголы (рассчитать, узнать цену, скачать, подобрать, demo/trial и т.д.).
+  const ctaPattern = /заказ|купи|оставь|запис|получи|звони|консультац|заявк|корзин|добавить в|узнать\s+цен|рассчита|подобрат|оформ|начат|связат|обрат|демо\b|trial|download|order|buy|request|скачат|попробова/i;
   const ctaOk = ctaPattern.test(html);
   if (!ctaOk) {
     issues.push(makeIssue({ module: 'direct', severity: 'high', title: 'Нет CTA (призыва к действию)', found: 'Не найдены кнопки заказа или формы', location: 'Контент', why_it_matters: 'Без CTA посетители из Директа уходят', how_to_fix: 'Добавьте кнопку CTA', example_fix: `<button>Заказать ${theme.toLowerCase()}</button>`, impact_score: 11, visible_in_preview: true }));
@@ -1084,7 +1106,7 @@ async function generateDirectAd(html: string, theme: string, url: string, apiKey
 }
 
 // ═══ STEP 7: Schema Audit ═══
-function schemaAudit(html: string): Issue[] {
+function schemaAudit(html: string, makeIssue: MakeIssueFn): Issue[] {
   const issues: Issue[] = [];
   const hasMicrodata = /itemscope|itemtype=/i.test(html);
   const hasRdfa = /typeof=["'].*schema\.org/i.test(html) || /property=["']og:/i.test(html);
@@ -1114,24 +1136,62 @@ function schemaAudit(html: string): Issue[] {
     if (!schemaTypes.includes('BreadcrumbList')) {
       issues.push(makeIssue({ module: 'schema', severity: 'medium', title: 'Нет BreadcrumbList Schema', found: 'BreadcrumbList отсутствует', location: 'JSON-LD', why_it_matters: 'Хлебные крошки улучшают навигацию в выдаче', how_to_fix: 'Добавьте BreadcrumbList', example_fix: '{"@type":"BreadcrumbList","itemListElement":[...]}', visible_in_preview: false }));
     }
+
+    // Required fields у Organization/LocalBusiness — name + url обязательны.
+    const orgIssues: string[] = [];
+    for (const block of jsonLdMatches) {
+      try {
+        const parsed = JSON.parse(block.replace(/<\/?script[^>]*>/gi, ''));
+        const checkOrg = (obj: any) => {
+          if (!obj || typeof obj !== 'object') return;
+          const t = obj['@type'];
+          const types = Array.isArray(t) ? t : (t ? [t] : []);
+          if (types.some((x: string) => /^(Organization|LocalBusiness|Corporation)$/i.test(x))) {
+            const missing: string[] = [];
+            if (!obj.name || (typeof obj.name === 'string' && !obj.name.trim())) missing.push('name');
+            if (!obj.url || (typeof obj.url === 'string' && !obj.url.trim())) missing.push('url');
+            if (missing.length) orgIssues.push(`${types[0]}: нет ${missing.join(', ')}`);
+          }
+          if (Array.isArray(obj['@graph'])) obj['@graph'].forEach(checkOrg);
+        };
+        checkOrg(parsed);
+      } catch {}
+    }
+    if (orgIssues.length > 0) {
+      issues.push(makeIssue({
+        module: 'schema', severity: 'medium',
+        title: 'У Organization/LocalBusiness не хватает обязательных полей',
+        found: orgIssues.join('; '),
+        location: 'JSON-LD',
+        why_it_matters: 'Без name и url Google не считает разметку валидной — расширенные сниппеты не работают.',
+        how_to_fix: 'Добавьте обязательные поля name и url в JSON-LD Organization/LocalBusiness.',
+        example_fix: '{"@type":"Organization","name":"OWN.DEV","url":"https://owndev.ru"}',
+        visible_in_preview: false,
+      }));
+    }
   }
   return issues;
 }
 
 // ═══ STEP 8: AI Readiness Audit ═══
-async function aiAudit(html: string, origin: string, pageUrl: string, isSpa: boolean, spaRenderFailed: boolean): Promise<Issue[]> {
+async function aiAudit(
+  html: string,
+  origin: string,
+  pageUrl: string,
+  isSpa: boolean,
+  spaRenderFailed: boolean,
+  hasLlmsTxt: boolean,
+  makeIssue: MakeIssueFn,
+): Promise<Issue[]> {
   const issues: Issue[] = [];
   if (isSpa && spaRenderFailed) {
     issues.push(makeIssue({ module: 'ai', severity: 'critical', title: 'SPA без серверного рендеринга — AI не видит контент', found: 'SPA detected, Jina Reader failed', location: 'Рендеринг', why_it_matters: 'AI-краулеры не выполняют JavaScript', how_to_fix: 'Настройте SSR или SSG', example_fix: 'Для React: Next.js, для Vue: Nuxt.js', visible_in_preview: true }));
   }
 
-  // llms.txt
-  try {
-    const llmsResp = await fetchWithTimeout(`${origin}/llms.txt`, 5000);
-    if (!llmsResp.ok) {
-      issues.push(makeIssue({ module: 'ai', severity: 'high', title: 'Нет файла /llms.txt', found: `${origin}/llms.txt → ${llmsResp.status}`, location: '/llms.txt', why_it_matters: 'llms.txt — стандарт для AI-краулеров. Без него сайт теряет 20 баллов LLM Score', how_to_fix: 'Создайте llms.txt', example_fix: `# ${origin}\n> Описание сайта`, impact_score: 20, docs_url: 'https://llmstxt.org', visible_in_preview: true }));
-    }
-  } catch {}
+  // llms.txt — используем уже проверенный в runPipeline флаг (не делаем второй fetch).
+  if (!hasLlmsTxt) {
+    issues.push(makeIssue({ module: 'ai', severity: 'high', title: 'Нет файла /llms.txt', found: `${origin}/llms.txt → недоступен`, location: '/llms.txt', why_it_matters: 'llms.txt — стандарт для AI-краулеров. Без него сайт теряет 20 баллов LLM Score', how_to_fix: 'Создайте llms.txt', example_fix: `# ${origin}\n> Описание сайта`, impact_score: 20, docs_url: 'https://llmstxt.org', visible_in_preview: true }));
+  }
 
   try {
     const llmsFullResp = await fetchWithTimeout(`${origin}/llms-full.txt`, 5000, { method: 'HEAD' });
@@ -1232,7 +1292,7 @@ function isExcludedUrl(url: string, ownHostname: string): boolean {
   } catch { return true; }
 }
 
-async function competitorAnalysis(url: string, theme: string, html: string, mode: string, loadTimeMs: number, apiKey: string): Promise<{ competitors: CompetitorProfile[]; comparisonTable: any; directMeta: any; gap_issues: Issue[] }> {
+async function competitorAnalysis(url: string, theme: string, html: string, mode: string, loadTimeMs: number, apiKey: string, makeIssue: MakeIssueFn): Promise<{ competitors: CompetitorProfile[]; comparisonTable: any; directMeta: any; gap_issues: Issue[] }> {
   const parsedUrl = new URL(url);
   const ownHostname = parsedUrl.hostname.replace(/^www\./, '');
 
