@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { redis } from '../../cache/redis.js';
 import { logger } from '../../utils/logger.js';
 import { isValidUrl, normalizeUrl } from '../../utils/url.js';
+import { withRetry, HttpError } from '../../utils/retry.js';
 
 const CONCURRENCY_LIMIT = Number(process.env.SITE_CHECK_CONCURRENCY ?? 10);
 

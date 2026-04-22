@@ -5,6 +5,7 @@
  * Возвращает уже распарсенный объект (не markdown) или null при сбое.
  */
 import { logger } from '../../utils/logger.js';
+import { withRetry, HttpError } from '../../utils/retry.js';
 
 const PROXY_URL =
   process.env.LLM_PROXY_URL ||
@@ -53,15 +54,21 @@ export async function callJsonLlm<T = unknown>(opts: CallJsonLlmOptions): Promis
   };
 
   try {
-    const r = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-proxy-secret': proxySecret,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(45_000),
-    });
+    const r = await withRetry(async () => {
+      const resp = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-proxy-secret': proxySecret,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(45_000),
+      });
+      if (!resp.ok && [429, 500, 502, 503, 504].includes(resp.status)) {
+        throw new HttpError(resp.status, `llm-proxy ${resp.status}`);
+      }
+      return resp;
+    }, { label: 'TOOLS_LLM' });
     if (!r.ok) {
       const text = await r.text().catch(() => '');
       logger.warn('TOOLS_LLM', `llm-proxy returned ${r.status}: ${text.slice(0, 200)}`);
