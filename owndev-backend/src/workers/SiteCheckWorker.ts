@@ -93,6 +93,20 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
       seo_data: result.seo_data,
       summary: result.summary ?? null,
       blocks: result.blocks ?? [],
+      // Sprint 3 — новые поля для фронта (Sprint 5 их подцепит):
+      geoScore: result.geoScore,
+      seoScore: result.seoScore,
+      croScore: result.croScore,
+      scoresBreakdown: result.scoresBreakdown ?? null,
+      stage0: result.stage0 ?? null,
+      robots: result.robots ?? null,
+      sitemap: result.sitemap ?? null,
+      llmsTxt: result.llmsTxt ?? null,
+      resources: result.resources ?? null,
+      geoSignals: result.geoSignals ?? null,
+      cro: result.cro ?? null,
+      benchmark: result.benchmark ?? null,
+      signals: result.signals ?? null,
     };
     await sql`
       UPDATE site_check_scans
