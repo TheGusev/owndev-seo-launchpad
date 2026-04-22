@@ -25,10 +25,37 @@ const SCORE_FILTERS = [
   { label: "<40", min: 0, max: 39 },
 ];
 const SORT_OPTIONS = [
-  { label: "LLM Score ↓", key: "llmScore" as const },
-  { label: "SEO Score ↓", key: "seoScore" as const },
+  { label: "Средний ↓", key: "avgScore" as const },
+  { label: "LLM ↓", key: "llmScore" as const },
+  { label: "SEO ↓", key: "seoScore" as const },
+  { label: "Schema ↓", key: "schemaScore" as const },
+  { label: "Direct ↓", key: "directScore" as const },
   { label: "Алфавит", key: "brandName" as const },
 ];
+
+type SortKey = "avgScore" | "llmScore" | "seoScore" | "schemaScore" | "directScore" | "brandName";
+
+const computeAvg = (r: any) =>
+  Math.round(((r.llm_score ?? 0) + (r.seo_score ?? 0) + (r.schema_score ?? 0) + (r.direct_score ?? 0)) / 4);
+
+const isEmptyRow = (r: any) =>
+  (r.llm_score ?? 0) === 0 && (r.seo_score ?? 0) === 0 &&
+  (r.schema_score ?? 0) === 0 && (r.direct_score ?? 0) === 0;
+
+const isStaleRow = (r: any) => {
+  if (!r.last_checked_at) return true;
+  const days = (Date.now() - new Date(r.last_checked_at).getTime()) / 86400000;
+  return days > 7;
+};
+
+const formatLast = (iso: string) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days < 1) return "сегодня";
+  if (days < 7) return `${days}д`;
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+};
 
 const scoreColor = (s: number) =>
   s >= 71 ? "text-emerald-400" : s >= 41 ? "text-yellow-400" : "text-red-400";
@@ -44,7 +71,7 @@ const GeoRating = () => {
   const { toast } = useToast();
   const [cat, setCat] = useState("Все");
   const [scoreFi, setScoreFi] = useState(0);
-  const [sortKey, setSortKey] = useState<"llmScore" | "seoScore" | "brandName">("llmScore");
+  const [sortKey, setSortKey] = useState<SortKey>("avgScore");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const { data: rawRows = [], isLoading, refetch, isFetching } = useQuery({
@@ -76,22 +103,32 @@ const GeoRating = () => {
             } catch { return []; }
           })(),
       }))
-      .filter(
-        (r: any) =>
-          (cat === "Все" || r.category === cat) &&
-          r.llm_score >= f.min &&
-          r.llm_score <= f.max
-      );
+      .filter((r: any) => {
+        const a = computeAvg(r);
+        return (cat === "Все" || r.category === cat) && a >= f.min && a <= f.max;
+      });
+
+    const sortDbKey: Record<Exclude<SortKey, "brandName" | "avgScore">, string> = {
+      llmScore: "llm_score",
+      seoScore: "seo_score",
+      schemaScore: "schema_score",
+      directScore: "direct_score",
+    };
 
     list.sort((a: any, b: any) => {
+      const ae = isEmptyRow(a), be = isEmptyRow(b);
+      if (ae && !be) return 1;
+      if (!ae && be) return -1;
       if (sortKey === "brandName") return a.display_name.localeCompare(b.display_name);
-      const dbKey = sortKey === "llmScore" ? "llm_score" : "seo_score";
-      return b[dbKey] - a[dbKey];
+      if (sortKey === "avgScore") return computeAvg(b) - computeAvg(a);
+      const k = sortDbKey[sortKey];
+      return (b[k] ?? 0) - (a[k] ?? 0);
     });
 
     return list.map((r: any, idx: number) => ({
       id: r.id,
       entry: mapDbRowToEntry(r, idx + 1),
+      raw: r,
     }));
   }, [rawRows, cat, scoreFi, sortKey]);
 
@@ -100,14 +137,16 @@ const GeoRating = () => {
     return ["Все", ...cats];
   }, [rawRows]);
 
-  const avgLlm = rawRows.length
-    ? Math.round(rawRows.reduce((s: number, r: any) => s + r.llm_score, 0) / rawRows.length)
-    : 0;
+  const nonEmpty = useMemo(() => rawRows.filter((r: any) => !isEmptyRow(r)), [rawRows]);
+  const avgOf = (key: string) =>
+    nonEmpty.length
+      ? Math.round(nonEmpty.reduce((s: number, r: any) => s + (r[key] ?? 0), 0) / nonEmpty.length)
+      : 0;
+  const avgLlm = avgOf("llm_score");
+  const avgSchema = avgOf("schema_score");
+  const avgDirect = avgOf("direct_score");
   const pctLlms = rawRows.length
     ? Math.round((rawRows.filter((r: any) => r.has_llms_txt).length / rawRows.length) * 100)
-    : 0;
-  const pctFaq = rawRows.length
-    ? Math.round((rawRows.filter((r: any) => r.has_faqpage).length / rawRows.length) * 100)
     : 0;
 
   const lastUpdate = rawRows.length
@@ -161,9 +200,10 @@ const GeoRating = () => {
             <div className="flex flex-wrap justify-center gap-3 mb-6">
               {[
                 { label: "Сайтов в выборке", value: rawRows.length },
-                { label: "Ср. LLM Score", value: avgLlm },
+                { label: "Ср. LLM", value: avgLlm },
+                { label: "Ср. Schema", value: avgSchema },
+                { label: "Ср. Direct", value: avgDirect },
                 { label: "С llms.txt", value: `${pctLlms}%` },
-                { label: "С FAQPage", value: `${pctFaq}%` },
               ].map((s) => (
                 <div key={s.label} className="border border-border/30 rounded-lg px-5 py-3 min-w-[120px] bg-card/40">
                   <div className="text-xl font-bold text-primary">{s.value}</div>
@@ -215,7 +255,7 @@ const GeoRating = () => {
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="text-xs text-muted-foreground self-center mr-2">LLM Score:</span>
+              <span className="text-xs text-muted-foreground self-center mr-2">Средний скор:</span>
               {SCORE_FILTERS.map((f, i) => (
                 <button key={f.label} onClick={() => setScoreFi(i)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${scoreFi === i ? "bg-primary/20 text-primary border-primary/30" : "bg-card/40 text-muted-foreground border-border/30 hover:bg-card/60"}`}>{f.label}</button>
               ))}
@@ -234,30 +274,40 @@ const GeoRating = () => {
             <div className="text-center py-20 text-muted-foreground">Загрузка рейтинга…</div>
           ) : (
             <div className="rounded-xl border border-border/20 overflow-hidden">
-              <div className="hidden md:grid grid-cols-[2.5rem_1fr_7rem_4rem_4rem_3.5rem_3.5rem_3.5rem_4rem] gap-2 px-4 py-2.5 text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider border-b border-border/15 bg-card/60 sticky top-0 z-10">
-                <span>#</span><span>Сайт</span><span>Категория</span><span>LLM</span><span>SEO</span>
-                <span className="text-center">llms.txt</span><span className="text-center">Schema</span>
-                <span className="text-center">FAQ</span><span className="text-center">Ошибки</span>
+              <div className="hidden md:grid grid-cols-[2.5rem_1fr_7rem_3.5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.5rem_4rem] gap-2 px-4 py-2.5 text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider border-b border-border/15 bg-card/60 sticky top-0 z-10">
+                <span>#</span><span>Сайт</span><span>Категория</span>
+                <span>LLM</span><span>SEO</span>
+                <span className="text-center">Schema</span><span className="text-center">Direct</span>
+                <span className="text-center">llms.txt</span>
+                <span className="text-center">Ошибки</span>
+                <span className="text-center">Last</span>
               </div>
 
               {entries.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">Нет сайтов по выбранным фильтрам</div>
               )}
 
-              {entries.map(({ id, entry }) => {
+              {entries.map(({ id, entry, raw }) => {
                 const isOpen = expanded === id;
                 const isTopThree = entry.rank <= 3;
+                const empty = isEmptyRow(raw);
+                const stale = isStaleRow(raw);
+                const avg = computeAvg(raw);
+                const renderScore = (s: number, extra = "") =>
+                  empty ? <span className={`text-muted-foreground/50 ${extra}`}>—</span>
+                        : <span className={`${scoreColor(s)} ${extra}`}>{s}</span>;
                 return (
                   <div key={id}>
                     <button
                       onClick={() => setExpanded(isOpen ? null : id)}
-                      className={`w-full text-left grid grid-cols-[1fr_auto] md:grid-cols-[2.5rem_1fr_7rem_4rem_4rem_3.5rem_3.5rem_3.5rem_4rem] gap-2 px-4 py-2.5 items-center transition-colors hover:bg-white/[0.03] border-b border-border/10 ${isTopThree ? "border-l-2 border-l-yellow-500/40" : "border-l-2 border-l-transparent"}`}
+                      className={`w-full text-left grid grid-cols-[1fr_auto] md:grid-cols-[2.5rem_1fr_7rem_3.5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.5rem_4rem] gap-2 px-4 py-2.5 items-center transition-colors hover:bg-white/[0.03] border-b border-border/10 ${isTopThree && !empty ? "border-l-2 border-l-yellow-500/40" : "border-l-2 border-l-transparent"} ${empty ? "opacity-40" : ""}`}
                     >
                       <div className="md:hidden flex items-center gap-2.5">
                         <span className="text-xs text-muted-foreground/60 w-5 text-right">{entry.rank}</span>
                         <SiteBadge domain={entry.domain} brandName={entry.brandName} size={24} />
                         <span className="font-medium text-sm truncate">{entry.domain}</span>
-                        <Badge className={`ml-auto text-[10px] shrink-0 ${entry.llmScore >= 71 ? "bg-emerald-500/20 text-emerald-400" : entry.llmScore >= 41 ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"}`}>{entry.llmScore}</Badge>
+                        {(stale || empty) && <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0 ml-auto" />}
+                        <Badge className={`${stale || empty ? "" : "ml-auto"} text-[10px] shrink-0 ${empty ? "bg-muted/30 text-muted-foreground" : avg >= 71 ? "bg-emerald-500/20 text-emerald-400" : avg >= 41 ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"}`}>{empty ? "—" : avg}</Badge>
                       </div>
                       <div className="md:hidden flex items-center justify-end">
                         {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground/50" /> : <ChevronDown className="w-4 h-4 text-muted-foreground/50" />}
@@ -266,26 +316,36 @@ const GeoRating = () => {
                       <span className="hidden md:flex items-center gap-2 font-medium text-sm">
                         <SiteBadge domain={entry.domain} brandName={entry.brandName} />
                         <span className="truncate">{entry.domain}{entry.brandName && entry.brandName !== entry.domain && <span className="text-muted-foreground/50 text-xs font-normal ml-1 max-w-[120px] truncate inline-block align-bottom">{entry.brandName}</span>}</span>
+                        {stale && !empty && <AlertTriangle className="w-3 h-3 text-yellow-400 shrink-0" aria-label="Данные устарели" />}
                       </span>
                       <span className="hidden md:block text-xs text-muted-foreground/60">{entry.category}</span>
-                      <span className={`hidden md:block text-sm font-bold ${scoreColor(entry.llmScore)}`}>{entry.llmScore}</span>
-                      <span className={`hidden md:block text-sm ${scoreColor(entry.seoScore)}`}>{entry.seoScore}</span>
+                      <span className="hidden md:block text-sm font-bold">{renderScore(entry.llmScore)}</span>
+                      <span className="hidden md:block text-sm">{renderScore(entry.seoScore)}</span>
+                      <span className="hidden md:block text-sm text-center">{renderScore(entry.schemaScore)}</span>
+                      <span className="hidden md:block text-sm text-center">{renderScore(entry.directScore)}</span>
                       <span className="hidden md:flex justify-center"><BoolIcon value={entry.hasLlmsTxt} /></span>
-                      <span className="hidden md:flex justify-center"><BoolIcon value={entry.hasSchema} /></span>
-                      <span className="hidden md:flex justify-center"><BoolIcon value={entry.hasFaq} /></span>
-                      <span className="hidden md:block text-xs text-muted-foreground/50 text-center">{entry.issuesCount}</span>
+                      <span className="hidden md:block text-xs text-muted-foreground/50 text-center">{empty ? "—" : entry.issuesCount}</span>
+                      <span className="hidden md:block text-[11px] text-muted-foreground/60 text-center">{formatLast(entry.verifiedAt)}</span>
                     </button>
 
                     {isOpen && (
                       <div className="px-4 py-4 border-b border-border/10 bg-card/30">
-                        <div className="grid grid-cols-2 gap-3 mb-4 max-w-xs">
+                        <div className="grid grid-cols-2 gap-3 mb-4 max-w-md">
                           <div className="border border-border/15 rounded-lg p-3 text-center">
-                            <div className={`text-2xl font-bold ${scoreColor(entry.llmScore)}`}>{entry.llmScore}</div>
+                            <div className={`text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.llmScore)}`}>{empty ? "—" : entry.llmScore}</div>
                             <div className="text-[10px] text-muted-foreground mt-0.5">LLM Score</div>
                           </div>
                           <div className="border border-border/15 rounded-lg p-3 text-center">
-                            <div className={`text-2xl font-bold ${scoreColor(entry.seoScore)}`}>{entry.seoScore}</div>
+                            <div className={`text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.seoScore)}`}>{empty ? "—" : entry.seoScore}</div>
                             <div className="text-[10px] text-muted-foreground mt-0.5">SEO Score</div>
+                          </div>
+                          <div className="border border-border/15 rounded-lg p-3 text-center">
+                            <div className={`text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.schemaScore)}`}>{empty ? "—" : entry.schemaScore}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">Schema Score</div>
+                          </div>
+                          <div className="border border-border/15 rounded-lg p-3 text-center">
+                            <div className={`text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.directScore)}`}>{empty ? "—" : entry.directScore}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">Direct Score</div>
                           </div>
                         </div>
                         {entry.topErrors?.length > 0 && (
@@ -300,6 +360,14 @@ const GeoRating = () => {
                             </ul>
                           </div>
                         )}
+                        <div className="text-xs text-muted-foreground/60 mb-3 flex items-center gap-2 flex-wrap">
+                          <span>Последняя проверка: {entry.verifiedAt ? new Date(entry.verifiedAt).toLocaleDateString("ru-RU") : "—"}</span>
+                          {(stale || empty) && (
+                            <span className="inline-flex items-center gap-1 text-yellow-400">
+                              <AlertTriangle className="w-3 h-3" /> {empty ? "Нет данных" : "Данные устарели"}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap gap-2 mb-3">
                           <a href={`https://${entry.domain}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80">
                             <ExternalLink className="w-3 h-3" />Открыть сайт
