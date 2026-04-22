@@ -9,6 +9,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { BookOpen, Code, FileText, Rocket, TrendingUp, Clock, Layers, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { NeuralNetworkBg } from "@/components/ui/neural-network-bg";
+import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 
 const moduleIcons = [BookOpen, Code, FileText, Rocket, TrendingUp];
 const moduleColors = [
@@ -124,6 +125,20 @@ const Academy = () => {
                 Начать обучение <ArrowRight className="w-4 h-4 ml-2" />
               </GradientButton>
             )}
+
+            <div className="mt-8 max-w-md mx-auto text-left">
+              <TypingCodeBlock
+                variant="minimal"
+                speed={26}
+                lineDelay={250}
+                lines={[
+                  "// progress.log",
+                  "lesson 01: GEO basics ✓",
+                  "lesson 02: llms.txt ✓",
+                  "lesson 03: Schema.org →",
+                ]}
+              />
+            </div>
           </motion.div>
           </div>
         </section>

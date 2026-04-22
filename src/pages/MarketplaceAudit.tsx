@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import { ShoppingBag, Loader2 } from 'lucide-react';
 import type { MarketplacePlatform, MarketplaceInputType } from '@/lib/marketplace-audit-types';
 import { NeuralNetworkBg } from '@/components/ui/neural-network-bg';
+import { FloatingCodeSnippets } from '@/components/ui/floating-code-snippets';
+import { BinaryStream } from '@/components/ui/binary-stream';
 
 export default function MarketplaceAudit() {
   const navigate = useNavigate();
@@ -73,6 +75,13 @@ export default function MarketplaceAudit() {
       <Header />
       <main className="relative overflow-hidden">
         <NeuralNetworkBg className="z-0 opacity-50" density="medium" />
+        <FloatingCodeSnippets
+          className="z-0"
+          snippets={['{ "wb_id": 12345 }', '"category": "Электроника"', '"rating": 4.7', 'ozon://product/87654', '{ "ad_ready": true }']}
+          mobileCount={2}
+          desktopCount={5}
+          opacity={0.85}
+        />
         <div className="container px-4 md:px-6 py-12 md:py-16 max-w-4xl mx-auto relative z-10">
         <div className="text-center mb-10">
           <div className="inline-flex p-3 rounded-2xl bg-primary/10 mb-4">

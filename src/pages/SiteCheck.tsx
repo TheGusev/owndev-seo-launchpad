@@ -14,6 +14,7 @@ import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHist
 import type { LucideIcon } from "lucide-react";
 import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 import { AuroraBackground } from "@/components/ui/aurora-background";
+import { MatrixRain } from "@/components/ui/matrix-rain";
 
 function getPollInterval(elapsedMs: number, progressPct: number): number {
   // Первые 10 секунд — 1 сек (быстрые ранние стадии 5/10/20/35)
@@ -224,6 +225,7 @@ const SiteCheck = () => {
       <Header />
       <main className="min-h-screen pt-24 pb-16 relative overflow-hidden">
         <AuroraBackground className="z-0 opacity-50" intensity="subtle" />
+        <MatrixRain className="z-0" density="low" opacity={0.15} />
         <div className="container max-w-6xl mx-auto px-4 relative z-10">
           <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
             <div>
@@ -311,6 +313,27 @@ const SiteCheck = () => {
           )}
 
           <CheckList />
+
+          {/* Mobile typing block (the aside one is desktop-only) */}
+          <div className="mt-8 lg:hidden">
+            <TypingCodeBlock
+              title="owndev ~ scanner"
+              language="bash"
+              speed={22}
+              lineDelay={180}
+              variant="ide"
+              mobileVariant="compact"
+              lines={[
+                "$ owndev scan --url example.ru",
+                "→ Fetching HTML…",
+                "✓ HTTP 200, 84.2 KB",
+                "→ Parsing meta tags",
+                "✓ Schema.org: Organization, FAQ",
+                "→ Computing LLM Score…",
+                "✓ Report ready in 47s",
+              ]}
+            />
+          </div>
             </div>
 
             <aside className="hidden lg:block sticky top-24">

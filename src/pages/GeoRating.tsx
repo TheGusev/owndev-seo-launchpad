@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import SiteBadge from "@/components/ui/site-badge";
 import { type GeoRatingEntry, SNAPSHOT_META, mapDbRowToEntry } from "@/data/geo-rating-types";
 import { NeuralNetworkBg } from "@/components/ui/neural-network-bg";
+import { BinaryStream } from "@/components/ui/binary-stream";
+import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
 
 const DEFAULT_CATEGORIES = ["Все"];
 const SCORE_FILTERS = [
@@ -188,6 +190,14 @@ const GeoRating = () => {
       <main className="min-h-screen bg-background pt-24 pb-16">
         <section className="relative overflow-hidden mb-12">
           <NeuralNetworkBg className="z-0 opacity-45" density="medium" />
+          <FloatingCodeSnippets
+            className="z-0"
+            snippets={['"rank": 1', '"score": 98', '"llms.txt": true', '{ "schema": "✓" }', '"category": "edu"']}
+            mobileCount={2}
+            desktopCount={4}
+            opacity={0.8}
+          />
+          <BinaryStream position="bottom" />
           <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">
