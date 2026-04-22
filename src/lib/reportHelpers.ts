@@ -103,6 +103,9 @@ export interface ReportData {
     direct: number;
     schema: number;
     ai: number;
+    // Sprint 6 — три честных скора (опциональны для backwards-compat)
+    geo?: number;
+    cro?: number;
   };
   issues: any[];
   keywords: any[];

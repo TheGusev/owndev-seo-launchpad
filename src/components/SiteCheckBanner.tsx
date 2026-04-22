@@ -10,7 +10,7 @@ const SiteCheckBanner = () => {
     <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mt-4 flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
       <Search className="w-5 h-5 text-primary shrink-0" />
       <p className="text-sm text-foreground flex-1">
-        Хотите проверить весь сайт сразу? SEO, Директ, конкуренты — в одном отчёте.
+        Хотите проверить сайт целиком? GEO-видимость, SEO и конверсия — в одном отчёте.
       </p>
       <Link
         to={to}
