@@ -325,9 +325,14 @@ function detectSeoFailuresFromHtml(html: string): Set<string> {
   if (!/<link[^>]*rel=["']canonical["']/i.test(html)) failed.add('canonical');
 
   // ogTags — все три
-  const hasOgTitle = /<meta[^>]*property=["']og:title["']/i.test(html);
-  const hasOgDesc = /<meta[^>]*property=["']og:description["']/i.test(html);
-  const hasOgImage = /<meta[^>]*property=["']og:image["']/i.test(html);
+  // Требуем именно непустой content (в обоих порядках атрибутов).
+  const ogContentRe = (prop: string) => new RegExp(
+    `<meta[^>]*property=["']${prop}["'][^>]*content=["'][^"']+["']|<meta[^>]*content=["'][^"']+["'][^>]*property=["']${prop}["']`,
+    'i',
+  );
+  const hasOgTitle = ogContentRe('og:title').test(html);
+  const hasOgDesc = ogContentRe('og:description').test(html);
+  const hasOgImage = ogContentRe('og:image').test(html);
   if (!(hasOgTitle && hasOgDesc && hasOgImage)) failed.add('ogTags');
 
   // robots — нет noindex
@@ -339,7 +344,7 @@ function detectSeoFailuresFromHtml(html: string): Set<string> {
   const bodyText = bodyMatch
     ? bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     : '';
-  const wordCount = bodyText.split(/\s+/).filter(w => w.length > 1).length;
+  const wordCount = bodyText.split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
   if (wordCount < 300) failed.add('contentLength');
 
   // images — процент с alt
@@ -361,8 +366,10 @@ function detectSeoFailuresFromHtml(html: string): Set<string> {
   // mobileViewport
   if (!/<meta[^>]*name=["']viewport["']/i.test(html)) failed.add('mobileViewport');
 
-  // noMixedContent — на странице с https не должно быть http:// ссылок на ресурсы
-  const hasMixedRes = /(src|href)=["']http:\/\//i.test(html);
+  // noMixedContent — http://-ресурсы (НЕ обычные <a href>) на https-странице.
+  const hasMixedRes = /(?:src|action|data|poster)=["']http:\/\//i.test(html)
+    || /<link[^>]*rel=["']stylesheet["'][^>]*href=["']http:\/\//i.test(html)
+    || /<script[^>]*src=["']http:\/\//i.test(html);
   if (hasMixedRes) failed.add('noMixedContent');
 
   // favicon
