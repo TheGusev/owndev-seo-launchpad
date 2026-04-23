@@ -4,20 +4,19 @@ import { FileDown, FileText } from "lucide-react";
 import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 
 const pdfItems = [
-  "Титульный лист с оценками",
+  "Триада скоров: GEO / SEO / CRO",
   "Технический паспорт сайта",
-  "Полный план исправления",
-  "Каждая ошибка: почему важно + как исправить",
-  "Анализ конкурентов с таблицей",
-  "Семантическое ядро 150+ запросов",
-  "Минус-слова по категориям",
-  "Приоритетный action plan",
+  "Schema.org валидация (типы и ошибки)",
+  "robots.txt + AI-боты (GPTBot, Claude, Perplexity)",
+  "llms.txt / llms-full.txt анализ",
+  "GEO/CRO сигналы (E-E-A-T, формы, CTA)",
+  "Бенчмарк по категории сайта",
+  "Приоритетный action plan с шагами",
 ];
 
 const wordItems = [
   "Все разделы PDF + редактирование",
   "Пример кода для каждой ошибки",
-  "Строка минус-слов для Директа",
   "Оглавление с навигацией",
   "Колонтитулы с номерами страниц",
   "Тёмная тема (Calibri, A4)",
@@ -87,10 +86,6 @@ const ReportValue = () => {
           </motion.div>
         </div>
 
-        <p className="text-center text-muted-foreground/60 text-xs mt-6">
-          Также: CSV ключевых слов · TXT минус-слов
-        </p>
-
         <div className="mt-8 max-w-2xl mx-auto">
           <TypingCodeBlock
             title="report.json"
@@ -101,10 +96,11 @@ const ReportValue = () => {
             lines={[
               "// OWNDEV audit export",
               '{ "url": "https://yoursite.ru",',
+              '  "geo_score": 78,',
               '  "seo_score": 87,',
-              '  "llm_score": 74,',
+              '  "cro_score": 65,',
               '  "issues": 12, "fixes": 12,',
-              '  "exports": ["pdf", "docx", "csv"] }',
+              '  "exports": ["pdf", "docx"] }',
             ]}
           />
         </div>
