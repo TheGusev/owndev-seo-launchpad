@@ -242,7 +242,11 @@ const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt, 
         <div className="space-y-2">
           {stages.map((stage, i) => {
             const Icon = stage.icon;
-            const isDone = progress >= stage.pct && !(i === stages.length - 1 && progress < 100);
+            // Stage is "done" only when gated index has passed it AND backend progress confirms.
+            const isDone =
+              i < currentStageIndex &&
+              progress >= stage.pct &&
+              !(i === stages.length - 1 && progress < 100);
             const isActive = !error && !isDone && i === currentStageIndex;
             const isError = !!error && i === currentStageIndex;
             const showLlmHeartbeat = isActive && stage.slow && secondsSinceUpdate >= 3;
