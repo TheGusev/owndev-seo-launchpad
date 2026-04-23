@@ -2,14 +2,15 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
 import type { ScanMode } from "@/lib/site-check-types";
 import { saveLastUrl } from "@/utils/lastUrl";
 import { ymGoal } from "@/utils/analytics";
 import { ensureProtocol } from "@/lib/api";
+import { getHistory } from "@/utils/scanHistory";
 
 interface ScanFormProps {
-  onSubmit: (url: string, mode: ScanMode) => void;
+  onSubmit: (url: string, mode: ScanMode, force?: boolean) => void;
   isLoading?: boolean;
 }
 
@@ -31,6 +32,7 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
   const [searchParams] = useSearchParams();
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [force, setForce] = useState(false);
 
   useEffect(() => {
     const paramUrl = searchParams.get("url");
@@ -38,6 +40,22 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
     if (paramUrl) setUrl(paramUrl);
     else if (savedUrl) setUrl(savedUrl);
   }, [searchParams]);
+
+  // Show "force rescan" toggle only if this URL was scanned recently (last hour).
+  const recentlyScanned = (() => {
+    const trimmed = url.trim();
+    if (!trimmed) return false;
+    try {
+      const host = new URL(ensureProtocol(trimmed)).hostname.toLowerCase();
+      const hourAgo = Date.now() - 60 * 60 * 1000;
+      return getHistory().some((h) => {
+        try {
+          const hHost = new URL(ensureProtocol(h.url)).hostname.toLowerCase();
+          return hHost === host && new Date(h.date).getTime() > hourAgo;
+        } catch { return false; }
+      });
+    } catch { return false; }
+  })();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +72,7 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
     const cleanUrl = ensureProtocol(url);
     saveLastUrl(cleanUrl);
     ymGoal("scan_started");
-    onSubmit(cleanUrl, "site");
+    onSubmit(cleanUrl, "site", force);
   };
 
   return (
@@ -76,6 +94,20 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
 
       {error && (
         <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{error}</p>
+      )}
+
+      {recentlyScanned && (
+        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={force}
+            onChange={(e) => setForce(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-border accent-primary cursor-pointer"
+            disabled={isLoading}
+          />
+          <RefreshCw className="w-3.5 h-3.5 text-primary/70" />
+          <span>Пересканировать заново (игнорировать кэш)</span>
+        </label>
       )}
 
       <Button
