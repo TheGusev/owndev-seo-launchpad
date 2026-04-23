@@ -167,21 +167,23 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { url, scan_id } = await req.json();
+    const { url, scan_id, force = false } = await req.json();
     if (!url) return new Response(JSON.stringify({ error: "url required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const domain = new URL(url).hostname;
 
-    // Check cache
-    const { data: cached } = await supabase
-      .from("tech_stack_cache")
-      .select("data_json")
-      .eq("domain", domain)
-      .gte("scanned_at", new Date(Date.now() - 86400000).toISOString())
-      .maybeSingle();
+    // Check cache (24h TTL) — bypassed when force=true
+    if (!force) {
+      const { data: cached } = await supabase
+        .from("tech_stack_cache")
+        .select("data_json")
+        .eq("domain", domain)
+        .gte("scanned_at", new Date(Date.now() - 86400000).toISOString())
+        .maybeSingle();
 
-    if (cached?.data_json) {
-      return new Response(JSON.stringify(cached.data_json), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (cached?.data_json) {
+        return new Response(JSON.stringify(cached.data_json), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     // Fetch HTML + WHOIS + GeoIP in parallel
