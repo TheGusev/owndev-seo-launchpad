@@ -81,6 +81,7 @@ const SiteCheck = () => {
   const [scanId, setScanId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [fromCache, setFromCache] = useState(false);
   const [limitScanId, setLimitScanId] = useState<string | null>(null);
   const [limitUrl, setLimitUrl] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
@@ -105,9 +106,10 @@ const SiteCheck = () => {
   const rescanTriggered = useRef(false);
   useEffect(() => {
     const rescanUrl = searchParams.get("url");
+    const forceParam = searchParams.get("force") === "1";
     if (rescanUrl && !rescanTriggered.current) {
       rescanTriggered.current = true;
-      handleSubmit(rescanUrl, "site");
+      handleSubmit(rescanUrl, "site", forceParam);
     }
   }, [searchParams]);
 
@@ -122,13 +124,21 @@ const SiteCheck = () => {
     setLimitUrl(null);
     setScanError(null);
     setProgress(0);
+    setFromCache(false);
     const now = Date.now();
     startedAtRef.current = now;
     setStartedAt(now);
     try {
       const result = await startScan(url, mode, { force });
       setScanId(result.scan_id);
-      startTracking(result.scan_id);
+      if (result.cached) {
+        // Honest fast-path: skip the multi-stage animation, jump straight to result.
+        setFromCache(true);
+        setProgress(100);
+        setTimeout(() => navigate(`/tools/site-check/result/${result.scan_id}?cached=1`), 600);
+      } else {
+        startTracking(result.scan_id);
+      }
     } catch (e: any) {
       if (e.lastScanId) {
         setLimitScanId(e.lastScanId);
@@ -246,6 +256,7 @@ const SiteCheck = () => {
                 realProgress={progress}
                 error={scanError}
                 startedAt={startedAt}
+                cached={fromCache}
                 domain={(() => { try { return new URL(searchParams.get("url") || "").hostname; } catch { return undefined; } })()}
               />
             ) : (

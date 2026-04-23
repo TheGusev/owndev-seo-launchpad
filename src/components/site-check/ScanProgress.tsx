@@ -52,6 +52,8 @@ interface ScanProgressProps {
   error?: string | null;
   domain?: string;
   startedAt?: number;
+  /** When true, the animation is replaced with a brief "loading saved result" spinner. */
+  cached?: boolean;
 }
 
 const formatElapsed = (ms: number) => {
@@ -94,15 +96,16 @@ const SubstepTicker = ({ steps, isMobile }: { steps: string[]; isMobile: boolean
   );
 };
 
-const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }: ScanProgressProps) => {
+const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt, cached = false }: ScanProgressProps) => {
   const realPct = Math.min(100, Math.max(0, realProgress));
 
-  // ── Smoothing: displayProgress lerps к realPct, не быстрее 30%/сек ──
+  // ── Smoothing: displayProgress lerps к realPct, не быстрее 12%/сек ──
+  // (≈8 сек на полный бар — даже если бэк отдаёт 100% сразу, шкала не «улетает»)
   const [displayProgress, setDisplayProgress] = useState(0);
   const rafRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(performance.now());
   useEffect(() => {
-    const MAX_PER_SEC = 30; // % в секунду
+    const MAX_PER_SEC = 12; // % в секунду
     const tick = (t: number) => {
       const dt = Math.max(0, (t - lastTickRef.current) / 1000);
       lastTickRef.current = t;
@@ -159,10 +162,59 @@ const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }
   const elapsedTotalMs = startedAt ? now - startedAt : 0;
   const secondsSinceUpdate = Math.floor((now - lastUpdateAt) / 1000);
 
-  // Determine active stage: first stage whose pct > progress
-  const activeIndex = stages.findIndex((s) => progress < s.pct);
-  const currentStageIndex = activeIndex === -1 ? stages.length - 1 : activeIndex;
+  // ── Stage gating: each stage stays "active" for at least MIN_STAGE_MS
+  // even if backend is faster. Prevents the steps from blinking past too fast to read.
+  const MIN_STAGE_MS = 2000;
+  const stageStartedAtRef = useRef<number[]>([Date.now()]);
+  // Pure-progress index = first stage whose pct > displayed progress
+  const progressIndex = (() => {
+    const i = stages.findIndex((s) => progress < s.pct);
+    return i === -1 ? stages.length - 1 : i;
+  })();
+  // Walk forward from the lowest unfinished gated index, advance only when
+  // both progress AND minimum duration are satisfied.
+  const [gatedIndex, setGatedIndex] = useState(0);
+  useEffect(() => {
+    if (gatedIndex >= stages.length - 1) return;
+    // Record start time of the current gated stage if not yet
+    if (stageStartedAtRef.current[gatedIndex] === undefined) {
+      stageStartedAtRef.current[gatedIndex] = Date.now();
+    }
+    const startedAtStage = stageStartedAtRef.current[gatedIndex] ?? Date.now();
+    const ageMs = Date.now() - startedAtStage;
+    const progressReady = progressIndex > gatedIndex;
+    if (!progressReady) return;
+    if (ageMs >= MIN_STAGE_MS) {
+      stageStartedAtRef.current[gatedIndex + 1] = Date.now();
+      setGatedIndex(gatedIndex + 1);
+    } else {
+      const t = setTimeout(() => {
+        stageStartedAtRef.current[gatedIndex + 1] = Date.now();
+        setGatedIndex((g) => (g === gatedIndex ? g + 1 : g));
+      }, MIN_STAGE_MS - ageMs);
+      return () => clearTimeout(t);
+    }
+  }, [progressIndex, gatedIndex, now]);
+
+  const currentStageIndex = gatedIndex;
   const currentStage = stages[currentStageIndex];
+
+  // Honest cached fast-path: don't pretend we're scanning for 14 seconds.
+  // Rendered AFTER all hooks to keep hook order stable.
+  if (cached) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 gap-3 max-w-xl mx-auto relative">
+        <NeuralNetworkBg className="-z-10 opacity-40 -m-6" density="low" />
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-sm text-muted-foreground">Загружаем сохранённый результат…</p>
+        {domain && (
+          <p className="text-xs text-muted-foreground/70">
+            Этот домен сканировался недавно — показываем кэш
+          </p>
+        )}
+      </div>
+    );
+  }
 
   // Visual progress stage label
   const stageLabelTop = error
@@ -190,7 +242,11 @@ const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }
         <div className="space-y-2">
           {stages.map((stage, i) => {
             const Icon = stage.icon;
-            const isDone = progress >= stage.pct && !(i === stages.length - 1 && progress < 100);
+            // Stage is "done" only when gated index has passed it AND backend progress confirms.
+            const isDone =
+              i < currentStageIndex &&
+              progress >= stage.pct &&
+              !(i === stages.length - 1 && progress < 100);
             const isActive = !error && !isDone && i === currentStageIndex;
             const isError = !!error && i === currentStageIndex;
             const showLlmHeartbeat = isActive && stage.slow && secondsSinceUpdate >= 3;
