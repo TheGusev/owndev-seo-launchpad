@@ -126,10 +126,19 @@ const SiteCheckResult = () => {
     </>
   );
 
-  const defaultScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 };
+  const defaultScores = { total: 0, seo: 0, direct: 0, schema: 0, ai: 0, geo: 0, cro: 0 };
   const rawScores = data.scores;
+  // Sprint 7 — мерджим top-level geoScore/seoScore/croScore с объектом scores,
+  // чтобы ScoreCards увидел триаду даже если бэк отдал старый формат.
   const scores = rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
-    ? { ...defaultScores, ...(rawScores as any) } : null;
+    ? {
+        ...defaultScores,
+        ...(rawScores as any),
+        ...(typeof data.geoScore === "number" ? { geo: data.geoScore } : {}),
+        ...(typeof data.seoScore === "number" ? { seo: data.seoScore } : {}),
+        ...(typeof data.croScore === "number" ? { cro: data.croScore } : {}),
+      }
+    : null;
   const breakdown = (rawScores?.breakdown || rawScores?.seoBreakdown)
     ? {
         seo: rawScores?.seoBreakdown || rawScores?.breakdown?.seo || null,

@@ -291,6 +291,12 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 
     const totalScore = scores?.total ?? result?.score ?? scores?.seo ?? null;
 
+    // Sprint 7 — пробрасываем новые честные скоры внутрь scores,
+    // чтобы фронтовый ScoreCards увидел триаду GEO/SEO/CRO.
+    const geoScoreVal = result?.geoScore ?? null;
+    const seoScoreVal = result?.seoScore ?? null;
+    const croScoreVal = result?.croScore ?? null;
+
     return reply.send({
       id: row.id,
       scan_id: row.id,
@@ -301,10 +307,12 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 
       scores: {
         total: totalScore,
-        seo: scores?.seo ?? null,
+        seo: seoScoreVal ?? scores?.seo ?? null,
         direct: scores?.direct ?? null,
         schema: scores?.schema ?? null,
         ai: scores?.ai ?? null,
+        geo: geoScoreVal,
+        cro: croScoreVal,
         confidence: scores?.confidence ?? null,
         issues_count: scores?.issues_count ?? issues.length ?? null,
         breakdown: scores?.breakdown ?? null,
