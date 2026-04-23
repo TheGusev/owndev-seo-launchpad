@@ -106,9 +106,10 @@ const SiteCheck = () => {
   const rescanTriggered = useRef(false);
   useEffect(() => {
     const rescanUrl = searchParams.get("url");
+    const forceParam = searchParams.get("force") === "1";
     if (rescanUrl && !rescanTriggered.current) {
       rescanTriggered.current = true;
-      handleSubmit(rescanUrl, "site");
+      handleSubmit(rescanUrl, "site", forceParam);
     }
   }, [searchParams]);
 
