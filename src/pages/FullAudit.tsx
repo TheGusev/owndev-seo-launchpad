@@ -349,13 +349,8 @@ const FullAudit = () => {
         domain,
         theme: siteCheckData?.theme || "Полный аудит сайта",
         scanDate: new Date().toISOString(),
-        scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
+        scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0, geo: 0, cro: 0 },
         issues: siteCheckData?.issues || [],
-        keywords: [],
-        minusWords: [],
-        competitors: [],
-        comparisonTable: null,
-        directMeta: null,
         seoData: (siteCheckData as any)?.seo_data || {},
         cro: croData
           ? {
@@ -392,13 +387,8 @@ const FullAudit = () => {
       domain,
       theme: siteCheckData?.theme || "Полный аудит сайта",
       scanDate: new Date().toISOString(),
-      scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0 },
+      scores: (siteCheckData?.scores as any) || { total: 0, seo: 0, direct: 0, schema: 0, ai: 0, geo: 0, cro: 0 },
       issues: siteCheckData?.issues || [],
-      keywords: [],
-      minusWords: [],
-      competitors: [],
-      comparisonTable: null,
-      directMeta: null,
       seoData: (siteCheckData as any)?.seo_data || {},
       cro: croData
         ? {
@@ -686,18 +676,18 @@ const FullAudit = () => {
                   <div className="flex flex-col items-center text-center">
                     <div
                       className={`w-28 h-28 rounded-full border-4 flex items-center justify-center ${scoreCircleClass(
-                        siteCheckData.scores.total,
+                        (siteCheckData.scores as any).geo ?? siteCheckData.scores.total,
                       )}`}
                     >
                       <div>
                         <div className="text-3xl font-bold">
-                          {siteCheckData.scores.total}
+                          {(siteCheckData.scores as any).geo ?? siteCheckData.scores.total}
                         </div>
                         <div className="text-[10px] uppercase opacity-70">из 100</div>
                       </div>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Общий GEO + SEO Score
+                      GEO Score (AI-видимость)
                     </p>
                   </div>
                 )}
