@@ -59,49 +59,42 @@ curl -s http://localhost:3001/api/v1/health
 pm2 list | grep owndev-backend
 ```
 
-## Security headers (nginx) — применить вручную на сервере
+## Nginx config — автодеплой из репо
 
-Эти заголовки даны вручную в `/etc/nginx/sites-available/owndev.ru` внутри блока
-`server { listen 443 ssl; ... }`. Без них наш собственный аудитор показывает
-низкий балл «Безопасность» и помечает отсутствие HSTS, CSP, X-Frame-Options,
-корректного `Cache-Control`.
+Конфиг nginx живёт в репозитории: **`nginx/owndev.ru.conf`**. Workflow
+`.github/workflows/deploy.yml` после сборки фронта автоматически:
 
-```nginx
-# --- Security headers ---
-add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://mc.yandex.ru https://*.supabase.co https://api.owndev.ru; frame-ancestors 'self';" always;
+1. Бэкапит текущий `/etc/nginx/sites-available/owndev.ru` в `*.bak.YYYYMMDD-HHMMSS`.
+2. Копирует свежий конфиг из репо.
+3. Делает `nginx -t`.
+4. Если ОК → `systemctl reload nginx`. Если нет → откатывает бэкап и падает.
 
-# --- Cache-Control ---
-# Статика — immutable на год (имена файлов хешируются Vite).
-location ~* \.(js|css|woff2|svg|png|jpg|jpeg|webp|ico)$ {
-  add_header Cache-Control "public, max-age=31536000, immutable" always;
-  try_files $uri =404;
-}
+Поэтому правки заголовков (HSTS, CSP, X-Frame-Options, Cache-Control) и proxy_pass
+делаются прямо в репо — никаких ручных действий на сервере при штатных правках.
 
-# HTML — короткий кэш, чтобы релизы быстро доезжали до пользователей.
-location / {
-  add_header Cache-Control "public, max-age=300, must-revalidate" always;
-  try_files $uri /index.html;
-}
+### Одноразовая настройка sudoers (на сервере, один раз)
 
-# .well-known/security.txt — статический файл из public/.
-location = /.well-known/security.txt {
-  add_header Content-Type "text/plain; charset=utf-8" always;
-  try_files $uri =404;
-}
+Чтобы CI мог копировать конфиг и перезагружать nginx без пароля, на сервере
+выполнить `sudo visudo` и добавить строку (заменив `deploy` на реального CI-юзера
+из `${{ secrets.SERVER_USER }}`):
+
+```
+deploy ALL=(ALL) NOPASSWD: /bin/cp, /usr/bin/cp, /usr/sbin/nginx, /bin/systemctl reload nginx, /bin/ln, /usr/bin/ln
 ```
 
-Применить:
+Без этого первый запуск workflow упадёт на шаге `nginx config sync`. Код и
+frontend при этом всё равно задеплоятся (`set -e` сработает позже).
+
+### Ручной откат (если что-то пошло не так)
 
 ```bash
+ls -t /etc/nginx/sites-available/owndev.ru.bak.* | head -1
+sudo cp /etc/nginx/sites-available/owndev.ru.bak.YYYYMMDD-HHMMSS \
+        /etc/nginx/sites-available/owndev.ru
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Проверить:
+### Проверка после деплоя
 
 ```bash
 curl -sI https://owndev.ru/ | grep -iE 'strict-transport|content-security|x-frame|x-content-type|referrer|cache-control'
