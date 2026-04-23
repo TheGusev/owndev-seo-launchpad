@@ -11,6 +11,7 @@ import type { ScanMode } from "@/lib/site-check-types";
 import { ArrowRight, Globe, Trash2, Search, Brain, Target, Sparkles, Key, ShieldCheck, FileText, Download, RefreshCw, Cpu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
+import { clearScanSession } from "@/utils/scanSession";
 import type { LucideIcon } from "lucide-react";
 import { TypingCodeBlock } from "@/components/ui/typing-code-block";
 import { AuroraBackground } from "@/components/ui/aurora-background";
@@ -102,6 +103,13 @@ const SiteCheck = () => {
     setHistory(getHistory());
   }, []);
 
+  // При входе на страницу сканера — всегда чистим "висящий" scan_id
+  // (из localStorage и URL ?scan_id=), чтобы новый запуск всегда стартовал с нуля.
+  // Прямые ссылки на /tools/site-check/result/:id используют pathname, их это не затрагивает.
+  useEffect(() => {
+    clearScanSession();
+  }, []);
+
   // Auto-submit from query params (e.g. from homepage)
   const rescanTriggered = useRef(false);
   useEffect(() => {
@@ -109,6 +117,8 @@ const SiteCheck = () => {
     const forceParam = searchParams.get("force") === "1";
     if (rescanUrl && !rescanTriggered.current) {
       rescanTriggered.current = true;
+      // Перед автозапуском по ?url=... тоже вычищаем любой остаточный scan_id.
+      clearScanSession();
       handleSubmit(rescanUrl, "site", forceParam);
     }
   }, [searchParams]);
