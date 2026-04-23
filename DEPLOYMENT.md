@@ -58,3 +58,52 @@ curl -s http://localhost:3001/api/v1/health
 # pm2 процесс online
 pm2 list | grep owndev-backend
 ```
+
+## Security headers (nginx) — применить вручную на сервере
+
+Эти заголовки даны вручную в `/etc/nginx/sites-available/owndev.ru` внутри блока
+`server { listen 443 ssl; ... }`. Без них наш собственный аудитор показывает
+низкий балл «Безопасность» и помечает отсутствие HSTS, CSP, X-Frame-Options,
+корректного `Cache-Control`.
+
+```nginx
+# --- Security headers ---
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://mc.yandex.ru https://*.supabase.co https://api.owndev.ru; frame-ancestors 'self';" always;
+
+# --- Cache-Control ---
+# Статика — immutable на год (имена файлов хешируются Vite).
+location ~* \.(js|css|woff2|svg|png|jpg|jpeg|webp|ico)$ {
+  add_header Cache-Control "public, max-age=31536000, immutable" always;
+  try_files $uri =404;
+}
+
+# HTML — короткий кэш, чтобы релизы быстро доезжали до пользователей.
+location / {
+  add_header Cache-Control "public, max-age=300, must-revalidate" always;
+  try_files $uri /index.html;
+}
+
+# .well-known/security.txt — статический файл из public/.
+location = /.well-known/security.txt {
+  add_header Content-Type "text/plain; charset=utf-8" always;
+  try_files $uri =404;
+}
+```
+
+Применить:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Проверить:
+
+```bash
+curl -sI https://owndev.ru/ | grep -iE 'strict-transport|content-security|x-frame|x-content-type|referrer|cache-control'
+curl -s https://owndev.ru/.well-known/security.txt
+```

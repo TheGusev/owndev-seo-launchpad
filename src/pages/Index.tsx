@@ -57,7 +57,7 @@ const Index = () => {
     <div className="min-h-screen bg-background scroll-smooth">
       <Helmet>
         <title>OWNDEV — Первый GEO и AI-ready аудит сайта в Рунете</title>
-        <meta name="description" content="Проверяем сайт по двум слоям: классическое SEO и готовность к AI-выдаче в ChatGPT, Яндекс Нейро и Perplexity. SEO Score + LLM Score в одном отчёте. Бесплатно." />
+        <meta name="description" content="OWNDEV — GEO и AI-ready аудит сайта в Рунете. SEO Score, GEO Score, CRO Score, Schema.org, llms.txt. PDF и Word отчёт за 60 секунд. Бесплатно." />
         <link rel="canonical" href="https://owndev.ru/" />
         <meta property="og:url" content="https://owndev.ru/" />
         <meta property="og:type" content="website" />

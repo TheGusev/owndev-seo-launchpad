@@ -1,0 +1,5 @@
+Contact: mailto:west-centro@mail.ru
+Contact: https://t.me/The_Suppor_t
+Expires: 2027-04-23T00:00:00.000Z
+Preferred-Languages: ru, en
+Canonical: https://owndev.ru/.well-known/security.txt
