@@ -2700,15 +2700,15 @@ async function checkDomainDailyLimit(supabase: any, domain: string): Promise<boo
 }
 
 async function findCachedScan(supabase: any, domain: string, mode: string): Promise<any | null> {
-  // Cache: return recent scan for same domain (1 hour TTL)
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  // Cache: return recent scan for same domain (15 min TTL)
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from('scans')
-    .select('id, status, progress_pct, scores')
+    .select('id, status, progress_pct, scores, created_at')
     .ilike('url', `%${domain}%`)
     .eq('mode', mode)
     .eq('status', 'done')
-    .gte('created_at', oneHourAgo)
+    .gte('created_at', cutoff)
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -2730,7 +2730,7 @@ Deno.serve(async (req) => {
     // POST /start
     if (req.method === 'POST' && (pathParts.length <= 1 || pathParts[1] === 'start')) {
       const body = await json();
-      const { url: scanUrl, mode = 'page' } = body;
+      const { url: scanUrl, mode = 'page', force = false } = body;
       
       if (!scanUrl) {
         return new Response(JSON.stringify({ error: 'url is required' }), { status: 400, headers: jsonHeaders });
@@ -2768,11 +2768,17 @@ Deno.serve(async (req) => {
       }
 
       // Check cache: return existing recent scan
-      const cached = await findCachedScan(supabase, domain, mode);
-      if (cached) {
-        return new Response(JSON.stringify({
-          scan_id: cached.id, status: cached.status, cached: true,
-        }), { headers: jsonHeaders });
+      // Skipped when client passes force=true (still subject to per-domain daily limit above)
+      if (!force) {
+        const cached = await findCachedScan(supabase, domain, mode);
+        if (cached) {
+          return new Response(JSON.stringify({
+            scan_id: cached.id,
+            status: cached.status,
+            cached: true,
+            cached_at: cached.created_at,
+          }), { headers: jsonHeaders });
+        }
       }
 
       // Concurrency limit: max 8 running full_reports
