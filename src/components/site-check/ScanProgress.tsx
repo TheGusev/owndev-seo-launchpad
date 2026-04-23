@@ -97,22 +97,6 @@ const SubstepTicker = ({ steps, isMobile }: { steps: string[]; isMobile: boolean
 };
 
 const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt, cached = false }: ScanProgressProps) => {
-  // Honest cached fast-path: don't pretend we're scanning for 14 seconds.
-  if (cached) {
-    return (
-      <div className="flex flex-col items-center justify-center py-10 gap-3 max-w-xl mx-auto relative">
-        <NeuralNetworkBg className="-z-10 opacity-40 -m-6" density="low" />
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-sm text-muted-foreground">Загружаем сохранённый результат…</p>
-        {domain && (
-          <p className="text-xs text-muted-foreground/70">
-            Этот домен сканировался недавно — показываем кэш
-          </p>
-        )}
-      </div>
-    );
-  }
-
   const realPct = Math.min(100, Math.max(0, realProgress));
 
   // ── Smoothing: displayProgress lerps к realPct, не быстрее 12%/сек ──
@@ -182,6 +166,23 @@ const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt, 
   const activeIndex = stages.findIndex((s) => progress < s.pct);
   const currentStageIndex = activeIndex === -1 ? stages.length - 1 : activeIndex;
   const currentStage = stages[currentStageIndex];
+
+  // Honest cached fast-path: don't pretend we're scanning for 14 seconds.
+  // Rendered AFTER all hooks to keep hook order stable.
+  if (cached) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 gap-3 max-w-xl mx-auto relative">
+        <NeuralNetworkBg className="-z-10 opacity-40 -m-6" density="low" />
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-sm text-muted-foreground">Загружаем сохранённый результат…</p>
+        {domain && (
+          <p className="text-xs text-muted-foreground/70">
+            Этот домен сканировался недавно — показываем кэш
+          </p>
+        )}
+      </div>
+    );
+  }
 
   // Visual progress stage label
   const stageLabelTop = error
