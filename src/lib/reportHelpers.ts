@@ -108,11 +108,13 @@ export interface ReportData {
     cro?: number;
   };
   issues: any[];
-  keywords: any[];
-  minusWords: any[];
-  competitors: any[];
-  comparisonTable: any;
-  directMeta: any;
+  // Sprint 7 — legacy-поля. Оставлены опциональными для backwards-compat,
+  // фактически больше не используются (генераторы PDF/Word их игнорируют).
+  keywords?: any[];
+  minusWords?: any[];
+  competitors?: any[];
+  comparisonTable?: any;
+  directMeta?: any;
   seoData: any;
   cro?: CroSection;
 }
