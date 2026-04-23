@@ -278,7 +278,7 @@ const SiteCheckResult = () => {
             const hasLlms = Boolean(data.seo_data?.hasLlmsTxt || (data as any).llmsTxt?.found);
             if (hasLlms) {
               return (
-                <div className="inline-flex items-center gap-2 text-sm text-emerald-400/80">
+                <div className="inline-flex items-center gap-2 text-sm text-primary/80">
                   <Bot className="w-4 h-4" /> llms.txt найден на сайте — проверка пройдена ✓
                 </div>
               );
