@@ -1,105 +1,89 @@
 
 
-## OWNDEV → 100/100: финальный план (ИНН-only)
+## Автодеплой nginx-конфига + замена Telegram на @one_help
 
-### Реквизиты
-В видимом блоке и комментариях: **«ИП, ИНН 511007293446»**. Никаких ОГРНИП/ФИО — ни в HTML, ни в TODO.
+### Часть 1 — почему nginx-заголовки требуют отдельного шага
 
-### Что делаю
+`.github/workflows/deploy.yml` сейчас деплоит только **код**: `git pull` → собрать backend (`npm run build` + `pm2 restart`) → собрать frontend (`npm run build` в `dist/`). Конфиг nginx живёт в `/etc/nginx/sites-available/owndev.ru` — это **системный файл вне репозитория**, workflow его не касается. Поэтому HSTS/CSP/Cache-Control не применятся, пока конфиг не окажется на сервере физически.
 
-#### 1. `index.html` — статический SEO-fallback внутри `<div id="root">`
-React при монтировании заменяет содержимое — пользователь видит SPA, краулер (без JS) получает полноценный HTML. ~700+ слов, 1×H1, 6×H2, CTA above-the-fold.
+**Решение:** положить nginx-конфиг в репо и расширить workflow, чтобы он сам копировал конфиг и перезагружал nginx. После этого правки заголовков будут ехать так же автоматически, как код.
 
-```text
-<header>OWNDEV · nav: Инструменты · GEO-аудит · Блог · Контакты</header>
-<main>
-  <h1>GEO и AI-ready аудит сайта — проверка готовности к ChatGPT, Perplexity, Яндекс Нейро</h1>
-  <p>Лид 80–100 слов</p>
-  <a class="cta" href="/tools/site-check">Проверить сайт бесплатно →</a>
+### Часть 2 — что делаю
 
-  <h2>Что проверяет OWNDEV</h2><ul>10 пунктов pipeline</ul>
-  <h2>Кому подходит GEO-аудит</h2><p>~80 слов</p>
-  <h2>Чем GEO-аудит отличается от классического SEO</h2><p>~100 слов</p>
-  <h2>Что вы получите в отчёте</h2><p>~80 слов</p>
-  <h2>Часто задаваемые вопросы</h2><details>×4</details>
+#### A. Telegram-контакт `@The_Suppor_t` → `@one_help`
 
-  <h2>Контакты и реквизиты</h2>
-  <address>
-    ИП, ИНН 511007293446<br>
-    Тел: +7 (906) 998-98-88<br>
-    Email: west-centro@mail.ru<br>
-    Telegram: @The_Suppor_t<br>
-    Адрес: Россия
-  </address>
-</main>
-<footer>© 2026 OWNDEV.ru · Сделано ❤️ в России 🇷🇺</footer>
+Заменить во всех 5 местах:
+1. `index.html:48` — `Organization → sameAs`
+2. `index.html:183` — видимый `<address>` в SEO-fallback
+3. `src/components/Footer.tsx:95` — иконка соцсети в футере
+4. `src/pages/Index.tsx:33` — JSON-LD Organization
+5. `public/.well-known/security.txt:2` — Contact для security researchers
+6. `DEPLOYMENT.md` — упоминание в комментариях про security headers (если есть)
+
+#### B. Nginx-конфиг как часть репозитория
+
+**Новый файл:** `nginx/owndev.ru.conf` — полный server-блок с:
+- `listen 443 ssl http2;` + `server_name owndev.ru www.owndev.ru;`
+- SSL paths (Let's Encrypt по дефолту: `/etc/letsencrypt/live/owndev.ru/...`)
+- `root /var/www/owndev.ru/dist;`
+- Security headers: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+- `location /api/` → `proxy_pass http://127.0.0.1:3001;`
+- `location ~* \.(js|css|woff2|svg|png|jpg|jpeg|webp|ico)$` → `Cache-Control: max-age=31536000, immutable`
+- `location /` → `try_files $uri /index.html;` + `Cache-Control: max-age=300, must-revalidate`
+- `location = /.well-known/security.txt` → `Content-Type: text/plain`
+- HTTP→HTTPS redirect (`server { listen 80; return 301 https://$host$request_uri; }`)
+
+> Я не знаю текущих SSL-путей и точных директив существующего конфига сервера. Чтобы не сломать работающий сайт, перед автоприменением нужен **бэкап** и **тестовый прогон** — см. шаги в workflow ниже.
+
+#### C. Расширение `.github/workflows/deploy.yml`
+
+Добавить шаги после `frontend build`:
+
+```bash
+echo "=== nginx config sync ==="
+# Бэкап текущего конфига (на случай отката)
+sudo cp /etc/nginx/sites-available/owndev.ru \
+        /etc/nginx/sites-available/owndev.ru.bak.$(date +%Y%m%d-%H%M%S) || true
+
+# Скопировать новый конфиг из репо
+sudo cp /var/www/owndev.ru/nginx/owndev.ru.conf \
+        /etc/nginx/sites-available/owndev.ru
+
+# Проверить синтаксис
+if sudo nginx -t; then
+  sudo systemctl reload nginx
+  echo "nginx reloaded ok"
+else
+  echo "nginx config invalid — rolling back"
+  sudo cp $(ls -t /etc/nginx/sites-available/owndev.ru.bak.* | head -1) \
+          /etc/nginx/sites-available/owndev.ru
+  exit 1
+fi
 ```
 
-Trust signals: телефон + email + Telegram + ИНН + юр.форма = **5/4** ✓
+**Требование к серверу:** пользователь `${{ secrets.SERVER_USER }}` должен иметь NOPASSWD-sudo на команды `cp`, `nginx`, `systemctl reload nginx`. Если sudo требует пароль — workflow упадёт, и заголовки придётся применить вручную одним разом, а дальше автодеплой заработает.
 
-#### 2. `index.html` — метаданные
-- `description` → 149 симв.: `OWNDEV — GEO и AI-ready аудит сайта в Рунете. SEO Score, GEO Score, CRO Score, Schema.org, llms.txt. PDF и Word отчёт за 60 секунд. Бесплатно.`
-- `logo` → `https://owndev.ru/favicon.ico` (вместо несуществующего `/logo.png`)
-- **+ BreadcrumbList** JSON-LD (5-й блок в `@graph`)
-- **+ Organization → telephone, email, address** в существующий блок
+#### D. `DEPLOYMENT.md` — переписать секцию
 
-#### 3. `src/pages/Index.tsx` — синхронизировать description ≤160 в Helmet
-
-#### 4. `public/.well-known/security.txt` — RFC 9116
-```
-Contact: mailto:west-centro@mail.ru
-Contact: https://t.me/The_Suppor_t
-Expires: 2027-04-23T00:00:00.000Z
-Preferred-Languages: ru, en
-Canonical: https://owndev.ru/.well-known/security.txt
-```
-
-#### 5. Alt-атрибуты
-Пройдусь по `Footer.tsx`, `Header.tsx`, `BlogPreview.tsx` — добавлю описательные alt где их нет.
-
-#### 6. `DEPLOYMENT.md` — секция «Security headers (nginx)»
-Готовый сниппет для серверного применения: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Cache-Control (immutable для статики, 5 мин для HTML).
-
-```nginx
-add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://mc.yandex.ru https://*.supabase.co https://api.owndev.ru; frame-ancestors 'self';" always;
-
-location ~* \.(js|css|woff2|svg|png|jpg|jpeg|webp|ico)$ {
-  add_header Cache-Control "public, max-age=31536000, immutable" always;
-  try_files $uri =404;
-}
-location / {
-  add_header Cache-Control "public, max-age=300, must-revalidate" always;
-  try_files $uri /index.html;
-}
-```
-
-С инструкцией: `nginx -t && systemctl reload nginx`.
-
-### Ожидаемый результат
-
-| Скор | Сейчас | После фронта | После фронта + nginx |
-|---|---|---|---|
-| Общий | 60 | 88–92 | **96–100** |
-| SEO | 58 | 95+ | 100 |
-| Директ/CRO | 35 | 85+ | 90+ |
-| Schema | 85 | 100 | 100 |
-| GEO/AI | 68 | 95+ | 100 |
-| Безопасность | 40 | 55 | **100** |
+Убрать «применить вручную» — теперь это делает CI. Оставить только:
+- путь `nginx/owndev.ru.conf` в репо
+- одноразовая настройка sudoers на сервере (`visudo`):
+  ```
+  deploy ALL=(ALL) NOPASSWD: /usr/bin/cp, /usr/sbin/nginx, /bin/systemctl reload nginx
+  ```
+- как сделать ручной откат (`cp .bak → /etc/nginx/sites-available/`)
 
 ### Файлы
 
-- `index.html` — fallback в `<div id="root">`, BreadcrumbList, description ≤160, logo path, Organization contacts.
-- `src/pages/Index.tsx` — description ≤160 в Helmet.
-- `public/.well-known/security.txt` — новый.
-- `src/components/Footer.tsx`, `src/components/Header.tsx`, `src/components/BlogPreview.tsx` — alt-атрибуты при необходимости.
-- `DEPLOYMENT.md` — секция nginx security headers.
+- **edit** `index.html` — Telegram в JSON-LD `sameAs` и в `<address>`.
+- **edit** `src/pages/Index.tsx` — Telegram в Organization JSON-LD.
+- **edit** `src/components/Footer.tsx` — ссылка на Telegram в футере.
+- **edit** `public/.well-known/security.txt` — Contact-строка.
+- **new** `nginx/owndev.ru.conf` — полный nginx server-блок.
+- **edit** `.github/workflows/deploy.yml` — шаг nginx config sync с бэкапом и rollback.
+- **edit** `DEPLOYMENT.md` — секция про автодеплой nginx и одноразовый sudoers-setup.
 
-### После деплоя
-1. GitHub Actions автодеплой фронта.
-2. Применить nginx-сниппет на сервере по `DEPLOYMENT.md`.
-3. Запустить наш scan для `owndev.ru` — ожидается 96–100/100.
+### Что должен сделать пользователь после мерджа (1 раз, потом всё авто)
+
+На сервере выполнить `sudo visudo` и добавить строку с NOPASSWD для команд из списка выше — иначе CI не сможет перезагрузить nginx. После этого все будущие правки заголовков/кэша/прокси едут автоматически вместе с кодом.
 
