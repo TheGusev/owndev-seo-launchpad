@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { SkeletonResultsGrid } from "@/components/ui/skeleton-card";
 import { addToHistory, getHistory } from "@/utils/scanHistory";
 import { useToast } from "@/hooks/use-toast";
+import { t } from "@/i18n/strings";
 
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
