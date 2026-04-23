@@ -1,57 +1,76 @@
 
 
-## Скрыть кнопку «Скачать llms.txt» если файл уже есть
+## Локализация блока llms.txt через единый i18n-словарь
 
-### Проблема
-В `SiteCheckResult.tsx` (строки 276–284) кнопка-предложение «Скачать llms.txt для вашего сайта» показывается **всегда**, даже если на проверяемом сайте llms.txt уже найден. Это противоречит логике: предложение нужно только тем, у кого файла нет.
+### Контекст
 
-### Решение
+Сейчас в `src/pages/SiteCheckResult.tsx` (строки ~270–295) тексты блока `llms.txt` захардкожены на русском прямо в JSX:
+- «llms.txt найден на сайте — проверка пройдена ✓»
+- «Сгенерировать llms.txt для вашего сайта»
+- «На вашем сайте файл не найден — создайте по стандарту llmstxt.org»
 
-В `src/pages/SiteCheckResult.tsx` обернуть блок кнопки в условие — показывать только если `llms.txt` отсутствует.
+В проекте **нет** установленной i18n-библиотеки (`react-i18next`, `formatjs` и т.п.) — все тексты по проекту хранятся как строковые литералы в JSX. Соответственно «единый словарь» нужно завести как лёгкий собственный модуль без новых зависимостей, чтобы потом туда же постепенно переезжали и другие тексты.
 
-**Источник истины (в порядке приоритета):**
-1. `data.seo_data?.hasLlmsTxt === true` → файл есть, **скрыть** кнопку
-2. `data.llmsTxt?.found === true` (новое поле из Sprint 3 worker) → файл есть, **скрыть**
-3. Иначе — показать кнопку (как сейчас)
+### Что делаем
 
-**Изменение в коде:**
+#### 1. Создать минимальный i18n-словарь
 
-```tsx
-{/* 11. llms.txt — показываем только если файла НЕТ */}
-{!(data.seo_data?.hasLlmsTxt || data.llmsTxt?.found) && (
-  <div className="flex flex-col items-start gap-1">
-    <button
-      onClick={() => { import('@/utils/generateLlmsTxt').then(...) }}
-      className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-4"
-    >
-      <Bot className="w-4 h-4" /> Сгенерировать llms.txt для вашего сайта
-    </button>
-    <span className="text-xs text-muted-foreground ml-6">
-      На вашем сайте файл не найден — создайте по стандарту llmstxt.org
-    </span>
-  </div>
-)}
+**Новый файл:** `src/i18n/strings.ts`
+
+- Один объект `strings` с namespace-ами по разделам (`siteCheckResult.llmsTxt.*` для текущего блока).
+- Помощник `t(path: string, vars?: Record<string,string>)` — лукап по точечному пути + простая подстановка `{var}`.
+- Дефолтный язык — `ru` (другие пока не вводим, но структура готова к добавлению `en` без рефакторинга).
+
+Структура:
+
+```ts
+// src/i18n/strings.ts
+export const strings = {
+  ru: {
+    siteCheckResult: {
+      llmsTxt: {
+        foundBadge: 'llms.txt найден на сайте — проверка пройдена ✓',
+        generateButton: 'Сгенерировать llms.txt для вашего сайта',
+        notFoundHint: 'На вашем сайте файл не найден — создайте по стандарту llmstxt.org',
+      },
+    },
+  },
+} as const;
+
+export type Lang = keyof typeof strings;          // 'ru'
+const DEFAULT_LANG: Lang = 'ru';
+
+export function t(path: string, vars?: Record<string, string>, lang: Lang = DEFAULT_LANG): string {
+  const value = path.split('.').reduce<any>((acc, key) => (acc ? acc[key] : undefined), strings[lang]);
+  if (typeof value !== 'string') return path; // fallback: показать путь, если ключ не найден
+  return vars ? value.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`) : value;
+}
 ```
 
-Дополнительно — изменить текст с «Скачать» на **«Сгенерировать»** (это честнее: мы генерим шаблон под сайт, а не скачиваем существующий).
+Без хука/контекста — простая функция. Этого достаточно: язык один, ререндеры на смену языка пока не нужны.
 
-### Бонус (если файл есть)
+#### 2. Подключить словарь в `SiteCheckResult.tsx`
 
-Когда `hasLlmsTxt === true` — вместо кнопки показать тонкую зелёную подсказку:
+В `src/pages/SiteCheckResult.tsx`:
+- Добавить импорт: `import { t } from '@/i18n/strings';`
+- Заменить три захардкоженные строки в блоке llms.txt (строки ~270–295) на:
+  - `t('siteCheckResult.llmsTxt.foundBadge')`
+  - `t('siteCheckResult.llmsTxt.generateButton')`
+  - `t('siteCheckResult.llmsTxt.notFoundHint')`
 
-```tsx
-{(data.seo_data?.hasLlmsTxt || data.llmsTxt?.found) && (
-  <div className="inline-flex items-center gap-2 text-sm text-emerald-400/80">
-    <Bot className="w-4 h-4" /> llms.txt найден на сайте — проверка пройдена ✓
-  </div>
-)}
-```
+Никакой другой логики/верстки не трогаем — состояния `hasLlms`, иконки `<Bot/>`, классы, импорт `generateLlmsTxt` остаются как есть.
 
 ### Технические детали
 
-**Файл:** `src/pages/SiteCheckResult.tsx`, строки 276–284 (блок «11. llms.txt»).
+**Файлы:**
+- `src/i18n/strings.ts` — новый, ~25 строк, без зависимостей.
+- `src/pages/SiteCheckResult.tsx` — заменить 3 строковых литерала на вызовы `t(...)`, добавить 1 импорт.
 
-**Без изменений в бэке.** `seo_data.hasLlmsTxt` уже сохраняется worker'ом в `site_check_scans.seo_data` и приходит во фронт через `getFullScan(scanId)`. Поле `llmsTxt` (top-level) тоже уже пишется (Sprint 3, см. `SiteCheckWorker.ts:104`) — используем как fallback.
+**Обратная совместимость:** визуально и функционально для пользователя ничего не меняется — тот же текст, та же логика отображения. Меняется только источник строк.
 
-**Деплой:** автоматический через GitHub Actions после пуша в `main` (только фронт).
+**Расширение в будущем:**
+- Добавление нового языка = новая ветка в `strings.ru` → `strings.en` + переключатель `lang` (можно завести через `localStorage`/контекст позже).
+- Перевод новых блоков (например `ScanProgress` под‑шаги или `ReportValue`) — добавлять ключи в тот же словарь и заменять литералы на `t(...)`.
+
+**Деплой:** только фронт, автодеплой через GitHub Actions после пуша в `main`.
 
