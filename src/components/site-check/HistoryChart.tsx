@@ -18,10 +18,9 @@ interface HistoryChartProps {
 
 const SERIES = [
   { key: "total", label: "Total", color: "hsl(var(--primary))" },
+  { key: "geo", label: "GEO", color: "hsl(265 70% 65%)" },
   { key: "seo", label: "SEO", color: "hsl(180 70% 50%)" },
-  { key: "ai", label: "AI", color: "hsl(265 70% 65%)" },
-  { key: "schema", label: "Schema", color: "hsl(35 85% 55%)" },
-  { key: "direct", label: "Direct", color: "hsl(150 65% 50%)" },
+  { key: "cro", label: "CRO", color: "hsl(150 65% 50%)" },
 ] as const;
 
 function formatDate(iso: string) {
@@ -85,9 +84,8 @@ const HistoryChart = ({ url }: HistoryChartProps) => {
     date: formatDate(h.created_at),
     total: h.total ?? 0,
     seo: h.seo ?? 0,
-    ai: h.ai ?? 0,
-    schema: h.schema ?? 0,
-    direct: h.direct ?? 0,
+    geo: h.ai ?? 0,
+    cro: h.direct ?? 0,
   }));
 
   const first = history[0];
