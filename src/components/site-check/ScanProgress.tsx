@@ -162,9 +162,41 @@ const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt, 
   const elapsedTotalMs = startedAt ? now - startedAt : 0;
   const secondsSinceUpdate = Math.floor((now - lastUpdateAt) / 1000);
 
-  // Determine active stage: first stage whose pct > progress
-  const activeIndex = stages.findIndex((s) => progress < s.pct);
-  const currentStageIndex = activeIndex === -1 ? stages.length - 1 : activeIndex;
+  // ── Stage gating: each stage stays "active" for at least MIN_STAGE_MS
+  // even if backend is faster. Prevents the steps from blinking past too fast to read.
+  const MIN_STAGE_MS = 2000;
+  const stageStartedAtRef = useRef<number[]>([Date.now()]);
+  // Pure-progress index = first stage whose pct > displayed progress
+  const progressIndex = (() => {
+    const i = stages.findIndex((s) => progress < s.pct);
+    return i === -1 ? stages.length - 1 : i;
+  })();
+  // Walk forward from the lowest unfinished gated index, advance only when
+  // both progress AND minimum duration are satisfied.
+  const [gatedIndex, setGatedIndex] = useState(0);
+  useEffect(() => {
+    if (gatedIndex >= stages.length - 1) return;
+    // Record start time of the current gated stage if not yet
+    if (stageStartedAtRef.current[gatedIndex] === undefined) {
+      stageStartedAtRef.current[gatedIndex] = Date.now();
+    }
+    const startedAtStage = stageStartedAtRef.current[gatedIndex] ?? Date.now();
+    const ageMs = Date.now() - startedAtStage;
+    const progressReady = progressIndex > gatedIndex;
+    if (!progressReady) return;
+    if (ageMs >= MIN_STAGE_MS) {
+      stageStartedAtRef.current[gatedIndex + 1] = Date.now();
+      setGatedIndex(gatedIndex + 1);
+    } else {
+      const t = setTimeout(() => {
+        stageStartedAtRef.current[gatedIndex + 1] = Date.now();
+        setGatedIndex((g) => (g === gatedIndex ? g + 1 : g));
+      }, MIN_STAGE_MS - ageMs);
+      return () => clearTimeout(t);
+    }
+  }, [progressIndex, gatedIndex, now]);
+
+  const currentStageIndex = gatedIndex;
   const currentStage = stages[currentStageIndex];
 
   // Honest cached fast-path: don't pretend we're scanning for 14 seconds.
