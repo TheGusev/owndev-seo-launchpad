@@ -1,89 +1,75 @@
 
 
-## Автодеплой nginx-конфига + замена Telegram на @one_help
+## Два независимых вопроса: кэш и темп прогресса
 
-### Часть 1 — почему nginx-заголовки требуют отдельного шага
+### 1. Почему «не меняются данные» при пересканировании
 
-`.github/workflows/deploy.yml` сейчас деплоит только **код**: `git pull` → собрать backend (`npm run build` + `pm2 restart`) → собрать frontend (`npm run build` в `dist/`). Конфиг nginx живёт в `/etc/nginx/sites-available/owndev.ru` — это **системный файл вне репозитория**, workflow его не касается. Поэтому HSTS/CSP/Cache-Control не применятся, пока конфиг не окажется на сервере физически.
+Нашёл **три уровня кэша**, любой из которых может вернуть старый результат для уже проверенного домена:
 
-**Решение:** положить nginx-конфиг в репо и расширить workflow, чтобы он сам копировал конфиг и перезагружал nginx. После этого правки заголовков будут ехать так же автоматически, как код.
+**A) Серверный кэш сканов (главный виновник)** — `supabase/functions/site-check-scan/index.ts:2702-2716`, `findCachedScan()`:
+- TTL: **1 час** для домена в режиме `page`/`site`
+- При повторном `POST /start` для `goruslugimsk.ru` сервер возвращает **тот же `scan_id`** старого скана и флаг `cached: true` — никакого нового пайплайна не запускается, ты видишь снимок до твоего деплоя.
 
-### Часть 2 — что делаю
+**B) Дневной лимит** — `checkDomainDailyLimit()`, строка 2691: **3 скана на домен в сутки**. После трёх попыток отдаётся 429, фронт показывает «уже проверялся».
 
-#### A. Telegram-контакт `@The_Suppor_t` → `@one_help`
+**C) Кэш tech-passport** — `supabase/functions/tech-passport/index.ts:175-186`: **24 часа** на `(domain → data_json)` в таблице `tech_stack_cache`. Технологии, WHOIS, GeoIP подтянутся старые, даже если основной скан пересоберётся.
 
-Заменить во всех 5 местах:
-1. `index.html:48` — `Organization → sameAs`
-2. `index.html:183` — видимый `<address>` в SEO-fallback
-3. `src/components/Footer.tsx:95` — иконка соцсети в футере
-4. `src/pages/Index.tsx:33` — JSON-LD Organization
-5. `public/.well-known/security.txt:2` — Contact для security researchers
-6. `DEPLOYMENT.md` — упоминание в комментариях про security headers (если есть)
+**D) react-query** — `staleTime: 30_000` (GeoRating и часть страниц). Влияет только на UI-кэш в браузере, чинится `Cmd+Shift+R` или кнопкой Refresh.
 
-#### B. Nginx-конфиг как часть репозитория
+Дополнительно — наш собственный nginx-конфиг `nginx/owndev.ru.conf:82` ставит `Cache-Control: public, max-age=300` на HTML. Это про статику owndev.ru, на сканы `goruslugimsk.ru` не влияет, но объясняет, почему _наш_ сайт OwnDev может пять минут отдавать старый `index.html` после деплоя.
 
-**Новый файл:** `nginx/owndev.ru.conf` — полный server-блок с:
-- `listen 443 ssl http2;` + `server_name owndev.ru www.owndev.ru;`
-- SSL paths (Let's Encrypt по дефолту: `/etc/letsencrypt/live/owndev.ru/...`)
-- `root /var/www/owndev.ru/dist;`
-- Security headers: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
-- `location /api/` → `proxy_pass http://127.0.0.1:3001;`
-- `location ~* \.(js|css|woff2|svg|png|jpg|jpeg|webp|ico)$` → `Cache-Control: max-age=31536000, immutable`
-- `location /` → `try_files $uri /index.html;` + `Cache-Control: max-age=300, must-revalidate`
-- `location = /.well-known/security.txt` → `Content-Type: text/plain`
-- HTTP→HTTPS redirect (`server { listen 80; return 301 https://$host$request_uri; }`)
+---
 
-> Я не знаю текущих SSL-путей и точных директив существующего конфига сервера. Чтобы не сломать работающий сайт, перед автоприменением нужен **бэкап** и **тестовый прогон** — см. шаги в workflow ниже.
+### Что меняю по кэшу
 
-#### C. Расширение `.github/workflows/deploy.yml`
+**1. `site-check-scan/index.ts`:** добавить поддержку «принудительного пересканирования»:
+- Принимать `force?: boolean` в теле `POST /start`
+- При `force === true` пропускать `findCachedScan()` (но **не** обходить дневной лимит — это защита от абуза)
+- Снизить TTL дефолтного кэша с 60 мин → **15 мин** (за час сайт реально может измениться)
 
-Добавить шаги после `frontend build`:
+**2. `tech-passport/index.ts`:** аналогично — поддержать `force` от вызывающего, дефолтный TTL оставить 24ч (WHOIS/GeoIP действительно меняются раз в сутки максимум).
 
-```bash
-echo "=== nginx config sync ==="
-# Бэкап текущего конфига (на случай отката)
-sudo cp /etc/nginx/sites-available/owndev.ru \
-        /etc/nginx/sites-available/owndev.ru.bak.$(date +%Y%m%d-%H%M%S) || true
+**3. Фронт `ScanForm.tsx`:** добавить маленькую галочку/линк под полем URL — **«Пересканировать заново (игнорировать кэш)»**. По умолчанию выключено. При включении передаётся `force: true`. Видно только когда введённый URL уже сканировался за последний час (определяется по локальному `scanHistory`).
 
-# Скопировать новый конфиг из репо
-sudo cp /var/www/owndev.ru/nginx/owndev.ru.conf \
-        /etc/nginx/sites-available/owndev.ru
+**4. UI-индикатор кэша:** если бэк вернул `cached: true`, на странице результата показать плашку «Показан результат от {дата}, нажмите 🔄 чтобы пересканировать». Сейчас этой плашки нет — пользователь не понимает, что видит снимок.
 
-# Проверить синтаксис
-if sudo nginx -t; then
-  sudo systemctl reload nginx
-  echo "nginx reloaded ok"
-else
-  echo "nginx config invalid — rolling back"
-  sudo cp $(ls -t /etc/nginx/sites-available/owndev.ru.bak.* | head -1) \
-          /etc/nginx/sites-available/owndev.ru
-  exit 1
-fi
-```
+**5. nginx (наш сайт):** `index.html` отдавать с `Cache-Control: no-cache, must-revalidate` вместо `max-age=300`. Хешированные js/css в `/assets/` уже immutable — там нечему ломаться. Это уберёт 5-минутную задержку видимости релизов owndev.ru.
 
-**Требование к серверу:** пользователь `${{ secrets.SERVER_USER }}` должен иметь NOPASSWD-sudo на команды `cp`, `nginx`, `systemctl reload nginx`. Если sudo требует пароль — workflow упадёт, и заголовки придётся применить вручную одним разом, а дальше автодеплой заработает.
+---
 
-#### D. `DEPLOYMENT.md` — переписать секцию
+### 2. Прогресс сканирования «слишком быстрый»
 
-Убрать «применить вручную» — теперь это делает CI. Оставить только:
-- путь `nginx/owndev.ru.conf` в репо
-- одноразовая настройка sudoers на сервере (`visudo`):
-  ```
-  deploy ALL=(ALL) NOPASSWD: /usr/bin/cp, /usr/sbin/nginx, /bin/systemctl reload nginx
-  ```
-- как сделать ручной откат (`cp .bak → /etc/nginx/sites-available/`)
+Сейчас в `ScanProgress.tsx`:
+- Шаги `stages[]` подсвечиваются по реальному `progress_pct` от бэка
+- Smoothing ограничен `MAX_PER_SEC = 30`, т.е. бар никогда не бежит быстрее 30%/сек → но **подсветка шагов прыгает мгновенно** (вычисляется через `findIndex` по `progress`, не учитывает minDuration)
+- Когда сработал кэш, бэк сразу отдаёт `progress=100` → бар плавно догоняет, но шаги **проскакивают пачкой**, sub-steps не успевают «протикать»
+
+**Что меняю:**
+
+**A) Минимальная длительность каждого шага = 2 сек.** В `ScanProgress.tsx`:
+- Завести `stageStartedAt[index]` — момент, когда шаг впервые стал активным
+- Шаг считать «выполненным» только если `progress >= stage.pct` **И** `now - stageStartedAt[index] >= 2000ms`
+- Активный индекс = первый шаг, который ещё не «выполнен» по этому правилу
+- Sub-steps (терминал ▸) тикают по 900ms, минимум 2 шага = ~1.8 сек видимости — этого хватает прочитать
+
+**B) Снизить `MAX_PER_SEC` с 30 → 12** (≈8 сек на полный бар), чтобы прогресс-бар сам по себе не «улетал», даже если бэк отдаёт `100%` сразу из кэша.
+
+**C) Кэшированный результат — отдельная ветка UX.** Если `cached: true`, не запускать многошаговую анимацию вообще: показать спиннер «Загружаем сохранённый результат…» 600ms и сразу отчёт. Анимация имитации 14 секунд для кэша — это враньё, лучше честно сказать «из кэша».
+
+Итог: при настоящем сканировании пользователь видит каждый из 7 шагов минимум 2 секунды → ~14 секунд снизу, плюс реальное время LLM. При кэше — мгновенно, с честным лейблом.
+
+---
 
 ### Файлы
 
-- **edit** `index.html` — Telegram в JSON-LD `sameAs` и в `<address>`.
-- **edit** `src/pages/Index.tsx` — Telegram в Organization JSON-LD.
-- **edit** `src/components/Footer.tsx` — ссылка на Telegram в футере.
-- **edit** `public/.well-known/security.txt` — Contact-строка.
-- **new** `nginx/owndev.ru.conf` — полный nginx server-блок.
-- **edit** `.github/workflows/deploy.yml` — шаг nginx config sync с бэкапом и rollback.
-- **edit** `DEPLOYMENT.md` — секция про автодеплой nginx и одноразовый sudoers-setup.
+- `supabase/functions/site-check-scan/index.ts` — параметр `force`, TTL 60→15 мин, отдавать `cached_at` в ответе.
+- `supabase/functions/tech-passport/index.ts` — параметр `force`.
+- `src/components/site-check/ScanForm.tsx` — чекбокс «Пересканировать заново».
+- `src/lib/site-check-api.ts` (или `src/lib/api/scan.ts`) — прокинуть `force` в `startScan()`.
+- `src/components/site-check/ScanProgress.tsx` — `stageStartedAt`, минимум 2 сек на шаг, MAX_PER_SEC=12, ветка `cached`.
+- `src/pages/SiteCheck.tsx` / `SiteCheckResult.tsx` — плашка «результат из кэша от {дата}» + кнопка пересканировать.
+- `nginx/owndev.ru.conf` — `index.html` → `no-cache, must-revalidate`; `/assets/` остаются immutable.
 
-### Что должен сделать пользователь после мерджа (1 раз, потом всё авто)
-
-На сервере выполнить `sudo visudo` и добавить строку с NOPASSWD для команд из списка выше — иначе CI не сможет перезагрузить nginx. После этого все будущие правки заголовков/кэша/прокси едут автоматически вместе с кодом.
+### Деплой
+Всё едет автоматически через `.github/workflows/deploy.yml`: фронт собирается и nginx-конфиг подменяется тем же шагом, что мы добавили в прошлый раз. Edge-функции `site-check-scan` и `tech-passport` деплоятся автоматически Lovable Cloud при пуше.
 
