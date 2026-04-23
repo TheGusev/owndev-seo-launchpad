@@ -42,7 +42,7 @@ export async function getFullScan(scanId: string): Promise<FullScanResponse> {
 }
 
 export async function startScan(url: string, mode: 'page' | 'site', options?: { force?: boolean }) {
-  return apiFetch<{ scan_id: string; status: string; cached?: boolean }>(
+  return apiFetch<{ scan_id: string; status: string; cached?: boolean; cached_at?: string }>(
     '/site-check/start',
     {
       method: 'POST',
