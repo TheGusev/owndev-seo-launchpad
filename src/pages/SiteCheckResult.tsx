@@ -280,7 +280,7 @@ const SiteCheckResult = () => {
             if (hasLlms) {
               return (
                 <div className="inline-flex items-center gap-2 text-sm text-primary/80">
-                  <Bot className="w-4 h-4" /> llms.txt найден на сайте — проверка пройдена ✓
+                  <Bot className="w-4 h-4" /> {t('siteCheckResult.llmsTxt.foundBadge')}
                 </div>
               );
             }
@@ -290,10 +290,10 @@ const SiteCheckResult = () => {
                   onClick={() => { import('@/utils/generateLlmsTxt').then(({ downloadLlmsTxt }) => { downloadLlmsTxt({ url: data.url, theme: data.theme, keywords: [] }); }); }}
                   className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-4"
                 >
-                  <Bot className="w-4 h-4" /> Сгенерировать llms.txt для вашего сайта
+                  <Bot className="w-4 h-4" /> {t('siteCheckResult.llmsTxt.generateButton')}
                 </button>
                 <span className="text-xs text-muted-foreground ml-6">
-                  На вашем сайте файл не найден — создайте по стандарту llmstxt.org
+                  {t('siteCheckResult.llmsTxt.notFoundHint')}
                 </span>
               </div>
             );
