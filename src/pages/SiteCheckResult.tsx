@@ -273,15 +273,30 @@ const SiteCheckResult = () => {
           {/* 10. GEO Rating */}
           {scores && <GeoRatingNomination totalScore={scores.total} url={data.url} scanId={scanId} />}
 
-          {/* 11. llms.txt */}
-          <div className="flex justify-start">
-            <button
-              onClick={() => { import('@/utils/generateLlmsTxt').then(({ downloadLlmsTxt }) => { downloadLlmsTxt({ url: data.url, theme: data.theme, keywords: [] }); }); }}
-              className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-4"
-            >
-              <Bot className="w-4 h-4" /> Скачать llms.txt для вашего сайта
-            </button>
-          </div>
+          {/* 11. llms.txt — показываем кнопку только если файла НЕТ на сайте */}
+          {(() => {
+            const hasLlms = Boolean(data.seo_data?.hasLlmsTxt || (data as any).llmsTxt?.found);
+            if (hasLlms) {
+              return (
+                <div className="inline-flex items-center gap-2 text-sm text-emerald-400/80">
+                  <Bot className="w-4 h-4" /> llms.txt найден на сайте — проверка пройдена ✓
+                </div>
+              );
+            }
+            return (
+              <div className="flex flex-col items-start gap-1">
+                <button
+                  onClick={() => { import('@/utils/generateLlmsTxt').then(({ downloadLlmsTxt }) => { downloadLlmsTxt({ url: data.url, theme: data.theme, keywords: [] }); }); }}
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors underline underline-offset-4"
+                >
+                  <Bot className="w-4 h-4" /> Сгенерировать llms.txt для вашего сайта
+                </button>
+                <span className="text-xs text-muted-foreground ml-6">
+                  На вашем сайте файл не найден — создайте по стандарту llmstxt.org
+                </span>
+              </div>
+            );
+          })()}
 
           {/* 12. Export */}
           <DownloadButtons
