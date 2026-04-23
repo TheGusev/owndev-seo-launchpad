@@ -8,7 +8,7 @@ import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
 import { subscribeScanEvents } from "@/lib/api/scan-events";
 import type { ScanMode } from "@/lib/site-check-types";
-import { ArrowRight, Globe, Trash2, Search, BrainCircuit, Target, Sparkles, Users, Key, Ban, ShieldCheck, FileText, Download, RefreshCw } from "lucide-react";
+import { ArrowRight, Globe, Trash2, Search, Brain, Target, Sparkles, Key, ShieldCheck, FileText, Download, RefreshCw, Cpu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 import type { LucideIcon } from "lucide-react";
@@ -26,16 +26,16 @@ function getPollInterval(elapsedMs: number, progressPct: number): number {
 }
 
 const checkItems: { icon: LucideIcon; text: string }[] = [
-  { icon: Search, text: "SEO Score (20+ параметров)" },
-  { icon: BrainCircuit, text: "LLM Score (AI-готовность)" },
-  { icon: Target, text: "Direct Readiness Score" },
-  { icon: Sparkles, text: "AI-генерация объявления Директа" },
-  { icon: Users, text: "Топ-10 конкурентов" },
-  { icon: Key, text: "200+ ключевых слов" },
-  { icon: Ban, text: "Минус-слова для Директа" },
-  { icon: ShieldCheck, text: "E-E-A-T и Schema.org" },
-  { icon: FileText, text: "llms.txt проверка и генерация" },
-  { icon: Download, text: "Экспорт PDF / Word / CSV" },
+  { icon: Brain,        text: "GEO Score — AI-видимость (Schema, llms.txt, контент)" },
+  { icon: Search,       text: "SEO Score — title/meta/H1/canonical/OG/robots" },
+  { icon: Target,       text: "CRO Score — формы, CTA, контакты, доверие" },
+  { icon: FileText,     text: "robots.txt + AI-боты (GPTBot, Claude, Perplexity)" },
+  { icon: Globe,        text: "sitemap.xml + редиректы + HTTPS / HSTS" },
+  { icon: ShieldCheck,  text: "llms.txt / llms-full.txt / security.txt" },
+  { icon: Cpu,          text: "Schema.org (Organization, Product, FAQ, Article)" },
+  { icon: Sparkles,     text: "Глубокий анализ HTML: ресурсы, GEO-сигналы (E-E-A-T)" },
+  { icon: Key,          text: "Сравнение с эталоном категории (бенчмарк)" },
+  { icon: Download,     text: "Экспорт PDF / Word" },
 ];
 
 const CheckList = () => {
@@ -56,15 +56,16 @@ const CheckList = () => {
   return (
     <div className="mt-10">
       <h2 className="text-lg font-semibold text-foreground mb-4">Что проверяем</h2>
-      <ul ref={listRef} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <ul ref={listRef} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {checkItems.map((item, i) => (
           <li
             key={i}
-            className={`flex items-center gap-3 text-sm transition-all ${visible ? 'animate-fade-in-up' : 'opacity-0'}`}
-            style={visible ? { animationDelay: `${i * 100}ms`, animationFillMode: 'forwards', opacity: 0 } : undefined}
+            className={`group flex items-center gap-2.5 text-[13px] font-mono rounded-lg px-3 py-2 border border-primary/10 bg-card/30 hover:bg-card/50 hover:border-primary/30 transition-all ${visible ? 'animate-fade-in-up' : 'opacity-0'}`}
+            style={visible ? { animationDelay: `${i * 80}ms`, animationFillMode: 'forwards', opacity: 0 } : undefined}
           >
-            <item.icon className="w-4 h-4 text-primary shrink-0" />
-            <span className="text-foreground">{item.text}</span>
+            <span className="text-muted-foreground/70 select-none shrink-0">&gt; check:</span>
+            <item.icon className="w-3.5 h-3.5 text-primary shrink-0 drop-shadow-[0_0_6px_hsl(var(--primary)/0.55)]" />
+            <span className="text-foreground/90 truncate">{item.text}</span>
           </li>
         ))}
       </ul>
@@ -219,7 +220,7 @@ const SiteCheck = () => {
     <>
       <Helmet>
         <title>Полный GEO и AI-ready аудит сайта — бесплатно | OWNDEV</title>
-        <meta name="description" content="Проверьте SEO Score и LLM Score сайта бесплатно. Конкуренты, 200+ ключей, минус-слова, E-E-A-T, Schema и экспорт — за 60 секунд." />
+        <meta name="description" content="Проверьте GEO Score, SEO Score и CRO Score сайта бесплатно. Schema.org, llms.txt, robots.txt, бенчмарк по категории. PDF и Word отчёт за 60 секунд." />
         <link rel="canonical" href="https://owndev.ru/tools/site-check" />
       </Helmet>
       <Header />
