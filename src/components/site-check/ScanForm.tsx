@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Search, RefreshCw } from "lucide-react";
 import type { ScanMode } from "@/lib/site-check-types";
 import { saveLastUrl } from "@/utils/lastUrl";
+import { clearScanSession } from "@/utils/scanSession";
 import { ymGoal } from "@/utils/analytics";
 import { ensureProtocol } from "@/lib/api";
 import { getHistory } from "@/utils/scanHistory";
@@ -69,6 +70,9 @@ const ScanForm = ({ onSubmit, isLoading }: ScanFormProps) => {
       return;
     }
     setError(null);
+    // Гарантированно стартуем с нуля: вычищаем старый scan_id из localStorage и URL,
+    // чтобы никогда не подцепить "зомби"-результат предыдущего скана.
+    clearScanSession();
     const cleanUrl = ensureProtocol(url);
     saveLastUrl(cleanUrl);
     ymGoal("scan_started");
