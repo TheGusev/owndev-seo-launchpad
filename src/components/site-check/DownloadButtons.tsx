@@ -13,8 +13,6 @@ interface DownloadButtonsProps {
   issues: any[];
   scanDate?: string;
   seoData?: any;
-  comparisonTable?: any;
-  directMeta?: any;
 }
 
 export default function DownloadButtons({
@@ -24,8 +22,6 @@ export default function DownloadButtons({
   issues,
   scanDate,
   seoData,
-  comparisonTable,
-  directMeta,
 }: DownloadButtonsProps) {
   const { toast } = useToast();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -51,11 +47,6 @@ export default function DownloadButtons({
       ...(typeof scores?.cro === 'number' ? { cro: scores.cro } : {}),
     },
     issues: issues || [],
-    keywords: [],
-    minusWords: [],
-    competitors: [],
-    comparisonTable: comparisonTable || null,
-    directMeta: directMeta || null,
     seoData: seoData || {},
   });
 
