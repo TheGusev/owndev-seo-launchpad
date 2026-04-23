@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Globe, Brain, FileText, Cpu, Key, CheckCircle2,
   Loader2, AlertCircle, Clock,
@@ -14,17 +14,36 @@ type Stage = {
   icon: typeof Play;
   slow?: boolean;
   slowHint?: string;
+  subSteps?: string[];
 };
 
-// Sprint 5 — 6 этапов вместо 9. Соответствуют stage 0/1/2/3/4/5 в бэке.
+// Sprint 9 — те же 6 этапов + sub-steps в стиле терминала.
 const stages: Stage[] = [
-  { pct: 5,   label: "Запуск",                      desc: "Инициализация проверки",                                icon: Play },
-  { pct: 15,  label: "Загрузка и заголовки",        desc: "HTML, redirects, HTTPS, кэш, безопасность",             icon: Globe },
-  { pct: 35,  label: "Технические файлы",           desc: "robots.txt, sitemap.xml, llms.txt, security.txt",       icon: FileText },
-  { pct: 55,  label: "Глубокий анализ HTML",        desc: "Schema.org, контент, ресурсы, GEO/CRO сигналы",         icon: Cpu },
-  { pct: 75,  label: "AI-анализ темы и контента",   desc: "Один LLM-запрос на тематику и качество",                icon: Brain, slow: true, slowHint: "AI-запрос к LLM, обычно 5–10 сек" },
-  { pct: 95,  label: "Расчёт скоров",                desc: "GEO / SEO / CRO + сравнение с эталоном категории",      icon: Key },
-  { pct: 100, label: "Готово",                       desc: "Сохраняем результат",                                   icon: CheckCircle2 },
+  {
+    pct: 5, label: "Запуск", desc: "Инициализация проверки", icon: Play,
+    subSteps: ["resolve DNS...", "init scan_id", "check rate-limit"],
+  },
+  {
+    pct: 15, label: "Загрузка и заголовки", desc: "HTML, redirects, HTTPS, кэш, безопасность", icon: Globe,
+    subSteps: ["GET / → 200", "trace redirects (max 10)", "TLS handshake · HSTS", "parse response headers", "check cache-control"],
+  },
+  {
+    pct: 35, label: "Технические файлы", desc: "robots.txt, sitemap.xml, llms.txt, security.txt", icon: FileText,
+    subSteps: ["fetch /robots.txt", "check AI bots: GPTBot, Claude, Perplexity", "fetch /sitemap.xml", "fetch /llms.txt + /llms-full.txt", "fetch /.well-known/security.txt"],
+  },
+  {
+    pct: 55, label: "Глубокий анализ HTML", desc: "Schema.org, контент, ресурсы, GEO/CRO сигналы", icon: Cpu,
+    subSteps: ["parse <head> · meta · canonical", "count H1/H2/H3 · word count", "extract Schema.org JSON-LD", "scan resources · images · scripts", "detect GEO signals (E-E-A-T)", "detect CRO signals (CTA, forms)"],
+  },
+  {
+    pct: 75, label: "AI-анализ темы и контента", desc: "Один LLM-запрос на тематику и качество", icon: Brain, slow: true, slowHint: "AI-запрос к LLM, обычно 5–10 сек",
+    subSteps: ["build prompt · 1 LLM call", "classify category", "score content quality", "extract topics"],
+  },
+  {
+    pct: 95, label: "Расчёт скоров", desc: "GEO / SEO / CRO + сравнение с эталоном категории", icon: Key,
+    subSteps: ["calc GEO score (7 components)", "calc SEO score (5 components)", "calc CRO score (6 components)", "compare to category benchmark", "build issues + priority"],
+  },
+  { pct: 100, label: "Готово", desc: "Сохраняем результат", icon: CheckCircle2 },
 ];
 
 interface ScanProgressProps {
@@ -42,34 +61,100 @@ const formatElapsed = (ms: number) => {
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
+/** Бегущий тикер sub-steps в стиле терминала. */
+const SubstepTicker = ({ steps, isMobile }: { steps: string[]; isMobile: boolean }) => {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (!steps?.length) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % steps.length), 900);
+    return () => clearInterval(t);
+  }, [steps]);
+  if (!steps?.length) return null;
+  const visibleCount = isMobile ? 1 : 2;
+  const visible = Array.from({ length: visibleCount }, (_, k) => steps[(idx + k) % steps.length]);
+  return (
+    <div className="mt-1.5 font-mono text-[11px] leading-snug overflow-hidden">
+      <AnimatePresence mode="popLayout" initial={false}>
+        {visible.map((line, i) => (
+          <motion.div
+            key={`${idx}-${i}-${line}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: i === 0 ? 1 : 0.55, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.25 }}
+            className="text-primary/85 truncate"
+          >
+            <span className="text-muted-foreground/60">▸ </span>
+            {line}
+            {i === 0 && <span className="ml-0.5 text-primary animate-pulse">▮</span>}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }: ScanProgressProps) => {
-  const progress = Math.min(100, Math.max(0, realProgress));
+  const realPct = Math.min(100, Math.max(0, realProgress));
+
+  // ── Smoothing: displayProgress lerps к realPct, не быстрее 30%/сек ──
+  const [displayProgress, setDisplayProgress] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const lastTickRef = useRef<number>(performance.now());
+  useEffect(() => {
+    const MAX_PER_SEC = 30; // % в секунду
+    const tick = (t: number) => {
+      const dt = Math.max(0, (t - lastTickRef.current) / 1000);
+      lastTickRef.current = t;
+      setDisplayProgress((cur) => {
+        if (cur >= realPct) return cur;
+        const step = MAX_PER_SEC * dt;
+        return Math.min(realPct, cur + step);
+      });
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    lastTickRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [realPct]);
+
+  const progress = displayProgress;
+
+  // ── Mobile detection ──
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // Track when realProgress last changed (heartbeat)
   const [lastUpdateAt, setLastUpdateAt] = useState<number>(() => Date.now());
-  const prevProgressRef = useRef<number>(progress);
+  const prevProgressRef = useRef<number>(realPct);
   useEffect(() => {
-    if (progress !== prevProgressRef.current) {
-      prevProgressRef.current = progress;
+    if (realPct !== prevProgressRef.current) {
+      prevProgressRef.current = realPct;
       setLastUpdateAt(Date.now());
     }
-  }, [progress]);
+  }, [realPct]);
 
   // Tick every second for elapsed counters
   const [now, setNow] = useState<number>(() => Date.now());
   useEffect(() => {
-    if (progress >= 100 || error) return;
+    if (realPct >= 100 || error) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [progress, error]);
+  }, [realPct, error]);
 
-  // Trigger onComplete when reaching 100
+  // Trigger onComplete только когда РЕАЛЬНЫЙ progress=100 И displayProgress догнал
   useEffect(() => {
-    if (progress >= 100) {
-      const t = setTimeout(onComplete, 600);
+    if (realPct >= 100 && displayProgress >= 100) {
+      const t = setTimeout(onComplete, 400);
       return () => clearTimeout(t);
     }
-  }, [progress, onComplete]);
+  }, [realPct, displayProgress, onComplete]);
 
   const elapsedTotalMs = startedAt ? now - startedAt : 0;
   const secondsSinceUpdate = Math.floor((now - lastUpdateAt) / 1000);
@@ -171,6 +256,11 @@ const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }
                   >
                     {isError ? error : isDone ? `✓ Готово` : isActive ? stage.desc : ""}
                   </p>
+
+                  {/* Sub-steps ticker — только на активной стадии */}
+                  {isActive && stage.subSteps && (
+                    <SubstepTicker steps={stage.subSteps} isMobile={isMobile} />
+                  )}
 
                   {/* Heartbeat for slow LLM stages */}
                   {showLlmHeartbeat && (
