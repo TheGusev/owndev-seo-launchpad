@@ -52,6 +52,8 @@ interface ScanProgressProps {
   error?: string | null;
   domain?: string;
   startedAt?: number;
+  /** When true, the animation is replaced with a brief "loading saved result" spinner. */
+  cached?: boolean;
 }
 
 const formatElapsed = (ms: number) => {
@@ -94,15 +96,32 @@ const SubstepTicker = ({ steps, isMobile }: { steps: string[]; isMobile: boolean
   );
 };
 
-const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt }: ScanProgressProps) => {
+const ScanProgress = ({ onComplete, realProgress = 0, error, domain, startedAt, cached = false }: ScanProgressProps) => {
+  // Honest cached fast-path: don't pretend we're scanning for 14 seconds.
+  if (cached) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 gap-3 max-w-xl mx-auto relative">
+        <NeuralNetworkBg className="-z-10 opacity-40 -m-6" density="low" />
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-sm text-muted-foreground">Загружаем сохранённый результат…</p>
+        {domain && (
+          <p className="text-xs text-muted-foreground/70">
+            Этот домен сканировался недавно — показываем кэш
+          </p>
+        )}
+      </div>
+    );
+  }
+
   const realPct = Math.min(100, Math.max(0, realProgress));
 
-  // ── Smoothing: displayProgress lerps к realPct, не быстрее 30%/сек ──
+  // ── Smoothing: displayProgress lerps к realPct, не быстрее 12%/сек ──
+  // (≈8 сек на полный бар — даже если бэк отдаёт 100% сразу, шкала не «улетает»)
   const [displayProgress, setDisplayProgress] = useState(0);
   const rafRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(performance.now());
   useEffect(() => {
-    const MAX_PER_SEC = 30; // % в секунду
+    const MAX_PER_SEC = 12; // % в секунду
     const tick = (t: number) => {
       const dt = Math.max(0, (t - lastTickRef.current) / 1000);
       lastTickRef.current = t;
