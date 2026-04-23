@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -18,7 +18,7 @@ import BenchmarkCard from "@/components/site-check/BenchmarkCard";
 import { getFullScan } from "@/lib/site-check-api";
 import { judgeLlm, getTechPassport, getAiBoost } from "@/lib/api/tools";
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2, RefreshCw, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonResultsGrid } from "@/components/ui/skeleton-card";
 import { addToHistory, getHistory } from "@/utils/scanHistory";
@@ -27,6 +27,8 @@ import { t } from "@/i18n/strings";
 
 const SiteCheckResult = () => {
   const { scanId } = useParams<{ scanId: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
