@@ -196,6 +196,28 @@ const SiteCheckResult = () => {
               </div>
             )}
             {data.theme && <p className="text-xs text-muted-foreground mt-1">Тематика: {data.theme}</p>}
+
+            {searchParams.get("cached") === "1" && data.created_at && (
+              <div className="mt-3 flex items-center gap-2 flex-wrap rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+                <Database className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="text-foreground">
+                  Показан результат из кэша от{" "}
+                  <span className="font-medium">
+                    {new Date(data.created_at).toLocaleString("ru-RU", {
+                      day: "2-digit", month: "2-digit", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                </span>
+                <button
+                  onClick={() => navigate(`/tools/site-check?url=${encodeURIComponent(data.url)}&force=1`)}
+                  className="ml-auto inline-flex items-center gap-1 text-primary hover:text-primary/80 font-medium transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Пересканировать заново
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 2. Scores */}
