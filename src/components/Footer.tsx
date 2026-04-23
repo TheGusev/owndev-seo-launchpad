@@ -92,7 +92,7 @@ const Footer = () => {
             </div>
             {/* Social */}
             <div className="flex items-center gap-3">
-              <a href="https://t.me/The_Suppor_t" target="_blank" rel="noopener noreferrer"
+              <a href="https://t.me/one_help" target="_blank" rel="noopener noreferrer"
                 className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors text-sm">
                 ✈
               </a>

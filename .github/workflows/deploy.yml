@@ -60,5 +60,34 @@ jobs:
             npm install
             npm run build
 
+            echo "=== nginx config sync ==="
+            NGINX_SRC=/var/www/owndev.ru/nginx/owndev.ru.conf
+            NGINX_DST=/etc/nginx/sites-available/owndev.ru
+            if [ -f "$NGINX_SRC" ]; then
+              # Backup current config
+              if [ -f "$NGINX_DST" ]; then
+                sudo cp "$NGINX_DST" "$NGINX_DST.bak.$(date +%Y%m%d-%H%M%S)" || true
+              fi
+              # Copy new config from repo
+              sudo cp "$NGINX_SRC" "$NGINX_DST"
+              # Ensure site is enabled
+              sudo ln -sf "$NGINX_DST" /etc/nginx/sites-enabled/owndev.ru
+              # Validate and reload (with rollback on failure)
+              if sudo nginx -t; then
+                sudo systemctl reload nginx
+                echo "nginx reloaded ok"
+              else
+                echo "nginx config invalid — rolling back"
+                LATEST_BAK=$(ls -t "$NGINX_DST".bak.* 2>/dev/null | head -1)
+                if [ -n "$LATEST_BAK" ]; then
+                  sudo cp "$LATEST_BAK" "$NGINX_DST"
+                  sudo nginx -t && sudo systemctl reload nginx
+                fi
+                exit 1
+              fi
+            else
+              echo "WARNING: $NGINX_SRC not found — skipping nginx sync"
+            fi
+
             echo "=== done ==="
             pm2 list

@@ -30,7 +30,7 @@ const organizationLd = {
     contactType: "customer service",
     availableLanguage: "Russian",
   },
-  sameAs: ["https://t.me/The_Suppor_t"],
+  sameAs: ["https://t.me/one_help"],
 };
 
 const websiteLd = {
