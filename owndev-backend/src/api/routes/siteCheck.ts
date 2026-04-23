@@ -124,26 +124,51 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
         });
     }
 
-    // Check cache (skip if force=true)
+    // Check cache (skip if force=true).
+    // Honest cache: return 200 with cached=true so the frontend can show
+    // the "result from cache, [rescan]" badge instead of a hard 429 block.
+    // TTL: 1 hour (a site can change within a day).
     if (!force) {
       let hostname = normalizedUrl;
       try {
         hostname = new URL(normalizedUrl).hostname;
       } catch {}
-      const today = new Date().toISOString().slice(0, 10);
-      const cached = await sql<[{ id: string }?]>`
-        SELECT id FROM site_check_scans
+      const cached = await sql<Array<{ id: string; created_at: Date }>>`
+        SELECT id, created_at FROM site_check_scans
         WHERE url LIKE ${'%' + hostname + '%'}
           AND status = 'done'
-          AND created_at::date = ${today}::date
+          AND created_at > NOW() - INTERVAL '1 hour'
         ORDER BY created_at DESC LIMIT 1
       `;
       if (cached[0]) {
+        logger.info('SITE_CHECK', `[scan] cache hit ${cached[0].id} for ${hostname}`);
+        return reply.status(200).send({
+          scan_id: cached[0].id,
+          status: 'done',
+          cached: true,
+          cached_at: cached[0].created_at,
+        });
+      }
+      // Daily limit: protect from abuse — max 5 scans per domain per day.
+      // Counts attempts, not just successful ones.
+      const today = new Date().toISOString().slice(0, 10);
+      const [{ count: dailyCount }] = await sql<[{ count: number }]>`
+        SELECT COUNT(*)::int AS count FROM site_check_scans
+        WHERE url LIKE ${'%' + hostname + '%'}
+          AND created_at::date = ${today}::date
+      `;
+      if ((dailyCount || 0) >= 5) {
+        const lastRow = await sql<Array<{ id: string }>>`
+          SELECT id FROM site_check_scans
+          WHERE url LIKE ${'%' + hostname + '%'}
+            AND status = 'done'
+          ORDER BY created_at DESC LIMIT 1
+        `;
         return reply.status(429).send({
           success: false,
-          error: 'Этот домен уже проверялся сегодня.',
-          code: 'ALREADY_SCANNED',
-          last_scan_id: cached[0].id,
+          error: 'Этот домен уже проверялся 5 раз сегодня. Попробуйте завтра.',
+          code: 'DAILY_LIMIT',
+          last_scan_id: lastRow[0]?.id ?? null,
         });
       }
     }
@@ -155,8 +180,8 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     `;
 
     await queue.add('scan', { scan_id, url: normalizedUrl, mode });
-    logger.info('SITE_CHECK', `Scan ${scan_id} queued for ${normalizedUrl}`);
-    return reply.status(200).send({ scan_id, status: 'running' });
+    logger.info('SITE_CHECK', `[scan] inserted ${scan_id} for ${normalizedUrl} (force=${force})`);
+    return reply.status(200).send({ scan_id, status: 'running', cached: false });
   });
 
   // GET /api/v1/site-check/status/:scanId
