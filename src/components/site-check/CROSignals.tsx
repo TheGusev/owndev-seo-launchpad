@@ -35,14 +35,33 @@ export default function CROSignals({ cro }: Props) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
         <Mini label="CTA на странице" value={String(cro.cta.count)} ok={cro.cta.count > 0} />
-        <Mini label="CTA на 1-м экране" value={cro.cta.hasAboveFold ? "Да" : "Нет"} ok={cro.cta.hasAboveFold} />
+        <Mini label="CTA на 1-м экране" value={cro.cta.aboveFold ? "Да" : "Нет"} ok={cro.cta.aboveFold} />
+        <Mini label="Кнопка-CTA" value={cro.cta.hasPrimary ? "Есть" : "Нет"} ok={cro.cta.hasPrimary} />
         <Mini label="Формы" value={String(cro.forms.count)} ok={cro.forms.count > 0} />
         <Mini
           label="Полей в форме"
           value={cro.forms.avgFields ? cro.forms.avgFields.toFixed(1) : "—"}
           ok={cro.forms.avgFields > 0 && cro.forms.avgFields <= 5}
         />
+        <Mini label="Форма контакта" value={cro.forms.hasContactForm ? "Есть" : "Нет"} ok={cro.forms.hasContactForm} />
+        <Mini label="Цены указаны" value={cro.pricing.hasPrice ? "Да" : "Нет"} ok={cro.pricing.hasPrice} />
+        <Mini label="Калькулятор" value={cro.pricing.hasCalculator ? "Есть" : "Нет"} ok={cro.pricing.hasCalculator} />
       </div>
+
+      {(cro.urgency.hasCountdown || cro.urgency.hasLimited) && (
+        <div className="flex gap-1.5 flex-wrap">
+          {cro.urgency.hasCountdown && (
+            <Badge variant="outline" className="text-[10px] border-yellow-500/50 text-yellow-400">
+              ⏱ Таймер обратного отсчёта
+            </Badge>
+          )}
+          {cro.urgency.hasLimited && (
+            <Badge variant="outline" className="text-[10px] border-yellow-500/50 text-yellow-400">
+              🔥 Ограниченное предложение
+            </Badge>
+          )}
+        </div>
+      )}
 
       <div className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 pt-1">
         <MessageCircle className="w-3.5 h-3.5" /> Каналы коммуникации
@@ -52,6 +71,7 @@ export default function CROSignals({ cro }: Props) {
         <TrustBadge ok={channels.hasChat} label="Онлайн-чат" />
         <TrustBadge ok={channels.hasCallback} label="Обратный звонок" />
         <TrustBadge ok={cro.socialProof.hasReviews} label="Отзывы" />
+        <TrustBadge ok={cro.socialProof.hasCases} label="Кейсы" />
         <TrustBadge ok={cro.socialProof.hasLogos} label="Логотипы клиентов" />
       </div>
     </div>

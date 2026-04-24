@@ -112,14 +112,14 @@ export interface GeoSignalsData {
 }
 
 export interface CROData {
-  trustScore: number;
+  trustScore: number;             // 0-100
   trust: { hasPhone: boolean; hasEmail: boolean; hasAddress: boolean; hasLegalInfo: boolean; hasGuarantee: boolean };
-  cta: { count: number; hasAboveFold: boolean };
-  forms: { count: number; avgFields: number };
-  price: { hasPrice: boolean };
-  socialProof: { hasReviews: boolean; hasLogos: boolean };
-  urgency: { hasUrgency: boolean };
-  channels: { hasMessenger: boolean; hasChat: boolean; hasCallback: boolean };
+  cta: { count: number; aboveFold: boolean; hasPrimary: boolean };
+  forms: { count: number; avgFields: number; hasContactForm: boolean };
+  pricing: { hasPrice: boolean; hasCalculator: boolean };
+  socialProof: { hasReviews: boolean; hasCases: boolean; hasLogos: boolean };
+  urgency: { hasCountdown: boolean; hasLimited: boolean };
+  channels: { hasMessenger: boolean; hasCallback: boolean; hasChat: boolean };
 }
 
 export interface BenchmarkGap {
@@ -134,6 +134,7 @@ export interface BenchmarkData {
   gaps: BenchmarkGap[];
   passed: number;
   total: number;
+  percent: number;
 }
 
 export interface ScoreBreakdownEntry { key: string; weight: number; earned: number; }
