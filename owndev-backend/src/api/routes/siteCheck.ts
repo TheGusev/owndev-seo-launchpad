@@ -807,7 +807,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     const timeout = setTimeout(() => controller.abort(), 12000);
 
     const checks = await Promise.allSettled([
-      fetch(baseUrl, { method: 'HEAD', signal: controller.signal, headers: { 'User-Agent': 'OWNDEV-TechPassport/1.0' } }),
+      fetch(baseUrl, { signal: controller.signal, headers: { 'User-Agent': 'OWNDEV-TechPassport/1.0' } }),
       fetch(`${baseUrl}/robots.txt`, { signal: controller.signal }),
       fetch(`${baseUrl}/llms.txt`, { signal: controller.signal }),
       fetch(`${baseUrl}/sitemap.xml`, { signal: controller.signal }),
@@ -817,6 +817,28 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     clearTimeout(timeout);
 
     const [siteResp, robotsResp, llmsResp, sitemapResp, sitemapIdxResp, securityResp] = checks;
+
+    // Read first 12KB of HTML for accurate CMS/framework detection
+    let pageHtmlSnippet = '';
+    try {
+      if (siteResp.status === 'fulfilled' && (siteResp.value as Response).ok) {
+        const reader = (siteResp.value as Response).body?.getReader();
+        if (reader) {
+          const chunks: Uint8Array[] = [];
+          let total = 0;
+          while (total < 12_000) {
+            const { done, value } = await reader.read();
+            if (done || !value) break;
+            chunks.push(value);
+            total += value.length;
+          }
+          reader.cancel().catch(() => {});
+          pageHtmlSnippet = new TextDecoder('utf-8', { fatal: false }).decode(
+            chunks.reduce((a, b) => { const c = new Uint8Array(a.length + b.length); c.set(a); c.set(b, a.length); return c; }, new Uint8Array(0))
+          );
+        }
+      }
+    } catch { /* ignore */ }
 
     const siteOk = siteResp.status === 'fulfilled' && (siteResp.value as Response).ok;
     const siteHeaders: Record<string, string> = {};

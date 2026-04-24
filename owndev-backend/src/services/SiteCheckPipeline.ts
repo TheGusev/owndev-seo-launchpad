@@ -482,11 +482,14 @@ function detectSeoFailuresFromHtml(html: string): Set<string> {
   const wordCount = bodyText.split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
   if (wordCount < 300) failed.add('contentLength');
 
-  // images — процент с alt
+  // images — процент с alt (исключаем трекинговые пиксели)
   const imgTags = html.match(/<img[^>]*>/gi) || [];
   if (imgTags.length > 0) {
-    const withAlt = imgTags.filter(img => /alt=["'][^"']+["']/i.test(img)).length;
-    if (withAlt / imgTags.length < 0.8) failed.add('images');
+    const contentImages = imgTags.filter(img => !/mc\.yandex\.ru|metrika\.yandex|google-analytics\.com|googletagmanager\.com|facebook\.com\/tr|vk\.com\/rtrg|position:\s*absolute[^"']*left:\s*-\d{4}/i.test(img));
+    if (contentImages.length > 0) {
+      const withAlt = contentImages.filter(img => /alt=["'][^"']+["']/i.test(img)).length;
+      if (withAlt / contentImages.length < 0.8) failed.add('images');
+    }
   }
 
   // internalLinks — ≥3
@@ -900,9 +903,21 @@ function technicalAudit(
   }
 
   const imgTags = html.match(/<img[^>]*>/gi) || [];
-  const imgsNoAlt = imgTags.filter(img => !img.match(/alt=["'][^"']+["']/i));
+  // Исключаем трекинговые пиксели и декоративные изображения (для них alt="" валиден по WCAG)
+  const isDecorativeOrPixel = (img: string): boolean => {
+    // Известные трекинговые домены
+    if (/mc\.yandex\.ru|metrika\.yandex|google-analytics\.com|googletagmanager\.com|facebook\.com\/tr|vk\.com\/rtrg|counter\.mail\.ru|mc\.webvisor\.org/i.test(img)) return true;
+    // 1×1 пиксели
+    if (/(?:width|height)=["'](?:0|1)["']/i.test(img) && /(?:width|height)=["'](?:0|1)["']/i.test(img)) return true;
+    // Скрытые через CSS
+    if (/position:\s*absolute[^"']*left:\s*-\d{4}/i.test(img)) return true;
+    return false;
+  };
+  // Только контентные изображения должны иметь непустой alt
+  const contentImgs = imgTags.filter(img => !isDecorativeOrPixel(img));
+  const imgsNoAlt = contentImgs.filter(img => !img.match(/alt=["'][^"']+["']/i));
   if (imgsNoAlt.length > 0) {
-    issues.push(makeIssue({ module: 'technical', severity: imgsNoAlt.length > 5 ? 'high' : 'medium', title: `${imgsNoAlt.length} изображений без alt`, found: `Из ${imgTags.length} <img> у ${imgsNoAlt.length} нет alt`, location: '<img> теги', why_it_matters: 'Без alt изображения невидимы для поисковиков и скринридеров', how_to_fix: 'Добавьте описательный alt к каждому <img>', example_fix: '<img src="photo.jpg" alt="Описание изображения">', visible_in_preview: false }));
+    issues.push(makeIssue({ module: 'technical', severity: imgsNoAlt.length > 5 ? 'high' : 'medium', title: `${imgsNoAlt.length} изображений без alt`, found: `Из ${contentImgs.length} контентных <img> у ${imgsNoAlt.length} нет alt`, location: '<img> теги', why_it_matters: 'Без alt изображения невидимы для поисковиков и скринридеров', how_to_fix: 'Добавьте описательный alt к каждому контентному <img>', example_fix: '<img src="photo.jpg" alt="Описание изображения">', visible_in_preview: false }));
   }
 
   if (brokenLinks.length > 0) {
