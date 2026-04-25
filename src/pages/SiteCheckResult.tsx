@@ -223,9 +223,6 @@ const SiteCheckResult = () => {
           {/* 2. Scores */}
           {scores && <ScoreCards scores={scores} previousScores={previousScores} breakdown={breakdown} />}
 
-          {/* 2b. History trend chart */}
-          {data?.url && <HistoryChart url={data.url} />}
-
           {/* 4. Tech Passport — full width */}
           {techPassport && (
             <div className="rounded-xl border border-border/50 bg-card/40 p-4 md:p-5 space-y-3">
