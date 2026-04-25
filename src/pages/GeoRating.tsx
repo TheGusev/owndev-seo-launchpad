@@ -11,13 +11,15 @@ import {
   ChevronDown, ChevronUp, ExternalLink, Share2, Copy, Search,
   AlertTriangle, CheckCircle2, XCircle, RefreshCw, Sparkles,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import SiteBadge from "@/components/ui/site-badge";
-import { type GeoRatingEntry, SNAPSHOT_META, mapDbRowToEntry } from "@/data/geo-rating-types";
-import { NeuralNetworkBg } from "@/components/ui/neural-network-bg";
-import { BinaryStream } from "@/components/ui/binary-stream";
-import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
+import { mapDbRowToEntry } from "@/data/geo-rating-types";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const DEFAULT_CATEGORIES = ["Все"];
 const SCORE_FILTERS = [
@@ -187,99 +189,102 @@ const GeoRating = () => {
         </script>
       </Helmet>
       <Header />
-      <main className="min-h-screen bg-background pt-24 pb-16">
-        <section className="relative overflow-hidden mb-12">
-          <NeuralNetworkBg className="z-0 opacity-45" density="medium" />
-          <FloatingCodeSnippets
-            className="z-0"
-            snippets={['"rank": 1', '"score": 98', '"llms.txt": true', '{ "schema": "✓" }', '"category": "edu"']}
-            mobileCount={2}
-            desktopCount={4}
-            opacity={0.8}
-          />
-          <BinaryStream position="bottom" />
-          <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">
-              GEO Рейтинг <span className="text-primary">Рунета 2026</span>
-            </h1>
-            <p className="text-muted-foreground text-base max-w-xl mx-auto mb-4">
-              AI-готовность популярных сайтов России — аналитический snapshot на основе автоматического аудита OWNDEV.
-            </p>
-            <p className="text-xs text-muted-foreground/70 mb-6">
-              Для попадания в рейтинг сайт должен набрать <span className="text-primary font-semibold">90+ баллов</span> по итогам GEO-аудита.
-            </p>
-
-            <div className="flex flex-wrap justify-center gap-3 mb-6">
-              {[
-                { label: "Сайтов в выборке", value: rawRows.length },
-                { label: "Ср. LLM", value: avgLlm },
-                { label: "Ср. Schema", value: avgSchema },
-                { label: "Ср. Direct", value: avgDirect },
-                { label: "С llms.txt", value: `${pctLlms}%` },
-              ].map((s) => (
-                <div key={s.label} className="border border-border/30 rounded-lg px-5 py-3 min-w-[120px] bg-card/40">
-                  <div className="text-xl font-bold text-primary">{s.value}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs text-muted-foreground mb-6">
-              <span>Обновлено: {lastUpdate}</span>
-              <motion.div
-                animate={{ opacity: [0.85, 1, 0.85], scale: [1, 1.02, 1] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                whileHover={{ scale: 1.05 }}
-                className="inline-flex"
-              >
-                <Link
-                  to="/geo-rating/methodology"
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors underline underline-offset-4 decoration-primary/40 hover:decoration-primary px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 hover:bg-primary/10"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Методология: {SNAPSHOT_META.methodology}
+      <main className="min-h-screen bg-background pt-20 pb-16">
+        {/* Compact hero */}
+        <section className="container mx-auto px-4 mb-4 mt-2">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold leading-tight">
+                GEO Рейтинг <span className="text-primary">Рунета 2026</span>
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                {rawRows.length} сайтов · обновлено {lastUpdate} ·{" "}
+                <Link to="/geo-rating/methodology" className="text-primary hover:underline">
+                  методология
                 </Link>
-              </motion.div>
-              <span>Источник: {SNAPSHOT_META.source}</span>
+              </p>
             </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button asChild size="sm" variant="hero">
+                <Link to="/tools/site-check">
+                  <Search className="w-3.5 h-3.5 mr-1.5" />Проверить
+                </Link>
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleShare} aria-label="Поделиться">
+                <Share2 className="w-3.5 h-3.5" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} aria-label="Обновить">
+                <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
 
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button asChild variant="hero" size="lg">
-                <Link to="/tools/site-check"><Search className="w-4 h-4 mr-2" />Проверить свой сайт</Link>
-              </Button>
-              <Button variant="outline" size="lg" onClick={handleShare}>
-                <Share2 className="w-4 h-4 mr-2" />Поделиться
-              </Button>
-              <Button variant="outline" size="lg" onClick={() => refetch()} disabled={isFetching}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                {isFetching ? 'Обновляем...' : 'Обновить'}
-              </Button>
-            </div>
-          </div>
-          </div>
+          <Collapsible className="mt-2">
+            <CollapsibleTrigger className="text-[11px] text-muted-foreground/70 hover:text-foreground flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Показать средние по выборке
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {[
+                  { label: "Сайтов", value: rawRows.length },
+                  { label: "Ср. LLM", value: avgLlm },
+                  { label: "Ср. Schema", value: avgSchema },
+                  { label: "Ср. Direct", value: avgDirect },
+                  { label: "С llms.txt", value: `${pctLlms}%` },
+                ].map((s) => (
+                  <div key={s.label} className="border border-border/30 rounded-md px-2 py-1.5 bg-card/40">
+                    <div className="text-sm font-bold text-primary leading-none">{s.value}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </section>
 
-        <section className="container mx-auto px-4 mb-6">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              <span className="text-xs text-muted-foreground self-center mr-2">Категория:</span>
-              {CATEGORIES.map((c: string) => (
-                <button key={c} onClick={() => setCat(c)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${cat === c ? "bg-primary/20 text-primary border-primary/30" : "bg-card/40 text-muted-foreground border-border/30 hover:bg-card/60"}`}>{c}</button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="text-xs text-muted-foreground self-center mr-2">Средний скор:</span>
-              {SCORE_FILTERS.map((f, i) => (
-                <button key={f.label} onClick={() => setScoreFi(i)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${scoreFi === i ? "bg-primary/20 text-primary border-primary/30" : "bg-card/40 text-muted-foreground border-border/30 hover:bg-card/60"}`}>{f.label}</button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="text-xs text-muted-foreground self-center mr-2">Сортировка:</span>
-              {SORT_OPTIONS.map((o) => (
-                <button key={o.key} onClick={() => setSortKey(o.key)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${sortKey === o.key ? "bg-primary/20 text-primary border-primary/30" : "bg-card/40 text-muted-foreground border-border/30 hover:bg-card/60"}`}>{o.label}</button>
-              ))}
-            </div>
+        {/* Sticky filter bar — compact selects */}
+        <section className="sticky top-16 z-20 bg-background/85 backdrop-blur border-b border-border/20 mb-3">
+          <div className="container mx-auto px-4 py-2 flex flex-wrap items-center gap-2">
+            <Select value={cat} onValueChange={setCat}>
+              <SelectTrigger className="h-8 text-xs w-[160px]">
+                <SelectValue placeholder="Категория" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c: string) => (
+                  <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={String(scoreFi)} onValueChange={(v) => setScoreFi(Number(v))}>
+              <SelectTrigger className="h-8 text-xs w-[140px]">
+                <SelectValue placeholder="Скор" />
+              </SelectTrigger>
+              <SelectContent>
+                {SCORE_FILTERS.map((f, i) => (
+                  <SelectItem key={f.label} value={String(i)} className="text-xs">
+                    Скор: {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger className="h-8 text-xs w-[160px]">
+                <SelectValue placeholder="Сортировка" />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((o) => (
+                  <SelectItem key={o.key} value={o.key} className="text-xs">
+                    Сорт: {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <span className="text-[11px] text-muted-foreground ml-auto">
+              {entries.length} из {rawRows.length}
+            </span>
           </div>
         </section>
 
