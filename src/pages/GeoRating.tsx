@@ -11,10 +11,9 @@ import {
   ChevronDown, ChevronUp, ExternalLink, Share2, Copy, Search,
   AlertTriangle, CheckCircle2, XCircle, RefreshCw, Sparkles,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import SiteBadge from "@/components/ui/site-badge";
-import { type GeoRatingEntry, SNAPSHOT_META, mapDbRowToEntry } from "@/data/geo-rating-types";
+import { mapDbRowToEntry } from "@/data/geo-rating-types";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
