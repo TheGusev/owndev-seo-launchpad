@@ -4,7 +4,6 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScoreCards from "@/components/site-check/ScoreCards";
 import FullReportView from "@/components/site-check/FullReportView";
-import HistoryChart from "@/components/site-check/HistoryChart";
 import DownloadButtons from "@/components/site-check/DownloadButtons";
 import LlmJudgeSection, { type LlmJudgeData } from "@/components/site-check/LlmJudgeSection";
 import AiBoostSection from "@/components/site-check/AiBoostSection";
