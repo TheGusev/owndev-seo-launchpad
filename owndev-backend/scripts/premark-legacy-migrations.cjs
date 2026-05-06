@@ -21,23 +21,24 @@ const path = require('path');
 const postgresPath = path.resolve(__dirname, '..', 'node_modules', 'postgres');
 const postgres = require(postgresPath);
 
-// Each entry: [migration_name, probe_table_or_null].
-// If probe_table is set, we only mark the migration as applied when that
-// table actually exists in the prod DB. If it's missing, we leave the
-// migration UNMARKED so migrate.js will run it from scratch.
-// For pure-seed migrations (no CREATE TABLE) probe is null — those use
-// ON CONFLICT DO NOTHING, so re-running them is safe; we mark them only
-// when their target table already has rows.
+// Each entry: [migration_name, probe_or_null].
+// If probe is null — always pre-mark (legacy unconditional behavior).
+// If probe is a string — only mark when that table really exists; if missing,
+//   leave UNMARKED so migrate.js will create it from scratch (CREATE TABLE IF NOT EXISTS).
+// We deliberately keep most legacy migrations on the unconditional path because
+// historically prod was bootstrapped manually with slightly different schemas;
+// running migrate.js on them caused CREATE INDEX failures on missing columns.
+// Only migrations we KNOW are safe to (re-)apply via IF NOT EXISTS get a probe.
 const LEGACY_MIGRATIONS = [
-  ['001_initial.sql',                'users'],
-  ['002_site_formula.sql',           'blueprint_sessions'],
-  ['003_marketplace_audit.sql',      'marketplace_audits'],
-  ['020_formula_v2.sql',             'formula_page_contracts'],
-  ['020a_schema_templates_seed.sql', { seed: 'formula_schema_templates' }],
-  ['020b_page_contracts_seed.sql',   { seed: 'formula_page_contracts' }],
-  ['021_wordstat.sql',               'wordstat_cache'],
-  ['022_crawl.sql',                  'crawl_sessions'],
-  ['023_audit.sql',                  'site_audit_results'],
+  ['001_initial.sql',                null],
+  ['002_site_formula.sql',           null],
+  ['003_marketplace_audit.sql',      null],
+  ['020_formula_v2.sql',             null],
+  ['020a_schema_templates_seed.sql', null],
+  ['020b_page_contracts_seed.sql',   null],
+  ['021_wordstat.sql',               null],
+  ['022_crawl.sql',                  'crawl_sessions'], // safe: pure CREATE TABLE IF NOT EXISTS
+  ['023_audit.sql',                  null],
 ];
 
 async function main() {
@@ -72,34 +73,20 @@ async function main() {
     let unmarked = 0;
     for (const [name, probe] of LEGACY_MIGRATIONS) {
       let shouldMark = true;
-      let realTableExists = true;
+      let realTableMissing = false;
       if (typeof probe === 'string') {
-        // CREATE TABLE migration — only mark applied if the table really exists.
         const t = await sql`SELECT to_regclass(${'public.' + probe}) AS t`;
         if (!t[0].t) {
           shouldMark = false;
-          realTableExists = false;
+          realTableMissing = true;
           console.log(`[premark] SKIP mark ${name} — table '${probe}' is MISSING; migrate.js will create it.`);
-        }
-      } else if (probe && probe.seed) {
-        // Seed migration — only mark applied if target table exists AND has rows.
-        const t = await sql`SELECT to_regclass(${'public.' + probe.seed}) AS t`;
-        if (!t[0].t) {
-          shouldMark = false;
-          console.log(`[premark] SKIP mark ${name} — seed target '${probe.seed}' is MISSING; will be seeded by migrate.js.`);
-        } else {
-          const rc = await sql.unsafe(`SELECT COUNT(*)::int AS n FROM ${probe.seed}`);
-          if (!rc[0] || rc[0].n === 0) {
-            shouldMark = false;
-            console.log(`[premark] SKIP mark ${name} — seed target '${probe.seed}' is EMPTY; will be seeded by migrate.js.`);
-          }
         }
       }
       if (!shouldMark) {
         skipped++;
         // Repair: if a previous buggy premark marked this migration as applied
-        // but its table doesn't exist, clear the stale mark so migrate.js retries.
-        if (!realTableExists) {
+        // but its table doesn't actually exist, clear the stale mark so migrate.js retries.
+        if (realTableMissing) {
           const cleared = await sql`
             DELETE FROM _schema_migrations WHERE name=${name} RETURNING name
           `;
