@@ -72,6 +72,23 @@ async function main() {
     }
     console.log(`[premark] Existing prod DB detected. Pre-marked ${inserted} of ${LEGACY_MIGRATIONS.length} legacy migrations as applied (others were already recorded).`);
 
+    // ── Repair: a previous deploy mistakenly marked 031 as applied via a buggy debug runner ──
+    // even though the ALTER TABLE never actually ran. If engine_version column is missing
+    // we know 031 didn't really apply, so unmark it so migrate.js will retry.
+    const v3Probe = await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='formula_page_contracts'
+        AND column_name='engine_version'
+    `;
+    if (v3Probe.length === 0) {
+      const cleared = await sql`
+        DELETE FROM _schema_migrations WHERE name='031_v3_page_contracts_v2.sql' RETURNING name
+      `;
+      if (cleared.length > 0) {
+        console.log('[premark] Cleared stale 031 mark (engine_version missing) so migrate.js can retry.');
+      }
+    }
+
     // ── Diagnostic: dump column defaults & types for formula_page_contracts ──
     // We had a deploy fail with `malformed array literal: "{},"` on the ALTER TABLE
     // step of migration 031. The file does not contain `{},` anywhere — it must come
