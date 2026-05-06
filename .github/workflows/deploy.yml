@@ -29,6 +29,19 @@ jobs:
             npm install --include=dev
             npm run build
 
+            echo "=== DB migrations (idempotent) ==="
+            # Load DATABASE_URL from frontend .env (single source of truth) or backend .env
+            if [ -f /var/www/owndev.ru/owndev-backend/.env ]; then
+              set -a; . /var/www/owndev.ru/owndev-backend/.env; set +a
+            elif [ -f /var/www/owndev.ru/.env ]; then
+              set -a; . /var/www/owndev.ru/.env; set +a
+            fi
+            if [ -n "$DATABASE_URL" ]; then
+              node dist/db/migrate.js || { echo 'migrate failed'; exit 1; }
+            else
+              echo 'WARNING: DATABASE_URL not set — skipping migrate'
+            fi
+
             echo "=== PM2 restart with env ==="
             node -e "
               const fs=require('fs');
