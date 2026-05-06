@@ -50,6 +50,10 @@ export async function startServer() {
     const { conversionAuditRoutes } = await import('./routes/conversionAudit.js');
     await app.register(conversionAuditRoutes, { prefix: '/api/v1/conversion-audit' });
 
+    // Formula v2 — 19 project types, page contracts, schema registry, preflight
+    const { formulaV2Routes } = await import('./routes/formulaV2.js');
+    await app.register(formulaV2Routes, { prefix: '/api/v2/formula' });
+
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
   logger.info('SERVER', `Listening on :${port}`);
