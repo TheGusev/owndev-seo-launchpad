@@ -37,6 +37,9 @@ jobs:
               set -a; . /var/www/owndev.ru/.env; set +a
             fi
             if [ -n "$DATABASE_URL" ]; then
+              # Pre-mark legacy migrations 001-023 as already applied (prod was bootstrapped manually before _schema_migrations existed).
+              node scripts/premark-legacy-migrations.cjs || { echo 'premark failed'; exit 1; }
+              # Now run remaining (030-035) idempotently
               node dist/db/migrate.js || { echo 'migrate failed'; exit 1; }
             else
               echo 'WARNING: DATABASE_URL not set — skipping migrate'
