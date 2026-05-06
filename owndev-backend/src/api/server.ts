@@ -50,6 +50,27 @@ export async function startServer() {
     const { conversionAuditRoutes } = await import('./routes/conversionAudit.js');
     await app.register(conversionAuditRoutes, { prefix: '/api/v1/conversion-audit' });
 
+    // Formula v2 — 19 project types, page contracts, schema registry, preflight
+    const { formulaV2Routes } = await import('./routes/formulaV2.js');
+    await app.register(formulaV2Routes, { prefix: '/api/v2/formula' });
+
+    // Wordstat / demand intelligence
+    const { wordstatRoutes } = await import('./routes/wordstat.js');
+    await app.register(wordstatRoutes, { prefix: '/api/v2/wordstat' });
+
+    // Audit / Recovery / AI Developer Pack (Module 9)
+    const { auditV2Routes } = await import('./routes/auditV2.js');
+    await app.register(auditV2Routes, { prefix: '/api/v2' });
+
+    // Async jobs API (BullMQ-backed)
+    const { jobsV2Routes } = await import('./routes/jobsV2.js');
+    await app.register(jobsV2Routes, { prefix: '/api/v2/jobs' });
+
+    // ── V3 — Site Formula V3 (Tier A/B/C, demand intelligence,
+    //    technical passport, preflight 4-axes, super_prompt_pack v1) ──
+    const { v3Routes } = await import('./routes/v3/index.js');
+    await app.register(v3Routes, { prefix: '/api/v3' });
+
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
   logger.info('SERVER', `Listening on :${port}`);

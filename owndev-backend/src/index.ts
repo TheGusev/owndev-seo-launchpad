@@ -5,6 +5,7 @@ import { sql, testConnection } from './db/client.js';
 import { startMonitorWorker } from './workers/MonitorWorker.js';
 import { startSiteCheckWorker } from './workers/SiteCheckWorker.js';
 import { startMarketplaceAuditWorker } from './workers/MarketplaceAuditWorker.js';
+import { startAllFormulaV2Workers } from './workers/FormulaV2Worker.js';
 import { MonitorService } from './services/MonitorService.js';
 import { logger } from './utils/logger.js';
 
@@ -25,6 +26,12 @@ async function main() {
   const monitorWorker = startMonitorWorker();
   const siteCheckWorker = startSiteCheckWorker();
   const marketplaceAuditWorker = startMarketplaceAuditWorker();
+  const formulaV2Workers = process.env.FORMULA_V2_WORKERS_DISABLED === '1'
+    ? []
+    : startAllFormulaV2Workers();
+  if (formulaV2Workers.length) {
+    logger.info('BOOT', `Started ${formulaV2Workers.length} Formula v2 workers`);
+  }
 
   // Schedule all due monitors via BullMQ delayed jobs
   const monitorService = new MonitorService();
@@ -37,6 +44,7 @@ async function main() {
     await monitorWorker.close();
     await siteCheckWorker.close();
     await marketplaceAuditWorker.close();
+    await Promise.all(formulaV2Workers.map((w) => w.close()));
     await redis.quit();
     await sql.end();
     logger.info('BOOT', 'Shutdown complete');

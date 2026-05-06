@@ -38,6 +38,8 @@ import BorderBot from "@/components/mascot/BorderBot";
 import { AuditProvider } from "@/state/audit";
 import SiteFormula from "./pages/SiteFormula";
 import SiteFormulaWizard from "./pages/SiteFormulaWizard";
+import SiteFormulaV2 from "./pages/SiteFormulaV2";
+import SiteFormulaV3 from "./pages/SiteFormulaV3";
 import SiteFormulaPreview from "./pages/SiteFormulaPreview";
 import SiteFormulaReport from "./pages/SiteFormulaReport";
 import MarketplaceAudit from "./pages/MarketplaceAudit";
@@ -79,6 +81,9 @@ const App = () => (
             <Route path="/geo-rating/methodology" element={<GeoRatingMethodology />} />
             <Route path="/site-formula" element={<SiteFormula />} />
             <Route path="/site-formula/wizard" element={<SiteFormulaWizard />} />
+            <Route path="/site-formula/v2" element={<SiteFormulaV3 />} />
+            <Route path="/site-formula/v3" element={<SiteFormulaV3 />} />
+            <Route path="/site-formula/v2-legacy" element={<SiteFormulaV2 />} />
             <Route path="/site-formula/preview" element={<SiteFormulaPreview />} />
             <Route path="/site-formula/report" element={<SiteFormulaReport />} />
             <Route path="/tools" element={<Tools />} />
