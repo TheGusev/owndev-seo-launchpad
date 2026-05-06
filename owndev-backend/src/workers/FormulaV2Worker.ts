@@ -2,11 +2,11 @@
  * Formula v2 — единый wrapper для BullMQ воркеров.
  *
  * Стартуем 4 воркера:
- *   - build-worker     (formula-v2:build)     — генерация blueprint v2
- *   - crawl-worker     (formula-v2:crawl)     — обход сайта
- *   - audit-worker     (formula-v2:audit)     — gap-анализ + опционально recovery
- *   - wordstat-worker  (formula-v2:wordstat)  — обновление кэша wordstat
- *   - ai-pack-worker   (formula-v2:ai-pack)   — генерация ZIP пака
+ *   - build-worker     (formula-v2-build)     — генерация blueprint v2
+ *   - crawl-worker     (formula-v2-crawl)     — обход сайта
+ *   - audit-worker     (formula-v2-audit)     — gap-анализ + опционально recovery
+ *   - wordstat-worker  (formula-v2-wordstat)  — обновление кэша wordstat
+ *   - ai-pack-worker   (formula-v2-ai-pack)   — генерация ZIP пака
  *
  * Каждый воркер пишет статус в `formula_jobs` (active/completed/failed).
  */
@@ -54,7 +54,7 @@ async function wrap<T>(job: Job<FormulaJobPayload>, fn: () => Promise<T>): Promi
 // ── build worker ─────────────────────────────────────────────
 export function startFormulaBuildWorker(): Worker {
   const w = new Worker<BuildJobPayload>(
-    'formula-v2:build',
+    'formula-v2-build',
     async (job) => {
       logger.info('FORMULA_V2_BUILD', `Job ${job.id} starting`);
       return wrap(job as any, async () => {
@@ -80,7 +80,7 @@ export function startFormulaBuildWorker(): Worker {
 // ── crawl worker ─────────────────────────────────────────────
 export function startFormulaCrawlWorker(): Worker {
   const w = new Worker<CrawlJobPayload>(
-    'formula-v2:crawl',
+    'formula-v2-crawl',
     async (job) => {
       logger.info('FORMULA_V2_CRAWL', `Job ${job.id} crawling ${job.data.url}`);
       return wrap(job as any, async () => {
@@ -108,7 +108,7 @@ export function startFormulaCrawlWorker(): Worker {
 // ── audit worker (включает recovery как опцию) ──────────────
 export function startFormulaAuditWorker(): Worker {
   const w = new Worker<AuditJobPayload>(
-    'formula-v2:audit',
+    'formula-v2-audit',
     async (job) => {
       logger.info('FORMULA_V2_AUDIT', `Job ${job.id} auditing ${job.data.url}`);
       return wrap(job as any, async () => {
@@ -155,7 +155,7 @@ export function startFormulaAuditWorker(): Worker {
 // ── wordstat worker ──────────────────────────────────────────
 export function startFormulaWordstatWorker(): Worker {
   const w = new Worker<WordstatJobPayload>(
-    'formula-v2:wordstat',
+    'formula-v2-wordstat',
     async (job) => {
       logger.info(
         'FORMULA_V2_WORDSTAT',
@@ -203,7 +203,7 @@ export function startFormulaWordstatWorker(): Worker {
 // ── ai-pack worker ───────────────────────────────────────────
 export function startFormulaAiPackWorker(): Worker {
   const w = new Worker<AiPackJobPayload>(
-    'formula-v2:ai-pack',
+    'formula-v2-ai-pack',
     async (job) => {
       logger.info('FORMULA_V2_AI_PACK', `Job ${job.id} building pack`);
       return wrap(job as any, async () => {
