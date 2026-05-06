@@ -4,10 +4,11 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Layers, Shield, Target, Zap, FileText, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Layers, Shield, Target, Zap, FileText, CheckCircle2, Crown, Sparkles } from 'lucide-react';
 import { AuroraBackground } from '@/components/ui/aurora-background';
 import { TypingCodeBlock } from '@/components/ui/typing-code-block';
 import { FloatingCodeSnippets } from '@/components/ui/floating-code-snippets';
+import PROUpsellBlock from '@/components/site-formula/PROUpsellBlock';
 
 const FORMULA_LAYERS = [
   { icon: Target, title: 'Карта спроса', desc: 'Анализ реального спроса и кластеризация запросов' },
@@ -52,12 +53,43 @@ export default function SiteFormula() {
               получите профессиональный план структуры: какие страницы создать, что индексировать,
               как масштабироваться безопасно — включая расчёт стоимости разработки.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Button asChild size="lg" className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90">
-                <Link to="/site-formula/wizard">
-                  Начать анализ <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+
+            {/* Два варианта: Free и PRO */}
+            <div className="mx-auto grid max-w-3xl gap-3 sm:grid-cols-2 pt-2 text-left">
+              {/* Free карточка */}
+              <div className="relative flex flex-col rounded-xl border border-primary/30 bg-card/40 backdrop-blur-sm p-5 transition-all hover:border-primary/60 hover:shadow-[0_0_30px_hsl(var(--primary)/0.15)]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-foreground">Free — бесплатно</span>
+                  <Badge variant="outline" className="border-primary/30 text-primary text-[10px]">Beta</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Архитектурный blueprint, расчёт стоимости, экспорт PDF — без ограничений.
+                </p>
+                <Button asChild className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 w-full">
+                  <Link to="/site-formula/wizard">
+                    Начать анализ <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+              {/* PRO карточка */}
+              <div className="relative flex flex-col rounded-xl border border-amber-500/40 bg-gradient-to-br from-amber-500/[0.06] via-fuchsia-500/[0.06] to-violet-500/[0.08] backdrop-blur-sm p-5 transition-all hover:border-amber-500/70 hover:shadow-[0_0_30px_hsl(45_100%_60%/0.2)]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Crown className="h-4 w-4 text-amber-500" /> PRO
+                  </span>
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-500 text-[10px] gap-1">
+                    <Sparkles className="h-2.5 w-2.5" /> Ранний доступ
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Wordstat-данные, Preflight 4-осей, техпаспорт + super_prompt_pack для Lovable / Cursor.
+                </p>
+                <Button asChild className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90 w-full">
+                  <Link to="/site-formula/v3">
+                    Получить PRO <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             <div className="mx-auto max-w-2xl pt-4 text-left">
@@ -99,6 +131,13 @@ export default function SiteFormula() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* PRO upsell — полный блок сравнения Free vs PRO */}
+        <section className="py-12 sm:py-16 border-t border-border">
+          <div className="container mx-auto max-w-5xl px-4">
+            <PROUpsellBlock variant="full" />
           </div>
         </section>
 

@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import BlueprintSection from '@/components/site-formula/BlueprintSection';
 import BlueprintExportButtons from '@/components/site-formula/BlueprintExportButtons';
+import PROUpsellBlock from '@/components/site-formula/PROUpsellBlock';
 import { BlueprintSkeleton } from '@/components/site-formula/SiteFormulaSkeletons';
 import { getSession, type FullReportPayload } from '@/lib/api/siteFormula';
 import { Button } from '@/components/ui/button';
@@ -162,6 +163,9 @@ export default function SiteFormulaReport() {
                   </a>
                 </div>
               )}
+
+              {/* PRO upsell — версия V3 с Wordstat / Preflight / super_prompt_pack */}
+              <PROUpsellBlock variant="full" className="mt-2" />
             </>
           )}
         </div>

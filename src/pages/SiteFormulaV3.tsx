@@ -13,7 +13,10 @@
  * редиректят сюда (см. App.tsx).
  */
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +37,12 @@ import {
   ListChecks,
   Shield,
   Package,
+  Crown,
+  ArrowRight,
+  ArrowLeft,
+  FileJson,
+  FileText,
+  Layers3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -52,6 +61,19 @@ type Stage =
   | 'done'
   | 'failed';
 
+/**
+ * Нормализация URL: клиент может ввести `example.ru`,
+ * `www.example.ru`, `санитарные-решения.рф` и т.п. — все эти
+ * варианты должны вылетать на бэкенд как `https://...`,
+ * иначе zod URL-валидатор падает с 'Invalid url'.
+ */
+function normalizeUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 type StageKey = 'intake' | 'demand' | 'crawl' | 'audit' | 'preflight' | 'pack';
 
 const STAGE_LABELS: Record<StageKey, { ru: string; icon: any }> = {
@@ -68,6 +90,35 @@ const TIER_LABELS: Record<string, string> = {
   B: 'Tier B — App-driven',
   C: 'Tier C — Спец. вертикали',
 };
+
+/** Карточки формата пакета вместо голого <select>. */
+const PACK_MODES: Array<{
+  value: ExportMode;
+  title: string;
+  desc: string;
+  icon: any;
+  recommended?: boolean;
+}> = [
+  {
+    value: 'structured',
+    title: 'Structured',
+    desc: 'JSON спецификация + per-section MD — универсальный вариант',
+    icon: Layers3,
+    recommended: true,
+  },
+  {
+    value: 'full',
+    title: 'Full bundle',
+    desc: 'Единый super_prompt_pack.json — всё в одном файле',
+    icon: FileJson,
+  },
+  {
+    value: 'platform_specific',
+    title: 'Platform-specific',
+    desc: 'Специальные файлы под Lovable / Cursor / v0 / Claude Code',
+    icon: FileText,
+  },
+];
 
 export default function SiteFormulaV3() {
   const [stage, setStage] = useState<Stage>('pick_type');
@@ -131,7 +182,7 @@ export default function SiteFormulaV3() {
         .map((s) => s.trim())
         .filter(Boolean);
       const r = await formulaV3Api.runPipeline({
-        root_url: siteUrl,
+        root_url: normalizeUrl(siteUrl),
         project_code: selectedType,
         brand: {
           name: brandName,
@@ -168,23 +219,64 @@ export default function SiteFormulaV3() {
   }
 
   // ─── render ────────────────────────────────────────────────
+  // Прогресс wizard'а: шаг 1 из 3 / шаг 2 из 3 / прогон.
+  const stepNum = stage === 'pick_type' ? 1 : stage === 'fill_intake' ? 2 : 3;
+  const stepProgress = (stepNum / 3) * 100;
+
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
+    <>
       <Helmet>
-        <title>Site Formula V3 — owndev.ru</title>
+        <title>Site Formula PRO — точный blueprint с Wordstat и Preflight | OWNDEV</title>
         <meta
           name="description"
-          content="Site Formula V3 — генератор сайтов с гарантированным прохождением Preflight 4-осей: SEO/Direct/Schema/AI-LLM ≥ 90."
+          content="Site Formula PRO — 23 типа проекта, спрос из Wordstat, техпаспорт (llms.txt + 17 AI-ботов), Preflight 4-осей и super_prompt_pack для Lovable / Cursor / v0 / Claude Code."
         />
       </Helmet>
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Site Formula V3</h1>
-        <p className="text-muted-foreground">
-          23 типа проекта, спрос из Wordstat, технический паспорт (llms.txt + 17 AI-ботов),
-          Preflight 4-осей и super_prompt_pack v1 для Lovable / Cursor / v0 / Claude Code.
-        </p>
-      </div>
+      <Header />
+      <main className="min-h-screen bg-background pt-20">
+        <div className="container mx-auto py-8 px-4 max-w-5xl">
+          {/* Hero в стиле обычной формулы */}
+          <div className="mb-8 space-y-4">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" asChild className="gap-1.5 -ml-2">
+                <Link to="/site-formula">
+                  <ArrowLeft className="h-4 w-4" /> К Site Formula
+                </Link>
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="border-amber-500/40 text-amber-500 gap-1">
+                <Crown className="h-3 w-3" /> PRO · Beta
+              </Badge>
+              <Badge variant="outline" className="border-fuchsia-500/40 text-fuchsia-400">
+                Ранний доступ
+              </Badge>
+            </div>
+            <h1 className="font-['Playfair_Display'] text-3xl sm:text-4xl font-bold tracking-tight">
+              Site Formula{' '}
+              <span className="bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 bg-clip-text text-transparent">
+                PRO
+              </span>
+            </h1>
+            <p className="text-muted-foreground max-w-2xl">
+              23 типа проекта, спрос из Wordstat, технический паспорт (llms.txt + 17 AI-ботов),
+              Preflight 4-осей и super_prompt_pack для Lovable / Cursor / v0 / Claude Code.
+            </p>
+            {/* Прогресс wizard'а */}
+            {stage !== 'done' && stage !== 'failed' && (
+              <div className="pt-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                  <span>Шаг {stepNum} из 3</span>
+                  <span>
+                    {stepNum === 1 && 'Выбор типа проекта'}
+                    {stepNum === 2 && 'Данные бренда и формат пакета'}
+                    {stepNum === 3 && 'Генерация pipeline'}
+                  </span>
+                </div>
+                <Progress value={stepProgress} className="h-1.5" />
+              </div>
+            )}
+          </div>
 
       {stage === 'pick_type' && (
         <Card>
@@ -247,7 +339,15 @@ export default function SiteFormulaV3() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="url">URL сайта *</Label>
-                <Input id="url" placeholder="https://example.ru" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} />
+                <Input
+                  id="url"
+                  placeholder="example.ru или https://example.ru"
+                  value={siteUrl}
+                  onChange={(e) => setSiteUrl(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Можно без https:// — добавим автоматически. Кириллица поддерживается.
+                </p>
               </div>
               <div>
                 <Label htmlFor="brand">Название бренда *</Label>
@@ -280,43 +380,90 @@ export default function SiteFormulaV3() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+            <div className="pt-3 border-t space-y-3">
               <div>
-                <Label>Формат пакета</Label>
-                <select
-                  className="w-full border rounded-md px-3 py-2"
-                  value={packMode}
-                  onChange={(e) => setPackMode(e.target.value as ExportMode)}
-                >
-                  <option value="structured">Structured (JSON + per-section MD)</option>
-                  <option value="full">Full (single super_prompt_pack.json)</option>
-                  <option value="platform_specific">Platform-specific</option>
-                </select>
+                <Label className="text-base">Формат пакета</Label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Как выходные файлы будут упакованы. Для большинства случаев подходит Structured.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {PACK_MODES.map((m) => {
+                    const Icon = m.icon;
+                    const active = packMode === m.value;
+                    return (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => setPackMode(m.value)}
+                        className={`text-left rounded-lg border p-4 transition-colors hover:border-primary/60 ${
+                          active
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                            : 'border-border bg-card'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <Icon className={`h-5 w-5 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
+                          {m.recommended && (
+                            <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                              Рекомендуем
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="font-semibold text-sm mb-1">{m.title}</div>
+                        <div className="text-xs text-muted-foreground">{m.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
               {packMode === 'platform_specific' && (
                 <div>
-                  <Label>Платформа</Label>
-                  <select
-                    className="w-full border rounded-md px-3 py-2"
-                    value={platform}
-                    onChange={(e) => setPlatform(e.target.value as PlatformTarget)}
-                  >
-                    <option value="lovable">Lovable (PROMPT.md)</option>
-                    <option value="cursor">Cursor (.cursor/rules)</option>
-                    <option value="v0">v0 (prompt.txt)</option>
-                    <option value="claude_code">Claude Code (CLAUDE.md + specs)</option>
-                    <option value="raw">Raw (structured)</option>
-                  </select>
+                  <Label className="text-base">Целевая платформа</Label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Где вы будете собирать сайт — под эту платформу сформируем инструкции.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {(
+                      [
+                        { v: 'lovable', label: 'Lovable' },
+                        { v: 'cursor', label: 'Cursor' },
+                        { v: 'v0', label: 'v0' },
+                        { v: 'claude_code', label: 'Claude Code' },
+                        { v: 'raw', label: 'Raw' },
+                      ] as const
+                    ).map((p) => (
+                      <button
+                        key={p.v}
+                        type="button"
+                        onClick={() => setPlatform(p.v as PlatformTarget)}
+                        className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                          platform === p.v
+                            ? 'border-primary bg-primary/5 text-primary font-medium'
+                            : 'border-border bg-card hover:border-primary/40'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
 
             <div className="flex gap-2 pt-4">
-              <Button onClick={handleRun} disabled={busy || !siteUrl || !brandName}>
-                {busy && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Запустить V3 pipeline
+              <Button
+                onClick={handleRun}
+                disabled={busy || !siteUrl || !brandName}
+                size="lg"
+                className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90"
+              >
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                {!busy && <Crown className="h-4 w-4" />}
+                Запустить PRO pipeline
+                <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={() => setStage('pick_type')}>Назад</Button>
+              <Button variant="outline" size="lg" onClick={() => setStage('pick_type')}>Назад</Button>
             </div>
           </CardContent>
         </Card>
@@ -437,7 +584,10 @@ export default function SiteFormulaV3() {
           )}
         </div>
       )}
-    </div>
+        </div>
+      </main>
+      <Footer />
+    </>
   );
 }
 

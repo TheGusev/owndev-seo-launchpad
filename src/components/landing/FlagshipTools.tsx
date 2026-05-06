@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Helmet } from "react-helmet-async";
-import { Search, LayoutTemplate, ShoppingBag, ArrowRight } from "lucide-react";
+import { Search, LayoutTemplate, ShoppingBag, ArrowRight, Crown } from "lucide-react";
 import { GeometricRays } from "@/components/ui/geometric-rays";
 import { ScanLine } from "@/components/ui/scan-line";
 import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
@@ -25,7 +25,8 @@ const flagships = [
   {
     title: "Site Formula",
     badge: "Флагман",
-    desc: "Архитектурный blueprint сайта: структура страниц, блоки, приоритеты под вашу нишу.",
+    proBadge: "PRO доступна",
+    desc: "Архитектурный blueprint сайта: структура страниц, блоки, приоритеты под вашу нишу. Теперь с PRO-версией для точного промпт-пакета.",
     cta: "Собрать blueprint",
     href: "/site-formula",
     icon: LayoutTemplate,
@@ -125,9 +126,17 @@ const FlagshipTools = () => {
                     <div className={`p-3 rounded-xl ${tool.accent.iconBg}`}>
                       <Icon className={`w-6 h-6 ${tool.accent.iconText}`} />
                     </div>
-                    <span className={`text-xs px-2.5 py-1 rounded-full border ${tool.accent.badge}`}>
-                      {tool.badge}
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className={`text-xs px-2.5 py-1 rounded-full border ${tool.accent.badge}`}>
+                        {tool.badge}
+                      </span>
+                      {(tool as { proBadge?: string }).proBadge && (
+                        <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-fuchsia-500/10 to-violet-500/10 text-amber-300">
+                          <Crown className="w-3 h-3" />
+                          {(tool as { proBadge?: string }).proBadge}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <h3 className="text-xl font-bold font-serif mb-2">{tool.title}</h3>
                   <p className="text-sm text-muted-foreground mb-6 flex-1">{tool.desc}</p>
