@@ -66,6 +66,11 @@ export async function startServer() {
     const { jobsV2Routes } = await import('./routes/jobsV2.js');
     await app.register(jobsV2Routes, { prefix: '/api/v2/jobs' });
 
+    // ── V3 — Site Formula V3 (Tier A/B/C, demand intelligence,
+    //    technical passport, preflight 4-axes, super_prompt_pack v1) ──
+    const { v3Routes } = await import('./routes/v3/index.js');
+    await app.register(v3Routes, { prefix: '/api/v3' });
+
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
   logger.info('SERVER', `Listening on :${port}`);
