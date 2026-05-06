@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { tools, type ToolDef } from "@/data/tools-registry";
-import { ArrowRight, ChevronDown, ChevronUp, Trophy, Star, Search, BrainCircuit, Sparkles, type LucideIcon } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Trophy, Star, Search, BrainCircuit, Sparkles, Crown, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
@@ -260,6 +260,11 @@ const Tools = () => {
                                 <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${badgeBg}`}>
                                   <Star className="w-2.5 h-2.5" /> Флагман
                                 </span>
+                                {card.tool.slug === "site-formula" && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-fuchsia-500/15 to-violet-500/15 text-amber-300">
+                                    <Crown className="w-2.5 h-2.5" /> PRO доступна
+                                  </span>
+                                )}
                               </div>
                               <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{card.tagline}</p>
                             </div>
