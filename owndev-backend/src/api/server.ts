@@ -58,6 +58,10 @@ export async function startServer() {
     const { wordstatRoutes } = await import('./routes/wordstat.js');
     await app.register(wordstatRoutes, { prefix: '/api/v2/wordstat' });
 
+    // Audit / Recovery / AI Developer Pack (Module 9)
+    const { auditV2Routes } = await import('./routes/auditV2.js');
+    await app.register(auditV2Routes, { prefix: '/api/v2' });
+
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
   logger.info('SERVER', `Listening on :${port}`);

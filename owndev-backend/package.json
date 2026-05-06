@@ -19,7 +19,9 @@
     "ioredis": "^5.4.0",
     "bullmq": "^5.25.0",
     "zod": "^3.23.0",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "cheerio": "^1.0.0",
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
