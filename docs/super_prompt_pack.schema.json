@@ -1,0 +1,377 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://owndev.ru/schemas/super_prompt_pack.schema.json",
+  "title": "Owndev Super Prompt Pack v1 (Module 9)",
+  "description": "Машиночитаемый контракт для AI-кодера. Собирается из Site Formula V2 пайплайна и сериализуется в три режима: full / structured / platform-specific.",
+  "type": "object",
+  "required": [
+    "version",
+    "agent_role",
+    "mission",
+    "non_negotiable_rules",
+    "tech_stack",
+    "business_context",
+    "route_map",
+    "page_contracts",
+    "seo_geo_schema_contract",
+    "ui_component_rules",
+    "acceptance_criteria"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Версия Super Prompt Pack"
+    },
+    "engine_version": {
+      "type": "string",
+      "description": "Версия Site Formula engine, выпустившего пакет"
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "agent_role": {
+      "type": "object",
+      "required": ["title", "expertise", "tone"],
+      "properties": {
+        "title": { "type": "string", "description": "Например: Senior Full-Stack Developer specialised in SEO/GEO/CRO websites" },
+        "expertise": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "tone": { "enum": ["professional", "friendly", "technical", "concise"] }
+      }
+    },
+    "mission": {
+      "type": "object",
+      "required": ["primary_goal", "success_criteria"],
+      "properties": {
+        "primary_goal": { "type": "string" },
+        "success_criteria": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "out_of_scope": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "non_negotiable_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["rule", "rationale", "violation_consequence"],
+        "properties": {
+          "rule": { "type": "string" },
+          "rationale": { "type": "string" },
+          "violation_consequence": { "enum": ["fail_acceptance", "warning", "rework"] }
+        }
+      }
+    },
+    "tech_stack": {
+      "type": "object",
+      "required": ["framework", "styling"],
+      "properties": {
+        "framework": { "type": "string", "examples": ["Next.js 14", "Vite + React", "Astro", "SvelteKit"] },
+        "styling": { "type": "string", "examples": ["Tailwind CSS", "CSS Modules", "vanilla-extract"] },
+        "ui_kit": { "type": "string", "examples": ["shadcn/ui", "Radix", "headless UI"] },
+        "state_management": { "type": "string" },
+        "deployment": { "type": "string", "examples": ["Vercel", "self-hosted PM2 + Nginx"] },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Жёсткие ограничения, например: no Supabase, no client-side puppeteer, no Tailwind v4"
+        }
+      }
+    },
+    "business_context": {
+      "type": "object",
+      "required": ["brand", "industry", "target_audience"],
+      "properties": {
+        "brand": { "type": "string" },
+        "industry": { "type": "string" },
+        "project_type_code": { "type": "string", "description": "из formula_project_types" },
+        "tier": { "enum": ["A", "B", "C"], "description": "A=web, B=app, C=special" },
+        "target_audience": { "type": "string" },
+        "geo": {
+          "type": "object",
+          "properties": {
+            "country": { "type": "string", "default": "RU" },
+            "regions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Yandex region codes, например ['213','2']"
+            },
+            "primary_city": { "type": "string" }
+          }
+        },
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["ru"]
+        },
+        "competitive_position": { "type": "string" }
+      }
+    },
+    "route_map": {
+      "type": "object",
+      "required": ["routes"],
+      "properties": {
+        "routes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["page_type", "pattern"],
+            "properties": {
+              "page_type": { "type": "string" },
+              "pattern": { "type": "string", "description": "URL pattern с {{placeholders}}" },
+              "examples": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "priority": { "type": "string", "enum": ["MUST", "SHOULD", "COULD"] },
+              "indexable": { "type": "boolean", "default": true },
+              "in_sitemap": { "type": "boolean", "default": true }
+            }
+          }
+        }
+      }
+    },
+    "page_contracts": {
+      "type": "object",
+      "required": ["contracts"],
+      "properties": {
+        "contracts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["page_type", "h1", "title", "meta_description", "required_schemas", "required_blocks"],
+            "properties": {
+              "page_type": { "type": "string" },
+              "h1": {
+                "type": "object",
+                "required": ["template", "max_chars"],
+                "properties": {
+                  "template": { "type": "string" },
+                  "max_chars": { "type": "integer", "default": 35 }
+                }
+              },
+              "title": {
+                "type": "object",
+                "required": ["template", "max_chars"],
+                "properties": {
+                  "template": { "type": "string" },
+                  "max_chars": { "type": "integer", "default": 60 }
+                }
+              },
+              "meta_description": {
+                "type": "object",
+                "required": ["template", "min_chars", "max_chars"],
+                "properties": {
+                  "template": { "type": "string" },
+                  "min_chars": { "type": "integer", "default": 70 },
+                  "max_chars": { "type": "integer", "default": 160 }
+                }
+              },
+              "intro_answer": {
+                "type": "object",
+                "description": "Прямой ответ в первом параграфе для AI-цитируемости",
+                "properties": {
+                  "min_words": { "type": "integer", "default": 40 },
+                  "max_words": { "type": "integer", "default": 80 },
+                  "guidance": { "type": "string" }
+                }
+              },
+              "faq": {
+                "type": "object",
+                "properties": {
+                  "min_items": { "type": "integer", "default": 5 },
+                  "questions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["question", "answer"],
+                      "properties": {
+                        "question": { "type": "string" },
+                        "answer": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              },
+              "required_schemas": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Schema.org типы, обязательные на странице"
+              },
+              "required_blocks": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "hero, cta, faq, contacts_block, pricing_table, ..."
+              },
+              "forbidden_blocks": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "commercial_signals": {
+                "type": "array",
+                "items": { "enum": ["price", "phone", "messengers", "reviews", "guarantee", "license", "delivery", "working_hours"] }
+              },
+              "min_word_count": { "type": "integer", "default": 400 },
+              "canonical_required": { "type": "boolean", "default": true }
+            }
+          }
+        }
+      }
+    },
+    "seo_geo_schema_contract": {
+      "type": "object",
+      "required": ["global_schemas", "page_schemas"],
+      "properties": {
+        "global_schemas": {
+          "type": "array",
+          "description": "JSON-LD объекты, рендерящиеся на каждой странице (Organization, WebSite)",
+          "items": {
+            "type": "object",
+            "required": ["schema_type", "rendered_json"],
+            "properties": {
+              "schema_type": { "type": "string" },
+              "rendered_json": { "type": "object" }
+            }
+          }
+        },
+        "page_schemas": {
+          "type": "array",
+          "description": "Per-page-type schema graphs",
+          "items": {
+            "type": "object",
+            "required": ["page_type", "graph"],
+            "properties": {
+              "page_type": { "type": "string" },
+              "graph": {
+                "type": "object",
+                "description": "Schema.org @graph объект",
+                "properties": {
+                  "@context": { "const": "https://schema.org" },
+                  "@graph": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "llms_txt": { "type": "string", "description": "Содержимое /llms.txt по llmstxt.org spec" },
+        "robots_txt": { "type": "string", "description": "Содержимое /robots.txt с явными правилами для GPTBot, ClaudeBot, Google-Extended, PerplexityBot" },
+        "sitemap_xml": { "type": "string" },
+        "well_known_ai": { "type": "string", "description": "Содержимое /.well-known/ai.txt" },
+        "data_layer_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "event": { "type": "string" },
+              "trigger": { "type": "string" },
+              "payload": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "ui_component_rules": {
+      "type": "object",
+      "properties": {
+        "design_tokens": {
+          "type": "object",
+          "properties": {
+            "primary_color": { "type": "string" },
+            "secondary_color": { "type": "string" },
+            "font_heading": { "type": "string" },
+            "font_body": { "type": "string" },
+            "border_radius": { "type": "string" }
+          }
+        },
+        "required_components": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Header, Footer, Breadcrumbs, FAQ, CTA, ContactForm, Hero, ..."
+        },
+        "accessibility": {
+          "type": "string",
+          "enum": ["WCAG A", "WCAG AA", "WCAG AAA"],
+          "default": "WCAG AA"
+        },
+        "performance_budgets": {
+          "type": "object",
+          "properties": {
+            "lcp_ms": { "type": "integer", "default": 2500 },
+            "cls": { "type": "number", "default": 0.1 },
+            "inp_ms": { "type": "integer", "default": 200 },
+            "page_weight_kb": { "type": "integer", "default": 1500 }
+          }
+        }
+      }
+    },
+    "acceptance_criteria": {
+      "type": "object",
+      "required": ["preflight_targets", "p0_checks"],
+      "properties": {
+        "preflight_targets": {
+          "type": "object",
+          "required": ["seo", "direct", "schema", "ai_llm", "total"],
+          "properties": {
+            "seo":    { "type": "integer", "minimum": 0, "maximum": 100, "default": 85 },
+            "direct": { "type": "integer", "minimum": 0, "maximum": 100, "default": 90 },
+            "schema": { "type": "integer", "minimum": 0, "maximum": 100, "default": 100 },
+            "ai_llm": { "type": "integer", "minimum": 0, "maximum": 100, "default": 85 },
+            "total":  { "type": "integer", "minimum": 0, "maximum": 100, "default": 90 }
+          }
+        },
+        "p0_checks": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Provoking publishable=false при любом failed",
+          "items": {
+            "type": "object",
+            "required": ["id", "rule", "axis"],
+            "properties": {
+              "id": { "type": "string" },
+              "rule": { "type": "string" },
+              "axis": { "enum": ["seo", "direct", "schema", "ai_llm"] },
+              "human_message_ru": { "type": "string" }
+            }
+          }
+        },
+        "p1_checks": {
+          "type": "array",
+          "items": { "$ref": "#/properties/acceptance_criteria/properties/p0_checks/items" }
+        },
+        "p2_checks": {
+          "type": "array",
+          "items": { "$ref": "#/properties/acceptance_criteria/properties/p0_checks/items" }
+        },
+        "verification_steps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Например: 'прогон через Google Rich Results Test', 'lighthouse SEO ≥ 90', 'pa11y без AA ошибок'"
+        },
+        "ready_signal": {
+          "type": "string",
+          "default": "READY",
+          "description": "Слово, которое AI-кодер должен напечатать после прохождения всех чеков"
+        }
+      }
+    },
+    "export_mode": {
+      "enum": ["full", "structured", "platform_specific"],
+      "description": "Как сериализовать пакет"
+    },
+    "platform_target": {
+      "enum": ["lovable", "cursor", "v0", "claude_code", "raw"],
+      "description": "Только при export_mode=platform_specific"
+    }
+  }
+}
