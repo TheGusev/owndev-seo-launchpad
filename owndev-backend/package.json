@@ -8,6 +8,7 @@
     "build": "tsc && cp -r config dist/config",
     "start": "node dist/index.js",
     "migrate": "node dist/db/migrate.js",
+    "migrate:dev": "tsx src/db/migrate.ts",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts",
     "rescan:geo": "tsx scripts/rescan-geo-rating.ts"
   },
