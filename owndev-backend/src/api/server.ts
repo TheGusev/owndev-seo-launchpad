@@ -54,6 +54,10 @@ export async function startServer() {
     const { formulaV2Routes } = await import('./routes/formulaV2.js');
     await app.register(formulaV2Routes, { prefix: '/api/v2/formula' });
 
+    // Wordstat / demand intelligence
+    const { wordstatRoutes } = await import('./routes/wordstat.js');
+    await app.register(wordstatRoutes, { prefix: '/api/v2/wordstat' });
+
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
   logger.info('SERVER', `Listening on :${port}`);
