@@ -44,6 +44,14 @@ export function apiUrlV2(path: string) {
 }
 
 /**
+ * Site Formula V3 endpoints.
+ * Пример: apiUrlV3('/pipeline/run') → '/api/v3/pipeline/run'
+ */
+export function apiUrlV3(path: string) {
+  return `${API_BASE_URL}/v3${path.startsWith('/') ? path : '/' + path}`;
+}
+
+/**
  * Standard headers for own backend requests.
  * NOTE: Content-Type is intentionally NOT set here — it must be added only by
  * callers that actually send a JSON body. Fastify rejects requests with
