@@ -23,7 +23,9 @@ export type PipelineStage = 'intake' | 'demand' | 'crawl' | 'audit' | 'preflight
 
 export interface PipelineInput {
   job_id: string;                    // formula_jobs.id
-  root_url: string;
+  // root_url опционален — клиент может ещё не иметь домена.
+  // Если не задан — crawl/audit/preflight пропускаются.
+  root_url?: string;
   project_code: ProjectTypeCodeV3;
   brand: {
     name: string;
@@ -57,7 +59,7 @@ export interface PipelineStageResult {
 
 export interface PipelineResultV3 {
   job_id: string;
-  root_url: string;
+  root_url?: string;
   status: 'done' | 'failed';
   stages: PipelineStageResult[];
   demand?: DemandIntelligenceResult;

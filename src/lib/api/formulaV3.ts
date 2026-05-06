@@ -12,8 +12,8 @@ export type ProjectTypeCodeV3 =
   | 'promo_event' | 'personal_brand' | 'franchise_multi' | 'b2b_media';
 
 export type ProjectTier = 'A' | 'B' | 'C';
-export type ExportMode = 'structured' | 'full' | 'platform_specific';
-export type PlatformTarget = 'lovable' | 'cursor' | 'v0' | 'claude_code' | 'raw';
+export type ExportMode = 'structured' | 'full' | 'platform_specific' | 'studio';
+export type PlatformTarget = 'lovable' | 'cursor' | 'v0' | 'claude_code' | 'antigravity' | 'raw';
 
 export interface ProjectTypeV3 {
   code: ProjectTypeCodeV3;
@@ -49,7 +49,7 @@ export interface PreflightAxisAvg {
 
 export interface PipelineResultV3 {
   job_id: string;
-  root_url: string;
+  root_url?: string;
   status: 'done' | 'failed';
   stages: PipelineStageResult[];
   preflight_per_page?: any[];
@@ -68,7 +68,8 @@ export interface PipelineResultV3 {
 
 export interface RunPipelineInput {
   job_id?: string;
-  root_url: string;
+  // root_url опционален — клиент может ещё не иметь домена.
+  root_url?: string;
   project_code: ProjectTypeCodeV3;
   brand: {
     name: string;

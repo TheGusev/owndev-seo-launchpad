@@ -20,6 +20,8 @@ import { serializeLovable } from './serializers/lovable.js';
 import { serializeCursor } from './serializers/cursor.js';
 import { serializeV0 } from './serializers/v0.js';
 import { serializeClaudeCode } from './serializers/claude_code.js';
+import { serializeAntigravity } from './serializers/antigravity.js';
+import { serializeStudio } from './serializers/studio.js';
 import { buildZip } from './zipBuilder.js';
 
 export class DeveloperPackService {
@@ -51,6 +53,8 @@ export class DeveloperPackService {
       ];
     } else if (mode === 'platform_specific') {
       artifacts = serializeForPlatform(pack, platform ?? 'lovable');
+    } else if (mode === 'studio') {
+      artifacts = serializeStudio(pack);
     } else {
       artifacts = serializeStructured(pack);
     }
@@ -74,6 +78,8 @@ function serializeForPlatform(pack: SuperPromptPack, platform: PlatformTarget): 
       return serializeV0(pack);
     case 'claude_code':
       return serializeClaudeCode(pack);
+    case 'antigravity':
+      return serializeAntigravity(pack);
     case 'raw':
     default:
       return serializeStructured(pack);

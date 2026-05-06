@@ -21,7 +21,9 @@ const PROJECT_CODES_V3 = [
 
 const runSchema = z.object({
   job_id: z.string().min(1).optional(),
-  root_url: z.string().url(),
+  // root_url опционален — у клиента может ещё не быть домена.
+  // Если url не задан — crawl/audit пропускаются в orchestrator.
+  root_url: z.string().url().optional(),
   project_code: z.enum(PROJECT_CODES_V3),
   brand: z.object({
     name: z.string().min(1),
@@ -33,8 +35,8 @@ const runSchema = z.object({
   }),
   seed_keywords: z.array(z.string().min(1)).optional(),
   recommended_geos: z.array(z.string()).optional(),
-  pack_mode: z.enum(['structured', 'full', 'platform_specific']).optional(),
-  platform_target: z.enum(['lovable', 'cursor', 'v0', 'claude_code', 'raw']).optional(),
+  pack_mode: z.enum(['structured', 'full', 'platform_specific', 'studio']).optional(),
+  platform_target: z.enum(['lovable', 'cursor', 'v0', 'claude_code', 'antigravity', 'raw']).optional(),
   ai_training_policy: z.enum(['allow', 'deny', 'allow_with_attribution']).optional(),
   skip_demand: z.boolean().optional(),
   skip_crawl: z.boolean().optional(),

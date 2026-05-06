@@ -21,7 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -43,7 +42,21 @@ import {
   FileJson,
   FileText,
   Layers3,
+  Users,
+  Briefcase,
+  Check,
+  X,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import {
   formulaV3Api,
@@ -53,6 +66,13 @@ import {
   type ExportMode,
   type PlatformTarget,
 } from '@/lib/api/formulaV3';
+import {
+  INDUSTRY_PRESETS,
+  AUDIENCE_PRESETS,
+  POPULAR_CITIES,
+  TIER_TAB_LABELS,
+  TIER_TAB_DESCRIPTIONS,
+} from '@/data/site-formula-presets';
 
 type Stage =
   | 'pick_type'
@@ -85,39 +105,75 @@ const STAGE_LABELS: Record<StageKey, { ru: string; icon: any }> = {
   pack: { ru: 'Developer Pack', icon: Package },
 };
 
-const TIER_LABELS: Record<string, string> = {
-  A: 'Tier A — Web/SEO',
-  B: 'Tier B — App-driven',
-  C: 'Tier C — Спец. вертикали',
-};
-
-/** Карточки формата пакета вместо голого <select>. */
+/** Карточки формата пакета — язык понятный обывателю, без JSON-жаргона. */
 const PACK_MODES: Array<{
   value: ExportMode;
   title: string;
-  desc: string;
+  short: string;     // короткий подзаголовок («для кого»)
+  desc: string;     // основное описание
+  bullets: string[]; // что внутри
   icon: any;
   recommended?: boolean;
 }> = [
   {
     value: 'structured',
-    title: 'Structured',
-    desc: 'JSON спецификация + per-section MD — универсальный вариант',
+    title: 'Универсальный пакет',
+    short: 'Для любых AI-инструментов и ориентир для команды',
+    desc: 'Структурированный пакет из JSON + Markdown-файлов по разделам. Подходит большинству.',
+    bullets: [
+      'Машиночитаемая спецификация проекта',
+      'Отдельные файлы на каждый раздел (роль, роуты, контракты)',
+      'Работает с любым AI-конструктором',
+    ],
     icon: Layers3,
     recommended: true,
   },
   {
     value: 'full',
-    title: 'Full bundle',
-    desc: 'Единый super_prompt_pack.json — всё в одном файле',
+    title: 'Один большой файл',
+    short: 'Для быстрой передачи в ChatGPT/Claude',
+    desc: 'Всё ТЗ в одном JSON-файле — удобно вставить в чат одним куском.',
+    bullets: [
+      'Один файл super_prompt_pack.json',
+      'Ничего не нужно распаковывать',
+      'Можно скинуть любому AI-ассистенту',
+    ],
     icon: FileJson,
   },
   {
     value: 'platform_specific',
-    title: 'Platform-specific',
-    desc: 'Специальные файлы под Lovable / Cursor / v0 / Claude Code',
+    title: 'Под конкретный AI-конструктор',
+    short: 'Если вы уже выбрали Lovable / Cursor / v0 / Claude Code / Antigravity',
+    desc: 'Специальные файлы и формат промпта под вашу платформу.',
+    bullets: [
+      'Правильные имена и пути файлов (.cursor/rules, .antigravity/...)',
+      'Оптимизированный формат промпта под выбранный инструмент',
+      'Ниже нужно выбрать платформу',
+    ],
     icon: FileText,
   },
+  {
+    value: 'studio',
+    title: 'Для разработчика / студии',
+    short: 'Когда сайт будет делать человек, а не AI',
+    desc: 'Читаемое ТЗ в PDF/Word — можно прямо отправить в студию или фрилансеру.',
+    bullets: [
+      'Техническое_задание.html (открывается в Word, печатается в PDF)',
+      'Структурированное ТЗ из 8 разделов',
+      'Исходный Markdown для редактирования',
+    ],
+    icon: Briefcase,
+  },
+];
+
+/** Платформы для platform_specific — с Antigravity. */
+const PLATFORMS: Array<{ v: PlatformTarget; label: string; desc: string }> = [
+  { v: 'lovable', label: 'Lovable', desc: 'Один промпт + JSON' },
+  { v: 'cursor', label: 'Cursor', desc: '.cursor/rules + TASKS.md' },
+  { v: 'v0', label: 'v0 by Vercel', desc: 'Component-first prompt' },
+  { v: 'claude_code', label: 'Claude Code', desc: 'CLAUDE.md + sub-agents' },
+  { v: 'antigravity', label: 'Antigravity', desc: '.antigravity/rules.md' },
+  { v: 'raw', label: 'Raw', desc: 'Без адаптации' },
 ];
 
 export default function SiteFormulaV3() {
@@ -127,11 +183,14 @@ export default function SiteFormulaV3() {
   const [selectedType, setSelectedType] = useState<ProjectTypeCodeV3 | null>(null);
 
   const [siteUrl, setSiteUrl] = useState('');
+  const [noDomain, setNoDomain] = useState(false); // "У меня ещё нет домена"
   const [brandName, setBrandName] = useState('');
   const [industry, setIndustry] = useState('');
-  const [targetAudience, setTargetAudience] = useState('');
+  const [industryOpen, setIndustryOpen] = useState(false);
+  const [audienceChips, setAudienceChips] = useState<string[]>([]);
+  const [audienceCustom, setAudienceCustom] = useState('');
   const [city, setCity] = useState('');
-  const [seedsText, setSeedsText] = useState('');
+  const [cityOpen, setCityOpen] = useState(false);
   const [packMode, setPackMode] = useState<ExportMode>('structured');
   const [platform, setPlatform] = useState<PlatformTarget>('lovable');
 
@@ -168,8 +227,16 @@ export default function SiteFormulaV3() {
   }
 
   async function handleRun() {
-    if (!selectedType || !siteUrl || !brandName) {
-      toast.error('Заполните URL, название бренда и тип');
+    if (!selectedType) {
+      toast.error('Сначала выберите тип проекта');
+      return;
+    }
+    if (!brandName) {
+      toast.error('Укажите название бренда');
+      return;
+    }
+    if (!noDomain && !siteUrl) {
+      toast.error('Укажите URL сайта или отметьте «У меня ещё нет домена»');
       return;
     }
     setError(null);
@@ -177,20 +244,25 @@ export default function SiteFormulaV3() {
     setBusy(true);
     setStage('running');
     try {
-      const seeds = seedsText
-        .split(/[\n,;]/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+      // Целевая аудитория = чипы + кастомное поле, объединённые через запятую.
+      const audienceParts = [
+        ...audienceChips,
+        ...(audienceCustom.trim() ? [audienceCustom.trim()] : []),
+      ];
+      const targetAudience =
+        audienceParts.length > 0
+          ? audienceParts.join(', ')
+          : 'целевая аудитория проекта';
       const r = await formulaV3Api.runPipeline({
-        root_url: normalizeUrl(siteUrl),
+        root_url: noDomain ? undefined : normalizeUrl(siteUrl),
         project_code: selectedType,
         brand: {
           name: brandName,
           industry: industry || 'услуги',
-          target_audience: targetAudience || 'целевая аудитория проекта',
+          target_audience: targetAudience,
           primary_city: city || undefined,
         },
-        seed_keywords: seeds.length > 0 ? seeds : undefined,
+        // Seed-ключи теперь собирает бэк автоматически — больше не передаём.
         pack_mode: packMode,
         platform_target: packMode === 'platform_specific' ? platform : undefined,
         ai_training_policy: 'allow_with_attribution',
@@ -281,9 +353,9 @@ export default function SiteFormulaV3() {
       {stage === 'pick_type' && (
         <Card>
           <CardHeader>
-            <CardTitle>Шаг 1. Выберите тип проекта</CardTitle>
+            <CardTitle>Шаг 1. Что мы собираем?</CardTitle>
             <CardDescription>
-              Tier A — SEO-driven веб-сайты, Tier B — приложения, Tier C — специальные вертикали
+              Выберите категорию вашего проекта — от этого зависит структура ТЗ и аудит 4-осей
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -295,12 +367,15 @@ export default function SiteFormulaV3() {
             ) : (
               <Tabs defaultValue="A">
                 <TabsList>
-                  <TabsTrigger value="A">{TIER_LABELS.A} ({groupedByTier.A?.length ?? 0})</TabsTrigger>
-                  <TabsTrigger value="B">{TIER_LABELS.B} ({groupedByTier.B?.length ?? 0})</TabsTrigger>
-                  <TabsTrigger value="C">{TIER_LABELS.C} ({groupedByTier.C?.length ?? 0})</TabsTrigger>
+                  <TabsTrigger value="A">{TIER_TAB_LABELS.A} · {groupedByTier.A?.length ?? 0}</TabsTrigger>
+                  <TabsTrigger value="B">{TIER_TAB_LABELS.B} · {groupedByTier.B?.length ?? 0}</TabsTrigger>
+                  <TabsTrigger value="C">{TIER_TAB_LABELS.C} · {groupedByTier.C?.length ?? 0}</TabsTrigger>
                 </TabsList>
                 {(['A', 'B', 'C'] as const).map((tier) => (
                   <TabsContent key={tier} value={tier}>
+                    <p className="text-sm text-muted-foreground mt-3 mb-1">
+                      {TIER_TAB_DESCRIPTIONS[tier]}
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                       {(groupedByTier[tier] ?? []).map((t) => (
                         <button
@@ -308,10 +383,7 @@ export default function SiteFormulaV3() {
                           onClick={() => handlePickType(t.code)}
                           className="text-left border rounded-lg p-4 hover:border-primary hover:bg-accent transition-colors"
                         >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-semibold">{t.name_ru}</span>
-                            <Badge variant="outline" className="text-xs">{t.code}</Badge>
-                          </div>
+                          <div className="font-semibold mb-1">{t.name_ru}</div>
                           {t.description && (
                             <p className="text-sm text-muted-foreground line-clamp-2">{t.description}</p>
                           )}
@@ -329,64 +401,234 @@ export default function SiteFormulaV3() {
       {stage === 'fill_intake' && selectedType && (
         <Card>
           <CardHeader>
-            <CardTitle>Шаг 2. Данные бренда</CardTitle>
+            <CardTitle>Шаг 2. Расскажите о проекте</CardTitle>
             <CardDescription>
-              Тип: <Badge variant="secondary">{selectedType}</Badge>{' '}
+              Тип проекта:{' '}
+              <span className="font-medium text-foreground">
+                {types.find((tt) => tt.code === selectedType)?.name_ru ?? selectedType}
+              </span>{' '}
               <Button variant="link" size="sm" onClick={() => setStage('pick_type')}>сменить</Button>
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
+            {/* Блок 1: Бренд + Домен */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="url">URL сайта *</Label>
+                <Label htmlFor="brand">Название бренда / компании *</Label>
+                <Input
+                  id="brand"
+                  placeholder="ООО «Пример» или «Моя Студия»"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="url" className={noDomain ? 'text-muted-foreground' : ''}>
+                  URL сайта {!noDomain && '*'}
+                </Label>
                 <Input
                   id="url"
                   placeholder="example.ru или https://example.ru"
                   value={siteUrl}
                   onChange={(e) => setSiteUrl(e.target.value)}
+                  disabled={noDomain}
                 />
+                <div className="flex items-center gap-2 mt-2">
+                  <Checkbox
+                    id="no-domain"
+                    checked={noDomain}
+                    onCheckedChange={(v) => setNoDomain(v === true)}
+                  />
+                  <label htmlFor="no-domain" className="text-xs text-muted-foreground cursor-pointer select-none">
+                    У меня ещё нет домена — соберём ТЗ без сбора сайта
+                  </label>
+                </div>
+                {!noDomain && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Можно без https:// — добавим автоматически. Кириллица поддерживается.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Блок 2: Отрасль (typeahead) + Город */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Отрасль / основная услуга</Label>
+                <Popover open={industryOpen} onOpenChange={setIndustryOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between font-normal"
+                    >
+                      <span className={industry ? 'text-foreground' : 'text-muted-foreground'}>
+                        {industry || 'Выберите или начните вводить…'}
+                      </span>
+                      <Briefcase className="h-4 w-4 opacity-50 ml-2" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command
+                      filter={(value, search) => {
+                        if (!search) return 1;
+                        return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                      }}
+                    >
+                      <CommandInput
+                        placeholder="Найти или ввести свою…"
+                        value={industry}
+                        onValueChange={setIndustry}
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded"
+                            onClick={() => setIndustryOpen(false)}
+                          >
+                            Использовать «<span className="font-semibold">{industry}</span>» как свой вариант
+                          </button>
+                        </CommandEmpty>
+                        <CommandGroup heading={`Популярные отрасли (${INDUSTRY_PRESETS.length})`}>
+                          {INDUSTRY_PRESETS.map((p) => (
+                            <CommandItem
+                              key={p.label}
+                              value={p.label}
+                              onSelect={(v) => {
+                                setIndustry(v);
+                                setIndustryOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  industry === p.label ? 'opacity-100' : 'opacity-0'
+                                }`}
+                              />
+                              {p.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Можно без https:// — добавим автоматически. Кириллица поддерживается.
+                  Нажмите и выберите из списка или введите свою формулировку.
                 </p>
               </div>
               <div>
-                <Label htmlFor="brand">Название бренда *</Label>
-                <Input id="brand" placeholder="ООО «Пример»" value={brandName} onChange={(e) => setBrandName(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="industry">Отрасль / основная услуга</Label>
-                <Input id="industry" placeholder="Грузоперевозки, ремонт, маркетинг…" value={industry} onChange={(e) => setIndustry(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="city">Город (для гео-вертикалей)</Label>
-                <Input id="city" placeholder="Москва" value={city} onChange={(e) => setCity(e.target.value)} />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="audience">Целевая аудитория</Label>
-                <Input id="audience" placeholder="Малый бизнес 25-55, ИП, ООО" value={targetAudience} onChange={(e) => setTargetAudience(e.target.value)} />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="seeds">Seed-ключи (Wordstat) — по строке или через запятую</Label>
-                <Textarea
-                  id="seeds"
-                  rows={3}
-                  placeholder={'грузоперевозки москва\nгазель срочно\nпереезд квартиры'}
-                  value={seedsText}
-                  onChange={(e) => setSeedsText(e.target.value)}
-                />
+                <Label>Город (для гео-вертикалей)</Label>
+                <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between font-normal"
+                    >
+                      <span className={city ? 'text-foreground' : 'text-muted-foreground'}>
+                        {city || 'Не указано'}
+                      </span>
+                      <Globe className="h-4 w-4 opacity-50 ml-2" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command
+                      filter={(value, search) => {
+                        if (!search) return 1;
+                        return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                      }}
+                    >
+                      <CommandInput
+                        placeholder="Найти или ввести город…"
+                        value={city}
+                        onValueChange={setCity}
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded"
+                            onClick={() => setCityOpen(false)}
+                          >
+                            Использовать «<span className="font-semibold">{city}</span>»
+                          </button>
+                        </CommandEmpty>
+                        <CommandGroup heading={`Топ-города РФ (${POPULAR_CITIES.length})`}>
+                          {POPULAR_CITIES.map((c) => (
+                            <CommandItem
+                              key={c}
+                              value={c}
+                              onSelect={(v) => {
+                                setCity(v);
+                                setCityOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  city === c ? 'opacity-100' : 'opacity-0'
+                                }`}
+                              />
+                              {c}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Если пусто — стадия DEMAND будет пропущена.
+                  Нужен для локальных услуг (грузоперевозки, ремонт и т.д.). Опционально.
                 </p>
               </div>
             </div>
 
+            {/* Блок 3: Целевая аудитория чипами */}
+            <div>
+              <Label>Кто ваши клиенты? <span className="text-muted-foreground font-normal">(можно несколько)</span></Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {AUDIENCE_PRESETS.map((a) => {
+                  const active = audienceChips.includes(a);
+                  return (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() =>
+                        setAudienceChips((prev) =>
+                          prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
+                        )
+                      }
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ${
+                        active
+                          ? 'border-primary bg-primary/10 text-primary font-medium'
+                          : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                      }`}
+                    >
+                      {active ? <Check className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                      {a}
+                      {active && <X className="h-3 w-3 opacity-60" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <Input
+                className="mt-2"
+                placeholder="Своё описание аудитории (опц.) — напр. «владельцы кафе в спальных районах»"
+                value={audienceCustom}
+                onChange={(e) => setAudienceCustom(e.target.value)}
+              />
+            </div>
+
+            {/* Блок 4: Формат пакета */}
             <div className="pt-3 border-t space-y-3">
               <div>
-                <Label className="text-base">Формат пакета</Label>
+                <Label className="text-base">Что вы хотите получить на выходе?</Label>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Как выходные файлы будут упакованы. Для большинства случаев подходит Structured.
+                  Выберите формат выходных файлов — их мы отдадим в ZIP-архиве после аудита.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {PACK_MODES.map((m) => {
                     const Icon = m.icon;
                     const active = packMode === m.value;
@@ -395,7 +637,7 @@ export default function SiteFormulaV3() {
                         key={m.value}
                         type="button"
                         onClick={() => setPackMode(m.value)}
-                        className={`text-left rounded-lg border p-4 transition-colors hover:border-primary/60 ${
+                        className={`text-left rounded-lg border p-4 transition-colors hover:border-primary/60 flex flex-col h-full ${
                           active
                             ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
                             : 'border-border bg-card'
@@ -410,7 +652,16 @@ export default function SiteFormulaV3() {
                           )}
                         </div>
                         <div className="font-semibold text-sm mb-1">{m.title}</div>
-                        <div className="text-xs text-muted-foreground">{m.desc}</div>
+                        <div className="text-xs text-muted-foreground italic mb-2">{m.short}</div>
+                        <div className="text-xs text-muted-foreground mb-2">{m.desc}</div>
+                        <ul className="mt-auto space-y-1">
+                          {m.bullets.map((b) => (
+                            <li key={b} className="text-[11px] text-muted-foreground flex items-start gap-1">
+                              <Check className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary/60" />
+                              <span>{b}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </button>
                     );
                   })}
@@ -423,27 +674,20 @@ export default function SiteFormulaV3() {
                   <p className="text-xs text-muted-foreground mb-3">
                     Где вы будете собирать сайт — под эту платформу сформируем инструкции.
                   </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {(
-                      [
-                        { v: 'lovable', label: 'Lovable' },
-                        { v: 'cursor', label: 'Cursor' },
-                        { v: 'v0', label: 'v0' },
-                        { v: 'claude_code', label: 'Claude Code' },
-                        { v: 'raw', label: 'Raw' },
-                      ] as const
-                    ).map((p) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    {PLATFORMS.map((p) => (
                       <button
                         key={p.v}
                         type="button"
-                        onClick={() => setPlatform(p.v as PlatformTarget)}
-                        className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                        onClick={() => setPlatform(p.v)}
+                        className={`rounded-md border px-3 py-2 text-sm transition-colors text-left ${
                           platform === p.v
                             ? 'border-primary bg-primary/5 text-primary font-medium'
                             : 'border-border bg-card hover:border-primary/40'
                         }`}
                       >
-                        {p.label}
+                        <div className="font-medium">{p.label}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">{p.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -454,7 +698,7 @@ export default function SiteFormulaV3() {
             <div className="flex gap-2 pt-4">
               <Button
                 onClick={handleRun}
-                disabled={busy || !siteUrl || !brandName}
+                disabled={busy || !brandName || (!noDomain && !siteUrl)}
                 size="lg"
                 className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90"
               >

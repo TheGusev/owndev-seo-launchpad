@@ -14,8 +14,8 @@ import { getCachedPipelineResult } from './pipeline.js';
 const exportSchema = z.object({
   job_id: z.string().min(1).optional(),
   pack: z.any().optional(),       // raw SuperPromptPack object
-  mode: z.enum(['structured', 'full', 'platform_specific']).optional(),
-  platform: z.enum(['lovable', 'cursor', 'v0', 'claude_code', 'raw']).optional(),
+  mode: z.enum(['structured', 'full', 'platform_specific', 'studio']).optional(),
+  platform: z.enum(['lovable', 'cursor', 'v0', 'claude_code', 'antigravity', 'raw']).optional(),
 });
 
 export async function packV3Routes(app: FastifyInstance) {

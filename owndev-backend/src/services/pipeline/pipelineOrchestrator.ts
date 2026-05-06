@@ -116,7 +116,7 @@ export class PipelineOrchestrator {
     const startAll = Date.now();
     const result: PipelineResultV3 = {
       job_id: input.job_id,
-      root_url: input.root_url,
+      root_url: input.root_url ?? undefined,
       status: 'failed',
       stages,
       generated_at: new Date().toISOString(),
@@ -124,18 +124,21 @@ export class PipelineOrchestrator {
 
     try {
       // ── Stage 0: INTAKE ────────────────────────────────────────────────
+      // root_url опционален — клиент может ещё не иметь домена.
+      const hasUrl = !!input.root_url && input.root_url.trim().length > 0;
       const tIntake = await this.timeStage('intake', async () => {
-        if (!input.root_url || !input.project_code) {
-          throw new Error('root_url and project_code are required');
+        if (!input.project_code) {
+          throw new Error('project_code is required');
         }
         if (!input.brand?.name) {
           throw new Error('brand.name is required');
         }
-        // normalise URL
-        try {
-          new URL(input.root_url);
-        } catch {
-          throw new Error(`Invalid root_url: ${input.root_url}`);
+        if (hasUrl) {
+          try {
+            new URL(input.root_url!);
+          } catch {
+            throw new Error(`Invalid root_url: ${input.root_url}`);
+          }
         }
       });
       stages.push(tIntake);
@@ -173,12 +176,12 @@ export class PipelineOrchestrator {
       // ── Stage 2: CRAWL ─────────────────────────────────────────────────
       let crawlPages: CrawlPageRecord[] = [];
       const tCrawl = await this.timeStage('crawl', async () => {
-        if (input.skip_crawl) {
-          logger.info('PIPELINE', `[${input.job_id}] CRAWL skipped`);
+        if (input.skip_crawl || !hasUrl) {
+          logger.info('PIPELINE', `[${input.job_id}] CRAWL skipped (no URL or skip_crawl)`);
           return;
         }
         const session = await crawlSite({
-          rootUrl: input.root_url,
+          rootUrl: input.root_url!,
           maxPages: input.max_crawl_pages ?? 30,
           respectRobots: true,
           enableJinaFallback: true,
@@ -209,8 +212,11 @@ export class PipelineOrchestrator {
       result.strategy = strategy;
 
       // ── Build TECHNICAL PASSPORT (so audit can see llms.txt / robots) ─
-      const baseUrl = deriveBaseUrl(input.root_url);
-      const domain = deriveDomain(input.root_url);
+      // Если домена нет — используем placeholder, чтобы passport сгенерировался.
+      // Разработчик потом заменит brand.example на реальный домен.
+      const effectiveRootUrl = hasUrl ? input.root_url! : 'https://brand.example';
+      const baseUrl = deriveBaseUrl(effectiveRootUrl);
+      const domain = deriveDomain(effectiveRootUrl);
       const passportInputs: PassportInputs = {
         brand_name: input.brand.name,
         domain,
@@ -239,6 +245,10 @@ export class PipelineOrchestrator {
       // ── Stage 3: AUDIT (PageEvidence per page) ─────────────────────────
       const evidences: Array<{ page: SitePage | undefined; evidence: PageEvidence; record: CrawlPageRecord }> = [];
       const tAudit = await this.timeStage('audit', async () => {
+        if (!hasUrl) {
+          logger.info('PIPELINE', `[${input.job_id}] AUDIT skipped (no URL)`);
+          return;
+        }
         // Decide which URLs to audit. If we have crawl results, audit them.
         // Otherwise audit just the root_url.
         const urlsToAudit =
@@ -246,7 +256,7 @@ export class PipelineOrchestrator {
             ? crawlPages.slice(0, 20)
             : [
                 {
-                  url: input.root_url,
+                  url: input.root_url!,
                   http_status: null,
                   content_type: null,
                   title: null,

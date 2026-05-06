@@ -10,8 +10,8 @@
  *   • platform_specific — tailored for Lovable / Cursor / v0 / Claude Code
  */
 
-export type ExportMode = 'full' | 'structured' | 'platform_specific';
-export type PlatformTarget = 'lovable' | 'cursor' | 'v0' | 'claude_code' | 'raw';
+export type ExportMode = 'full' | 'structured' | 'platform_specific' | 'studio';
+export type PlatformTarget = 'lovable' | 'cursor' | 'v0' | 'claude_code' | 'antigravity' | 'raw';
 
 export interface AgentRole {
   title: string;
