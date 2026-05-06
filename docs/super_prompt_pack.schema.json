@@ -367,11 +367,11 @@
       }
     },
     "export_mode": {
-      "enum": ["full", "structured", "platform_specific"],
+      "enum": ["full", "structured", "platform_specific", "studio"],
       "description": "Как сериализовать пакет"
     },
     "platform_target": {
-      "enum": ["lovable", "cursor", "v0", "claude_code", "raw"],
+      "enum": ["lovable", "cursor", "v0", "claude_code", "antigravity", "raw"],
       "description": "Только при export_mode=platform_specific"
     }
   }
