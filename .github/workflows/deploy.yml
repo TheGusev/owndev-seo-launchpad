@@ -37,14 +37,9 @@ jobs:
               set -a; . /var/www/owndev.ru/.env; set +a
             fi
             if [ -n "$DATABASE_URL" ]; then
-              echo "=== sha256 + size of 031 in src and dist ==="
-              sha256sum src/db/migrations/031_v3_page_contracts_v2.sql || true
-              sha256sum dist/db/migrations/031_v3_page_contracts_v2.sql || true
-              echo "=== bytes around line 54 (position 2700-2730) ==="
-              dd if=src/db/migrations/031_v3_page_contracts_v2.sql bs=1 skip=2680 count=80 2>/dev/null | od -c | head -10 || true
               # Pre-mark legacy migrations 001-023 as already applied + clear stale 031 mark if needed
               node scripts/premark-legacy-migrations.cjs || { echo 'premark failed'; exit 1; }
-              # Apply remaining V3 migrations (031-035) idempotently — uses max:1 client now
+              # Apply remaining V3 migrations (031-035) idempotently
               node dist/db/migrate.js || { echo 'migrate failed'; exit 1; }
             else
               echo 'WARNING: DATABASE_URL not set — skipping migrate'
