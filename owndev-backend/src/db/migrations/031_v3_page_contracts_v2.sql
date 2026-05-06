@@ -51,7 +51,7 @@ INSERT INTO formula_page_contracts (
     '.*({brand}|{service_main}).*', '.*{brand}.*',
     120, 160,
     '{Organization,LocalBusiness,WebSite,WebPage}',
-    '{hero,services,trust,cta,contacts,faq}', '{},',
+    '{hero,services,trust,cta,contacts,faq}', '{}',
     700, '{reviews,case_studies,team}', '{FAQPage,BreadcrumbList}',
     TRUE, TRUE, TRUE,
     'Главная страница локального сервиса: H1=бренд+ключ, USP, telephone в hero',
