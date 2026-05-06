@@ -107,3 +107,10 @@ jobs:
 
             echo "=== done ==="
             pm2 list
+            echo "=== pm2 logs (last 60 lines) ==="
+            pm2 logs owndev-backend --lines 60 --nostream || true
+            echo "=== pm2 describe ==="
+            pm2 describe owndev-backend || true
+            echo "=== curl localhost:3001/api/health ==="
+            curl -s -o /tmp/h -w 'HTTP %{http_code}\n' http://127.0.0.1:3001/api/health || true
+            cat /tmp/h || true; echo
