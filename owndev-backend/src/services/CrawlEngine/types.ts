@@ -9,6 +9,8 @@ export interface CrawlOptions {
   concurrency?: number;         // default 3
   timeoutMs?: number;           // default 12_000
   sessionId?: string | null;    // blueprint_sessions.id
+  /** Если статический HTML выглядит как SPA — добор через r.jina.ai. Default: true */
+  enableJinaFallback?: boolean;
 }
 
 export interface CrawlPageRecord {

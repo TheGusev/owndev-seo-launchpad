@@ -20,8 +20,9 @@ import {
   type ProjectTypeCode,
   type BlueprintV2,
   type AuditReport,
+  type RecoveryBlueprint,
 } from '@/lib/api/formulaV2';
-import { Download, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Download, Loader2, CheckCircle2, AlertTriangle, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Stage = 'pick_type' | 'fill_intake' | 'auditing' | 'building' | 'ready' | 'pack_built';
@@ -40,9 +41,11 @@ export default function SiteFormulaV2() {
 
   const [audit, setAudit] = useState<AuditReport | null>(null);
   const [blueprint, setBlueprint] = useState<BlueprintV2 | null>(null);
+  const [recovery, setRecovery] = useState<RecoveryBlueprint | null>(null);
   const [packId, setPackId] = useState<string | null>(null);
   const [packMeta, setPackMeta] = useState<{ size: number; sha: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -112,6 +115,24 @@ export default function SiteFormulaV2() {
     }
   }
 
+  async function handleBuildRecovery() {
+    if (!audit?.audit_id) return;
+    setRecoveryBusy(true);
+    setError(null);
+    try {
+      const r = await formulaV2Api.buildRecovery(audit.audit_id);
+      setRecovery(r.recovery);
+      toast.success(
+        `Recovery-план готов: ${r.recovery.fixes.length} фиксов, прогноз после применения: ${r.recovery.preflight_score}/100`,
+      );
+    } catch (e: any) {
+      setError(e?.message || String(e));
+      toast.error(`Ошибка Recovery: ${e?.message || e}`);
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
   async function handleBuildPack() {
     if (!blueprint) return;
     setBusy(true);
@@ -120,6 +141,7 @@ export default function SiteFormulaV2() {
       const r = await formulaV2Api.buildAiPack({
         blueprint,
         audit_id: audit?.audit_id,
+        recovery_id: recovery?.recovery_id,
         business_name: businessName || extractBrand(siteUrl),
         site_url: siteUrl,
         publish_threshold: 90,
@@ -132,7 +154,9 @@ export default function SiteFormulaV2() {
       const msg = e?.message || String(e);
       setError(msg);
       if (msg.includes('preflight_gate') || msg.includes('Preflight gate')) {
-        toast.error('Preflight Gate: score < 90, экспорт заблокирован. Сначала примените Recovery.');
+        toast.error(
+          'Preflight Gate: score < 90, экспорт заблокирован. Сначала постройте Recovery.',
+        );
       } else {
         toast.error(msg);
       }
@@ -200,9 +224,12 @@ export default function SiteFormulaV2() {
         <ResultsPanel
           audit={audit}
           blueprint={blueprint}
+          recovery={recovery}
           packId={packId}
           packMeta={packMeta}
           busy={busy}
+          recoveryBusy={recoveryBusy}
+          onBuildRecovery={handleBuildRecovery}
           onBuildPack={handleBuildPack}
         />
       )}
@@ -435,16 +462,22 @@ function IntakeForm(props: {
 function ResultsPanel({
   audit,
   blueprint,
+  recovery,
   packId,
   packMeta,
   busy,
+  recoveryBusy,
+  onBuildRecovery,
   onBuildPack,
 }: {
   audit: AuditReport;
   blueprint: BlueprintV2;
+  recovery: RecoveryBlueprint | null;
   packId: string | null;
   packMeta: { size: number; sha: string } | null;
   busy: boolean;
+  recoveryBusy: boolean;
+  onBuildRecovery: () => void;
   onBuildPack: () => void;
 }) {
   const score = blueprint.preflight.score;
@@ -522,6 +555,129 @@ function ResultsPanel({
                 </li>
               ))}
             </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wrench className="w-5 h-5" />
+            Recovery Plan
+          </CardTitle>
+          <CardDescription>
+            Приоритетный план фиксов: что именно поправить, какие schema-патчи применить и какой будет новый score после применения.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!recovery ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {audit.gaps.length === 0
+                  ? 'Нет нарушений контрактов — Recovery не требуется.'
+                  : `Найдено ${audit.gaps.length} нарушений. Соберите Recovery-план, чтобы получить список фиксов и schema-патчей.`}
+              </p>
+              <Button
+                onClick={onBuildRecovery}
+                disabled={recoveryBusy || audit.gaps.length === 0}
+                variant={publishable ? 'outline' : 'default'}
+              >
+                {recoveryBusy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Собрать Recovery-план
+              </Button>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <ScoreTile label="Прогноз score" value={recovery.preflight_score} />
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs uppercase text-muted-foreground">Фиксов</div>
+                  <div className="text-2xl font-bold">{recovery.fixes.length}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs uppercase text-muted-foreground">Schema-патчей</div>
+                  <div className="text-2xl font-bold">{recovery.schema_patches.length}</div>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-xs uppercase text-muted-foreground">Content-патчей</div>
+                  <div className="text-2xl font-bold">{recovery.content_patches.length}</div>
+                </div>
+              </div>
+
+              {recovery.fixes.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Топ-5 фиксов по приоритету</h4>
+                  <ul className="space-y-2 text-sm">
+                    {[...recovery.fixes]
+                      .sort((a, b) => a.priority - b.priority)
+                      .slice(0, 5)
+                      .map((fix, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <Badge
+                            variant={fix.priority === 1 ? 'destructive' : fix.priority === 2 ? 'default' : 'secondary'}
+                            className="mt-0.5 shrink-0"
+                          >
+                            <Wrench className="w-3 h-3 mr-1" />
+                            P{fix.priority}
+                          </Badge>
+                          <div>
+                            <div className="font-mono text-xs text-muted-foreground">
+                              {fix.page_type} · {fix.action} → {fix.target}
+                            </div>
+                            <div>{fix.description_ru}</div>
+                          </div>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+
+              {recovery.content_patches.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Content-патчи (первые 3)</h4>
+                  <ul className="space-y-2 text-sm">
+                    {recovery.content_patches.slice(0, 3).map((p, i) => (
+                      <li key={i} className="rounded border p-2">
+                        <div className="font-mono text-xs text-muted-foreground break-all mb-1">
+                          {p.url}
+                        </div>
+                        {p.suggested_h1 && (
+                          <div>
+                            <span className="text-muted-foreground">H1: </span>
+                            {p.suggested_h1}
+                          </div>
+                        )}
+                        {p.suggested_title && (
+                          <div>
+                            <span className="text-muted-foreground">title: </span>
+                            {p.suggested_title}
+                          </div>
+                        )}
+                        {p.suggested_meta && (
+                          <div>
+                            <span className="text-muted-foreground">meta: </span>
+                            {p.suggested_meta}
+                          </div>
+                        )}
+                        {p.missing_blocks.length > 0 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            missing: {p.missing_blocks.join(', ')}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <Alert>
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertTitle>Рекомендации применятся к AI Developer Pack</AlertTitle>
+                <AlertDescription>
+                  При сборке пака recovery_id будет автоматически прикреплён, и super_prompt включит фиксы и schema-патчи.
+                </AlertDescription>
+              </Alert>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -7,6 +7,42 @@
 import { logger } from '../utils/logger.js';
 import { withRetry, HttpError } from '../utils/retry.js';
 
+// Phase 4 / Pass 2 (Step 1): public types live in SiteCheck/types.ts now.
+// Локальные определения ниже удалены и заменены реимпортом, чтобы types.ts стал
+// единственным источником истины для consumer'ов (Worker, Audit Mode v2, frontend).
+// Re-export сохраняется для обратной совместимости со старыми импортами
+// `from '../SiteCheckPipeline.js'`.
+import type {
+  Issue,
+  RedirectHop,
+  Stage0Data,
+  RobotsBotEntry,
+  RobotsData,
+  SitemapData,
+  LlmsTxtData,
+  ResourcesData,
+  GeoSignalsData,
+  CROData,
+  BenchmarkGap,
+  BenchmarkData,
+  PipelineResult,
+} from './SiteCheck/types.js';
+export type {
+  Issue,
+  RedirectHop,
+  Stage0Data,
+  RobotsBotEntry,
+  RobotsData,
+  SitemapData,
+  LlmsTxtData,
+  ResourcesData,
+  GeoSignalsData,
+  CROData,
+  BenchmarkGap,
+  BenchmarkData,
+  PipelineResult,
+};
+
 const UA = 'OWNDEV-SiteCheck/2.0';
 
 // ─── Utility: fetch with timeout ───
@@ -149,122 +185,15 @@ function safeParseJson<T>(raw: string, fallback: T): T {
   return fallback;
 }
 
-// ─── Issue builder ───
-export interface Issue {
-  id: string; module: string; severity: string; title: string;
-  found: string; location: string; why_it_matters: string;
-  how_to_fix: string; example_fix: string; visible_in_preview: boolean;
-  impact_score: number; docs_url: string; is_auto_fixable: boolean;
-  rule_id?: string;
-}
-
 // ═══════════════════════════════════════════════════════════════
-// Sprint 3 — Structured data interfaces (Stage0 / Robots / Sitemap /
-// LlmsTxt / Resources / GeoSignals / CRO / Benchmark).
-// Будут вынесены в services/SiteCheck/types.ts на Sprint 4.
+// Phase 4 / Pass 2 (Step 1):
+// Интерфейсы Issue / RedirectHop / Stage0Data / RobotsBotEntry / RobotsData /
+// SitemapData / LlmsTxtData / ResourcesData / GeoSignalsData / CROData /
+// BenchmarkGap / BenchmarkData / PipelineResult вынесены в
+// services/SiteCheck/types.ts и реимпортируются в начале файла
+// (см. import + export type выше). Старые локальные определения удалены.
 // ═══════════════════════════════════════════════════════════════
 
-export interface RedirectHop { from: string; to: string; status: number; }
-
-export interface Stage0Data {
-  httpStatus: number;
-  redirectChain: RedirectHop[];
-  redirectCount: number;
-  ttfbMs: number;
-  isHttps: boolean;
-  hasHsts: boolean;
-  hasCSP: boolean;
-  hasXCTO: boolean;
-  hasXFO: boolean;
-  compression: 'br' | 'gzip' | 'deflate' | 'none';
-  cacheControl: string | null;
-  server: string | null;
-  poweredBy: string | null;
-}
-
-export interface RobotsBotEntry {
-  bot: string;
-  allowed: boolean;
-  rule: string;
-}
-export interface RobotsData {
-  exists: boolean;
-  status: number;
-  size: number;
-  hasSitemap: boolean;
-  sitemapUrls: string[];
-  bots: RobotsBotEntry[];
-  errors: string[];
-}
-
-export interface SitemapData {
-  exists: boolean;
-  status: number;
-  isIndex: boolean;
-  urlCount: number;
-  hasLastmod: boolean;
-  avgLastmodDaysAgo: number | null;
-  oldestPage: string | null;
-  newestPage: string | null;
-  stalePagesCount: number;
-  errors: string[];
-}
-
-export interface LlmsTxtData {
-  exists: boolean;
-  status: number;
-  size: number;
-  hasH1: boolean;
-  hasBlockquote: boolean;
-  hasH2: boolean;
-  hasLinks: boolean;
-  qualityScore: number; // 0-100
-  missingElements: string[];
-  hasLlmsFull: boolean;
-  hasSecurityTxt: boolean;
-}
-
-export interface ResourcesData {
-  blockingCss: number;
-  blockingJs: number;
-  htmlSizeKB: number;
-  modernImageRatio: number; // 0-1, share of webp/avif vs total <img>
-  lazyImagesRatio: number;  // 0-1
-  fontDisplaySwap: boolean;
-  preloadHints: number;
-  totalImages: number;
-}
-
-export interface GeoSignalsData {
-  citationReadyRatio: number;     // 0-1: avg, sentence-clear ratio
-  semanticScore: number;          // 0-100 weighted semantic tag presence
-  semanticTags: { article: boolean; section: boolean; main: boolean; nav: boolean; aside: boolean; figure: boolean };
-  questionHeadingRatio: number;   // 0-1: H2/H3 in question form
-  readabilityGrade: number;       // approx (avg sentence length proxy)
-  avgWordsPerSentence: number;
-  authorityLinks: number;         // outgoing https links count
-  paragraphCount: number;
-}
-
-export interface CROData {
-  trustScore: number;             // 0-100
-  trust: { hasPhone: boolean; hasEmail: boolean; hasAddress: boolean; hasLegalInfo: boolean; hasGuarantee: boolean };
-  cta: { count: number; aboveFold: boolean; hasPrimary: boolean };
-  forms: { count: number; avgFields: number; hasContactForm: boolean };
-  pricing: { hasPrice: boolean; hasCalculator: boolean };
-  socialProof: { hasReviews: boolean; hasCases: boolean; hasLogos: boolean };
-  urgency: { hasCountdown: boolean; hasLimited: boolean };
-  channels: { hasMessenger: boolean; hasCallback: boolean; hasChat: boolean };
-}
-
-export interface BenchmarkGap { key: string; expected: string | number; actual: string | number; severity: 'critical' | 'high' | 'medium' | 'low'; }
-export interface BenchmarkData {
-  category: string;
-  gaps: BenchmarkGap[];
-  passed: number;
-  total: number;
-  percent: number;
-}
 
 // ─── Benchmarks table ────────────────────────────────────────────
 interface BenchmarkProfile {
@@ -2058,38 +1987,8 @@ function buildGeoCroIssues(
 }
 
 // ═══ Main pipeline export ═══
-export interface PipelineResult {
-  status: 'done' | 'error';
-  url: string;
-  mode: string;
-  theme: string;
-  is_spa: boolean;
-  scores: { total: number; seo: number; direct: number; schema: number; ai: number; breakdown?: any };
-  // Sprint 3 — три честных скора (фронт переедет на них в Sprint 5):
-  geoScore: number;
-  seoScore: number;
-  croScore: number;
-  scoresBreakdown?: {
-    geo: Array<{ key: string; weight: number; earned: number }>;
-    seo: Array<{ key: string; weight: number; earned: number }>;
-    cro: Array<{ key: string; weight: number; earned: number }>;
-  };
-  // Sprint 3 — структурированные данные:
-  stage0?: Stage0Data;
-  robots?: RobotsData;
-  sitemap?: SitemapData;
-  llmsTxt?: LlmsTxtData;
-  resources?: ResourcesData;
-  geoSignals?: GeoSignalsData;
-  cro?: CROData;
-  benchmark?: BenchmarkData;
-  issues: Issue[];
-  seo_data: any;
-  summary?: string | null;
-  blocks?: any[];
-  error_message?: string;
-  signals?: Record<string, number | boolean>;
-}
+// PipelineResult и все связанные интерфейсы живут в ./SiteCheck/types.ts
+// (реимпорт в начале файла).
 
 export async function runPipeline(
   url: string,

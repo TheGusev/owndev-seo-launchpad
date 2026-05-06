@@ -62,6 +62,10 @@ export async function startServer() {
     const { auditV2Routes } = await import('./routes/auditV2.js');
     await app.register(auditV2Routes, { prefix: '/api/v2' });
 
+    // Async jobs API (BullMQ-backed)
+    const { jobsV2Routes } = await import('./routes/jobsV2.js');
+    await app.register(jobsV2Routes, { prefix: '/api/v2/jobs' });
+
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
   logger.info('SERVER', `Listening on :${port}`);

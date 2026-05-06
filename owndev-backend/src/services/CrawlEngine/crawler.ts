@@ -16,6 +16,7 @@ import type {
 import { extractFromHtml, extractInternalLinks } from './extractor.js';
 import { classifyPage } from './pageClassifier.js';
 import { parseRobotsTxt, isAllowed, type RobotsRules } from './robots.js';
+import { fetchViaJina, looksLikeSpa, mergeJinaIntoRecord } from './jinaFallback.js';
 
 const DEFAULT_UA = 'OwndevBot/2.0 (+https://owndev.ru)';
 
@@ -108,6 +109,7 @@ export async function crawlSite(opts: CrawlOptions): Promise<CrawlSessionResult>
   const concurrency = Math.max(1, Math.min(5, opts.concurrency ?? 3));
   const timeoutMs = opts.timeoutMs ?? 12_000;
   const respectRobots = opts.respectRobots !== false;
+  const enableJinaFallback = opts.enableJinaFallback !== false;
 
   const root = new URL(opts.rootUrl);
   const startedAt = new Date().toISOString();
@@ -138,7 +140,30 @@ export async function crawlSite(opts: CrawlOptions): Promise<CrawlSessionResult>
       if (!r.html) {
         return;
       }
-      const ext = extractFromHtml(url, r.html, r.status, r.contentType, r.ms);
+      let ext = extractFromHtml(url, r.html, r.status, r.contentType, r.ms);
+      const extraLinks: string[] = [];
+
+      // SPA fallback — если статический HTML пустоватый, добираем через r.jina.ai
+      if (
+        enableJinaFallback &&
+        r.status >= 200 && r.status < 300 &&
+        looksLikeSpa(r.html, ext)
+      ) {
+        const jina = await fetchViaJina(url);
+        if (jina) {
+          ext = mergeJinaIntoRecord(ext, jina);
+          // добавим внутренние ссылки из markdown
+          for (const l of jina.links) {
+            try {
+              const u = new URL(l, url);
+              if (u.host === root.host) extraLinks.push(u.toString());
+            } catch {
+              /* skip invalid */
+            }
+          }
+        }
+      }
+
       const page_type_guess = classifyPage({
         url,
         rootUrl: root.toString(),
@@ -153,7 +178,10 @@ export async function crawlSite(opts: CrawlOptions): Promise<CrawlSessionResult>
 
       // discover links (only on 2xx, max 100 per page to keep BFS bounded)
       if (r.status >= 200 && r.status < 300) {
-        const links = extractInternalLinks(url, r.html).slice(0, 100);
+        const links = [
+          ...extractInternalLinks(url, r.html),
+          ...extraLinks,
+        ].slice(0, 100);
         for (const l of links) {
           if (!visited.has(l) && pages.length + queue.length < maxPages * 3) {
             queue.push(l);

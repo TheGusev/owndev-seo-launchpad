@@ -68,6 +68,37 @@ export interface BlueprintV2 {
   generated_at: string;
 }
 
+export interface RecoveryFix {
+  page_type: string;
+  action: string;
+  target: string;
+  description_ru: string;
+  priority: 1 | 2 | 3;
+}
+
+export interface RecoverySchemaPatch {
+  schema_type: string;
+  jsonld: Record<string, any>;
+}
+
+export interface RecoveryContentPatch {
+  url: string;
+  suggested_h1: string | null;
+  suggested_title: string | null;
+  suggested_meta: string | null;
+  missing_blocks: string[];
+}
+
+export interface RecoveryBlueprint {
+  recovery_id: string;
+  audit_id: string;
+  project_type_code: ProjectTypeCode;
+  fixes: RecoveryFix[];
+  schema_patches: RecoverySchemaPatch[];
+  content_patches: RecoveryContentPatch[];
+  preflight_score: number;
+}
+
 export interface AuditReport {
   audit_id: string;
   project_type_code: ProjectTypeCode;
@@ -161,7 +192,10 @@ export const formulaV2Api = {
     });
   },
 
-  async buildRecovery(audit_id: string, session_id?: string) {
+  async buildRecovery(
+    audit_id: string,
+    session_id?: string,
+  ): Promise<{ recovery: RecoveryBlueprint }> {
     return jsonFetch(apiUrlV2('/recovery/build'), {
       method: 'POST',
       body: JSON.stringify({ audit_id, session_id }),
