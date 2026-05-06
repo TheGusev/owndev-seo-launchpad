@@ -39,7 +39,9 @@ jobs:
             if [ -n "$DATABASE_URL" ]; then
               # Pre-mark legacy migrations 001-023 as already applied (prod was bootstrapped manually before _schema_migrations existed).
               node scripts/premark-legacy-migrations.cjs || { echo 'premark failed'; exit 1; }
-              # Now run remaining (030-035) idempotently
+              # DEBUG: run 031 statement-by-statement to localise the malformed-array failure
+              node scripts/run-031-by-statement.cjs || { echo 'run-031 failed'; exit 1; }
+              # Now run remaining (032-035) idempotently
               node dist/db/migrate.js || { echo 'migrate failed'; exit 1; }
             else
               echo 'WARNING: DATABASE_URL not set — skipping migrate'
