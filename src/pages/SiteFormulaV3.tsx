@@ -189,8 +189,12 @@ export default function SiteFormulaV3() {
   const [industryOpen, setIndustryOpen] = useState(false);
   const [audienceChips, setAudienceChips] = useState<string[]>([]);
   const [audienceCustom, setAudienceCustom] = useState('');
-  const [city, setCity] = useState('');
+  // Города — мульти-выбор (чипы) + опц. свободный ввод.
+  const [cities, setCities] = useState<string[]>([]);
   const [cityOpen, setCityOpen] = useState(false);
+  const [cityCustom, setCityCustom] = useState('');
+  // Список услуг/направлений — свободный текст через запятую/перенос строк.
+  const [servicesText, setServicesText] = useState('');
   const [packMode, setPackMode] = useState<ExportMode>('structured');
   const [platform, setPlatform] = useState<PlatformTarget>('lovable');
 
@@ -253,6 +257,18 @@ export default function SiteFormulaV3() {
         audienceParts.length > 0
           ? audienceParts.join(', ')
           : 'целевая аудитория проекта';
+      // Объединяем выбранные чипы + свободный ввод (разбиваем по запятым).
+      const customCities = cityCustom
+        .split(/[,;\n]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const allCities = Array.from(new Set([...cities, ...customCities]));
+      const primaryCity = allCities[0]; // первый выбранный — основной
+      // Список услуг — разбиваем по запятым/строкам.
+      const services = servicesText
+        .split(/[,;\n]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
       const r = await formulaV3Api.runPipeline({
         root_url: noDomain ? undefined : normalizeUrl(siteUrl),
         project_code: selectedType,
@@ -260,9 +276,29 @@ export default function SiteFormulaV3() {
           name: brandName,
           industry: industry || 'услуги',
           target_audience: targetAudience,
-          primary_city: city || undefined,
+          primary_city: primaryCity,
+          // Дополнительные города + список услуг — досылаем в competitive_position
+          // (бэк использует этот контекст для LLM стратегии и seed-ключей).
+          ...(allCities.length > 1 || services.length > 0
+            ? {
+                competitive_position: [
+                  allCities.length > 1
+                    ? `Города работы: ${allCities.join(', ')}`
+                    : '',
+                  services.length > 0 ? `Услуги/направления: ${services.join(', ')}` : '',
+                ]
+                  .filter(Boolean)
+                  .join('. '),
+              }
+            : {}),
         },
-        // Seed-ключи теперь собирает бэк автоматически — больше не передаём.
+        // Seed-ключи бэк собирает сам, но если юзер ввёл услуги — используем их как seed.
+        seed_keywords:
+          services.length > 0
+            ? services.flatMap((s) =>
+                allCities.length > 0 ? allCities.map((c) => `${s} ${c.toLowerCase()}`) : [s]
+              )
+            : undefined,
         pack_mode: packMode,
         platform_target: packMode === 'platform_specific' ? platform : undefined,
         ai_training_policy: 'allow_with_attribution',
@@ -366,10 +402,19 @@ export default function SiteFormulaV3() {
               </div>
             ) : (
               <Tabs defaultValue="A">
-                <TabsList>
-                  <TabsTrigger value="A">{TIER_TAB_LABELS.A} · {groupedByTier.A?.length ?? 0}</TabsTrigger>
-                  <TabsTrigger value="B">{TIER_TAB_LABELS.B} · {groupedByTier.B?.length ?? 0}</TabsTrigger>
-                  <TabsTrigger value="C">{TIER_TAB_LABELS.C} · {groupedByTier.C?.length ?? 0}</TabsTrigger>
+                <TabsList className="grid grid-cols-3 w-full h-auto gap-1 p-1">
+                  <TabsTrigger value="A" className="text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
+                    {TIER_TAB_LABELS.A}
+                    <span className="ml-1 opacity-60">· {groupedByTier.A?.length ?? 0}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="B" className="text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
+                    {TIER_TAB_LABELS.B}
+                    <span className="ml-1 opacity-60">· {groupedByTier.B?.length ?? 0}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="C" className="text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
+                    {TIER_TAB_LABELS.C}
+                    <span className="ml-1 opacity-60">· {groupedByTier.C?.length ?? 0}</span>
+                  </TabsTrigger>
                 </TabsList>
                 {(['A', 'B', 'C'] as const).map((tier) => (
                   <TabsContent key={tier} value={tier}>
@@ -519,7 +564,7 @@ export default function SiteFormulaV3() {
                 </p>
               </div>
               <div>
-                <Label>Город (для гео-вертикалей)</Label>
+                <Label>Города работы <span className="text-muted-foreground font-normal">(можно несколько)</span></Label>
                 <Popover open={cityOpen} onOpenChange={setCityOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -528,8 +573,10 @@ export default function SiteFormulaV3() {
                       role="combobox"
                       className="w-full justify-between font-normal"
                     >
-                      <span className={city ? 'text-foreground' : 'text-muted-foreground'}>
-                        {city || 'Не указано'}
+                      <span className={cities.length > 0 ? 'text-foreground' : 'text-muted-foreground'}>
+                        {cities.length === 0
+                          ? 'Выбрать из списка…'
+                          : `Выбрано городов: ${cities.length}`}
                       </span>
                       <Globe className="h-4 w-4 opacity-50 ml-2" />
                     </Button>
@@ -541,48 +588,89 @@ export default function SiteFormulaV3() {
                         return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
                       }}
                     >
-                      <CommandInput
-                        placeholder="Найти или ввести город…"
-                        value={city}
-                        onValueChange={setCity}
-                      />
+                      <CommandInput placeholder="Найти город…" />
                       <CommandList>
-                        <CommandEmpty>
-                          <button
-                            type="button"
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent rounded"
-                            onClick={() => setCityOpen(false)}
-                          >
-                            Использовать «<span className="font-semibold">{city}</span>»
-                          </button>
+                        <CommandEmpty className="text-xs text-muted-foreground p-3">
+                          Ничего не найдено — добавьте вручную в поле ниже.
                         </CommandEmpty>
-                        <CommandGroup heading={`Топ-города РФ (${POPULAR_CITIES.length})`}>
-                          {POPULAR_CITIES.map((c) => (
-                            <CommandItem
-                              key={c}
-                              value={c}
-                              onSelect={(v) => {
-                                setCity(v);
-                                setCityOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={`mr-2 h-4 w-4 ${
-                                  city === c ? 'opacity-100' : 'opacity-0'
-                                }`}
-                              />
-                              {c}
-                            </CommandItem>
-                          ))}
+                        <CommandGroup heading={`Топ-города РФ · клик для выбора (${POPULAR_CITIES.length})`}>
+                          {POPULAR_CITIES.map((c) => {
+                            const checked = cities.includes(c);
+                            return (
+                              <CommandItem
+                                key={c}
+                                value={c}
+                                onSelect={() => {
+                                  setCities((prev) =>
+                                    prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+                                  );
+                                }}
+                              >
+                                <Checkbox checked={checked} className="mr-2 pointer-events-none" tabIndex={-1} />
+                                {c}
+                              </CommandItem>
+                            );
+                          })}
                         </CommandGroup>
                       </CommandList>
                     </Command>
+                    <div className="flex justify-between p-2 border-t">
+                      <Button variant="ghost" size="sm" onClick={() => setCities([])} disabled={cities.length === 0}>
+                        Очистить
+                      </Button>
+                      <Button size="sm" onClick={() => setCityOpen(false)}>Готово</Button>
+                    </div>
                   </PopoverContent>
                 </Popover>
+                {/* Выбранные города чипами */}
+                {cities.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {cities.map((c) => (
+                      <span
+                        key={c}
+                        className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 text-primary px-2 py-0.5 text-xs"
+                      >
+                        {c}
+                        <button
+                          type="button"
+                          onClick={() => setCities((prev) => prev.filter((x) => x !== c))}
+                          className="hover:bg-primary/20 rounded-full -mr-1 ml-0.5"
+                          aria-label={`Убрать ${c}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <Input
+                  className="mt-2"
+                  placeholder="Или впишите через запятую: Краснодар, Крым весь, Сочи, Ростов…"
+                  value={cityCustom}
+                  onChange={(e) => setCityCustom(e.target.value)}
+                />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Нужен для локальных услуг (грузоперевозки, ремонт и т.д.). Опционально.
+                  Нужны для локальных услуг. Первый в списке — основной для SEO.
                 </p>
               </div>
+            </div>
+
+            {/* Блок 2.5: Услуги / направления — свободный текст через запятую */}
+            <div>
+              <Label htmlFor="services">
+                Что вы делаете? <span className="text-muted-foreground font-normal">(услуги / направления через запятую)</span>
+              </Label>
+              <Input
+                id="services"
+                placeholder="Напр. для санитарных услуг: трупы, потопы, пожары, фумигация, плесень…"
+                value={servicesText}
+                onChange={(e) => setServicesText(e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Опционально. Если укажете — из этих слов мы соберём ключевые запросы&nbsp;×&nbsp;города.
+                Иначе — бэк подберёт их сам по отрасли.
+              </p>
             </div>
 
             {/* Блок 3: Целевая аудитория чипами */}

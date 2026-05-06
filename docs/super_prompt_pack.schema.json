@@ -217,7 +217,8 @@
               },
               "commercial_signals": {
                 "type": "array",
-                "items": { "enum": ["price", "phone", "messengers", "reviews", "guarantee", "license", "delivery", "working_hours"] }
+                "description": "Список коммерческих сигналов — открытый список строк (напр. price, phone, working_hours, address, reviews_count_or_block, what_included, delivery_or_arrival_time, team_credentials, store_badges_apple_google и др.). Не ограничен enum-ом, чтобы вертикали могли добавлять свои специфичные сигналы.",
+                "items": { "type": "string" }
               },
               "min_word_count": { "type": "integer", "default": 400 },
               "canonical_required": { "type": "boolean", "default": true }
