@@ -63,7 +63,27 @@ async function getApplied(): Promise<Set<string>> {
 async function applyMigration(file: MigrationFile): Promise<void> {
   // Run the file as a single block. `postgres` driver's `unsafe()` allows
   // multiple statements separated by ';' when no parameters are passed.
-  await sql.unsafe(file.sql);
+  try {
+    await sql.unsafe(file.sql);
+  } catch (err: any) {
+    // Surface every diagnostic the postgres driver gives us so we can find
+    // the exact statement that broke. Without this, deploy logs show only
+    // the bare error message and we can't locate the offending SQL.
+    const detail = {
+      file: file.name,
+      message: err?.message,
+      code: err?.code,
+      severity: err?.severity,
+      position: err?.position,
+      where: err?.where,
+      hint: err?.hint,
+      detail: err?.detail,
+      internal_query: err?.internal_query,
+      query_excerpt: err?.query ? String(err.query).slice(0, 1200) : undefined,
+    };
+    logger.error('MIGRATE', `FAILED ${file.name}: ${JSON.stringify(detail, null, 2)}`);
+    throw err;
+  }
   await sql`
     INSERT INTO _schema_migrations (name) VALUES (${file.name})
     ON CONFLICT (name) DO NOTHING
