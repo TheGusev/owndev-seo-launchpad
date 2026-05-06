@@ -71,6 +71,35 @@ async function main() {
       if (r.length > 0) inserted++;
     }
     console.log(`[premark] Existing prod DB detected. Pre-marked ${inserted} of ${LEGACY_MIGRATIONS.length} legacy migrations as applied (others were already recorded).`);
+
+    // ── Diagnostic: dump column defaults & types for formula_page_contracts ──
+    // We had a deploy fail with `malformed array literal: "{},"` on the ALTER TABLE
+    // step of migration 031. The file does not contain `{},` anywhere — it must come
+    // from a DEFAULT or column we didn't know about. Print the schema so we can see.
+    const cols = await sql`
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'formula_page_contracts'
+      ORDER BY ordinal_position
+    `;
+    console.log('[diag] formula_page_contracts columns:');
+    for (const c of cols) {
+      console.log(`  - ${c.column_name.padEnd(32)} ${String(c.data_type).padEnd(20)} null=${c.is_nullable.padEnd(3)} default=${c.column_default}`);
+    }
+    // Also peek a few existing rows to see if any TEXT[] field has a literal `{},` value
+    const rowCount = await sql`SELECT COUNT(*)::int AS n FROM formula_page_contracts`;
+    console.log(`[diag] formula_page_contracts row count: ${rowCount[0].n}`);
+    if (rowCount[0].n > 0) {
+      const sample = await sql`
+        SELECT id, project_type_code, page_type, version,
+               required_schemas, required_blocks, recommended_blocks, recommended_schemas
+        FROM formula_page_contracts
+        ORDER BY id DESC
+        LIMIT 3
+      `;
+      console.log('[diag] sample rows:', JSON.stringify(sample, null, 2));
+    }
+
     await sql.end();
   } catch (err) {
     console.error('[premark] Failed:', err && err.message ? err.message : err);
