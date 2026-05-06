@@ -21,16 +21,23 @@ const path = require('path');
 const postgresPath = path.resolve(__dirname, '..', 'node_modules', 'postgres');
 const postgres = require(postgresPath);
 
+// Each entry: [migration_name, probe_table_or_null].
+// If probe_table is set, we only mark the migration as applied when that
+// table actually exists in the prod DB. If it's missing, we leave the
+// migration UNMARKED so migrate.js will run it from scratch.
+// For pure-seed migrations (no CREATE TABLE) probe is null — those use
+// ON CONFLICT DO NOTHING, so re-running them is safe; we mark them only
+// when their target table already has rows.
 const LEGACY_MIGRATIONS = [
-  '001_initial.sql',
-  '002_site_formula.sql',
-  '003_marketplace_audit.sql',
-  '020_formula_v2.sql',
-  '020a_schema_templates_seed.sql',
-  '020b_page_contracts_seed.sql',
-  '021_wordstat.sql',
-  '022_crawl.sql',
-  '023_audit.sql',
+  ['001_initial.sql',                'users'],
+  ['002_site_formula.sql',           'blueprint_sessions'],
+  ['003_marketplace_audit.sql',      'marketplace_audits'],
+  ['020_formula_v2.sql',             'formula_page_contracts'],
+  ['020a_schema_templates_seed.sql', { seed: 'formula_schema_templates' }],
+  ['020b_page_contracts_seed.sql',   { seed: 'formula_page_contracts' }],
+  ['021_wordstat.sql',               'wordstat_cache'],
+  ['022_crawl.sql',                  'crawl_sessions'],
+  ['023_audit.sql',                  'site_audit_results'],
 ];
 
 async function main() {
@@ -61,7 +68,48 @@ async function main() {
     }
 
     let inserted = 0;
-    for (const name of LEGACY_MIGRATIONS) {
+    let skipped = 0;
+    let unmarked = 0;
+    for (const [name, probe] of LEGACY_MIGRATIONS) {
+      let shouldMark = true;
+      let realTableExists = true;
+      if (typeof probe === 'string') {
+        // CREATE TABLE migration — only mark applied if the table really exists.
+        const t = await sql`SELECT to_regclass(${'public.' + probe}) AS t`;
+        if (!t[0].t) {
+          shouldMark = false;
+          realTableExists = false;
+          console.log(`[premark] SKIP mark ${name} — table '${probe}' is MISSING; migrate.js will create it.`);
+        }
+      } else if (probe && probe.seed) {
+        // Seed migration — only mark applied if target table exists AND has rows.
+        const t = await sql`SELECT to_regclass(${'public.' + probe.seed}) AS t`;
+        if (!t[0].t) {
+          shouldMark = false;
+          console.log(`[premark] SKIP mark ${name} — seed target '${probe.seed}' is MISSING; will be seeded by migrate.js.`);
+        } else {
+          const rc = await sql.unsafe(`SELECT COUNT(*)::int AS n FROM ${probe.seed}`);
+          if (!rc[0] || rc[0].n === 0) {
+            shouldMark = false;
+            console.log(`[premark] SKIP mark ${name} — seed target '${probe.seed}' is EMPTY; will be seeded by migrate.js.`);
+          }
+        }
+      }
+      if (!shouldMark) {
+        skipped++;
+        // Repair: if a previous buggy premark marked this migration as applied
+        // but its table doesn't exist, clear the stale mark so migrate.js retries.
+        if (!realTableExists) {
+          const cleared = await sql`
+            DELETE FROM _schema_migrations WHERE name=${name} RETURNING name
+          `;
+          if (cleared.length > 0) {
+            unmarked++;
+            console.log(`[premark] CLEARED stale mark for ${name} (real table missing) so migrate.js will create it.`);
+          }
+        }
+        continue;
+      }
       const r = await sql`
         INSERT INTO _schema_migrations (name)
         VALUES (${name})
@@ -70,7 +118,7 @@ async function main() {
       `;
       if (r.length > 0) inserted++;
     }
-    console.log(`[premark] Existing prod DB detected. Pre-marked ${inserted} of ${LEGACY_MIGRATIONS.length} legacy migrations as applied (others were already recorded).`);
+    console.log(`[premark] Existing prod DB detected. Pre-marked ${inserted} new legacy migrations; ${skipped} skipped (${unmarked} stale marks cleared); rest already recorded.`);
 
     // ── Repair: a previous deploy mistakenly marked 031 as applied via a buggy debug runner ──
     // even though the ALTER TABLE never actually ran. If engine_version column is missing
