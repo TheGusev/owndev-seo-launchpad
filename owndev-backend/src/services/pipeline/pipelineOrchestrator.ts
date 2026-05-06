@@ -1,0 +1,488 @@
+/**
+ * services/pipeline — V3 Pipeline Orchestrator.
+ *
+ * Linear stages:
+ *   0. INTAKE      — validate input
+ *   1. DEMAND      — Wordstat clusters + geo distribution
+ *   2. CRAWL       — fetch site (cheerio + Jina fallback for SPA)
+ *   3. AUDIT       — extractors + audits → PageEvidence per page
+ *   4. PREFLIGHT   — 4-axis scoring per page + rollup
+ *   5. PACK        — strategy + page contracts + technical passport →
+ *                    super_prompt_pack v1 → ZIP bundle
+ *
+ * The orchestrator REUSES the existing BullMQ infrastructure (5 queues
+ * + 5 workers in src/queue, src/workers) — V3 only ties services together
+ * for synchronous, in-process execution; queue-driven runs go through the
+ * V2 workers which now load V3 services where appropriate.
+ */
+
+import { logger } from '../../utils/logger.js';
+import { runDemandIntelligence } from '../demand/index.js';
+import { crawlSite } from '../CrawlEngine/index.js';
+import { auditService } from '../audit/index.js';
+import { preflightService, type PageEvidence, type PreflightReport } from '../preflight/index.js';
+import { loadActiveRules } from '../preflight/repository.js';
+import { buildStrategy } from '../strategy/index.js';
+import { technicalPassportService } from '../technicalPassport/index.js';
+import { buildGraph } from '../schemaRegistry/index.js';
+import { developerPackService } from '../developerPack/index.js';
+import type {
+  PipelineInput,
+  PipelineResultV3,
+  PipelineStage,
+  PipelineStageResult,
+} from './types.js';
+import type { CrawlPageRecord } from '../CrawlEngine/types.js';
+import type { DemandIntelligenceResult } from '../demand/types.js';
+import type { SiteStrategy, SitePage } from '../strategy/types.js';
+import type { TechnicalPassportArtifacts, PassportInputs } from '../technicalPassport/types.js';
+
+interface FetchResult {
+  url: string;
+  status: number;
+  html: string;
+  headers: Record<string, string>;
+}
+
+const DEFAULT_UA =
+  'Mozilla/5.0 (compatible; OwndevV3-Pipeline/1.0; +https://owndev.ru/bot)';
+
+async function fetchPageHtml(url: string, ua = DEFAULT_UA): Promise<FetchResult> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12_000);
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': ua, Accept: 'text/html,*/*;q=0.8' },
+      redirect: 'follow',
+      signal: ctrl.signal,
+    });
+    const ct = res.headers.get('content-type') ?? '';
+    const html = ct.includes('text/html') ? await res.text() : '';
+    const headers: Record<string, string> = {};
+    res.headers.forEach((v, k) => {
+      headers[k] = v;
+    });
+    return { url, status: res.status, html, headers };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function deriveDomain(rootUrl: string): string {
+  try {
+    return new URL(rootUrl).hostname;
+  } catch {
+    return rootUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  }
+}
+
+function deriveBaseUrl(rootUrl: string): string {
+  try {
+    const u = new URL(rootUrl);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return rootUrl.replace(/\/$/, '');
+  }
+}
+
+function pickPageContractFor(strategy: SiteStrategy, pageUrl: string): SitePage | undefined {
+  const path = (() => {
+    try {
+      return new URL(pageUrl).pathname || '/';
+    } catch {
+      return '/';
+    }
+  })();
+  // Try exact url_pattern match (without dynamic segments)
+  for (const p of strategy.pages) {
+    const pattern = p.url_pattern.replace(/:\w+/g, '[^/]+').replace(/\*/g, '.*');
+    try {
+      const rx = new RegExp(`^${pattern}$`);
+      if (rx.test(path)) return p;
+    } catch {
+      // ignore bad pattern
+    }
+  }
+  // Fallback: home page → '/'
+  if (path === '/' || path === '') {
+    return strategy.pages.find((p) => p.page_type === 'home');
+  }
+  return undefined;
+}
+
+export class PipelineOrchestrator {
+  async run(input: PipelineInput): Promise<PipelineResultV3> {
+    const stages: PipelineStageResult[] = [];
+    const startAll = Date.now();
+    const result: PipelineResultV3 = {
+      job_id: input.job_id,
+      root_url: input.root_url,
+      status: 'failed',
+      stages,
+      generated_at: new Date().toISOString(),
+    };
+
+    try {
+      // ── Stage 0: INTAKE ────────────────────────────────────────────────
+      const tIntake = await this.timeStage('intake', async () => {
+        if (!input.root_url || !input.project_code) {
+          throw new Error('root_url and project_code are required');
+        }
+        if (!input.brand?.name) {
+          throw new Error('brand.name is required');
+        }
+        // normalise URL
+        try {
+          new URL(input.root_url);
+        } catch {
+          throw new Error(`Invalid root_url: ${input.root_url}`);
+        }
+      });
+      stages.push(tIntake);
+
+      // ── Stage 1: DEMAND ────────────────────────────────────────────────
+      let demand: DemandIntelligenceResult | undefined;
+      const tDemand = await this.timeStage('demand', async () => {
+        if (input.skip_demand || !input.seed_keywords || input.seed_keywords.length === 0) {
+          logger.info('PIPELINE', `[${input.job_id}] DEMAND skipped (no seeds or skip_demand=true)`);
+          return;
+        }
+        try {
+          demand = await runDemandIntelligence(input.job_id, input.seed_keywords, {
+            brand_tokens: [input.brand.name],
+            with_geo_distribution: true,
+            with_dynamics: false,
+          });
+        } catch (err: any) {
+          logger.warn('PIPELINE', `[${input.job_id}] DEMAND degraded: ${err.message}`);
+          demand = {
+            session_id: input.job_id,
+            seed_keywords: input.seed_keywords,
+            clusters: [],
+            geo_distribution: [],
+            recommended_geos: input.recommended_geos ?? ['225'],
+            total_volume: 0,
+            quota_used: 0,
+            generated_at: new Date().toISOString(),
+          };
+        }
+      });
+      stages.push(tDemand);
+      result.demand = demand;
+
+      // ── Stage 2: CRAWL ─────────────────────────────────────────────────
+      let crawlPages: CrawlPageRecord[] = [];
+      const tCrawl = await this.timeStage('crawl', async () => {
+        if (input.skip_crawl) {
+          logger.info('PIPELINE', `[${input.job_id}] CRAWL skipped`);
+          return;
+        }
+        const session = await crawlSite({
+          rootUrl: input.root_url,
+          maxPages: input.max_crawl_pages ?? 30,
+          respectRobots: true,
+          enableJinaFallback: true,
+          sessionId: input.job_id,
+        });
+        crawlPages = session.pages ?? [];
+        logger.info(
+          'PIPELINE',
+          `[${input.job_id}] CRAWL collected ${crawlPages.length} pages (status=${session.status})`,
+        );
+      });
+      stages.push(tCrawl);
+      result.crawl_pages = crawlPages;
+
+      // ── Stage 1b/3 prep: build STRATEGY ────────────────────────────────
+      // Strategy is needed both for audit (required_schema_types per page)
+      // and for pack composition. We build it once here.
+      const strategy = await buildStrategy({
+        project_code: input.project_code,
+        brand_name: input.brand.name,
+        brand_positioning: input.brand.competitive_position,
+        city: input.brand.primary_city,
+        service_main: input.brand.industry,
+        clusters: demand?.clusters ?? [],
+        recommended_geos:
+          demand?.recommended_geos ?? input.recommended_geos ?? ['225'],
+      });
+      result.strategy = strategy;
+
+      // ── Build TECHNICAL PASSPORT (so audit can see llms.txt / robots) ─
+      const baseUrl = deriveBaseUrl(input.root_url);
+      const domain = deriveDomain(input.root_url);
+      const passportInputs: PassportInputs = {
+        brand_name: input.brand.name,
+        domain,
+        base_url: baseUrl,
+        contact_email: input.brand.contact_email ?? `info@${domain}`,
+        description_ru:
+          input.brand.competitive_position ??
+          `${input.brand.name} — ${input.brand.industry}`,
+        primary_geo: 'RU',
+        languages: ['ru'],
+        ai_training_policy: input.ai_training_policy ?? 'allow_with_attribution',
+        ai_attribution_required: input.ai_training_policy === 'allow_with_attribution',
+        license: 'proprietary',
+        sitemap_pages: strategy.pages.map((p) => ({
+          url: `${baseUrl}${p.url_pattern.replace(/:\w+/g, '').replace(/\/$/, '') || '/'}`,
+          priority: p.priority,
+          changefreq: p.changefreq,
+        })),
+      };
+      const passport: TechnicalPassportArtifacts = technicalPassportService.build(
+        passportInputs,
+        strategy,
+      );
+      result.passport = passport;
+
+      // ── Stage 3: AUDIT (PageEvidence per page) ─────────────────────────
+      const evidences: Array<{ page: SitePage | undefined; evidence: PageEvidence; record: CrawlPageRecord }> = [];
+      const tAudit = await this.timeStage('audit', async () => {
+        // Decide which URLs to audit. If we have crawl results, audit them.
+        // Otherwise audit just the root_url.
+        const urlsToAudit =
+          crawlPages.length > 0
+            ? crawlPages.slice(0, 20)
+            : [
+                {
+                  url: input.root_url,
+                  http_status: null,
+                  content_type: null,
+                  title: null,
+                  h1: null,
+                  meta_description: null,
+                  canonical: null,
+                  robots_meta: null,
+                  word_count: null,
+                  schemas_found: [],
+                  blocks_detected: [],
+                  page_type_guess: 'home',
+                  raw_html_size: null,
+                  fetch_ms: null,
+                  outbound_links: 0,
+                  notes: {},
+                } as unknown as CrawlPageRecord,
+              ];
+
+        for (const rec of urlsToAudit) {
+          let html = '';
+          let httpStatus: number | undefined;
+          let headers: Record<string, string> = {};
+          try {
+            const fetched = await fetchPageHtml(rec.url);
+            html = fetched.html;
+            httpStatus = fetched.status;
+            headers = fetched.headers;
+          } catch (err: any) {
+            logger.warn('PIPELINE', `[${input.job_id}] AUDIT fetch failed for ${rec.url}: ${err.message}`);
+            continue;
+          }
+          if (!html) {
+            logger.warn('PIPELINE', `[${input.job_id}] AUDIT no HTML for ${rec.url}`);
+            continue;
+          }
+
+          const sitePage = pickPageContractFor(strategy, rec.url);
+          const requiredSchemaTypes =
+            sitePage?.contract.required_schema_graph ?? [];
+
+          const out = auditService.run({
+            url: rec.url,
+            html,
+            http_status: httpStatus,
+            response_headers: headers,
+            llms_txt: passport.llms_txt,
+            robots_txt: passport.robots_txt,
+            well_known_ai: passport.ai_well_known,
+            sitemap_xml: passport.sitemap_xml,
+            project_code: input.project_code,
+            page_type: sitePage?.page_type ?? rec.page_type_guess ?? 'home',
+            required_schema_types: requiredSchemaTypes,
+          });
+
+          evidences.push({ page: sitePage, evidence: out.evidence, record: rec });
+        }
+      });
+      stages.push(tAudit);
+
+      // ── Stage 4: PREFLIGHT (per-page + rollup) ─────────────────────────
+      const reports: PreflightReport[] = [];
+      const tPreflight = await this.timeStage('preflight', async () => {
+        for (const e of evidences) {
+          try {
+            const report = await preflightService.run(
+              e.evidence,
+              {
+                project_code: input.project_code,
+                page_type: e.page?.page_type ?? e.evidence.page_type,
+              },
+              input.job_id,
+            );
+            reports.push(report);
+          } catch (err: any) {
+            logger.warn(
+              'PIPELINE',
+              `[${input.job_id}] PREFLIGHT failed for ${e.evidence.url}: ${err.message}`,
+            );
+          }
+        }
+      });
+      stages.push(tPreflight);
+      result.preflight_per_page = reports;
+
+      // Rollup
+      if (reports.length > 0) {
+        const totals = reports.map((r) => r.total_score);
+        const passed = reports.filter((r) => r.passed).length;
+        const failedP0 = Array.from(
+          new Set(reports.flatMap((r) => r.failed_p0)),
+        );
+        const axisAvg = (axis: 'SEO' | 'DIRECT' | 'SCHEMA' | 'AI_LLM') => {
+          const xs = reports
+            .map((r) => r.axes.find((a) => a.axis === axis)?.score ?? 0);
+          return xs.length > 0 ? Math.round(xs.reduce((s, x) => s + x, 0) / xs.length) : 0;
+        };
+        result.preflight_rollup = {
+          total_pages: reports.length,
+          avg_total_score: Math.round(totals.reduce((s, x) => s + x, 0) / totals.length),
+          pages_passed: passed,
+          pages_failed: reports.length - passed,
+          failed_p0_codes: failedP0,
+          axis_avg: {
+            seo: axisAvg('SEO'),
+            direct: axisAvg('DIRECT'),
+            schema: axisAvg('SCHEMA'),
+            ai_llm: axisAvg('AI_LLM'),
+          },
+        };
+      }
+
+      // ── Stage 5: PACK (super_prompt_pack v1 + ZIP) ─────────────────────
+      const tPack = await this.timeStage('pack', async () => {
+        // Build per-page schema graphs so the pack carries ready-to-paste JSON-LD.
+        const schemaPerPage: Array<{
+          page_type: string;
+          graph: { '@context': string; '@graph': any[] };
+        }> = [];
+        const seen = new Set<string>();
+        for (const p of strategy.pages) {
+          if (seen.has(p.page_type)) continue;
+          seen.add(p.page_type);
+          try {
+            const built = buildGraph({
+              project_code: input.project_code,
+              page_type: p.page_type,
+              page_url: `${baseUrl}${p.url_pattern.replace(/:\w+/g, '').replace(/\/$/, '') || '/'}`,
+              page_name: p.contract.h1_template,
+              page_description: p.contract.intro_answer_template ?? p.contract.h1_template,
+              schema_ctx: {
+                brand_name: input.brand.name,
+                url: baseUrl,
+                phone: undefined,
+                email: input.brand.contact_email,
+                address: input.brand.primary_city
+                  ? {
+                      street: '',
+                      city: input.brand.primary_city,
+                      region: input.brand.primary_city,
+                      country: 'RU',
+                    }
+                  : undefined,
+              } as any,
+            });
+            schemaPerPage.push({ page_type: p.page_type, graph: built.graph as any });
+          } catch (err: any) {
+            logger.warn(
+              'PIPELINE',
+              `[${input.job_id}] schema build failed for ${p.page_type}: ${err.message}`,
+            );
+          }
+        }
+
+        const preflightRules = await loadActiveRules({ project_code: input.project_code });
+
+        const bundle = await developerPackService.buildPack(
+          {
+            strategy,
+            passport,
+            preflight_rules: preflightRules,
+            schema_per_page: schemaPerPage,
+            brand: {
+              name: input.brand.name,
+              industry: input.brand.industry,
+              target_audience: input.brand.target_audience,
+              competitive_position: input.brand.competitive_position,
+              geo: {
+                country: 'RU',
+                regions: strategy.recommended_geos,
+                primary_city: input.brand.primary_city,
+              },
+              languages: ['ru'],
+            },
+          },
+          input.pack_mode ?? 'structured',
+          input.platform_target,
+        );
+        result.pack = bundle.pack;
+        result.pack_zip_size = bundle.zip_buffer?.length;
+      });
+      stages.push(tPack);
+
+      const allOk = stages.every((s) => s.ok);
+      result.status = allOk ? 'done' : 'failed';
+      result.generated_at = new Date().toISOString();
+
+      logger.info(
+        'PIPELINE',
+        `[${input.job_id}] DONE in ${Date.now() - startAll}ms — status=${result.status}, ` +
+          `pages=${result.preflight_per_page?.length ?? 0}, ` +
+          `avg_total=${result.preflight_rollup?.avg_total_score ?? 'n/a'}`,
+      );
+      return result;
+    } catch (err: any) {
+      const failed: PipelineStageResult = {
+        stage: 'failed',
+        started_at: new Date(startAll).toISOString(),
+        finished_at: new Date().toISOString(),
+        duration_ms: Date.now() - startAll,
+        ok: false,
+        error: err.message,
+      };
+      stages.push(failed);
+      result.status = 'failed';
+      logger.error('PIPELINE', `[${input.job_id}] FAILED: ${err.message}`);
+      return result;
+    }
+  }
+
+  private async timeStage(
+    stage: PipelineStage,
+    fn: () => Promise<void>,
+  ): Promise<PipelineStageResult> {
+    const t0 = Date.now();
+    const startedAt = new Date(t0).toISOString();
+    try {
+      await fn();
+      return {
+        stage,
+        started_at: startedAt,
+        finished_at: new Date().toISOString(),
+        duration_ms: Date.now() - t0,
+        ok: true,
+      };
+    } catch (err: any) {
+      logger.warn('PIPELINE', `stage ${stage} failed: ${err.message}`);
+      return {
+        stage,
+        started_at: startedAt,
+        finished_at: new Date().toISOString(),
+        duration_ms: Date.now() - t0,
+        ok: false,
+        error: err.message,
+      };
+    }
+  }
+}
+
+export const pipelineOrchestrator = new PipelineOrchestrator();
