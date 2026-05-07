@@ -156,6 +156,39 @@ const Hero = () => {
             </AnimatePresence>
           </motion.div>
 
+          {/* Акцентная CTA-кнопка «Смотреть весь рейтинг» — поднята над формой, с pulse-glow и float-анимацией */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: [0, -4, 0] }}
+            transition={{
+              opacity: { duration: 0.6, delay: 0.28 },
+              y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+            }}
+            className="relative"
+          >
+            {/* Пульсирующее свечение под кнопкой */}
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 rounded-full bg-primary/30 blur-xl"
+              animate={{ opacity: [0.35, 0.65, 0.35], scale: [0.95, 1.05, 0.95] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <Link
+              to="/geo-rating"
+              className="relative inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-primary/10 border border-primary/40 text-primary hover:bg-primary/15 hover:border-primary/60 transition-all font-semibold text-sm md:text-base shadow-[0_0_20px_hsl(var(--primary)/0.25)] hover:shadow-[0_0_28px_hsl(var(--primary)/0.4)]"
+            >
+              <Trophy className="w-4 h-4 md:w-5 md:h-5" />
+              Смотреть весь рейтинг ({ratingCount} {pluralize(ratingCount, ["сайт", "сайта", "сайтов"])})
+              <motion.span
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                className="inline-flex"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </motion.span>
+            </Link>
+          </motion.div>
+
           {/* Single CTA: URL input */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -192,15 +225,6 @@ const Hero = () => {
             <p className="text-xs text-muted-foreground/60 mt-3 text-center">
               Без регистрации · Экспорт в PDF и Word
             </p>
-            <div className="mt-4 flex justify-center">
-              <Button asChild variant="ghost" size="sm" className="gap-2 text-sm text-muted-foreground hover:text-primary">
-                <Link to="/geo-rating">
-                  <Trophy className="w-4 h-4" />
-                  Смотреть весь рейтинг ({ratingCount} {pluralize(ratingCount, ["сайт", "сайта", "сайтов"])})
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </Button>
-            </div>
           </motion.div>
         </div>
       </div>

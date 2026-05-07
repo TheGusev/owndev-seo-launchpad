@@ -12,7 +12,6 @@ import ReportValue from "@/components/landing/ReportValue";
 import ComparisonSection from "@/components/landing/ComparisonSection";
 import Testimonials from "@/components/landing/Testimonials";
 import FlagshipTools from "@/components/landing/FlagshipTools";
-import GeoRatingPreview from "@/components/landing/GeoRatingPreview";
 
 const FAQ = lazy(() => import("@/components/FAQ"));
 const ContactForm = lazy(() => import("@/components/ContactForm"));
@@ -75,7 +74,6 @@ const Index = () => {
       <Header />
       <main>
         <Hero />
-        <GeoRatingPreview />
         <FlagshipTools />
         <GeoScenarios />
         <HowItWorks />
