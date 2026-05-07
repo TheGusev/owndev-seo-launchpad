@@ -1556,4 +1556,67 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     logger.info('SITE_CHECK_ADMIN', `One-shot rescan queued ${queued}/${domains.length} domains`);
     return reply.send({ success: true, one_shot: true, queued, total: domains.length, executed_at: ts });
   });
+
+  // POST /api/v1/site-check/admin/rescan-geo-rating-once-v2
+  // Sprint 9 — v2: повторный перепрогон с новыми детекторами (prerendered SPA fix +
+  // citation_ready фикс) + очистка доменов с llm_score=0/seo_score=0 и нерезолвящихся.
+  app.post('/admin/rescan-geo-rating-once-v2', async (_req, reply) => {
+    await sql`
+      CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    const FLAG = 'rescan_geo_rating_v2_done';
+    const existing = await sql<Array<{ value: string }>>`
+      SELECT value FROM system_config WHERE key = ${FLAG} LIMIT 1
+    `;
+    if (existing[0]) {
+      return reply.status(410).send({ success: false, error: 'one-shot rescan v2 already executed', executed_at: existing[0].value });
+    }
+
+    // 1. Чистим мусор — домены с llm=0 или seo=0
+    const trash = await sql<Array<{ domain: string }>>`
+      SELECT domain FROM geo_rating WHERE llm_score = 0 OR seo_score = 0
+    `;
+    let removed = 0;
+    for (const r of trash) {
+      try {
+        await sql`DELETE FROM geo_rating WHERE domain = ${r.domain}`;
+        removed++;
+      } catch {}
+    }
+
+    // 2. Пересканируем оставшиеся через очередь
+    const rows = await sql<Array<{ domain: string }>>`
+      SELECT domain FROM geo_rating ORDER BY llm_score ASC
+    `;
+    const domains = rows.map(r => r.domain);
+
+    let queued = 0;
+    for (const d of domains) {
+      const url = `https://${d}`;
+      const scan_id = randomUUID();
+      try {
+        await sql`
+          INSERT INTO site_check_scans (id, url, mode, status, progress_pct)
+          VALUES (${scan_id}, ${url}, 'page', 'running', 0)
+        `;
+        await queue.add('scan', { scan_id, url, mode: 'page' });
+        queued++;
+      } catch (e) {
+        logger.warn('SITE_CHECK_ADMIN', `Failed to queue ${d}: ${(e as Error).message}`);
+      }
+    }
+
+    const ts = new Date().toISOString();
+    await sql`
+      INSERT INTO system_config (key, value) VALUES (${FLAG}, ${ts})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+    `;
+
+    logger.info('SITE_CHECK_ADMIN', `One-shot rescan v2: removed=${removed} queued=${queued}/${domains.length}`);
+    return reply.send({ success: true, one_shot: true, version: 'v2', removed, queued, total: domains.length, executed_at: ts });
+  });
 }
