@@ -61,6 +61,15 @@ export interface PreflightReport {
   failed_p1: string[];
   failed_p2: string[];
   generated_at: string;
+  // ───── PR-2 Мост v1→v3 «Правила + веса» (опциональные поля) ─────
+  // Заполняются, если при buildReport передан engine_state.
+  // В legacy-вызовах (без engine_state) эти поля отсутствуют — обратная совместимость.
+  weighted_total_score?: number;       // total_score с весами по dimensions
+  tier_applied?: 'start' | 'growth' | 'scale' | 'legacy';
+  total_score_threshold?: number;      // 85/88/90 в зависимости от tier
+  axis_weights?: Record<PreflightAxis, number>;  // сумма = 4
+  v1_guardrails_total?: number;        // сколько P0-guardrails из v1 было применено
+  v1_guardrails_failed?: string[];     // коды проваленных v1 P0-guardrails
 }
 
 export interface PageEvidence {
