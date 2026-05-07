@@ -11,7 +11,8 @@
     "migrate:dev": "tsx src/db/migrate.ts",
     "test:v1-untouched": "tsx src/services/SiteFormula/__tests__/v1-untouched.ts",
     "test:pr2-rules-weights": "tsx src/services/preflight/__tests__/pr2-rules-weights.ts",
-    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights",
+    "test:pr3-page-fanout": "tsx src/services/strategy/__tests__/pr3-page-fanout.ts",
+    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts",
     "rescan:geo": "tsx scripts/rescan-geo-rating.ts"
   },

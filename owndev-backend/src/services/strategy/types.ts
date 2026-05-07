@@ -36,6 +36,12 @@ export interface SitePage {
   cluster_id?: string;
   contract: GeneratedPageContract;
   reasoning: string;            // why this page exists
+  // ───── PR-3 Fan-out: развёрнутые экземпляры страниц ─────
+  // Для service-geo / location / category — это конкретный экземпляр (город/направление).
+  // Для одиночных страниц (home/pricing/contacts) флаг отсутствует (legacy).
+  page_instance_key?: string;       // напр. 'moskva' или 'remont-noutbukov'
+  page_instance_label?: string;     // напр. 'Москва' или 'Ремонт ноутбуков'
+  page_instance_kind?: 'city' | 'service_direction' | 'category_direction' | 'hub';
 }
 
 export interface SiteStrategy {
@@ -70,4 +76,13 @@ export interface StrategyBuildInput {
   tier_size?: TierSize;
   // engine_state пробрасывается для будущих PR (взвешивание dimensions, decision_trace в отчёт).
   engine_state?: EngineState;
+  // ───── PR-3 Fan-out (опционально) ─────
+  // Список городов, по которым надо развернуть service-geo / location страницы.
+  // Например [{ slug: 'moskva', label: 'Москва' }, { slug: 'spb', label: 'СПб' }].
+  // Если пусто или один элемент — поведение legacy (одна страница-шаблон).
+  cities?: Array<{ slug: string; label: string }>;
+  // Список направлений, по которым развернуть service / category страницы.
+  service_directions?: Array<{ slug: string; label: string }>;
+  // Добавить ли hub-страницы из кластеров Wordstat (по умолчанию — да).
+  enable_hub_pages?: boolean;
 }

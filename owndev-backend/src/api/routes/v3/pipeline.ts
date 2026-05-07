@@ -60,6 +60,16 @@ const runSchema = z.object({
     })
     .passthrough()
     .optional(),
+  // ───── PR-3 Fan-out (опционально) ─────
+  cities: z.array(z.object({
+    slug: z.string().min(1),
+    label: z.string().min(1),
+  })).max(50).optional(),
+  service_directions: z.array(z.object({
+    slug: z.string().min(1),
+    label: z.string().min(1),
+  })).max(50).optional(),
+  enable_hub_pages: z.boolean().optional(),
 });
 
 // In-memory cache of recent pipeline results (so /pack/:job_id can read them).
@@ -110,6 +120,10 @@ export async function pipelineRoutes(app: FastifyInstance) {
         max_crawl_pages: input.max_crawl_pages,
         // Мост v1 → v3: пробрасываем engine_state, если передан.
         engine_state: input.engine_state as any,
+        // PR-3 Fan-out:
+        cities: input.cities,
+        service_directions: input.service_directions,
+        enable_hub_pages: input.enable_hub_pages,
       });
 
       // Cache result for /pack/:job_id retrieval

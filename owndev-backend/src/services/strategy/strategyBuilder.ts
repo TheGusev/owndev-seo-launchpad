@@ -17,6 +17,7 @@ import type {
   SitePage, SiteStrategy, StrategyBuildInput, CtaPrimary,
 } from './types.js';
 import type { DemandClusterV3 } from '../demand/types.js';
+import { applyPageFanout, fanoutContextFromInput } from './pageFanout.js';
 
 // Primary-CTA per project type
 const PRIMARY_CTA: Record<ProjectTypeCodeV3, CtaPrimary> = {
@@ -146,9 +147,14 @@ export async function buildStrategy(input: StrategyBuildInput): Promise<SiteStra
     });
   }
 
+  // ───── PR-3: Fan-out ─────
+  // Разворачиваем базовые страницы по городам/направлениям + добавляем hub-страницы из Wordstat.
+  // Без cities/directions/clusters — это но-op (обратная совместимость).
+  const expandedPages = applyPageFanout(pages, fanoutContextFromInput(input));
+
   // Funnel stages
   const stageMap = new Map<string, string[]>();
-  for (const p of pages) {
+  for (const p of expandedPages) {
     const stage = PAGE_FUNNEL[p.page_type] ?? 'consideration';
     if (!stageMap.has(stage)) stageMap.set(stage, []);
     stageMap.get(stage)!.push(p.page_type);
@@ -168,7 +174,7 @@ export async function buildStrategy(input: StrategyBuildInput): Promise<SiteStra
     primary_audience: derivePrimaryAudience(input.project_code),
     primary_cta: PRIMARY_CTA[input.project_code] ?? 'lead_form',
     funnel_stages: stages,
-    pages,
+    pages: expandedPages,
     recommended_geos: input.recommended_geos ?? ['225'],
     total_clusters: input.clusters.length,
     generated_at: new Date().toISOString(),
