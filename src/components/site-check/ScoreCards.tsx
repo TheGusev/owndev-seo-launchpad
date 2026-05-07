@@ -26,6 +26,9 @@ const tripleLabels = {
   geo: { title: "GEO", subtitle: "AI-видимость" },
   seo: { title: "SEO", subtitle: "Поиск" },
   cro: { title: "CRO", subtitle: "Конверсия" },
+  schema: { title: "Schema", subtitle: "Разметка JSON-LD" },
+  direct: { title: "Директ", subtitle: "Я.Директ ready" },
+  ai: { title: "AI", subtitle: "LLM-готовность" },
 } as const;
 
 function getScoreColor(score: number) {
@@ -97,26 +100,32 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
     typeof scores?.cro === 'number';
 
   if (hasTriple) {
-    const tripleKeys: Array<'geo' | 'seo' | 'cro'> = ['geo', 'seo', 'cro'];
+    // Sprint 8 — полная сетка из 6 карточек:
+    // GEO/SEO/CRO (новые честные скоры) + Schema/Директ/AI (legacy скоры,
+    // раньше были в отчёте — возвращаем по просьбе пользователя).
+    type FullKey = 'geo' | 'seo' | 'cro' | 'schema' | 'direct' | 'ai';
+    const allKeys: FullKey[] = ['geo', 'seo', 'cro', 'schema', 'direct', 'ai'];
+    const visibleKeys = allKeys.filter((k) => typeof (scores as any)[k] === 'number');
+
     return (
       <>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {tripleKeys.map((key) => {
-            const val = (scores[key] ?? 0) as number;
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:gap-3">
+          {visibleKeys.map((key) => {
+            const val = ((scores as any)[key] ?? 0) as number;
             const meta = tripleLabels[key];
             return (
               <div
                 key={key}
-                className={`rounded-2xl border p-5 text-center ${getScoreColor(val)}`}
+                className={`rounded-2xl border p-4 text-center ${getScoreColor(val)}`}
               >
                 <CircleScore score={val} />
                 <p className="mt-2 text-sm font-semibold text-foreground">{meta.title}</p>
                 <p className="text-[11px] text-muted-foreground">{meta.subtitle}</p>
-                {previousScores && typeof previousScores[key] === "number" && (
-                  <DiffBadge diff={val - (previousScores[key] as number)} />
+                {previousScores && typeof (previousScores as any)[key] === "number" && (
+                  <DiffBadge diff={val - ((previousScores as any)[key] as number)} />
                 )}
                 <button
-                  onClick={() => setActiveModal(key)}
+                  onClick={() => setActiveModal(key as ScoreType)}
                   className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors underline decoration-dotted mt-2 block mx-auto"
                 >
                   Как рассчитан?
@@ -129,7 +138,7 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
         {activeModal && (
           <ScoreDetailsModal
             type={activeModal as ScoreType}
-            score={(scores[activeModal as 'geo' | 'seo' | 'cro'] ?? 0) as number}
+            score={((scores as any)[activeModal] ?? 0) as number}
             scores={scores}
             breakdown={breakdown?.[activeModal as keyof ScoreBreakdownData]}
             onClose={() => setActiveModal(null)}
