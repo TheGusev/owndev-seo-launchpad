@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -8,7 +8,7 @@ import ScanProgress from "@/components/site-check/ScanProgress";
 import { startScan, getScanStatus } from "@/lib/site-check-api";
 import { subscribeScanEvents } from "@/lib/api/scan-events";
 import type { ScanMode } from "@/lib/site-check-types";
-import { ArrowRight, Globe, Trash2, Search, Brain, Target, Sparkles, Key, ShieldCheck, FileText, Download, RefreshCw, Cpu } from "lucide-react";
+import { ArrowRight, ArrowLeft, Globe, Trash2, Search, Brain, Target, Sparkles, Key, ShieldCheck, FileText, Download, RefreshCw, Cpu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getHistory, clearHistory, type ScanHistoryItem } from "@/utils/scanHistory";
 import { clearScanSession } from "@/utils/scanSession";
@@ -240,7 +240,7 @@ const SiteCheck = () => {
     <>
       <Helmet>
         <title>Полный GEO и AI-ready аудит сайта — бесплатно | OWNDEV</title>
-        <meta name="description" content="Проверьте GEO Score, SEO Score и CRO Score сайта бесплатно. Schema.org, llms.txt, robots.txt, бенчмарк по категории. PDF и Word отчёт за 60 секунд." />
+        <meta name="description" content="Проверьте GEO Score, SEO Score и CRO Score сайта бесплатно. Schema.org, llms.txt, robots.txt, бенчмарк по категории. PDF и Word отчёт." />
         <link rel="canonical" href="https://owndev.ru/tools/site-check" />
       </Helmet>
       <Header />
@@ -248,6 +248,17 @@ const SiteCheck = () => {
         <AuroraBackground className="z-0 opacity-50" intensity="subtle" />
         <MatrixRain className="z-0" density="low" opacity={0.15} />
         <div className="container max-w-6xl mx-auto px-4 relative z-10">
+          {(() => {
+            let cameFromGeo = false;
+            try { cameFromGeo = sessionStorage.getItem('cameFromGeoRating') === '1'; } catch {}
+            return cameFromGeo ? (
+              <div className="mb-4">
+                <Link to="/geo-rating" className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors">
+                  <ArrowLeft className="w-4 h-4" /> Назад в GEO рейтинг
+                </Link>
+              </div>
+            ) : null;
+          })()}
           <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
             <div>
           <div className="text-center mb-8">
@@ -255,7 +266,7 @@ const SiteCheck = () => {
               Полный GEO и AI‑ready аудит сайта
             </h1>
             <p className="text-muted-foreground mt-3 text-base">
-              Проверьте SEO Score и LLM Score сайта бесплатно. Результат — через 60 секунд.
+              Проверьте SEO Score и LLM Score сайта бесплатно.
             </p>
           </div>
 

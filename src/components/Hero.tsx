@@ -28,13 +28,12 @@ const capabilities = [
   { icon: Code2, text: "Schema.org разметка — 12 типов" },
   { icon: Bot, text: "GEO-готовность к AI-выдаче" },
   { icon: BarChart3, text: "Семантика 150+ ключей для Директа" },
-  { icon: FileText, text: "PDF и Word отчёт за 2 минуты" },
+  { icon: FileText, text: "PDF и Word отчёт" },
   { icon: Users, text: "Анализ конкурентов из ТОП-10" },
 ];
 
 const trustItems = [
   { icon: "✓", text: "50+ параметров анализа", color: "text-emerald-400" },
-  { icon: "✓", text: "Аудит за 2 минуты", color: "text-emerald-400" },
   { icon: "✓", text: "PDF и Word отчёт", color: "text-emerald-400" },
   { icon: "✓", text: "Бесплатно", color: "text-emerald-400" },
   { icon: "✦", text: "GEO + AI-ready", color: "text-primary" },
@@ -117,7 +116,7 @@ const Hero = () => {
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               Первый в Рунете рейтинг готовности сайтов к AI-выдаче. Проверяем по 6 осям:
-              GEO, SEO, CRO, Schema, Директ, AI — за 2 минуты, бесплатно, с PDF-отчётом.
+              GEO, SEO, CRO, Schema, Директ, AI — бесплатно, с PDF-отчётом.
             </p>
           </motion.div>
 
@@ -192,7 +191,7 @@ const Hero = () => {
               </form>
             </div>
             <p className="text-xs text-muted-foreground/60 mt-3 text-center">
-              Нет регистрации · Результат через 2 минуты · Экспорт в PDF и Word
+              Без регистрации · Экспорт в PDF и Word
             </p>
             <div className="mt-4 flex justify-center">
               <Button asChild variant="ghost" size="sm" className="gap-2 text-sm text-muted-foreground hover:text-primary">

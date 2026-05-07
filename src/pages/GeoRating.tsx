@@ -206,7 +206,7 @@ const GeoRating = () => {
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <Button asChild size="sm" variant="hero">
-                <Link to="/tools/site-check">
+                <Link to="/tools/site-check" onClick={() => { try { sessionStorage.setItem('cameFromGeoRating', '1'); } catch {} }}>
                   <Search className="w-3.5 h-3.5 mr-1.5" />Проверить
                 </Link>
               </Button>
@@ -399,7 +399,7 @@ const GeoRating = () => {
                           <a href={`https://${entry.domain}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80">
                             <ExternalLink className="w-3 h-3" />Открыть сайт
                           </a>
-                          <Link to={`/tools/site-check?url=${entry.domain}`} className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80">
+                          <Link to={`/tools/site-check?url=${entry.domain}`} onClick={() => { try { sessionStorage.setItem('cameFromGeoRating', '1'); } catch {} }} className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80">
                             <Search className="w-3 h-3" />Проверить
                           </Link>
                           <button onClick={() => copyBadgeCode(entry.domain, entry.rank)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">

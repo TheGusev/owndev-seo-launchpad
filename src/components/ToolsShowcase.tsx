@@ -37,7 +37,7 @@ const ToolsShowcase = () => {
             <span className="text-gradient">GEO и AI‑ready аудита</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            15+ инструментов для SEO, AI‑видимости и конкурентного анализа
+            7 инструментов для SEO, AI‑видимости и конкурентного анализа
           </p>
         </motion.div>
 

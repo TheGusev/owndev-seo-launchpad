@@ -12,6 +12,7 @@ import ReportValue from "@/components/landing/ReportValue";
 import ComparisonSection from "@/components/landing/ComparisonSection";
 import Testimonials from "@/components/landing/Testimonials";
 import FlagshipTools from "@/components/landing/FlagshipTools";
+import GeoRatingPreview from "@/components/landing/GeoRatingPreview";
 
 const FAQ = lazy(() => import("@/components/FAQ"));
 const ContactForm = lazy(() => import("@/components/ContactForm"));
@@ -57,7 +58,7 @@ const Index = () => {
     <div className="min-h-screen bg-background scroll-smooth">
       <Helmet>
         <title>OWNDEV — Первый GEO и AI-ready аудит сайта в Рунете</title>
-        <meta name="description" content="OWNDEV — GEO и AI-ready аудит сайта в Рунете. SEO Score, GEO Score, CRO Score, Schema.org, llms.txt. PDF и Word отчёт за 60 секунд. Бесплатно." />
+        <meta name="description" content="OWNDEV — GEO и AI-ready аудит сайта в Рунете. SEO Score, GEO Score, CRO Score, Schema.org, llms.txt. PDF и Word отчёт. Бесплатно." />
         <link rel="canonical" href="https://owndev.ru/" />
         <meta property="og:url" content="https://owndev.ru/" />
         <meta property="og:type" content="website" />
@@ -74,6 +75,7 @@ const Index = () => {
       <Header />
       <main>
         <Hero />
+        <GeoRatingPreview />
         <FlagshipTools />
         <GeoScenarios />
         <HowItWorks />

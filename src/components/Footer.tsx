@@ -26,11 +26,12 @@ const Footer = () => {
 
   const toolLinks = [
     { label: "Проверка сайта", href: "/tools/site-check", isRoute: true },
-    { label: "Семантическое ядро", href: "/tools/semantic-core", isRoute: true },
-    { label: "Внутренние ссылки", href: "/tools/internal-links", isRoute: true },
-    { label: "llms.txt Checker", href: "/tools/llms-txt-checker", isRoute: true },
-    { label: "SEO Auditor", href: "/tools/seo-auditor", isRoute: true },
-    { label: "Schema Generator", href: "/tools/schema-generator", isRoute: true },
+    { label: "Site Formula", href: "/site-formula", isRoute: true },
+    { label: "Аудит WB / Ozon", href: "/marketplace-audit", isRoute: true },
+    { label: "Анализ конкурентов", href: "/tools/competitor-analysis", isRoute: true },
+    { label: "AI Генератор текстов", href: "/tools/ai-text-generator", isRoute: true },
+    { label: "LLM Prompt Helper", href: "/tools/llm-prompt-helper", isRoute: true },
+    { label: "AI Brand Tracker", href: "/tools/brand-tracker", isRoute: true },
   ];
 
   const company = [
@@ -73,6 +74,7 @@ const Footer = () => {
               Анализируем по 50+ параметрам: SEO, Schema.org,
               Яндекс.Директ и готовность к AI-поиску.
             </p>
+            {/* Social moved to top, before tags — убрали «висячий» самолётик под логотипом */}
             {/* Tags */}
             <div className="flex flex-wrap gap-2">
               {Object.entries(tagStyles).map(([label, cls]) => (
@@ -90,11 +92,13 @@ const Footer = () => {
                 </a>
               ))}
             </div>
-            {/* Social */}
+            {/* Social: Telegram */}
             <div className="flex items-center gap-3">
               <a href="https://t.me/one_help" target="_blank" rel="noopener noreferrer"
-                className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors text-sm">
-                ✈
+                aria-label="Telegram OWNDEV"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors text-xs">
+                <span aria-hidden="true">✈</span>
+                <span>Telegram · @one_help</span>
               </a>
             </div>
           </div>

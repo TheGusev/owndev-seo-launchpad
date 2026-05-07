@@ -108,21 +108,21 @@ const ScoreDetailsModal = ({ type, score, scores, breakdown, onClose }: ScoreDet
         className={`fixed z-[1000] bg-card border border-border/50 ${
           isMobile
             ? "inset-x-0 bottom-0 rounded-t-2xl max-h-[75vh] animate-in slide-in-from-bottom duration-200"
-            : "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-h-[80vh] rounded-2xl"
-        } overflow-y-auto p-5 md:p-6`}
+            : "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-w-[calc(100vw-2rem)] max-h-[80vh] rounded-2xl"
+        } overflow-y-auto overflow-x-hidden p-5 md:p-6`}
       >
         {isMobile && <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-4" />}
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold text-foreground">
+        <div className="flex items-start justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h3 className="text-base font-semibold text-foreground break-words">
               {scoreLabel[type]} Score — {score}/100
             </h3>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getScoreBadgeColor(score)}`}>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${getScoreBadgeColor(score)}`}>
               {score <= 40 ? "Критично" : score <= 70 ? "Средне" : "Отлично"}
             </span>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors">
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors shrink-0" aria-label="Закрыть">
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
@@ -131,13 +131,13 @@ const ScoreDetailsModal = ({ type, score, scores, breakdown, onClose }: ScoreDet
           <OverallFormula scores={scores} />
         ) : breakdown && breakdown.length > 0 ? (
           <>
-            <table className="w-full text-[13px]">
+            <table className="w-full text-[13px] table-fixed">
               <thead>
                 <tr className="border-b border-border/30">
                   <th className="text-left py-2 px-1 font-medium text-muted-foreground">Критерий</th>
-                  <th className="text-center py-2 px-1 font-medium text-muted-foreground w-12">Вес</th>
+                  <th className="text-center py-2 px-1 font-medium text-muted-foreground w-10">Вес</th>
                   <th className="text-center py-2 px-1 font-medium text-muted-foreground w-12">Балл</th>
-                  <th className="w-8"></th>
+                  <th className="w-7"></th>
                 </tr>
               </thead>
               <tbody>
@@ -145,9 +145,9 @@ const ScoreDetailsModal = ({ type, score, scores, breakdown, onClose }: ScoreDet
                   const meta = criteriaMap[item.key];
                   return (
                     <tr key={item.key} className="border-b border-border/10">
-                      <td className="py-2 px-1">
-                        <span className="font-medium text-foreground">{meta?.label || item.key}</span>
-                        <span className="block text-muted-foreground text-[11px]">{meta?.description || ''}</span>
+                      <td className="py-2 px-1 break-words">
+                        <span className="font-medium text-foreground break-words">{meta?.label || item.key}</span>
+                        <span className="block text-muted-foreground text-[11px] break-words">{meta?.description || ''}</span>
                       </td>
                       <td className="text-center py-2 px-1 text-muted-foreground">{item.weight}</td>
                       <td className="text-center py-2 px-1 font-semibold">

@@ -181,7 +181,19 @@ const SiteCheckResult = () => {
         <div className="container max-w-4xl mx-auto px-3 md:px-4 space-y-4">
           {/* 1. Header */}
           <div>
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-3 mb-3 flex-wrap">
+              {(() => {
+                let cameFromGeo = false;
+                try { cameFromGeo = sessionStorage.getItem('cameFromGeoRating') === '1'; } catch {}
+                return cameFromGeo ? (
+                  <>
+                    <Link to="/geo-rating" className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors">
+                      <ArrowLeft className="w-4 h-4" /> Назад в GEO рейтинг
+                    </Link>
+                    <span className="text-muted-foreground/40">|</span>
+                  </>
+                ) : null;
+              })()}
               <Link to="/tools/site-check" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <ArrowLeft className="w-4 h-4" /> Новая проверка
               </Link>
