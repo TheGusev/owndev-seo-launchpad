@@ -13,7 +13,8 @@ export interface LlmCallOptions {
 }
 
 /**
- * Strict-JSON LLM call via Lovable AI Gateway, using tool_choice.
+ * Strict-JSON LLM call directly to OpenAI Chat Completions API, using tool_choice.
+ * Endpoint: https://api.openai.com/v1/chat/completions (auth via OPENAI_API_KEY).
  * Returns parsed args of the tool call, or null on any failure (caller decides fallback).
  */
 export async function callJsonLlm<T = any>(opts: LlmCallOptions): Promise<T | null> {
