@@ -1,8 +1,19 @@
+import { promises as fs } from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import { logger } from '../../../utils/logger.js';
 import { withRetry, HttpError } from '../../../utils/retry.js';
 
 const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
 const DEFAULT_MODEL = 'dall-e-3';
+
+// Персист сгенерированных картинок:
+// OpenAI отдаёт URL, которые живут ~1 час — это ломает отчёты
+// и слайдшоу. Качаем байты на диск и отдаём стабильный URL.
+const PUBLIC_IMG_DIR =
+  process.env.MARKETPLACE_IMAGE_DIR || '/var/www/owndev.ru/public/marketplace-images';
+const PUBLIC_IMG_URL_BASE =
+  process.env.MARKETPLACE_IMAGE_URL_BASE || 'https://owndev.ru/marketplace-images';
 
 export interface GenerateImagesInput {
   productTitle: string;
@@ -10,6 +21,53 @@ export interface GenerateImagesInput {
   prompts: string[];
   apiKey: string;
   count?: number;
+  /** Ид аудита/задачи для именования файлов (опционально). */
+  auditId?: string;
+}
+
+async function ensurePublicDir(): Promise<boolean> {
+  try {
+    await fs.mkdir(PUBLIC_IMG_DIR, { recursive: true });
+    return true;
+  } catch (e) {
+    logger.warn('MA_IMG', `mkdir ${PUBLIC_IMG_DIR} failed: ${(e as Error).message}`);
+    return false;
+  }
+}
+
+/**
+ * Скачать PNG с временного хоста OpenAI и положить в PUBLIC_IMG_DIR.
+ * Возвращает стабильный public-URL или null.
+ */
+async function persistImage(remoteUrl: string, auditId?: string): Promise<string | null> {
+  if (!(await ensurePublicDir())) return null;
+  let buf: Buffer;
+  try {
+    const resp = await fetch(remoteUrl, { signal: AbortSignal.timeout(30_000) });
+    if (!resp.ok) {
+      logger.warn('MA_IMG', `persist: fetch ${resp.status} for ${remoteUrl}`);
+      return null;
+    }
+    buf = Buffer.from(await resp.arrayBuffer());
+    if (buf.length < 1024) {
+      logger.warn('MA_IMG', `persist: too small (${buf.length}B), skip`);
+      return null;
+    }
+  } catch (e) {
+    logger.warn('MA_IMG', `persist: fetch failed ${(e as Error).message}`);
+    return null;
+  }
+  const fname =
+    `${auditId ? auditId + '-' : ''}` +
+    `${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}.png`;
+  const dst = path.join(PUBLIC_IMG_DIR, fname);
+  try {
+    await fs.writeFile(dst, buf);
+  } catch (e) {
+    logger.warn('MA_IMG', `persist: write failed ${(e as Error).message}`);
+    return null;
+  }
+  return `${PUBLIC_IMG_URL_BASE}/${fname}`;
 }
 
 /**
@@ -70,10 +128,20 @@ export async function generateProductImages(input: GenerateImagesInput): Promise
       }
       const data = await r.json();
       const url = data?.data?.[0]?.url;
-      if (typeof url === 'string' && url.startsWith('http')) {
-        out.push(url);
-      } else {
+      if (typeof url !== 'string' || !url.startsWith('http')) {
         logger.warn('MA_IMG', 'No url in OpenAI images response');
+        continue;
+      }
+      // Качаем PNG на свой хост — OpenAI URLы живут ~1ч.
+      const persisted = await persistImage(url, input.auditId);
+      if (persisted) {
+        out.push(persisted);
+      } else {
+        // фолбэк: если персист не получился (права / сеть) — отдаём
+        // временный URL OpenAI, чтобы пиплайн не упал. Фронт/слайдшоу справится
+        // в ближайший час; в логах видно причину.
+        logger.warn('MA_IMG', 'persist failed — returning short-lived OpenAI url');
+        out.push(url);
       }
     } catch (e) {
       logger.warn('MA_IMG', `image gen failed: ${(e as Error).message}`);
