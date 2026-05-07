@@ -10,7 +10,7 @@ const flagships = [
   {
     title: "Site Check",
     badge: "Флагман",
-    desc: "GEO + AI-ready аудит сайта за 2 минуты. SEO Score и LLM Score в одном отчёте.",
+    desc: "GEO + AI-ready аудит сайта. SEO Score и LLM Score в одном отчёте.",
     cta: "Запустить аудит",
     href: "/tools/site-check",
     icon: Search,
@@ -102,7 +102,7 @@ const FlagshipTools = () => {
             С чего начать
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Три флагманских инструмента OWNDEV — выберите задачу и получите результат за пару минут.
+            Три флагманских инструмента OWNDEV — выберите задачу и получите полный отчёт бесплатно.
           </p>
         </div>
 

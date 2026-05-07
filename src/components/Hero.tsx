@@ -1,4 +1,4 @@
-import { ArrowRight, Search, Code2, Bot, BarChart3, FileText, Users, Trophy } from "lucide-react";
+import { ArrowRight, Search, Code2, Bot, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
@@ -23,13 +23,12 @@ function pluralize(n: number, forms: [string, string, string]): string {
   return forms[2];
 }
 
+// Ротатор под H1 — оставляем только флагманские фичи, без дубля с trustItems.
+// Было 6 пунктов × 3с — выглядело как мельтешение.
 const capabilities = [
+  { icon: Bot, text: "GEO-готовность к AI-выдаче" },
   { icon: Search, text: "SEO-аудит по 18 параметрам" },
   { icon: Code2, text: "Schema.org разметка — 12 типов" },
-  { icon: Bot, text: "GEO-готовность к AI-выдаче" },
-  { icon: BarChart3, text: "Семантика 150+ ключей для Директа" },
-  { icon: FileText, text: "PDF и Word отчёт" },
-  { icon: Users, text: "Анализ конкурентов из ТОП-10" },
 ];
 
 const trustItems = [
@@ -48,7 +47,7 @@ const Hero = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setCapIndex((prev) => (prev + 1) % capabilities.length);
-    }, 3000);
+    }, 4500);
     return () => clearInterval(timer);
   }, []);
 
