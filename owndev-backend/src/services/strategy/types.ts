@@ -7,6 +7,13 @@
 import type { ProjectTypeCodeV3 } from '../../types/formulaV3.js';
 import type { DemandClusterV3 } from '../demand/types.js';
 import type { GeneratedPageContract } from '../pageContracts/types.js';
+import type { EngineState, ProjectClass } from '../../types/siteFormula.js';
+
+/**
+ * Фильтр по размеру/сложности проекта.
+ * Совпадает с ProjectClass в v1 (start | growth | scale) + 'all' — контракт подходит любому tier.
+ */
+export type TierSize = ProjectClass | 'all';
 
 export type CtaPrimary =
   | 'phone_call'
@@ -57,4 +64,10 @@ export interface StrategyBuildInput {
   phone?: string;
   clusters: DemandClusterV3[];
   recommended_geos?: string[];
+  // ───── Мост v1 → v3 (опционально) ─────
+  // tier_size фильтрует page_contracts по размеру: подходят контракты с tier_size = $tier OR tier_size = 'all'.
+  // Без входного значения выбираются все контракты (legacy-поведение).
+  tier_size?: TierSize;
+  // engine_state пробрасывается для будущих PR (взвешивание dimensions, decision_trace в отчёт).
+  engine_state?: EngineState;
 }

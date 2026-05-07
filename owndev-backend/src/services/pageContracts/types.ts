@@ -33,6 +33,11 @@ export interface PageContractRow {
   schema_graph_root: string | null;
   schema_graph_required: string[];
   engine_version: string;
+  // ───── Мост v1 → v3 ─────
+  // tier_size — размер проекта, на который рассчитан контракт.
+  // Совпадает с ProjectClass в v1 (start | growth | scale) + 'all' — контракт подходит любому размеру.
+  // Миграция 038 добавила столбец с DEFAULT 'all', поэтому существующие seed-строки не сломаются.
+  tier_size: 'start' | 'growth' | 'scale' | 'all';
 }
 
 export interface PageRequirement {
