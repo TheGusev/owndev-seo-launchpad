@@ -39,7 +39,8 @@ import LeadModal from "@/components/LeadModal";
 import { AuditProvider } from "@/state/audit";
 import SiteFormula from "./pages/SiteFormula";
 import SiteFormulaWizard from "./pages/SiteFormulaWizard";
-import SiteFormulaV2 from "./pages/SiteFormulaV2";
+// SiteFormulaV2 (legacy, 742 строки) удалён — в UI на неё ссылок не было.
+// /site-formula/v2-legacy редиректится на /site-formula/v3 (PRO).
 import SiteFormulaV3 from "./pages/SiteFormulaV3";
 import SiteFormulaPreview from "./pages/SiteFormulaPreview";
 import SiteFormulaReport from "./pages/SiteFormulaReport";
@@ -84,7 +85,8 @@ const App = () => (
             <Route path="/site-formula/wizard" element={<SiteFormulaWizard />} />
             <Route path="/site-formula/v2" element={<SiteFormulaV3 />} />
             <Route path="/site-formula/v3" element={<SiteFormulaV3 />} />
-            <Route path="/site-formula/v2-legacy" element={<SiteFormulaV2 />} />
+            {/* legacy редирект — v2-формула слита в v3 (PRO) */}
+            <Route path="/site-formula/v2-legacy" element={<SiteFormulaV3 />} />
             <Route path="/site-formula/preview" element={<SiteFormulaPreview />} />
             <Route path="/site-formula/report" element={<SiteFormulaReport />} />
             <Route path="/tools" element={<Tools />} />

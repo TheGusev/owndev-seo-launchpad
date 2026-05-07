@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && rm -rf dist/config dist/db/migrations && cp -r config dist/config && cp -r src/db/migrations dist/db/migrations",
+    "build": "tsc && rm -rf dist/config dist/db/migrations && cp -r config dist/config && cp -r src/db/migrations dist/db/migrations && mkdir -p dist/services/demand/profiles && cp src/services/demand/profiles/*.json dist/services/demand/profiles/",
     "start": "node dist/index.js",
     "migrate": "node dist/db/migrate.js",
     "migrate:dev": "tsx src/db/migrate.ts",

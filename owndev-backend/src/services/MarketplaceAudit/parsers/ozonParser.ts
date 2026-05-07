@@ -37,6 +37,89 @@ function extractBrand(text: string): string {
   return m ? m[1].trim() : '';
 }
 
+/**
+ * Извлечь категорию из бредкрамбсов Ozon. Варианты, которые видит Jina:
+ *   "Главная / Раздел / Категория / ..."
+ *   "Главная > Раздел > Категория"
+ *   "Каталог / Раздел / Категория"
+ * Берём предпоследний элемент (последний часто — имя самого товара).
+ */
+function extractCategory(text: string, metadata?: any): string {
+  // 1) Пробуем metadata Jina (description, og-tags)
+  const metaDesc = String(metadata?.description ?? '');
+  for (const candidate of [text.slice(0, 1500), metaDesc]) {
+    if (!candidate) continue;
+    const m = candidate.match(/(?:Главная|Каталог)\s*[\/>»]\s*([^\n\r]{4,300})/);
+    if (m) {
+      const trail = m[1];
+      const parts = trail.split(/\s*[\/>»]\s*/).map((s) => s.trim()).filter(Boolean);
+      if (parts.length >= 1) {
+        // последний элемент обычно — имя товара. Предпоследний — категория.
+        // Но если элементов ≤2 — берём последний.
+        const idx = parts.length >= 3 ? parts.length - 2 : parts.length - 1;
+        const cat = parts[idx];
+        if (cat && cat.length >= 2 && cat.length <= 80) return cat;
+      }
+    }
+  }
+  return '';
+}
+
+/**
+ * Извлечь характеристики товара из markdown-content Jina.
+ * Ozon рендерит блок списком «Имя: Значение» или «Имя\nЗначение»,
+ * обычно после заголовка «Характеристики» / «Спецификация».
+ */
+function extractAttributes(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+
+  // ищем секцию характеристик (от заголовка до следующего блока)
+  const headerRx =
+    /(?:^|\n)#{0,4}\s*(?:Характеристики(?:\s+товара)?|Спецификация)\s*\n([\s\S]{0,4000})/i;
+  const m = text.match(headerRx);
+  const section = m ? m[1] : text;
+
+  // Проходимся по строкам, ловим «Имя: Значение» (или «Имя Значение» в markdown-table)
+  const lineRx = /^[\-\*\|\s]*([А-Яа-яёЁ0-9A-Za-z][А-Яа-яёЁ0-9A-Za-z\s\-\/\(\),.]{1,60}?)\s*[:—\|]\s*(.+?)$/;
+  for (const line of section.split(/\n/)) {
+    const trimmed = line.trim();
+    if (trimmed.length < 4 || trimmed.length > 200) continue;
+    const lm = trimmed.match(lineRx);
+    if (!lm) continue;
+    const name = lm[1].trim().replace(/[\s ]+$/, '');
+    let value = lm[2].trim()
+      .replace(/^\|\s*/, '')
+      .replace(/\s*\|$/, '')
+      .replace(/^\[\s*/, '')
+      .replace(/\s*\]\(.*?\)$/, '');
+    if (!name || !value) continue;
+    if (value.length > 200) value = value.slice(0, 197) + '...';
+    // отрезаем служебные ячейки / ссылки
+    if (/^https?:\/\//.test(value)) continue;
+    if (/^\-+$/.test(value)) continue;
+    out[name] = value;
+    if (Object.keys(out).length >= 40) break; // жёсткий потолок
+  }
+  return out;
+}
+
+/**
+ * Оценка кол-ва видео в карточке Ozon по markdown-content Jina.
+ * Работает грубо — Jina обычно вставляет маркеры «[Видео]» / iframe-линки
+ * или конструкции "видео: N" в блоке медиа.
+ */
+function countVideos(text: string, data: any): number {
+  let count = 0;
+  // 1) Jina иногда отдаёт список видео
+  if (Array.isArray(data?.videos)) count += data.videos.length;
+  // 2) маркеры в тексте — одно видео обычно оставляет несколько
+  // пересекающихся следов («[Видео]» + "video.ozonusercontent" + ".mp4"),
+  // поэтому делим примерно на 3, потолок 6.
+  const hits = text.match(/(?:\[Видео\]|video\.ozonusercontent|\.mp4|\.m3u8|<video)/gi);
+  if (hits) count += Math.min(Math.ceil(hits.length / 3), 6);
+  return count;
+}
+
 export async function parseOzon(input: string): Promise<ParsedProduct> {
   const path = extractOzonProductPath(input);
   if (!path) throw new Error('Не удалось определить URL карточки Ozon');
@@ -61,6 +144,7 @@ export async function parseOzon(input: string): Promise<ParsedProduct> {
   }
 
   const data = jina?.data ?? jina ?? {};
+  const metadata = data?.metadata ?? null;
   const rawTitle: string = String(data.title ?? '').trim();
   const content: string = String(data.content ?? '').trim();
 
@@ -90,19 +174,30 @@ export async function parseOzon(input: string): Promise<ParsedProduct> {
     images = Object.values(data.images).filter((u: any) => typeof u === 'string').slice(0, 12) as string[];
   }
 
-  const attributes: Record<string, string> = {};
-  if (brand) attributes['Бренд'] = brand;
+  // Категория из бредкрамбсов + характеристики из блока «Характеристики»,
+  // видео — по маркерам content / Jina-data.videos.
+  const category = extractCategory(content, metadata);
+  const attributes = extractAttributes(content);
+  if (brand && !attributes['Бренд']) attributes['Бренд'] = brand;
+  const videoCount = countVideos(content, data);
 
   return {
     platform: 'ozon',
     title,
     description,
-    category: 'Не определена',
+    category: category || 'Не определена',
     attributes,
     images,
+    videoCount,
     reviewsCount,
     rating,
     url: targetUrl,
-    sourceData: { path, source: 'jina' },
+    sourceData: {
+      path,
+      source: 'jina',
+      attributesCount: Object.keys(attributes).length,
+      videoCount,
+      categoryFound: !!category,
+    },
   };
 }

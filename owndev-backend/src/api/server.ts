@@ -50,21 +50,13 @@ export async function startServer() {
     const { conversionAuditRoutes } = await import('./routes/conversionAudit.js');
     await app.register(conversionAuditRoutes, { prefix: '/api/v1/conversion-audit' });
 
-    // Formula v2 — 19 project types, page contracts, schema registry, preflight
-    const { formulaV2Routes } = await import('./routes/formulaV2.js');
-    await app.register(formulaV2Routes, { prefix: '/api/v2/formula' });
-
-    // Wordstat / demand intelligence
-    const { wordstatRoutes } = await import('./routes/wordstat.js');
-    await app.register(wordstatRoutes, { prefix: '/api/v2/wordstat' });
-
-    // Audit / Recovery / AI Developer Pack (Module 9)
-    const { auditV2Routes } = await import('./routes/auditV2.js');
-    await app.register(auditV2Routes, { prefix: '/api/v2' });
-
-    // Async jobs API (BullMQ-backed)
-    const { jobsV2Routes } = await import('./routes/jobsV2.js');
-    await app.register(jobsV2Routes, { prefix: '/api/v2/jobs' });
+    // ── Formula v2 деактивирована ──
+    // Роуты /api/v2/formula, /api/v2/wordstat, /api/v2/audit, /api/v2/jobs,
+    // /api/v2/recovery, /api/v2/ai-pack вытеснены v3-пайплайном
+    // (/api/v3/pipeline/run + /api/v3/pack/*). Free-формула по-прежнему
+    // обслуживается изолированным ядром /api/v1/site-formula/*.
+    // Файлы роутов и связанные сервисы будут удалены отдельным коммитом
+    // после прогрева мониторинга.
 
     // ── V3 — Site Formula V3 (Tier A/B/C, demand intelligence,
     //    technical passport, preflight 4-axes, super_prompt_pack v1) ──

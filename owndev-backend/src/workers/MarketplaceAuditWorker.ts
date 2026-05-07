@@ -75,6 +75,7 @@ async function processJob(job: Job<MarketplaceAuditJob>): Promise<void> {
         prompts: imgPrompts,
         apiKey: API_KEY,
         count: 3,
+        auditId: audit_id,
       });
 
       let videoUrl: string | null = null;
