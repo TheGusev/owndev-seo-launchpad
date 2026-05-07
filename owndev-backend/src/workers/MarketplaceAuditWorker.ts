@@ -5,8 +5,11 @@ import {
   getMarketplaceAudit,
   updateAuditProgress,
   saveAuditResult,
+  saveAuditMedia,
   failAudit,
 } from '../db/queries/marketplaceAudits.js';
+import { generateProductImages } from '../services/MarketplaceAudit/media/imageGen.js';
+import { generateSlideshowVideo } from '../services/MarketplaceAudit/media/videoGen.js';
 import { logger } from '../utils/logger.js';
 import type { MarketplaceAuditJob } from '../queue/marketplaceAuditQueue.js';
 import type { ManualInput } from '../types/marketplaceAudit.js';
@@ -59,6 +62,47 @@ async function processJob(job: Job<MarketplaceAuditJob>): Promise<void> {
       recommendations_json: result.recommendations,
       ai_summary: result.ai_summary,
     });
+
+    // ─── Stage: media generation ───
+    // Images and slideshow video are best-effort: any failure is logged and
+    // saved as null/empty array, audit row still finishes with status=done.
+    try {
+      await updateAuditProgress(audit_id, 'media', 92);
+      const imgPrompts = result.recommendations.imagePrompts?.bullets ?? [];
+      const generatedImages = await generateProductImages({
+        productTitle: result.product.title,
+        category: result.product.category,
+        prompts: imgPrompts,
+        apiKey: API_KEY,
+        count: 3,
+      });
+
+      let videoUrl: string | null = null;
+      if (generatedImages.length > 0) {
+        const captions = [
+          result.recommendations.newTitle || result.product.title,
+          ...result.recommendations.bullets.slice(0, 4),
+        ].slice(0, generatedImages.length);
+        const vid = await generateSlideshowVideo({
+          auditId: audit_id,
+          imageUrls: generatedImages,
+          captions,
+        });
+        videoUrl = vid.url;
+      }
+
+      await saveAuditMedia(audit_id, generatedImages, videoUrl);
+      logger.info(
+        'MA_WORKER',
+        `${audit_id} media: images=${generatedImages.length} video=${videoUrl ? 'yes' : 'no'}`,
+      );
+    } catch (mediaErr) {
+      logger.warn('MA_WORKER', `${audit_id} media stage failed: ${(mediaErr as Error).message}`);
+      await saveAuditMedia(audit_id, [], null).catch(() => {});
+    }
+
+    // Final status set after media to keep progress monotonic
+    await updateAuditProgress(audit_id, 'done', 100);
 
     logger.info('MA_WORKER', `${audit_id} done, total=${result.scores.total}, issues=${result.issues.length}`);
   } catch (err) {

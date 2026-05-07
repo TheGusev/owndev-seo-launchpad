@@ -1,6 +1,6 @@
 export type MarketplacePlatform = 'wb' | 'ozon';
 export type MarketplaceInputType = 'url' | 'sku' | 'manual';
-export type MarketplaceAuditStatus = 'pending' | 'parsing' | 'scoring' | 'llm' | 'done' | 'error';
+export type MarketplaceAuditStatus = 'pending' | 'parsing' | 'scoring' | 'llm' | 'media' | 'done' | 'error';
 
 export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low';
 export type IssueModule = 'content' | 'search' | 'conversion' | 'ads' | 'technical' | 'competitive';
@@ -117,6 +117,7 @@ export interface RecommendationsBlock {
   bullets: string[];
   addKeywords: string[];
   removeWords: string[];
+  imagePrompts?: { bullets: string[] };
 }
 
 export interface ManualInput {
@@ -145,6 +146,8 @@ export interface MarketplaceAuditRow {
   competitors_json: CompetitorsField;
   recommendations_json: RecommendationsBlock | Record<string, never>;
   ai_summary: string | null;
+  generated_images_json: string[];
+  generated_video_url: string | null;
   error_msg: string | null;
   rules_version: string;
   created_at: string;

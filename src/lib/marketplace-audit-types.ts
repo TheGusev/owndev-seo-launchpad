@@ -8,6 +8,7 @@ export type MarketplaceAuditStatus =
   | 'parsing'
   | 'scoring'
   | 'llm'
+  | 'media'
   | 'done'
   | 'error';
 
@@ -105,6 +106,7 @@ export interface RecommendationsBlock {
   bullets: string[];
   addKeywords: string[];
   removeWords: string[];
+  imagePrompts?: { bullets: string[] };
 }
 
 export interface ManualInput {
@@ -150,6 +152,8 @@ export interface ResultResponse {
   competitors: CompetitorsField;
   recommendations: RecommendationsBlock | Record<string, never>;
   ai_summary: string;
+  generated_images?: string[];
+  generated_video_url?: string | null;
   meta: { created_at: string; updated_at: string; rules_version: string };
   error: string | null;
 }

@@ -249,19 +249,23 @@ export async function runMarketplaceAudit(
   // rewrite (sequential — depends on enriched issues + missing keywords)
   let recommendations: RecommendationsBlock = fallbackRewrite(product, mergedMissingForRewrite);
   try {
-    const rewrite = await callJsonLlm<RecommendationsBlock & { bullets?: string[] }>({
+    const rewrite = await callJsonLlm<RecommendationsBlock & { bullets?: string[]; imagePromptBullets?: string[] }>({
       messages: buildRewriteMessages(product, issues, mergedMissingForRewrite),
       tool: REWRITE_TOOL,
       toolName: 'submit_rewrite',
       apiKey,
     });
     if (rewrite?.newTitle && rewrite?.newDescription) {
+      const imgPrompts = Array.isArray(rewrite.imagePromptBullets)
+        ? rewrite.imagePromptBullets.filter((s) => typeof s === 'string' && s.trim()).slice(0, 5)
+        : [];
       recommendations = {
         newTitle: rewrite.newTitle,
         newDescription: rewrite.newDescription,
         bullets: Array.isArray(rewrite.bullets) ? rewrite.bullets : [],
         addKeywords: Array.isArray(rewrite.addKeywords) ? rewrite.addKeywords : [],
         removeWords: Array.isArray(rewrite.removeWords) ? rewrite.removeWords : [],
+        imagePrompts: imgPrompts.length ? { bullets: imgPrompts } : undefined,
       };
     }
   } catch (e) {

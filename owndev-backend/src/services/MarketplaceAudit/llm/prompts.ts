@@ -62,6 +62,7 @@ export function buildRewriteMessages(p: ParsedProduct, issues: MarketplaceIssue[
     `Топ проблем: ${issues.slice(0, 5).map((i) => `${i.title} — ${i.how_to_fix}`).join('; ')}`,
     `Недостающие ключи: ${missingKeywords.slice(0, 12).join(', ') || '—'}`,
     'Сделай улучшенный title (60–100 симв), описание (600–1200 симв со структурой), 4–6 буллетов выгод, список ключей для добавления и список слов, которые лучше убрать.',
+    'Также верни imagePromptBullets — 3 коротких подсказки (англ., 50–120 симв) для генерации фото-карточек: ракурс / композиция / окружение. Без брендов, без текста на картинке, без водяных знаков.',
   ].join('\n');
   return [
     { role: 'system' as const, content: SYSTEM_PROMPT },
@@ -82,6 +83,7 @@ export const REWRITE_TOOL = {
         bullets: { type: 'array', items: { type: 'string' } },
         addKeywords: { type: 'array', items: { type: 'string' } },
         removeWords: { type: 'array', items: { type: 'string' } },
+        imagePromptBullets: { type: 'array', items: { type: 'string' } },
       },
       required: ['newTitle', 'newDescription', 'bullets', 'addKeywords', 'removeWords'],
       additionalProperties: false,

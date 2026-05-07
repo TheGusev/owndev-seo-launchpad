@@ -7,4 +7,5 @@ export { default as CompetitorGap } from './CompetitorGap';
 export { default as KeywordCoverage } from './KeywordCoverage';
 export { default as MarketplacePaywallCTA } from './MarketplacePaywallCTA';
 export { default as MarketplaceDownloadButtons } from './MarketplaceDownloadButtons';
+export { default as GeneratedCreatives } from './GeneratedCreatives';
 export { MarketplaceLoadingCard, MarketplaceErrorCard } from './EmptyStates';

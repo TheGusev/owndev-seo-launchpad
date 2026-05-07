@@ -11,6 +11,7 @@ import {
   RewriteSuggestions,
   CompetitorGap,
   KeywordCoverage,
+  GeneratedCreatives,
   MarketplacePaywallCTA,
   MarketplaceLoadingCard,
   MarketplaceErrorCard,
@@ -51,6 +52,10 @@ export default function MarketplaceAuditResult() {
             <MarketplaceScoreCards scores={result.scores as any} />
             <IssuesByImpact issues={result.issues} />
             <RewriteSuggestions recommendations={result.recommendations} />
+            <GeneratedCreatives
+              images={result.generated_images}
+              videoUrl={result.generated_video_url}
+            />
             <CompetitorGap competitors={result.competitors} />
             <KeywordCoverage keywords={result.keywords} />
             <MarketplacePaywallCTA result={result} />
