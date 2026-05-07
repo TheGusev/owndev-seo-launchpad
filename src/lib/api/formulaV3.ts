@@ -88,6 +88,18 @@ export interface ProReportV3 {
   };
   axis_weights?: { SEO: number; DIRECT: number; SCHEMA: number; AI_LLM: number };
   total_score_threshold?: number;
+  // PR-7: рынок / реклама / сезонность
+  ad_market_estimate?: {
+    cpc_high_intent_rub?: number;
+    transactional_share?: number;
+    monthly_paid_budget_rub?: number;
+    competition_level?: 'low' | 'medium' | 'high';
+    seo_payback_months?: number;
+    seasonality_now?: number;
+    seasonality_peak?: { month: number; factor: number };
+    seasonality_low?: { month: number; factor: number };
+    rationale_ru?: string;
+  };
 }
 
 export interface PipelineResultV3 {

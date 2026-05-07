@@ -17,6 +17,8 @@
 
 import type { PipelineInput, PipelineResultV3, ProReportV3 } from './types.js';
 import { getVerticalProfile, formatKpiSummary } from '../verticals/index.js';
+import type { SeasonalityVector, VerticalProfile } from '../verticals/types.js';
+import type { DemandIntelligenceResult } from '../demand/types.js';
 
 export function buildProReport(
   input: PipelineInput,
@@ -103,5 +105,166 @@ export function buildProReport(
     }
   }
 
+  // ── PR-7: рынок / реклама / сезонность ──
+  if (profile) {
+    report.ad_market_estimate = buildAdMarketEstimate(profile, result.demand);
+  }
+
   return report;
+}
+
+/**
+ * Считает рекламно-рыночный блок:
+ *   - CPC и payback берем из бенчмарков ниши;
+ *   - доля транзакционных интентов — из demand.clusters (transactional + local + commercial);
+ *     если demand отсутствует — из profile.intent_distribution;
+ *   - бюджет Я.Директа = volume_hot × CPC, где hot = total_volume × transactional_share × 0.18 (CTR);
+ *   - competition_level — комбинация CPC-порога и transactional_share;
+ *   - seasonality — из вектора ниши (текущий месяц, пик, яма).
+ *
+ * Важно: никаких вызовов Wordstat или внешних API — всё из уже собранного demand-снэпшота и бенчмарков.
+ */
+function buildAdMarketEstimate(
+  profile: VerticalProfile,
+  demand: DemandIntelligenceResult | undefined,
+): NonNullable<ProReportV3['ad_market_estimate']> {
+  const cpc = profile.benchmarks.cpc_high_intent_rub ?? 0;
+  const seoPayback = profile.benchmarks.seo_payback_months;
+
+  // Доля горячего спроса.
+  const transactional_share = computeTransactionalShare(profile, demand);
+
+  // Оценка бюджета Я.Директа.
+  let monthly_paid_budget_rub: number | undefined;
+  if (cpc > 0) {
+    const totalVolume = demand?.total_volume ?? 0;
+    if (totalVolume > 0) {
+      const hotVolume = totalVolume * transactional_share;
+      // CTR в рекламе Я.Директа обычно выше органики в SERP — берём базовые 18%.
+      const expectedClicks = Math.round(hotVolume * 0.18);
+      monthly_paid_budget_rub = Math.round(expectedClicks * cpc);
+    }
+  }
+
+  // Уровень конкурентности.
+  const competition_level = computeCompetitionLevel(cpc, transactional_share);
+
+  // Сезонность.
+  const month = new Date().getUTCMonth(); // 0..11
+  const seasonality_now = profile.seasonality[month] ?? 1.0;
+  const { peak, low } = findSeasonalityExtrema(profile.seasonality);
+
+  // Рационале.
+  const parts: string[] = [];
+  if (cpc > 0) {
+    parts.push(`CPC в нише «${profile.title_ru}» — около ${cpc.toLocaleString('ru-RU')} ₽ за клик по горячим запросам`);
+  }
+  parts.push(`Доля горячего спроса: ~${(transactional_share * 100).toFixed(0)}%`);
+  if (monthly_paid_budget_rub !== undefined) {
+    parts.push(`Бюджет Я.Директа на горячую долю: ~${monthly_paid_budget_rub.toLocaleString('ru-RU')} ₽/мес`);
+  }
+  parts.push(`Конкуренция: ${competitionLabelRu(competition_level)}`);
+  if (seasonality_now !== 1.0) {
+    const pct = Math.round((seasonality_now - 1) * 100);
+    parts.push(`Сезонность сейчас: ${pct >= 0 ? '+' : ''}${pct}% к среднегодовому`);
+  }
+  if (peak.factor > 1.0) {
+    parts.push(`Пик сезона: ${monthName(peak.month)} (×${peak.factor.toFixed(2)})`);
+  }
+  if (seoPayback !== undefined && seoPayback > 0) {
+    parts.push(`Окупаемость SEO: ~${seoPayback} мес`);
+  }
+
+  return {
+    cpc_high_intent_rub: cpc > 0 ? cpc : undefined,
+    transactional_share: round2(transactional_share),
+    monthly_paid_budget_rub,
+    competition_level,
+    seo_payback_months: seoPayback,
+    seasonality_now: round2(seasonality_now),
+    seasonality_peak: peak.factor > 0 ? { month: peak.month, factor: round2(peak.factor) } : undefined,
+    seasonality_low: low.factor > 0 ? { month: low.month, factor: round2(low.factor) } : undefined,
+    rationale_ru: parts.join('. '),
+  };
+}
+
+function computeTransactionalShare(
+  profile: VerticalProfile,
+  demand: DemandIntelligenceResult | undefined,
+): number {
+  // Сначала пробуем из demand: доля кластеров с интентами transactional/commercial/local.
+  if (demand && Array.isArray(demand.clusters) && demand.clusters.length > 0) {
+    let hotFreq = 0;
+    let totalFreq = 0;
+    for (const c of demand.clusters) {
+      const f = c.total_frequency ?? 0;
+      totalFreq += f;
+      if (c.intent === 'transactional' || c.intent === 'commercial' || c.intent === 'local') {
+        hotFreq += f;
+      }
+    }
+    if (totalFreq > 0) return clamp01(hotFreq / totalFreq);
+  }
+  // Fallback: из профиля вертикали.
+  const id = profile.intent_distribution;
+  const hot = (id.transactional ?? 0) + (id.commercial ?? 0) + (id.local ?? 0);
+  return clamp01(hot);
+}
+
+function computeCompetitionLevel(cpc: number, transactionalShare: number): 'low' | 'medium' | 'high' {
+  // CPC эвристика: <100 ₽ — low, 100..300 ₽ — medium, >300 ₽ — high.
+  // Смещаем по доле горячего спроса: больше транзакционных = выше конкуренция.
+  let score = 0;
+  if (cpc >= 300) score += 2;
+  else if (cpc >= 100) score += 1;
+  if (transactionalShare >= 0.7) score += 1;
+  else if (transactionalShare >= 0.4) score += 0.5;
+  if (score >= 2.5) return 'high';
+  if (score >= 1) return 'medium';
+  return 'low';
+}
+
+function findSeasonalityExtrema(vec: SeasonalityVector): {
+  peak: { month: number; factor: number };
+  low: { month: number; factor: number };
+} {
+  let peakMonth = 1;
+  let peakFactor = -Infinity;
+  let lowMonth = 1;
+  let lowFactor = Infinity;
+  for (let i = 0; i < 12; i++) {
+    const f = vec[i] ?? 1.0;
+    if (f > peakFactor) {
+      peakFactor = f;
+      peakMonth = i + 1;
+    }
+    if (f < lowFactor) {
+      lowFactor = f;
+      lowMonth = i + 1;
+    }
+  }
+  return {
+    peak: { month: peakMonth, factor: peakFactor === -Infinity ? 0 : peakFactor },
+    low: { month: lowMonth, factor: lowFactor === Infinity ? 0 : lowFactor },
+  };
+}
+
+function monthName(m: number): string {
+  const names = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+  return names[Math.max(0, Math.min(11, m - 1))] ?? '';
+}
+
+function competitionLabelRu(level: 'low' | 'medium' | 'high'): string {
+  if (level === 'low') return 'низкая';
+  if (level === 'medium') return 'средняя';
+  return 'высокая';
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
 }
