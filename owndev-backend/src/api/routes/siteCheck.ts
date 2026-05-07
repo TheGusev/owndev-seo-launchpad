@@ -725,6 +725,13 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // POST /api/v1/site-check/ai-boost
+  //
+  // Контракт детерминированности (зеркало /llm-judge):
+  //   * Один и тот же план для пары (domain, theme, scoresBucket) в окне 24ч → Redis hit.
+  //   * Cache miss: temperature 0 + seed по (domain, theme) + response_format json_object
+  //     ⇒ один и тот же набор пунктов плана при стабильных входных скорах.
+  //   * Нет OPENAI_API_KEY → 503 { error_code: 'NO_LLM_KEY' } (а не тихий fallback).
+  //   * scan_id-кэш в БД сохранён как второй слой, при hit промотируется в Redis.
   app.post<{ Body: { url: string; theme?: string; scores?: any; issues?: any[]; scan_id?: string; force?: boolean } }>(
     '/ai-boost',
     async (req, reply) => {
@@ -733,7 +740,28 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       };
       if (!url) return reply.status(400).send({ error: 'url required' });
 
-      // Cache check — return stored ai_boost if present
+      const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
+      const themeKey = (theme || '').toLowerCase().trim();
+      // Скоры округляем до 5 — мелкие колебания одного домена не должны менять план.
+      const bucket = (n: any) => Math.round((Number(n) || 0) / 5) * 5;
+      const scoresBucket = `${bucket(scores?.seo)}-${bucket(scores?.ai)}-${bucket(scores?.schema)}`;
+      const cacheKey = `ai-boost:v2:${domain}:${themeKey}:${scoresBucket}`;
+
+      // Layer 1: Redis (общий, по доменам, 24ч).
+      if (!force) {
+        try {
+          const hit = await redis.get(cacheKey);
+          if (hit) {
+            const parsed = JSON.parse(hit);
+            logger.info('AI_BOOST', `Redis cache hit for ${domain}`);
+            return reply.send({ ...parsed, _cache_source: 'redis' });
+          }
+        } catch (e) {
+          logger.warn('AI_BOOST', `Redis read failed: ${(e as Error).message}`);
+        }
+      }
+
+      // Layer 2: legacy DB-кэш по scan_id.
       if (scan_id && !force) {
         try {
           const cached = await sql<Array<{ ai_boost: any }>>`
@@ -743,26 +771,50 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
           `;
           const cachedBoost = cached[0]?.ai_boost;
           if (cachedBoost && typeof cachedBoost === 'object' && Array.isArray((cachedBoost as any).items) && (cachedBoost as any).items.length > 0) {
-            logger.info('AI_BOOST', `Cache hit for scan ${scan_id}`);
-            return reply.send({ ...(cachedBoost as object), _cached: true });
+            logger.info('AI_BOOST', `DB cache hit for scan ${scan_id}, promoting to Redis`);
+            // Промотируем в Redis для следующих повторов.
+            try {
+              await redis.setex(cacheKey, 24 * 60 * 60, JSON.stringify(cachedBoost));
+            } catch (e) {
+              logger.warn('AI_BOOST', `Redis promote failed: ${(e as Error).message}`);
+            }
+            return reply.send({ ...(cachedBoost as object), _cache_source: 'db' });
           }
         } catch (e) {
-          logger.warn('AI_BOOST', `Cache read failed: ${(e as Error).message}`);
+          logger.warn('AI_BOOST', `DB cache read failed: ${(e as Error).message}`);
         }
       }
 
       const apiKey = process.env.OPENAI_API_KEY || '';
-      if (!apiKey) return reply.status(503).send({ error: 'OPENAI_API_KEY не задан' });
+      if (!apiKey) {
+        return reply.status(503).send({
+          error: 'OPENAI_API_KEY не задан',
+          error_code: 'NO_LLM_KEY',
+        });
+      }
 
-      const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
       const topIssues = (issues || []).slice(0, 5).map((i: any) => i.title || i.found || '').filter(Boolean).join('; ');
 
-      const systemPrompt = `Ты эксперт по GEO (Generative Engine Optimization) — оптимизации сайтов для попадания в ответы нейросетей. Всегда отвечай ТОЛЬКО валидным JSON-массивом без markdown.`;
+      // Стабильный seed по (domain, theme) — OpenAI «seed» best-effort, но в паре с
+      // temperature 0 и фиксированным input даёт стабильный output.
+      const seed = (() => {
+        const s = `${domain}|${themeKey}`;
+        let h = 0;
+        for (let i = 0; i < s.length; i++) {
+          h = ((h << 5) - h) + s.charCodeAt(i);
+          h |= 0;
+        }
+        return Math.abs(h);
+      })();
+
+      // response_format: json_object требует слово «json» в системном промпте и возврат
+      // объекта. Заворачиваем массив в { items: [...] } — фронт всегда читал items.
+      const systemPrompt = 'Ты эксперт по GEO (Generative Engine Optimization) — оптимизации сайтов для попадания в ответы нейросетей. Отвечай ТОЛЬКО валидным JSON-объектом формата {"items":[...]}. Без markdown, без пояснений.';
 
       const userPrompt = `Данные аудита сайта ${domain}:
 - Тематика: ${theme || 'не указана'}
 - SEO Score: ${scores?.seo || 0}/100
-- LLM Score: ${scores?.ai || 0}/100
+- AI-видимость Score: ${scores?.ai || 0}/100
 - Schema Score: ${scores?.schema || 0}/100
 - Топ проблемы: ${topIssues || 'нет данных'}
 
@@ -778,7 +830,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   "category": "technical" | "content" | "pr" | "schema"
 }
 
-Верни JSON-массив из ровно 10 объектов. Без markdown, без пояснений — только массив.`;
+Верни ровно 10 объектов в виде JSON: {"items":[...10 объектов...]}.`;
 
       try {
         const resp = await withRetry(async () => {
@@ -791,7 +843,10 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
               ],
-              temperature: 0.2,
+              // Determinism: temperature 0 + per-(domain,theme) seed + json_object.
+              temperature: 0,
+              seed,
+              response_format: { type: 'json_object' },
               max_tokens: 2000,
             }),
           });
@@ -804,11 +859,31 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
           return r;
         }, { label: 'AI_BOOST' });
         const data = await resp.json();
-        const content = data?.choices?.[0]?.message?.content || '[]';
-        const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
-        const payload = { success: true, domain, items: Array.isArray(parsed) ? parsed : [] };
+        const content = data?.choices?.[0]?.message?.content || '{}';
+        const parsedRaw = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
+        // Поддерживаем обе формы: {items:[...]} (новая) и [...] (старый формат на всякий).
+        const items = Array.isArray(parsedRaw)
+          ? parsedRaw
+          : Array.isArray(parsedRaw?.items)
+            ? parsedRaw.items
+            : [];
+        if (items.length === 0) {
+          logger.warn('AI_BOOST', `Empty plan for ${domain}`);
+          return reply.status(502).send({
+            error: 'LLM вернул пустой план',
+            error_code: 'EMPTY_LLM_RESPONSE',
+          });
+        }
+        const payload = { success: true, domain, items };
 
-        // Persist to DB inside result.ai_boost for next page load
+        // Layer 1: Redis (24ч).
+        try {
+          await redis.setex(cacheKey, 24 * 60 * 60, JSON.stringify(payload));
+        } catch (e) {
+          logger.warn('AI_BOOST', `Redis write failed: ${(e as Error).message}`);
+        }
+
+        // Layer 2: legacy DB-кэш по scan_id.
         if (scan_id) {
           try {
             await sql`
@@ -819,14 +894,17 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
             `;
             logger.info('AI_BOOST', `Cached result for scan ${scan_id}`);
           } catch (e) {
-            logger.warn('AI_BOOST', `Cache write failed: ${(e as Error).message}`);
+            logger.warn('AI_BOOST', `DB cache write failed: ${(e as Error).message}`);
           }
         }
 
-        return reply.send(payload);
+        return reply.send({ ...payload, _cache_source: 'fresh' });
       } catch (e) {
         logger.warn('AI_BOOST', `Failed: ${(e as Error).message}`);
-        return reply.status(500).send({ error: 'Не удалось сгенерировать план' });
+        return reply.status(500).send({
+          error: 'Не удалось сгенерировать план',
+          error_code: 'LLM_REQUEST_FAILED',
+        });
       }
     },
   );
