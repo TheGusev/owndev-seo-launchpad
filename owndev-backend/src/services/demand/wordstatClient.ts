@@ -4,8 +4,8 @@
  * The CORRECT endpoints (as per cloud.yandex.com/services/searchapi):
  *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/topRequests              (1u)
  *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/getDynamics              (2u)
- *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/getRegionsDistribution   (2u)
- *   GET   https://searchapi.api.cloud.yandex.net/v2/wordstat/getRegionsTree           (free)
+ *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/regions                  (2u)
+ *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/getRegionsTree           (free)
  *
  * Auth: AI Studio API-key (header `Authorization: Api-Key …`).
  *       folderId is part of the request *body*, not a header.
@@ -138,11 +138,22 @@ export async function getRegionsDistribution(
 
   const reservation = await reserveUnits('getRegionsDistribution');
   try {
-    return await postJson<GetRegionsDistributionResponse>('/getRegionsDistribution', {
+    type RawRegions = {
+      regions?: Array<{ region?: string | number; count?: number | string; share?: number; affinityIndex?: number }>;
+    };
+    const raw = await postJson<RawRegions>('/regions', {
       phrase: req.phrase,
       devices: normalizeDevices(req.devices),
       region: 'REGION_REGIONS',
     });
+    return {
+      regions: (raw.regions ?? []).map((r) => ({
+        geoId: String(r.region ?? ''),
+        geoName: '',
+        count: typeof r.count === 'string' ? Number(r.count) : (r.count ?? 0),
+        affinityIndex: r.affinityIndex ?? (r.share ? Math.round(r.share * 100) : 0),
+      })),
+    };
   } catch (err: any) {
     await refundUnits('getRegionsDistribution', reservation.unitsReserved);
     logger.warn('WORDSTAT', `getRegionsDistribution failed: ${err.message}`);
