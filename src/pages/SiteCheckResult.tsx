@@ -21,6 +21,7 @@ import { ArrowLeft, ExternalLink, History, AlertTriangle, Bot, Info, Loader2, Re
 import { Badge } from "@/components/ui/badge";
 import { SkeletonResultsGrid } from "@/components/ui/skeleton-card";
 import { addToHistory, getHistory } from "@/utils/scanHistory";
+import { normalizeBackendBreakdown } from "@/utils/scoreCalculation";
 import { useToast } from "@/hooks/use-toast";
 import { t } from "@/i18n/strings";
 
@@ -141,9 +142,17 @@ const SiteCheckResult = () => {
         ...(typeof data.croScore === "number" ? { cro: data.croScore } : {}),
       }
     : null;
-  const breakdown = (rawScores?.breakdown || rawScores?.seoBreakdown)
+  // Sprint 9 — бэк отдаёт scoresBreakdown на верхнем уровне результата:
+  // { geo: [{key,weight,earned}], seo: [...], cro: [...] }.
+  // Старые сканы могли класть в rawScores.breakdown / rawScores.seoBreakdown — оставляем fallback.
+  const sb = (data as any)?.scoresBreakdown || (data as any)?.scores_breakdown;
+  const breakdown = (sb || rawScores?.breakdown || rawScores?.seoBreakdown)
     ? {
-        seo: rawScores?.seoBreakdown || rawScores?.breakdown?.seo || null,
+        // Новый бэк (триада): берём из scoresBreakdown и нормализуем (добавляем status)
+        geo: normalizeBackendBreakdown(sb?.geo) || null,
+        seo: normalizeBackendBreakdown(sb?.seo) || rawScores?.seoBreakdown || rawScores?.breakdown?.seo || null,
+        cro: normalizeBackendBreakdown(sb?.cro) || null,
+        // Легаси модули (из старых сканов) — рядом
         ai: rawScores?.breakdown?.ai || null,
         direct: rawScores?.breakdown?.direct || null,
         schema: rawScores?.breakdown?.schema || null,

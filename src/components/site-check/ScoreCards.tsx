@@ -81,6 +81,9 @@ export interface ScoreBreakdownData {
   direct?: CriterionResult[];
   schema?: CriterionResult[];
   total?: CriterionResult[];
+  // Sprint 9 — backend-driven разбивка для триады GEO/SEO/CRO
+  geo?: CriterionResult[];
+  cro?: CriterionResult[];
 }
 
 type ScoreType = 'seo' | 'ai' | 'direct' | 'schema' | 'total' | 'geo' | 'cro';

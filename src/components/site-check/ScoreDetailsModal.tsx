@@ -2,6 +2,7 @@ import { useEffect, useCallback } from "react";
 import { X, Check, AlertTriangle } from "lucide-react";
 import {
   SEO_CRITERIA, LLM_CRITERIA, DIRECT_CRITERIA, SCHEMA_CRITERIA,
+  SEO_BACKEND_CRITERIA, GEO_BACKEND_CRITERIA, CRO_BACKEND_CRITERIA,
   OVERALL_WEIGHTS,
   type CriterionResult, type ScoreCriterion,
   computePotentialScore,
@@ -17,8 +18,13 @@ interface ScoreDetailsModalProps {
   onClose: () => void;
 }
 
+// Sprint 9 — backend-driven criteria (для geo/cro и нового seo)
+// перекрывают legacy SEO_CRITERIA из-за другого набора ключей.
 const criteriaMap: Record<string, ScoreCriterion> = {};
-[...SEO_CRITERIA, ...LLM_CRITERIA, ...DIRECT_CRITERIA, ...SCHEMA_CRITERIA].forEach(c => { criteriaMap[c.key] = c; });
+[
+  ...LLM_CRITERIA, ...DIRECT_CRITERIA, ...SCHEMA_CRITERIA, ...SEO_CRITERIA,
+  ...SEO_BACKEND_CRITERIA, ...GEO_BACKEND_CRITERIA, ...CRO_BACKEND_CRITERIA,
+].forEach(c => { criteriaMap[c.key] = c; });
 
 const scoreLabel: Record<string, string> = {
   seo: "SEO",
