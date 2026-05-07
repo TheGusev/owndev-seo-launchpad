@@ -244,10 +244,10 @@ const SiteCheck = () => {
         <link rel="canonical" href="https://owndev.ru/tools/site-check" />
       </Helmet>
       <Header />
-      <main className="min-h-screen pt-24 pb-16 relative overflow-hidden">
+      <main className="min-h-screen pt-24 pb-16 relative overflow-hidden w-full max-w-[100vw]">
         <AuroraBackground className="z-0 opacity-50" intensity="subtle" />
         <MatrixRain className="z-0" density="low" opacity={0.15} />
-        <div className="container max-w-6xl mx-auto px-4 relative z-10">
+        <div className="container max-w-6xl mx-auto px-4 relative z-10 w-full">
           {(() => {
             let cameFromGeo = false;
             try { cameFromGeo = sessionStorage.getItem('cameFromGeoRating') === '1'; } catch {}
@@ -259,13 +259,13 @@ const SiteCheck = () => {
               </div>
             ) : null;
           })()}
-          <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
-            <div>
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-8 items-start">
+            <div className="min-w-0">
           <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-              Полный GEO и AI‑ready аудит сайта
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground break-words leading-tight">
+              Полный GEO и AI-ready аудит сайта
             </h1>
-            <p className="text-muted-foreground mt-3 text-base">
+            <p className="text-muted-foreground mt-3 text-sm sm:text-base">
               Проверьте SEO Score и LLM Score сайта бесплатно.
             </p>
           </div>
@@ -318,10 +318,10 @@ const SiteCheck = () => {
                 {history.slice(0, 5).map((item) => (
                   <div
                     key={item.scanId}
-                    className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 p-3 text-sm"
+                    className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 p-3 text-sm min-w-0"
                   >
                     <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-foreground truncate flex-1">{item.url}</span>
+                    <span className="text-foreground truncate flex-1 min-w-0">{item.url}</span>
                     <span className="text-muted-foreground text-xs whitespace-nowrap">
                       {new Date(item.date).toLocaleDateString("ru-RU")}
                     </span>
