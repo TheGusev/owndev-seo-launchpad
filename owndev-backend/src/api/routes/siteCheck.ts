@@ -1619,4 +1619,54 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     logger.info('SITE_CHECK_ADMIN', `One-shot rescan v2: removed=${removed} queued=${queued}/${domains.length}`);
     return reply.send({ success: true, one_shot: true, version: 'v2', removed, queued, total: domains.length, executed_at: ts });
   });
+
+  // POST /api/v1/site-check/admin/rescan-geo-rating-once-v3
+  // Sprint 9 Iter 3 — v3: перепрогон с новой калибровкой citation_ready (ratio>=0.85 → 15/15)
+  // без cleanup (мусор уже почищен в v2). Ожидаемый эффект: средний LLM Score по выборке +1–2 балла.
+  app.post('/admin/rescan-geo-rating-once-v3', async (_req, reply) => {
+    await sql`
+      CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    const FLAG = 'rescan_geo_rating_v3_done';
+    const existing = await sql<Array<{ value: string }>>`
+      SELECT value FROM system_config WHERE key = ${FLAG} LIMIT 1
+    `;
+    if (existing[0]) {
+      return reply.status(410).send({ success: false, error: 'one-shot rescan v3 already executed', executed_at: existing[0].value });
+    }
+
+    const rows = await sql<Array<{ domain: string }>>`
+      SELECT domain FROM geo_rating ORDER BY llm_score ASC
+    `;
+    const domains = rows.map(r => r.domain);
+
+    let queued = 0;
+    for (const d of domains) {
+      const url = `https://${d}`;
+      const scan_id = randomUUID();
+      try {
+        await sql`
+          INSERT INTO site_check_scans (id, url, mode, status, progress_pct)
+          VALUES (${scan_id}, ${url}, 'page', 'running', 0)
+        `;
+        await queue.add('scan', { scan_id, url, mode: 'page' });
+        queued++;
+      } catch (e) {
+        logger.warn('SITE_CHECK_ADMIN', `Failed to queue ${d}: ${(e as Error).message}`);
+      }
+    }
+
+    const ts = new Date().toISOString();
+    await sql`
+      INSERT INTO system_config (key, value) VALUES (${FLAG}, ${ts})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+    `;
+
+    logger.info('SITE_CHECK_ADMIN', `One-shot rescan v3: queued=${queued}/${domains.length}`);
+    return reply.send({ success: true, one_shot: true, version: 'v3', queued, total: domains.length, executed_at: ts });
+  });
 }
