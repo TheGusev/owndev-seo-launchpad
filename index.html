@@ -206,6 +206,21 @@
         <p>© 2026 OWNDEV.ru · Сделано ❤️ в России 🇷🇺</p>
       </footer>
     </div>
+    <script>
+      // Pre-paint theme application — избегаем FOUC при перезагрузке в светлой теме.
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (t === 'light') {
+            document.documentElement.classList.add('light');
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script type="text/javascript">
       (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};

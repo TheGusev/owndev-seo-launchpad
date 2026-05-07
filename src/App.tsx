@@ -44,10 +44,10 @@ import SiteFormulaPreview from "./pages/SiteFormulaPreview";
 import SiteFormulaReport from "./pages/SiteFormulaReport";
 import MarketplaceAudit from "./pages/MarketplaceAudit";
 import MarketplaceAuditResult from "./pages/MarketplaceAuditResult";
-import ConversionAudit from "./pages/ConversionAudit";
-import FullAudit from "./pages/FullAudit";
+// import ConversionAudit from "./pages/ConversionAudit"; // итерация 1 — редиречен на RedirectGone
+// import FullAudit from "./pages/FullAudit"; // итерация 1 — редиречен на RedirectGone
 import RedirectGone from "./pages/RedirectGone";
-import DirectAdToolPage from "./pages/tools/DirectAd";
+// import DirectAdToolPage from "./pages/tools/DirectAd"; // итерация 1 — редиречен на RedirectGone
 
 const queryClient = new QueryClient();
 
@@ -90,9 +90,7 @@ const App = () => (
             <Route path="/tools/site-check" element={<SiteCheck />} />
             <Route path="/marketplace-audit" element={<MarketplaceAudit />} />
             <Route path="/marketplace-audit/result/:id" element={<ErrorBoundary><MarketplaceAuditResult /></ErrorBoundary>} />
-            <Route path="/tools/conversion-audit" element={<ConversionAudit />} />
-            <Route path="/tools/full-audit" element={<FullAudit />} />
-            <Route path="/tools/direct-ad" element={<DirectAdToolPage />} />
+            {/* /tools/conversion-audit, /tools/full-audit, /tools/direct-ad — редиречены ниже в RedirectGone */}
             <Route path="/academy" element={<Academy />} />
             <Route path="/academy/:moduleSlug/:lessonSlug" element={<AcademyLesson />} />
             <Route path="/tools/site-check/result/:scanId" element={<ErrorBoundary><SiteCheckResult /></ErrorBoundary>} />
@@ -106,13 +104,39 @@ const App = () => (
             <Route path="/scenario/ai-ready-content" element={<AiReadyContent />} />
             <Route path="/scenario/brand-presence" element={<BrandPresence />} />
             <Route path="/scenario/monitoring" element={<Monitoring />} />
-            {/* Removed tools — 301-style redirects with noindex for SEO cleanup */}
+            {/* Removed tools — 410 Gone + noindex для SEO-cleanup. Список синхронен с REMOVED_TOOL_SLUGS в tools-registry.ts */}
             <Route path="/tools/webmaster-files" element={<RedirectGone />} />
             <Route path="/tools/webmaster-files/:region" element={<RedirectGone />} />
             <Route path="/tools/anti-duplicate" element={<RedirectGone />} />
             <Route path="/tools/anti-duplicate/:region" element={<RedirectGone />} />
             <Route path="/tools/position-monitor" element={<RedirectGone />} />
             <Route path="/tools/position-monitor/:region" element={<RedirectGone />} />
+            {/* Итерация 1 — снесённые 14 инструментов */}
+            <Route path="/tools/seo-auditor" element={<RedirectGone />} />
+            <Route path="/tools/seo-auditor/:region" element={<RedirectGone />} />
+            <Route path="/tools/indexation-checker" element={<RedirectGone />} />
+            <Route path="/tools/indexation-checker/:region" element={<RedirectGone />} />
+            <Route path="/tools/pseo-generator" element={<RedirectGone />} />
+            <Route path="/tools/pseo-generator/:region" element={<RedirectGone />} />
+            <Route path="/tools/schema-generator" element={<RedirectGone />} />
+            <Route path="/tools/schema-generator/:region" element={<RedirectGone />} />
+            <Route path="/tools/semantic-core" element={<RedirectGone />} />
+            <Route path="/tools/semantic-core/:region" element={<RedirectGone />} />
+            <Route path="/tools/internal-links" element={<RedirectGone />} />
+            <Route path="/tools/internal-links/:region" element={<RedirectGone />} />
+            <Route path="/tools/llm-score" element={<RedirectGone />} />
+            <Route path="/tools/llm-score/:region" element={<RedirectGone />} />
+            <Route path="/tools/ai-ready-audit" element={<RedirectGone />} />
+            <Route path="/tools/ai-ready-audit/:region" element={<RedirectGone />} />
+            <Route path="/tools/llms-txt-checker" element={<RedirectGone />} />
+            <Route path="/tools/llms-txt-checker/:region" element={<RedirectGone />} />
+            <Route path="/tools/eeat-audit" element={<RedirectGone />} />
+            <Route path="/tools/eeat-audit/:region" element={<RedirectGone />} />
+            <Route path="/tools/content-brief" element={<RedirectGone />} />
+            <Route path="/tools/content-brief/:region" element={<RedirectGone />} />
+            <Route path="/tools/direct-ad" element={<RedirectGone />} />
+            <Route path="/tools/full-audit" element={<RedirectGone />} />
+            <Route path="/tools/conversion-audit" element={<RedirectGone />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

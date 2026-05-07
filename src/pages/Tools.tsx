@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { tools, type ToolDef } from "@/data/tools-registry";
+import { activeTools as tools, type ToolDef } from "@/data/tools-registry";
 import { ArrowRight, ChevronDown, ChevronUp, Trophy, Star, Search, BrainCircuit, Sparkles, Crown, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatedGrid } from "@/components/ui/animated-grid";

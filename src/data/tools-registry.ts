@@ -22,7 +22,27 @@ export interface ToolDef {
   customPath?: string;
   /** Hide from tool listings (Tools page, ToolsShowcase, SEO indexes), but keep route working */
   hidden?: boolean;
+  /** Hard-removed: skipped by getters, route returns 410 Gone via RedirectGone */
+  removed?: boolean;
 }
+
+/** Список «убитых» инструментов — для App.tsx (роуты ведут на RedirectGone) */
+export const REMOVED_TOOL_SLUGS = [
+  "seo-auditor",
+  "indexation-checker",
+  "pseo-generator",
+  "schema-generator",
+  "semantic-core",
+  "internal-links",
+  "llm-score",
+  "ai-ready-audit",
+  "llms-txt-checker",
+  "eeat-audit",
+  "content-brief",
+  "direct-ad",
+  "full-audit",
+  "conversion-audit",
+] as const;
 
 export const categories = [
   { id: "analysis", name: "Анализ и аудит", icon: Search },
@@ -324,6 +344,18 @@ export const tools: ToolDef[] = [
   },
 ];
 
-export const getToolBySlug = (slug: string) => tools.find((t) => t.slug === slug);
-export const getToolsByCategory = (categoryId: string) => tools.filter((t) => t.category === categoryId);
-export const getGeoEnabledTools = () => tools.filter((t) => t.geoEnabled);
+// Автоматически расставляем removed=true для всех слагов из REMOVED_TOOL_SLUGS,
+// чтобы не приходилось вручную править каждый ToolDef.
+for (const t of tools) {
+  if ((REMOVED_TOOL_SLUGS as readonly string[]).includes(t.slug)) {
+    t.removed = true;
+  }
+}
+
+/** Активные инструменты — без removed-флага. */
+export const activeTools = tools.filter((t) => !t.removed);
+
+export const getToolBySlug = (slug: string) => tools.find((t) => t.slug === slug && !t.removed);
+export const getToolsByCategory = (categoryId: string) =>
+  tools.filter((t) => t.category === categoryId && !t.removed);
+export const getGeoEnabledTools = () => tools.filter((t) => t.geoEnabled && !t.removed);

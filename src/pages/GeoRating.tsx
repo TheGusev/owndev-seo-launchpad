@@ -349,22 +349,30 @@ const GeoRating = () => {
 
                     {isOpen && (
                       <div className="px-4 py-4 border-b border-border/10 bg-card/30">
-                        <div className="grid grid-cols-2 gap-3 mb-4 max-w-md">
-                          <div className="border border-border/15 rounded-lg p-3 text-center">
-                            <div className={`text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.llmScore)}`}>{empty ? "—" : entry.llmScore}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">LLM Score</div>
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 max-w-2xl">
+                          <div className="border border-border/15 rounded-lg p-2.5 sm:p-3 text-center">
+                            <div className={`text-xl sm:text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.llmScore)}`}>{empty ? "—" : entry.llmScore}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">GEO</div>
                           </div>
-                          <div className="border border-border/15 rounded-lg p-3 text-center">
-                            <div className={`text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.seoScore)}`}>{empty ? "—" : entry.seoScore}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">SEO Score</div>
+                          <div className="border border-border/15 rounded-lg p-2.5 sm:p-3 text-center">
+                            <div className={`text-xl sm:text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.seoScore)}`}>{empty ? "—" : entry.seoScore}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">SEO</div>
                           </div>
-                          <div className="border border-border/15 rounded-lg p-3 text-center">
-                            <div className={`text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.schemaScore)}`}>{empty ? "—" : entry.schemaScore}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">Schema Score</div>
+                          <div className="border border-border/15 rounded-lg p-2.5 sm:p-3 text-center">
+                            <div className={`text-xl sm:text-2xl font-bold ${entry.croScore === 0 ? "text-muted-foreground/50" : scoreColor(entry.croScore)}`}>{entry.croScore === 0 ? "—" : entry.croScore}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">CRO</div>
                           </div>
-                          <div className="border border-border/15 rounded-lg p-3 text-center">
-                            <div className={`text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.directScore)}`}>{empty ? "—" : entry.directScore}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">Direct Score</div>
+                          <div className="border border-border/15 rounded-lg p-2.5 sm:p-3 text-center">
+                            <div className={`text-xl sm:text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.schemaScore)}`}>{empty ? "—" : entry.schemaScore}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">Schema</div>
+                          </div>
+                          <div className="border border-border/15 rounded-lg p-2.5 sm:p-3 text-center">
+                            <div className={`text-xl sm:text-2xl font-bold ${empty ? "text-muted-foreground/50" : scoreColor(entry.directScore)}`}>{empty ? "—" : entry.directScore}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">Директ</div>
+                          </div>
+                          <div className="border border-border/15 rounded-lg p-2.5 sm:p-3 text-center">
+                            <div className={`text-xl sm:text-2xl font-bold ${entry.aiScore === 0 ? "text-muted-foreground/50" : scoreColor(entry.aiScore)}`}>{entry.aiScore === 0 ? "—" : entry.aiScore}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">AI</div>
                           </div>
                         </div>
                         {entry.topErrors?.length > 0 && (

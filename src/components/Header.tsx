@@ -1,12 +1,40 @@
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, Sun, Moon } from "lucide-react";
+import { useState, useEffect } from "react";
+
+type Theme = "dark" | "light";
+
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "dark";
+  const saved = window.localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") return saved;
+  return "dark";
+}
+
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  if (theme === "light") {
+    root.classList.add("light");
+    root.classList.remove("dark");
+  } else {
+    root.classList.remove("light");
+    root.classList.add("dark");
+  }
+}
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    applyTheme(theme);
+    try { window.localStorage.setItem("theme", theme); } catch {}
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const navLinks: { href: string; label: string; isRoute?: boolean; isNew?: boolean }[] = [
     { href: "/tools", label: "Инструменты", isRoute: true },
@@ -59,20 +87,37 @@ const Header = () => {
             ))}
           </nav>
 
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}
+              title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             <GradientButton size="sm" className="min-h-[36px]" onClick={() => navigate("/tools/site-check")}>
               <span className="hidden lg:inline">Проверить сайт</span>
               <span className="lg:hidden">Проверить</span>
             </GradientButton>
           </div>
 
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label={isOpen ? "Закрыть меню" : "Открыть меню"}
-          >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+          <div className="flex items-center gap-1 md:hidden">
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}
+            >
+              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="p-2 text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label={isOpen ? "Закрыть меню" : "Открыть меню"}
+            >
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
 
         {isOpen && (

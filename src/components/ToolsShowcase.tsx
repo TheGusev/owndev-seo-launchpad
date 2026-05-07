@@ -1,23 +1,18 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { Search, Code2, Sparkles, Bot, Swords, ScanSearch, Link2, BrainCircuit, PenTool, Trophy, ShoppingBag, LayoutDashboard, LayoutTemplate, Star } from "lucide-react";
+import { Search, Bot, Swords, PenTool, Trophy, ShoppingBag, LayoutTemplate, Eye, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BinaryStream } from "@/components/ui/binary-stream";
 
+// Итерация 1: оставлены только флагманы + 3 вспомогательных тула.
 const tools = [
   { icon: Search, name: "Проверка сайта", description: "SEO Score + LLM Score, конкуренты, 200+ ключей, экспорт — полный GEO‑аудит", slug: "site-check", flagship: true, accent: "primary" as const },
   { icon: LayoutTemplate, name: "Site Formula", description: "Архитектурный blueprint для service-сайта: структура, индексация, масштабирование", slug: "site-formula", external: true, customPath: "/site-formula", flagship: true, accent: "violet" as const },
-  { icon: LayoutDashboard, name: "Полный аудит", description: "GEO + SEO + CRO в одном отчёте — технические проблемы, конверсионные барьеры, потери бюджета и стоимость исправления", slug: "full-audit", badge: "Новое", badge2: "Всё в одном" },
-  { icon: ShoppingBag, name: "Аудит карточек WB / Ozon", description: "AI-аудит карточки маркетплейса: контент, поиск, конверсия и реклама", slug: "marketplace-audit", external: true },
-  { icon: Search, name: "LLM‑Friendly SEO Auditor", description: "SEO + LLM аудит страницы: двойной скор и чек‑лист", slug: "seo-auditor" },
-  { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц", slug: "competitor-analysis" },
-  { icon: ScanSearch, name: "Проверка индексации", description: "Meta robots, canonical, X-Robots-Tag", slug: "indexation-checker" },
-  { icon: BrainCircuit, name: "Семантическое ядро", description: "AI-генерация кластеров ключей по интентам", slug: "semantic-core" },
-  { icon: PenTool, name: "AI Генератор текстов", description: "SEO-тексты: meta, FAQ, описания услуг", slug: "ai-text-generator" },
-  { icon: Sparkles, name: "pSEO Generator", description: "Структура GEO‑страниц для городов и ниш", slug: "pseo-generator" },
-  { icon: Code2, name: "Schema.org генератор", description: "JSON‑LD разметка для LocalBusiness, FAQ и др.", slug: "schema-generator" },
-  { icon: Bot, name: "LLM Prompt Helper", description: "Готовые промты для AI‑генерации SEO‑контента", slug: "llm-prompt-helper" },
-  { icon: Link2, name: "Внутренние ссылки", description: "Поиск битых ссылок и анализ перелинковки", slug: "internal-links" },
+  { icon: ShoppingBag, name: "Аудит карточек WB / Ozon", description: "AI-аудит карточки маркетплейса: контент, поиск, конверсия и реклама", slug: "marketplace-audit", external: true, customPath: "/marketplace-audit" },
+  { icon: Swords, name: "Анализ конкурентов", description: "Сравнение SEO-метрик двух страниц: контент, разметка, скорость", slug: "competitor-analysis" },
+  { icon: PenTool, name: "AI Генератор текстов", description: "SEO-тексты: meta, FAQ, описания услуг и товаров", slug: "ai-text-generator" },
+  { icon: Bot, name: "LLM Prompt Helper", description: "Готовые промты для ChatGPT/Perplexity: генерация контента, улучшение страниц, AI Overviews", slug: "llm-prompt-helper" },
+  { icon: Eye, name: "AI Brand Tracker", description: "Упоминают ли ChatGPT, Perplexity и Яндекс ваш бренд в ответах?", slug: "brand-tracker" },
 ];
 
 const ToolsShowcase = () => {

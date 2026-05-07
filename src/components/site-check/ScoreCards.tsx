@@ -49,8 +49,8 @@ const CircleScore = ({ score }: { score: number }) => {
   const offset = circumference - (display / 100) * circumference;
 
   return (
-    <div className="relative w-14 h-14 mx-auto">
-      <svg className="w-14 h-14 -rotate-90" viewBox="0 0 80 80">
+    <div className="relative w-11 h-11 sm:w-14 sm:h-14 mx-auto">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
         <circle cx="40" cy="40" r="36" fill="none" strokeWidth="5" className="stroke-muted/30" />
         <circle
           cx="40" cy="40" r="36" fill="none" strokeWidth="5"
@@ -60,7 +60,7 @@ const CircleScore = ({ score }: { score: number }) => {
           className={`${getScoreRing(score)} transition-all duration-1000`}
         />
       </svg>
-      <span className={`absolute inset-0 flex items-center justify-center text-base font-bold font-mono score-num ${
+      <span className={`absolute inset-0 flex items-center justify-center text-sm sm:text-base font-bold font-mono score-num ${
         score <= 40 ? "text-destructive" : score <= 70 ? "text-warning" : "text-success"
       }`}>
         {display}
@@ -109,24 +109,24 @@ const ScoreCards = ({ scores, previousScores, breakdown }: ScoreCardsProps) => {
 
     return (
       <>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5 md:gap-3">
           {visibleKeys.map((key) => {
             const val = ((scores as any)[key] ?? 0) as number;
             const meta = tripleLabels[key];
             return (
               <div
                 key={key}
-                className={`rounded-2xl border p-4 text-center ${getScoreColor(val)}`}
+                className={`rounded-xl sm:rounded-2xl border p-2.5 sm:p-4 text-center ${getScoreColor(val)}`}
               >
                 <CircleScore score={val} />
-                <p className="mt-2 text-sm font-semibold text-foreground">{meta.title}</p>
-                <p className="text-[11px] text-muted-foreground">{meta.subtitle}</p>
+                <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-semibold text-foreground leading-tight">{meta.title}</p>
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-tight">{meta.subtitle}</p>
                 {previousScores && typeof (previousScores as any)[key] === "number" && (
                   <DiffBadge diff={val - ((previousScores as any)[key] as number)} />
                 )}
                 <button
                   onClick={() => setActiveModal(key as ScoreType)}
-                  className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors underline decoration-dotted mt-2 block mx-auto"
+                  className="text-[10px] sm:text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors underline decoration-dotted mt-1.5 sm:mt-2 block mx-auto"
                 >
                   Как рассчитан?
                 </button>

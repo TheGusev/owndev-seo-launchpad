@@ -1,4 +1,4 @@
-import { ArrowRight, Search, Code2, Bot, BarChart3, FileText, Users } from "lucide-react";
+import { ArrowRight, Search, Code2, Bot, BarChart3, FileText, Users, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { CornerDecorations } from "@/components/ui/corner-decorations";
@@ -8,7 +8,7 @@ import { AuroraBackground } from "@/components/ui/aurora-background";
 import { GeometricRays } from "@/components/ui/geometric-rays";
 import { MatrixRain } from "@/components/ui/matrix-rain";
 import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { saveLastUrl } from "@/utils/lastUrl";
@@ -86,25 +86,9 @@ const Hero = () => {
             transition={{ duration: 0.5 }}
             className="glass px-4 py-2 rounded-full flex items-center gap-2"
           >
-            <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground font-mono">#1 GEO и AI-ready аудит в Рунете</span>
+            <Trophy className="w-3.5 h-3.5 text-primary" />
+            <span className="text-sm text-muted-foreground font-mono">GEO Rating Рунета · 2026</span>
           </motion.div>
-
-          {/* Alice skill badge */}
-          <motion.a
-            href="https://dialogs.yandex.ru/store/skills/owndev-seo-audit"
-            target="_blank"
-            rel="noopener noreferrer"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#7B68EE]/40 bg-[#7B68EE]/10 text-[#7B68EE] text-sm hover:bg-[#7B68EE]/20 transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
-            </svg>
-            Скажите Алисе: «Запусти OWNDEV»
-          </motion.a>
 
           {/* H1 */}
           <motion.div
@@ -114,13 +98,15 @@ const Hero = () => {
             className="space-y-4"
           >
             <h1 className="text-[clamp(2rem,7vw,4.5rem)] font-bold tracking-tight font-serif leading-[1.1]">
-              Ваш сайт не попадает{" "}
+              132 сайта{" "}
               <br className="hidden sm:block" />
-              в ответы <span className="brand-highlight">нейросетей</span>?
+              уже в <span className="brand-highlight">GEO-рейтинге</span>.{" "}
+              <br className="hidden sm:block" />
+              А ваш?
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              OWNDEV анализирует сайт по 50+ параметрам SEO, Schema.org, Яндекс.Директ и AI-готовности.
-              Получите полный отчёт с планом исправления за 2 минуты.
+              Первый в Рунете рейтинг готовности сайтов к AI-выдаче. Проверяем по 6 осям:
+              GEO, SEO, CRO, Schema, Директ, AI — за 2 минуты, бесплатно, с PDF-отчётом.
             </p>
           </motion.div>
 
@@ -197,6 +183,15 @@ const Hero = () => {
             <p className="text-xs text-muted-foreground/60 mt-3 text-center">
               Нет регистрации · Результат через 2 минуты · Экспорт в PDF и Word
             </p>
+            <div className="mt-4 flex justify-center">
+              <Button asChild variant="ghost" size="sm" className="gap-2 text-sm text-muted-foreground hover:text-primary">
+                <Link to="/geo-rating">
+                  <Trophy className="w-4 h-4" />
+                  Смотреть весь рейтинг (132 сайта)
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </Button>
+            </div>
           </motion.div>
         </div>
       </div>

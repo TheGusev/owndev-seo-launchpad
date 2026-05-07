@@ -150,6 +150,8 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             domain TEXT NOT NULL,
             display_name TEXT NOT NULL,
+            cro_score INTEGER NOT NULL DEFAULT 0,
+            ai_score INTEGER NOT NULL DEFAULT 0,
             category TEXT NOT NULL DEFAULT 'Сервисы',
             llm_score INTEGER NOT NULL DEFAULT 0,
             seo_score INTEGER NOT NULL DEFAULT 0,
@@ -165,6 +167,11 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           )
         `;
         await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)`;
+
+        // Sprint 9 — добавляем новые колонки для существующих баз
+        for (const col of ['cro_score INTEGER NOT NULL DEFAULT 0', 'ai_score INTEGER NOT NULL DEFAULT 0']) {
+          try { await sql.unsafe(`ALTER TABLE geo_rating ADD COLUMN IF NOT EXISTS ${col}`); } catch {}
+        }
 
         const scores = result.scores;
         const displayName = result.seo_data?.title?.trim() || hostname;
@@ -185,23 +192,31 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
           ? normalizeCategoryFromTheme(result.theme.trim())
           : 'Сервисы';
 
-        // Sprint 3 mapping: используем новые честные скоры если они есть,
-        // иначе fallback на legacy scores. llm_score/seo_score колонки в БД
-        // переименовывать не будем — мапим логически.
+        // Sprint 9 mapping — 6 честных скоров:
+        //   llm_score    ← geoScore (GEO/AI-видимость)
+        //   seo_score    ← seoScore
+        //   schema_score ← scores.schema
+        //   direct_score ← scores.direct (Я.Директ ready)  — раньше было сломано (CRO)
+        //   cro_score    ← croScore (Конверсия)            — НОВАЯ колонка
+        //   ai_score     ← scores.ai (LLM-готовность)         — НОВАЯ колонка
         const llmScoreVal = result.geoScore ?? scores.ai ?? 0;
         const seoScoreVal = result.seoScore ?? scores.seo ?? 0;
         const schemaScoreVal = scores.schema ?? 0;
-        const directScoreVal = result.croScore ?? scores.direct ?? 0;
+        const directScoreVal = scores.direct ?? 0;
+        const croScoreVal = result.croScore ?? 0;
+        const aiScoreVal = scores.ai ?? 0;
 
         await sql`
-          INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)
-          VALUES (${hostname}, ${displayName}, ${category}, ${llmScoreVal}, ${seoScoreVal}, ${schemaScoreVal}, ${directScoreVal}, ${!hasLlmsTxtIssue}, ${hasFaqPage}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
+          INSERT INTO geo_rating (domain, display_name, category, llm_score, seo_score, schema_score, direct_score, cro_score, ai_score, has_llms_txt, has_faqpage, has_schema, errors_count, top_errors, last_checked_at)
+          VALUES (${hostname}, ${displayName}, ${category}, ${llmScoreVal}, ${seoScoreVal}, ${schemaScoreVal}, ${directScoreVal}, ${croScoreVal}, ${aiScoreVal}, ${!hasLlmsTxtIssue}, ${hasFaqPage}, ${!hasSchemaIssue}, ${(result.issues || []).length}, ${JSON.stringify(topErrors)}, NOW())
           ON CONFLICT (domain) DO UPDATE SET
             display_name = EXCLUDED.display_name,
             llm_score = EXCLUDED.llm_score,
             seo_score = EXCLUDED.seo_score,
             schema_score = EXCLUDED.schema_score,
             direct_score = EXCLUDED.direct_score,
+            cro_score = EXCLUDED.cro_score,
+            ai_score = EXCLUDED.ai_score,
             has_llms_txt = EXCLUDED.has_llms_txt,
             has_faqpage = EXCLUDED.has_faqpage,
             has_schema = EXCLUDED.has_schema,

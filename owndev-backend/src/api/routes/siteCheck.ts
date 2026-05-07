@@ -44,6 +44,8 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       seo_score INTEGER NOT NULL DEFAULT 0,
       schema_score INTEGER NOT NULL DEFAULT 0,
       direct_score INTEGER NOT NULL DEFAULT 0,
+      cro_score INTEGER NOT NULL DEFAULT 0,
+      ai_score INTEGER NOT NULL DEFAULT 0,
       has_llms_txt BOOLEAN NOT NULL DEFAULT false,
       has_faqpage BOOLEAN NOT NULL DEFAULT false,
       has_schema BOOLEAN NOT NULL DEFAULT false,
@@ -54,6 +56,13 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     )
   `;
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_geo_rating_domain ON geo_rating(domain)`;
+
+  // Sprint 9 — добавляем cro_score / ai_score в существующую таблицу geo_rating
+  for (const col of ['cro_score INTEGER NOT NULL DEFAULT 0', 'ai_score INTEGER NOT NULL DEFAULT 0']) {
+    try {
+      await sql.unsafe(`ALTER TABLE geo_rating ADD COLUMN IF NOT EXISTS ${col}`);
+    } catch {}
+  }
 
   // Add columns if they don't exist (for existing tables)
   for (const col of [
