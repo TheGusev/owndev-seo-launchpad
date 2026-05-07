@@ -27,6 +27,7 @@ import { buildStrategy } from '../strategy/index.js';
 import { technicalPassportService } from '../technicalPassport/index.js';
 import { buildGraph } from '../schemaRegistry/index.js';
 import { developerPackService, savePackArtifact } from '../developerPack/index.js';
+import { pickProfileForIndustry } from '../demand/profiles/index.js';
 import type {
   PipelineInput,
   PipelineResultV3,
@@ -165,19 +166,27 @@ export class PipelineOrchestrator {
           }
         }
         const cities = cityList.length > 0 ? cityList : ['Москва'];
+        const profile = pickProfileForIndustry(industry);
         const seeds = new Set<string>();
+        // базовый seed — сама отрасль
         seeds.add(industry);
+        // seed «отрасль + город» и с модификаторами по профилю
         for (const c of cities) {
           const cl = c.toLowerCase();
           seeds.add(`${industry} ${cl}`);
-          seeds.add(`${industry} ${cl} цена`);
-          seeds.add(`${industry} ${cl} заказать`);
-          seeds.add(`${industry} ${cl} стоимость`);
+          for (const mod of profile.modifiers_per_city) {
+            seeds.add(`${industry} ${cl} ${mod}`);
+          }
         }
-        effectiveSeeds = Array.from(seeds).slice(0, 12);
+        // глобальные модификаторы без города (инфо/обзоры)
+        for (const mod of profile.modifiers_global) {
+          seeds.add(`${industry} ${mod}`);
+        }
+        effectiveSeeds = Array.from(seeds).slice(0, 16);
         logger.info(
           'PIPELINE',
-          `[${input.job_id}] DEMAND auto-seed: ${effectiveSeeds.length} seeds (industry="${industry}", cities=${cities.length})`,
+          `[${input.job_id}] DEMAND auto-seed: ${effectiveSeeds.length} seeds ` +
+            `(industry="${industry}", profile="${profile.id}", cities=${cities.length})`,
         );
       }
 
