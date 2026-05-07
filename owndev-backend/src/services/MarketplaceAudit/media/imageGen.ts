@@ -5,7 +5,13 @@ import { logger } from '../../../utils/logger.js';
 import { withRetry, HttpError } from '../../../utils/retry.js';
 
 const OPENAI_IMAGES_URL = 'https://api.openai.com/v1/images/generations';
-const DEFAULT_MODEL = 'dall-e-3';
+// gpt-image-1 — новый флагман Имиджевого API OpenAI (с 2025).
+// Отличия от dall-e-3:
+//   • возвращает b64_json (URL больше не поддерживает — response_format не передаются)
+//   • quality: low | medium | high | auto (вместо standard|hd у dall-e-3)
+//   • size: 1024x1024 | 1024x1536 | 1536x1024 | auto
+// По качеству/инструктивности заметно лучше dall-e-3 для карточек товаров.
+const DEFAULT_MODEL = 'gpt-image-1';
 
 // Персист сгенерированных картинок:
 // OpenAI отдаёт URL, которые живут ~1 час — это ломает отчёты
@@ -36,27 +42,14 @@ async function ensurePublicDir(): Promise<boolean> {
 }
 
 /**
- * Скачать PNG с временного хоста OpenAI и положить в PUBLIC_IMG_DIR.
- * Возвращает стабильный public-URL или null.
+ * Записать байты в PUBLIC_IMG_DIR. Возвращает стабильный public-URL или null.
  */
-async function persistImage(remoteUrl: string, auditId?: string): Promise<string | null> {
-  if (!(await ensurePublicDir())) return null;
-  let buf: Buffer;
-  try {
-    const resp = await fetch(remoteUrl, { signal: AbortSignal.timeout(30_000) });
-    if (!resp.ok) {
-      logger.warn('MA_IMG', `persist: fetch ${resp.status} for ${remoteUrl}`);
-      return null;
-    }
-    buf = Buffer.from(await resp.arrayBuffer());
-    if (buf.length < 1024) {
-      logger.warn('MA_IMG', `persist: too small (${buf.length}B), skip`);
-      return null;
-    }
-  } catch (e) {
-    logger.warn('MA_IMG', `persist: fetch failed ${(e as Error).message}`);
+async function persistImageBytes(buf: Buffer, auditId?: string): Promise<string | null> {
+  if (buf.length < 1024) {
+    logger.warn('MA_IMG', `persist: too small (${buf.length}B), skip`);
     return null;
   }
+  if (!(await ensurePublicDir())) return null;
   const fname =
     `${auditId ? auditId + '-' : ''}` +
     `${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}.png`;
@@ -71,9 +64,31 @@ async function persistImage(remoteUrl: string, auditId?: string): Promise<string
 }
 
 /**
- * Render a marketplace-card style image via DALL-E 3.
- * Returns array of CDN URLs (DALL-E hosts the resulting PNG; URLs expire after 1h
- * but we surface them as-is for the frontend — caller may persist if needed).
+ * Скачать PNG с временного хоста OpenAI и положить в PUBLIC_IMG_DIR.
+ * (Используется в фолбэк-ветке на старых моделях, возвращающих url.)
+ */
+async function persistImageFromUrl(remoteUrl: string, auditId?: string): Promise<string | null> {
+  let buf: Buffer;
+  try {
+    const resp = await fetch(remoteUrl, { signal: AbortSignal.timeout(30_000) });
+    if (!resp.ok) {
+      logger.warn('MA_IMG', `persist: fetch ${resp.status} for ${remoteUrl}`);
+      return null;
+    }
+    buf = Buffer.from(await resp.arrayBuffer());
+  } catch (e) {
+    logger.warn('MA_IMG', `persist: fetch failed ${(e as Error).message}`);
+    return null;
+  }
+  return persistImageBytes(buf, auditId);
+}
+
+/**
+ * Render marketplace-card style images via gpt-image-1 (фолбэком — dall-e-3,
+ * если DEFAULT_MODEL передадут через env).
+ *
+ * Результат всегда персистируется на свой хост (PUBLIC_IMG_DIR), и метод
+ * возвращает стабильные public-URLы (https://owndev.ru/marketplace-images/...).
  *
  * Returns [] on any failure (caller decides fallback). Never throws.
  */
@@ -111,8 +126,10 @@ export async function generateProductImages(input: GenerateImagesInput): Promise
             prompt: fullPrompt.slice(0, 3900),
             n: 1,
             size: '1024x1024',
-            quality: 'standard',
-            response_format: 'url',
+            // gpt-image-1: low|medium|high|auto. Берём medium — оптимальный
+            // баланс стоимость/качество для карточек маркетплейса.
+            quality: 'medium',
+            // response_format НЕ передаём — gpt-image-1 всегда возвращает b64_json.
           }),
           signal: AbortSignal.timeout(60_000),
         });
@@ -127,22 +144,24 @@ export async function generateProductImages(input: GenerateImagesInput): Promise
         continue;
       }
       const data = await r.json();
-      const url = data?.data?.[0]?.url;
-      if (typeof url !== 'string' || !url.startsWith('http')) {
-        logger.warn('MA_IMG', 'No url in OpenAI images response');
+      const item = data?.data?.[0];
+      // gpt-image-1 → b64_json; dall-e-3 со старым response_format='url' → url.
+      // Поддерживаем оба варианта (если DEFAULT_MODEL переключать через env).
+      let persisted: string | null = null;
+      if (typeof item?.b64_json === 'string' && item.b64_json.length > 100) {
+        const buf = Buffer.from(item.b64_json, 'base64');
+        persisted = await persistImageBytes(buf, input.auditId);
+      } else if (typeof item?.url === 'string' && item.url.startsWith('http')) {
+        persisted = await persistImageFromUrl(item.url, input.auditId);
+        if (!persisted) {
+          logger.warn('MA_IMG', 'persist failed — returning short-lived OpenAI url');
+          persisted = item.url;
+        }
+      } else {
+        logger.warn('MA_IMG', 'No b64_json / url in OpenAI images response');
         continue;
       }
-      // Качаем PNG на свой хост — OpenAI URLы живут ~1ч.
-      const persisted = await persistImage(url, input.auditId);
-      if (persisted) {
-        out.push(persisted);
-      } else {
-        // фолбэк: если персист не получился (права / сеть) — отдаём
-        // временный URL OpenAI, чтобы пиплайн не упал. Фронт/слайдшоу справится
-        // в ближайший час; в логах видно причину.
-        logger.warn('MA_IMG', 'persist failed — returning short-lived OpenAI url');
-        out.push(url);
-      }
+      if (persisted) out.push(persisted);
     } catch (e) {
       logger.warn('MA_IMG', `image gen failed: ${(e as Error).message}`);
       // continue with next prompt
