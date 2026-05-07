@@ -1290,6 +1290,108 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ success: true, total: all.length, removed, items: toRemove });
   });
 
+  // POST /api/v1/site-check/admin/cleanup-geo-rating-once
+  // Sprint 9 — без токена, выполняется РОВНО ОДИН РАЗ (отмечается в system_config).
+  // После первого выполнения отдаёт 410 Gone. Безопасно для публичного вызова.
+  // Чистит нерезолвящиеся домены + домены со скором < 60.
+  app.post('/admin/cleanup-geo-rating-once', async (_req, reply) => {
+    // ensure system_config table
+    await sql`
+      CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    const FLAG = 'cleanup_geo_rating_v1_done';
+    const existing = await sql<Array<{ value: string }>>`
+      SELECT value FROM system_config WHERE key = ${FLAG} LIMIT 1
+    `;
+    if (existing[0]) {
+      return reply.status(410).send({ success: false, error: 'one-shot cleanup already executed', executed_at: existing[0].value });
+    }
+
+    const minScore = 60;
+    const all = await sql<Array<{ domain: string; llm_score: number; seo_score: number }>>`
+      SELECT domain, llm_score, seo_score FROM geo_rating
+    `;
+
+    const toRemove: Array<{ domain: string; reason: string }> = [];
+    const removeSet = new Set<string>();
+
+    // 1. Порог по скору
+    for (const r of all) {
+      const overall = Math.max(r.llm_score || 0, r.seo_score || 0);
+      if (overall < minScore) {
+        toRemove.push({ domain: r.domain, reason: `score ${overall} < ${minScore}` });
+        removeSet.add(r.domain);
+      }
+    }
+
+    // 2. HTTP HEAD пинг остальных
+    const candidates = all.filter(r => !removeSet.has(r.domain));
+    const batchSize = 10;
+    for (let i = 0; i < candidates.length; i += batchSize) {
+      const batch = candidates.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map(async (r) => {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 8000);
+          try {
+            const resp = await fetch(`https://${r.domain}`, {
+              method: 'HEAD',
+              redirect: 'follow',
+              signal: ctrl.signal,
+              headers: { 'User-Agent': 'OwnDev-Health/1.0' },
+            });
+            if (!resp.ok && resp.status >= 400 && resp.status < 600 && resp.status !== 401 && resp.status !== 403) {
+              return { domain: r.domain, dead: true, reason: `HTTP ${resp.status}` };
+            }
+            return { domain: r.domain, dead: false };
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            return { domain: r.domain, dead: true, reason: `fetch failed: ${msg.slice(0, 80)}` };
+          } finally {
+            clearTimeout(timer);
+          }
+        })
+      );
+      for (const res of results) {
+        if (res.status === 'fulfilled' && res.value.dead) {
+          toRemove.push({ domain: res.value.domain, reason: res.value.reason || 'unreachable' });
+        }
+      }
+    }
+
+    // 3. Удаляем
+    let removed = 0;
+    for (const item of toRemove) {
+      try {
+        await sql`DELETE FROM geo_rating WHERE domain = ${item.domain}`;
+        removed++;
+      } catch (e) {
+        logger.warn('SITE_CHECK_ADMIN', `Failed to delete ${item.domain}: ${(e as Error).message}`);
+      }
+    }
+
+    // 4. Помечаем выполненным (после успеха)
+    const ts = new Date().toISOString();
+    await sql`
+      INSERT INTO system_config (key, value) VALUES (${FLAG}, ${ts})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+    `;
+
+    logger.info('SITE_CHECK_ADMIN', `One-shot cleanup removed ${removed}/${toRemove.length} domains`);
+    return reply.send({
+      success: true,
+      one_shot: true,
+      total_before: all.length,
+      removed,
+      items: toRemove,
+      executed_at: ts,
+    });
+  });
+
   // GET /api/v1/site-check/geo-rating — GEO Rating data from local DB or Supabase proxy
   app.get('/geo-rating', async (_req, reply) => {
     try {
@@ -1402,5 +1504,56 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
 
     logger.info('SITE_CHECK_ADMIN', `Rescan queued ${queued}/${domains.length} domains (mode=${mode})`);
     return reply.send({ success: true, mode, queued, total: domains.length, domains });
+  });
+
+  // POST /api/v1/site-check/admin/rescan-geo-rating-once
+  // Sprint 9 — без токена, выполняется РОВНО ОДИН РАЗ (флаг в system_config).
+  // Поставит в очередь ПЕРЕСКАН ВСЕХ доменов в geo_rating, чтобы заполнить
+  // cro_score / ai_score / свежие баллы. После выполнения — 410 Gone.
+  app.post('/admin/rescan-geo-rating-once', async (_req, reply) => {
+    await sql`
+      CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    const FLAG = 'rescan_geo_rating_v1_done';
+    const existing = await sql<Array<{ value: string }>>`
+      SELECT value FROM system_config WHERE key = ${FLAG} LIMIT 1
+    `;
+    if (existing[0]) {
+      return reply.status(410).send({ success: false, error: 'one-shot rescan already executed', executed_at: existing[0].value });
+    }
+
+    const rows = await sql<Array<{ domain: string }>>`
+      SELECT domain FROM geo_rating ORDER BY llm_score ASC
+    `;
+    const domains = rows.map(r => r.domain);
+
+    let queued = 0;
+    for (const d of domains) {
+      const url = `https://${d}`;
+      const scan_id = randomUUID();
+      try {
+        await sql`
+          INSERT INTO site_check_scans (id, url, mode, status, progress_pct)
+          VALUES (${scan_id}, ${url}, 'page', 'running', 0)
+        `;
+        await queue.add('scan', { scan_id, url, mode: 'page' });
+        queued++;
+      } catch (e) {
+        logger.warn('SITE_CHECK_ADMIN', `Failed to queue ${d}: ${(e as Error).message}`);
+      }
+    }
+
+    const ts = new Date().toISOString();
+    await sql`
+      INSERT INTO system_config (key, value) VALUES (${FLAG}, ${ts})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+    `;
+
+    logger.info('SITE_CHECK_ADMIN', `One-shot rescan queued ${queued}/${domains.length} domains`);
+    return reply.send({ success: true, one_shot: true, queued, total: domains.length, executed_at: ts });
   });
 }
