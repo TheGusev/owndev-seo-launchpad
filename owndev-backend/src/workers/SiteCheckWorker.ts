@@ -114,16 +114,20 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
       benchmark: result.benchmark ?? null,
       signals: result.signals ?? null,
     };
+    // ВАЖНО: postgres.js при ${JSON.stringify(obj)}::jsonb оборачивает строку
+    // ещё раз как jsonb scalar string, и тогда '{}'::jsonb || '"..."'::jsonb
+    // даёт массив [{}, "<string>"], а не merge объектов. Передаём объекты
+    // напрямую через sql.json — клиент сам сериализует в jsonb-параметр.
     await sql`
       UPDATE site_check_scans
       SET status = 'done',
           progress_pct = 100,
           theme = ${result.theme},
           is_spa = ${result.is_spa},
-          scores = ${JSON.stringify(result.scores)}::jsonb,
-          issues = ${JSON.stringify(result.issues)}::jsonb,
-          seo_data = ${JSON.stringify(result.seo_data)}::jsonb,
-          result = COALESCE(result, '{}'::jsonb) || ${JSON.stringify(resultJsonb)}::jsonb,
+          scores = ${sql.json(result.scores as any)},
+          issues = ${sql.json(result.issues as any)},
+          seo_data = ${sql.json(result.seo_data as any)},
+          result = COALESCE(result, '{}'::jsonb) || ${sql.json(resultJsonb as any)},
           updated_at = NOW()
       WHERE id = ${scan_id}
     `;
