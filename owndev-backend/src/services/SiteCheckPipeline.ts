@@ -1801,7 +1801,12 @@ function calcGeoScore(input: {
   breakdown.push({ key: 'structured_data', weight: 15, earned: schemaPts });
 
   // 4. Citation-ready content (weight 15)
-  breakdown.push({ key: 'citation_ready', weight: 15, earned: Math.round(input.geoSignals.citationReadyRatio * 15) });
+  // Реалистичная калибровка: ratio ≥ 0.85 → 15 баллов (хороший сайт всегда имеет
+  // короткие CTA-фразы в кнопках/футере и редкие длинные описания — жёсткий линейный скоринг
+  // никто не набирал полный балл). Ниже 0.85 — линейно от 0 до 15.
+  const cr = input.geoSignals.citationReadyRatio;
+  const citationPts = cr >= 0.85 ? 15 : Math.round((cr / 0.85) * 15);
+  breakdown.push({ key: 'citation_ready', weight: 15, earned: citationPts });
 
   // 5. Semantic HTML (weight 10)
   breakdown.push({ key: 'semantic_html', weight: 10, earned: Math.round(input.geoSignals.semanticScore * 0.1) });
