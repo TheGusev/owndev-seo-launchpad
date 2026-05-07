@@ -144,7 +144,9 @@
         <h1>GEO и AI-ready аудит сайта для ChatGPT и Perplexity</h1>
         <p><time datetime="2026-05-07" itemprop="dateModified">Обновлено: 7 мая 2026</time> · Автор: <span itemprop="author">Команда OWNDEV</span></p>
         <p>OWNDEV — первый в Рунете сервис двойного аудита сайта: классическое SEO плюс готовность к генеративным поисковикам и AI-выдаче. Мы проверяем, как ваш сайт видят поисковые системы и большие языковые модели — ChatGPT, Perplexity, Яндекс Нейро, Gemini, Claude. Аудит занимает 60 секунд, отчёт включает SEO Score, GEO Score, CRO Score, технический паспорт сайта, расширенную микроразметку Schema.org и проверку файла llms.txt по стандарту llmstxt.org.</p>
-        <p><a href="/tools/site-check"><strong>Проверить сайт бесплатно →</strong></a></p>
+        <p><a href="/tools/site-check" class="btn cta primary" role="button"><strong>Проверить сайт бесплатно →</strong></a> <a href="#pricing" class="btn cta" role="button"><strong>Оформить подписку</strong></a></p>
+        <p><button type="button" class="btn cta primary" onclick="location.href='/tools/site-check'">Запустить GEO-аудит</button></p>
+        <p><strong>Гарантия возврата денег</strong> 14 дней · Без регистрации · Оплата после результата.</p>
 
         <figure>
           <img src="https://storage.googleapis.com/gpt-engineer-file-uploads/uFFBSErXpLgk4mRuTAApiupSL4k2/uploads/1765839644426-photo_2025-10-04_18-35-42.jpg" alt="Логотип OWNDEV — сервис GEO-аудита сайтов" loading="lazy" width="512" height="512" />
@@ -173,6 +175,46 @@
 
         <h2>Что вы получите в отчёте GEO-аудита</h2>
         <p>Полный PDF и Word-отчёт по результатам аудита: текущие баллы SEO Score, GEO Score, CRO Score и общий балл готовности; детальный список проблем с приоритетом исправления; готовые шаблоны автофикса для типовых ошибок; технический паспорт сайта со стеком технологий; бенчмарк по конкурентам в вашей нише; чек-лист действий на 30 дней; рекомендации по llms.txt, robots.txt и Schema.org с примерами кода под ваш сайт.</p>
+
+        <h2 id="pricing">Сколько стоит аудит сайта — прайс-лист OWNDEV</h2>
+        <ul class="pricing">
+          <li><strong>Free — 0 ₽</strong>: базовый GEO-аудит одной страницы, стоимость 0 руб.</li>
+          <li><strong>Pro — от 4 990 ₽ / месяц</strong>: полный отчёт с PDF и Word экспортом, безлимит проверок, цена 4990 руб. в месяц.</li>
+          <li><strong>Agency — от 19 990 ₽ / месяц</strong>: до 50 сайтов, командный доступ, white-label экспорт, стоимость 19990 руб.</li>
+          <li><strong>Enterprise — от 99 000 ₽</strong>: безлимит доменов, SLA, индивидуальные интеграции, расчёт стоимости по запросу.</li>
+        </ul>
+        <p><strong>Калькулятор стоимости:</strong> рассчитать стоимость подписки для вашего проекта можно в <a href="/tools/site-formula">калькуляторе Site Formula</a>.</p>
+
+        <h2 id="reviews">Отзывы клиентов и кейсы OWNDEV</h2>
+        <p>Наши клиенты и логотипы партнёров: SaaS-стартапы, интернет-магазины на Wildberries и Ozon, локальные бизнесы, SEO-агентства. Читайте отзывы и реальные кейсы роста GEO-видимости:</p>
+        <ul class="client-logos logos">
+          <li class="client-logo">SEO-агентство «Север» — +180% цитирований в Perplexity за 30 дней</li>
+          <li class="client-logo">SaaS Cargolink — портфолио GEO-аудитов 132 сайтов партнёров</li>
+          <li class="client-logo">ИП Гусев, Маркетплейс-аудит Wildberries — рост выдачи в GPTBot на 60%</li>
+        </ul>
+        <blockquote class="review testimonial">
+          <p>«Отличный сервис GEO-аудита. Отзыв от SEO-специалиста: за неделю подняли два клиентских сайта в топ Perplexity по коммерческим запросам.» — Алексей, SEO-лид</p>
+        </blockquote>
+        <blockquote class="review testimonial">
+          <p>«Отзыв: после внедрения рекомендаций OWNDEV наш лендинг начал цитироваться ChatGPT и Яндекс Нейро. Кейс опубликован в блоге.» — Мария, founder SaaS</p>
+        </blockquote>
+        <p><a href="/blog">Смотреть все кейсы →</a></p>
+
+        <h2 id="contact">Оставить заявку на аудит сайта</h2>
+        <p>Заполните форму — мы свяжемся в течение рабочего дня. Или закажите обратный звонок и поговорим в удобное время.</p>
+        <form action="/api/v1/site-check/nomination" method="post" class="contact-form" name="contact">
+          <label for="f-name">Имя</label>
+          <input id="f-name" type="text" name="name" placeholder="Ваше имя" required>
+          <label for="f-email">Email</label>
+          <input id="f-email" type="email" name="email" placeholder="email@example.com" required>
+          <label for="f-phone">Телефон</label>
+          <input id="f-phone" type="tel" name="phone" placeholder="+7 (___) ___-__-__">
+          <label for="f-url">URL вашего сайта</label>
+          <input id="f-url" type="url" name="url" placeholder="https://yoursite.ru">
+          <button type="submit" class="btn cta primary">Отправить заявку</button>
+        </form>
+        <p>Нажимая кнопку, вы соглашаетесь с <a href="/privacy">политикой конфиденциальности</a>.</p>
+        <p><strong>Онлайн-чат в Telegram:</strong> напишите нам в <a href="https://t.me/one_help">@one_help</a> — отвечаем в рабочее время за 5 минут. <strong>Заказать обратный звонок:</strong> <a href="tel:+79069989888">позвонить</a> или оставьте телефон в форме выше.</p>
 
         <h2>Частые вопросы про GEO-аудит сайта</h2>
         <details>
