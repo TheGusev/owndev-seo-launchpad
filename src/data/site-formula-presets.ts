@@ -86,12 +86,44 @@ export const INDUSTRY_PRESETS: IndustryPreset[] = [
   { label: 'Медиапроект / блог', matches: ['blog', 'media'] },
   { label: 'Фотограф / видеограф', matches: ['portfolio'] },
 
+  // тематики для content_media / b2b_media
+  { label: 'Финансы и инвестиции (медиа)', matches: ['media', 'b2b_media'] },
+  { label: 'Маркетинг и реклама (медиа)', matches: ['media', 'b2b_media', 'blog'] },
+  { label: 'IT и технологии (медиа)', matches: ['media', 'b2b_media', 'blog'] },
+  { label: 'HR и карьера (медиа)', matches: ['media', 'b2b_media'] },
+  { label: 'Образ жизни / lifestyle', matches: ['media', 'blog'] },
+  { label: 'Новостной портал', matches: ['media'] },
+  { label: 'Нишевое отраслевое медиа', matches: ['b2b_media'] },
+
+  // mobile_app
+  { label: 'B2C-приложение (подписки/онлайн-сервис)', matches: ['mobile_app'] },
+  { label: 'B2B-приложение / корпоративный инструмент', matches: ['mobile_app'] },
+  { label: 'Игры / развлекательные приложения', matches: ['mobile_app'] },
+
+  // nonprofit / gov
+  { label: 'Некоммерческая организация / фонд', matches: ['nonprofit'] },
+  { label: 'Благотворительный проект', matches: ['nonprofit'] },
+  { label: 'Государственный портал / ведомство', matches: ['gov'] },
+  { label: 'Муниципальный сайт', matches: ['gov'] },
+
   // финансы / прочее
   { label: 'Микрофинансовая организация', matches: ['finance'] },
   { label: 'Страховое агентство', matches: ['finance'] },
   { label: 'Франчайзинговая сеть', matches: ['franchise_multi'] },
   { label: 'Промо-сайт / лендинг под акцию', matches: ['promo_event'] },
 ];
+
+/**
+ * Популярные отрасли для конкретного типа проекта.
+ * Если для типа ничего не отмечено в matches — отдаём полный список
+ * (фолбэк, чтобы юзер не оставался без пресетов).
+ */
+export function getIndustryPresetsFor(
+  code: import('@/lib/api/formulaV3').ProjectTypeCodeV3,
+): IndustryPreset[] {
+  const filtered = INDUSTRY_PRESETS.filter((p) => p.matches?.includes(code));
+  return filtered.length > 0 ? filtered : INDUSTRY_PRESETS;
+}
 
 /** Чипы для целевой аудитории — мульти-выбор. */
 export const AUDIENCE_PRESETS: string[] = [
@@ -244,8 +276,41 @@ export const SERVICE_PRESETS: Record<string, string[]> = {
     'Копирайтер', 'Иллюстратор', 'Аниматор', '3D-художник',
   ],
   media: [
-    'Блог', 'Новостной портал', 'Нишевое медиа', 'Ревью-сайт',
-    'Агрегатор новостей',
+    'Финансы', 'Маркетинг', 'IT', 'HR', 'Lifestyle',
+    'Новости', 'Авто', 'Недвижимость', 'Спорт',
+    'Путешествия', 'Культура', 'Наука', 'Родительство',
+  ],
+  blog: [
+    'Авторские колонки', 'Обзоры', 'Гайды', 'Кейсы',
+    'Новости отрасли', 'Интервью', 'Аналитика',
+  ],
+  b2b_media: [
+    'Аналитика рынка', 'Исследования', 'Рейтинги', 'Отраслевые обзоры',
+    'Кейсы компаний', 'Списки / рейтинги игроков', 'Интервью с лидерами',
+  ],
+  mobile_app: [
+    'Onboarding', 'Фичи приложения', 'Отзывы в store', 'Тарифы',
+    'Поддержка', 'FAQ для App Store / Google Play', 'Сравнение с конкурентами',
+  ],
+  personal_brand: [
+    'Обо мне', 'Кейсы', 'Публикации', 'Выступления',
+    'Консультации', 'Контакты', 'Сотрудничество',
+  ],
+  promo_event: [
+    'Об акции', 'Условия участия', 'Призы', 'Регистрация',
+    'FAQ', 'Правила', 'Победители',
+  ],
+  franchise_multi: [
+    'О франшизе', 'Условия покупки', 'Паушальный взнос',
+    'Окупаемость', 'Список франчайзи', 'Франчайзи по регионам',
+  ],
+  nonprofit: [
+    'Миссия', 'Проекты', 'Пожертвовать', 'Отчёты',
+    'Волонтёрство', 'Партнёры', 'Новости',
+  ],
+  gov: [
+    'Структура', 'Госуслуги', 'Новости', 'Документы',
+    'Приём обращений', 'Контакты', 'Госзакупки',
   ],
 };
 

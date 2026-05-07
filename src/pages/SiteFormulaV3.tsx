@@ -67,13 +67,14 @@ import {
   type PlatformTarget,
 } from '@/lib/api/formulaV3';
 import {
-  INDUSTRY_PRESETS,
   AUDIENCE_PRESETS,
   POPULAR_CITIES,
   TIER_TAB_LABELS,
   TIER_TAB_DESCRIPTIONS,
   getServicePresetsFor,
+  getIndustryPresetsFor,
 } from '@/data/site-formula-presets';
+import { getIntakeShapeFor } from '@/data/site-formula-intake-shape';
 import { generateSiteFormulaProWord, type ProReportContext } from '@/lib/generateSiteFormulaProWord';
 import { generateSiteFormulaProPdf } from '@/lib/generateSiteFormulaProPdf';
 
@@ -274,7 +275,13 @@ export default function SiteFormulaV3() {
         .split(/[,;\n]/)
         .map((s) => s.trim())
         .filter(Boolean);
-      const allCities = Array.from(new Set([...cities, ...customCities]));
+      // Для типов без геобинда (media/blog/saas/mobile_app/b2b_media) поле городов
+      // в UI скрыто — сбрасываем любое остаточное значение (юзер мог выбрать
+      // города до смены типа), чтобы не ломать demand-pipeline.
+      const shapeForSubmit = getIntakeShapeFor(selectedType);
+      const allCities = shapeForSubmit.showCities
+        ? Array.from(new Set([...cities, ...customCities]))
+        : [];
       const primaryCity = allCities[0]; // первый выбранный — основной
       // Список услуг — выбранные кнопки-пресеты + свободный текст (через запятые/строки).
       const customServices = servicesText
@@ -352,7 +359,11 @@ export default function SiteFormulaV3() {
   function buildProContext(): ProReportContext | null {
     if (!result || !selectedType) return null;
     const customCities = cityCustom.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
-    const allCities = Array.from(new Set([...cities, ...customCities]));
+    // Аналогично сабмиту: для типов без геобинда в отчёт города не попадают.
+    const shapeForReport = getIntakeShapeFor(selectedType);
+    const allCities = shapeForReport.showCities
+      ? Array.from(new Set([...cities, ...customCities]))
+      : [];
     const customServices = servicesText.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
     const services = Array.from(new Set([...serviceChips, ...customServices]));
     return {
@@ -598,10 +609,14 @@ export default function SiteFormulaV3() {
               </div>
             </div>
 
-            {/* Блок 2: Отрасль (typeahead) + Город */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Блок 2: Отрасль + Города — видимость/лейблы по shape типа проекта */}
+            {(() => {
+              const shape = getIntakeShapeFor(selectedType);
+              const filteredIndustryPresets = getIndustryPresetsFor(selectedType);
+              return (
+            <div className={`grid grid-cols-1 ${shape.showCities ? 'md:grid-cols-2' : ''} gap-4`}>
               <div>
-                <Label>Отрасль / основная услуга</Label>
+                <Label>{shape.industryLabel}</Label>
                 <Popover open={industryOpen} onOpenChange={setIndustryOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -611,7 +626,7 @@ export default function SiteFormulaV3() {
                       className="w-full justify-between font-normal"
                     >
                       <span className={industry ? 'text-foreground' : 'text-muted-foreground'}>
-                        {industry || 'Выберите или начните вводить…'}
+                        {industry || shape.industryPlaceholder}
                       </span>
                       <Briefcase className="h-4 w-4 opacity-50 ml-2" />
                     </Button>
@@ -638,8 +653,8 @@ export default function SiteFormulaV3() {
                             Использовать «<span className="font-semibold">{industry}</span>» как свой вариант
                           </button>
                         </CommandEmpty>
-                        <CommandGroup heading={`Популярные отрасли (${INDUSTRY_PRESETS.length})`}>
-                          {INDUSTRY_PRESETS.map((p) => (
+                        <CommandGroup heading={`Популярные варианты (${filteredIndustryPresets.length})`}>
+                          {filteredIndustryPresets.map((p) => (
                             <CommandItem
                               key={p.label}
                               value={p.label}
@@ -662,11 +677,17 @@ export default function SiteFormulaV3() {
                   </PopoverContent>
                 </Popover>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Нажмите и выберите из списка или введите свою формулировку.
+                  {shape.industryHint}
                 </p>
               </div>
+              {shape.showCities && (
               <div>
-                <Label>Города работы <span className="text-muted-foreground font-normal">(можно несколько)</span></Label>
+                <Label>
+                  {shape.citiesLabel}{' '}
+                  <span className="text-muted-foreground font-normal">
+                    {shape.citiesOptional ? '(опционально)' : '(можно несколько)'}
+                  </span>
+                </Label>
                 <Popover open={cityOpen} onOpenChange={setCityOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -752,12 +773,18 @@ export default function SiteFormulaV3() {
                   onChange={(e) => setCityCustom(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Нужны для локальных услуг. Первый в списке — основной для SEO.
+                  {shape.citiesHint}
                 </p>
               </div>
+              )}
             </div>
+              );
+            })()}
 
-            {/* Блок 2.5: Услуги / направления — СВЁРНУТ по умолчанию (опционально) */}
+            {/* Блок 2.5: Услуги / направления — СВЁРНУТ по умолчанию (опционально); лейблы по shape */}
+            {(() => {
+              const shape = getIntakeShapeFor(selectedType);
+              return (
             <div className="rounded-lg border border-dashed border-border bg-muted/20">
               <button
                 type="button"
@@ -767,7 +794,7 @@ export default function SiteFormulaV3() {
                 <span className="flex items-center gap-2">
                   <ListChecks className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">
-                    Уточнить услуги вручную
+                    {shape.servicesBlockLabel}
                     <span className="text-muted-foreground font-normal"> · опционально</span>
                   </span>
                   {serviceChips.length > 0 && (
@@ -780,13 +807,14 @@ export default function SiteFormulaV3() {
               </button>
               {!servicesOpen && (
                 <p className="px-4 pb-3 -mt-1 text-xs text-muted-foreground">
-                  Формула уже знает ваш тип проекта. Она сама подберёт ключевые запросы по отрасли и городам. Откройте блок, если хотите сузить фокус на конкретных услугах.
+                  Формула уже знает ваш тип проекта — она сама подберёт семантику.
+                  Откройте блок, если хотите сузить фокус.
                 </p>
               )}
               {servicesOpen && (
                 <div className="px-4 pb-4 pt-1">
                   <p className="text-xs text-muted-foreground mb-2">
-                    Кликайте по подходящим услугам — это сузит seed-запросы для Wordstat.
+                    {shape.servicesPresetHint}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {getServicePresetsFor(selectedType).map((s) => {
@@ -815,7 +843,7 @@ export default function SiteFormulaV3() {
                   </div>
                   <Input
                     id="services-custom"
-                    placeholder="Добавить свои через запятую…"
+                    placeholder={shape.servicesCustomPlaceholder}
                     value={servicesText}
                     onChange={(e) => setServicesText(e.target.value)}
                     className="mt-3"
@@ -823,6 +851,8 @@ export default function SiteFormulaV3() {
                 </div>
               )}
             </div>
+              );
+            })()}
 
             {/* Блок 3: Целевая аудитория чипами */}
             <div>
