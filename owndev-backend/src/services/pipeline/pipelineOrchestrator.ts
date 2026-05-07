@@ -386,6 +386,9 @@ export class PipelineOrchestrator {
               {
                 project_code: input.project_code,
                 page_type: e.page?.page_type ?? e.evidence.page_type,
+                // PR-2 Мост v1→v3: engine_state пробрасываем в preflight,
+                // чтобы подмешались v1-guardrails и считался weighted_total_score.
+                engine_state: input.engine_state,
               },
               input.job_id,
             );
