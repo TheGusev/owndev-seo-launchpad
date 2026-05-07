@@ -1,0 +1,600 @@
+[
+  {
+    "project_code": "service_geo",
+    "title_ru": "Локальные услуги (гео)",
+    "description_ru": "Услуги, привязанные к городу: сантехника, ремонт, выезд, эвакуатор, муж на час.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "local": 0.6, "commercial": 0.25, "transactional": 0.1, "informational": 0.05 },
+    "seasonality": [0.9, 0.9, 1.0, 1.05, 1.1, 1.1, 1.0, 1.0, 1.05, 1.1, 1.05, 0.95],
+    "kpi": {
+      "cr_visit_to_lead": 0.05,
+      "cr_lead_to_sale": 0.45,
+      "average_order_rub": 6000,
+      "cpa_rub": 700,
+      "ltv_rub": 18000,
+      "frequency_index": 75,
+      "sales_cycle_days": 1
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 30,
+      "min_cities_for_geo": 5,
+      "min_directions_for_catalog": 3,
+      "seo_payback_months": 6,
+      "cpc_high_intent_rub": 120
+    },
+    "demand_triggers": ["срочно", "недорого", "круглосуточно", "выезд", "цена"],
+    "notes_ru": "Высокий ЧИ, низкий чек, частые повторные обращения."
+  },
+  {
+    "project_code": "service_pro",
+    "title_ru": "Профессиональные услуги (узкая экспертиза)",
+    "description_ru": "Юристы, консультанты, психологи, нутрициологи, репетиторы экспертного уровня.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "informational": 0.35, "commercial": 0.4, "transactional": 0.1, "local": 0.15 },
+    "seasonality": [1.0, 1.05, 1.05, 1.0, 0.95, 0.85, 0.8, 0.85, 1.05, 1.1, 1.1, 1.0],
+    "kpi": {
+      "cr_visit_to_lead": 0.025,
+      "cr_lead_to_sale": 0.3,
+      "average_order_rub": 25000,
+      "cpa_rub": 2500,
+      "ltv_rub": 80000,
+      "frequency_index": 45,
+      "sales_cycle_days": 7
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 40,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 5,
+      "seo_payback_months": 9,
+      "cpc_high_intent_rub": 450
+    },
+    "demand_triggers": ["консультация", "опыт", "отзывы", "стоимость", "случаи"],
+    "notes_ru": "Решение принимается дольше — нужны кейсы, экспертный контент."
+  },
+  {
+    "project_code": "service_b2b",
+    "title_ru": "B2B-услуги",
+    "description_ru": "Бухгалтерия, аутсорсинг IT, охрана, клининг, оптовая логистика.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "commercial": 0.55, "informational": 0.25, "transactional": 0.05, "local": 0.15 },
+    "seasonality": [0.9, 1.05, 1.1, 1.05, 1.0, 0.85, 0.7, 0.85, 1.1, 1.15, 1.05, 0.9],
+    "kpi": {
+      "cr_visit_to_lead": 0.03,
+      "cr_lead_to_sale": 0.25,
+      "average_order_rub": 80000,
+      "cpa_rub": 4500,
+      "ltv_rub": 600000,
+      "frequency_index": 35,
+      "sales_cycle_days": 30
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 50,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 6,
+      "seo_payback_months": 12,
+      "cpc_high_intent_rub": 350
+    },
+    "demand_triggers": ["оптом", "договор", "тендер", "корпоративно", "услуги для бизнеса"],
+    "notes_ru": "Длинный цикл сделки, важны кейсы и сертификаты."
+  },
+  {
+    "project_code": "ecommerce",
+    "title_ru": "Интернет-магазин",
+    "description_ru": "Прямая продажа товаров на сайте: от FMCG до техники.",
+    "monetization": "transaction",
+    "intent_distribution": { "transactional": 0.45, "commercial": 0.3, "informational": 0.15, "navigational": 0.1 },
+    "seasonality": [0.85, 0.95, 1.05, 1.0, 1.0, 0.95, 0.9, 1.0, 1.05, 1.05, 1.2, 1.4],
+    "kpi": {
+      "cr_visit_to_lead": 0.018,
+      "cr_lead_to_sale": 0.7,
+      "average_order_rub": 4500,
+      "cpa_rub": 350,
+      "ltv_rub": 12000,
+      "frequency_index": 80,
+      "sales_cycle_days": 1
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 200,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 10,
+      "seo_payback_months": 8,
+      "cpc_high_intent_rub": 80
+    },
+    "demand_triggers": ["купить", "цена", "доставка", "акция", "отзывы"],
+    "notes_ru": "Сильная сезонность — пик ноябрь-декабрь."
+  },
+  {
+    "project_code": "marketplace",
+    "title_ru": "Маркетплейс / агрегатор",
+    "description_ru": "Площадка с предложениями третьих лиц: услуги, товары, аренда.",
+    "monetization": "commission",
+    "intent_distribution": { "transactional": 0.35, "commercial": 0.3, "informational": 0.2, "navigational": 0.15 },
+    "seasonality": [0.95, 1.0, 1.05, 1.05, 1.05, 1.0, 0.95, 1.0, 1.05, 1.1, 1.1, 1.05],
+    "kpi": {
+      "cr_visit_to_lead": 0.05,
+      "cr_lead_to_sale": 0.5,
+      "average_order_rub": 8000,
+      "cpa_rub": 200,
+      "ltv_rub": 40000,
+      "frequency_index": 90,
+      "sales_cycle_days": 1
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 1000,
+      "min_cities_for_geo": 12,
+      "min_directions_for_catalog": 20,
+      "seo_payback_months": 14,
+      "cpc_high_intent_rub": 60
+    },
+    "demand_triggers": ["каталог", "выбор", "сравнение", "рейтинг", "отзывы"],
+    "notes_ru": "Гигиена долго — выигрывают агрегаторы с массой страниц и хорошим UX."
+  },
+  {
+    "project_code": "saas",
+    "title_ru": "SaaS-продукт",
+    "description_ru": "Облачные сервисы по подписке: CRM, аналитика, инструменты разработчика.",
+    "monetization": "subscription",
+    "intent_distribution": { "informational": 0.45, "commercial": 0.3, "navigational": 0.15, "transactional": 0.1 },
+    "seasonality": [1.05, 1.1, 1.05, 1.0, 0.95, 0.9, 0.85, 0.95, 1.1, 1.1, 1.05, 0.95],
+    "kpi": {
+      "cr_visit_to_lead": 0.025,
+      "cr_lead_to_sale": 0.15,
+      "average_order_rub": 3500,
+      "cpa_rub": 4000,
+      "ltv_rub": 84000,
+      "frequency_index": 50,
+      "sales_cycle_days": 14
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 80,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 8,
+      "seo_payback_months": 10,
+      "cpc_high_intent_rub": 250
+    },
+    "demand_triggers": ["сервис", "сравнение", "интеграция", "trial", "тариф"],
+    "notes_ru": "Контент-маркетинг и интеграции дают лучший ROI."
+  },
+  {
+    "project_code": "education",
+    "title_ru": "Образовательный продукт",
+    "description_ru": "Онлайн-курсы, школы, вузы, повышение квалификации, ДПО.",
+    "monetization": "subscription",
+    "intent_distribution": { "informational": 0.5, "commercial": 0.25, "transactional": 0.15, "local": 0.1 },
+    "seasonality": [1.0, 1.0, 1.05, 1.05, 0.9, 0.7, 0.6, 1.1, 1.4, 1.2, 1.0, 0.85],
+    "kpi": {
+      "cr_visit_to_lead": 0.04,
+      "cr_lead_to_sale": 0.2,
+      "average_order_rub": 35000,
+      "cpa_rub": 1800,
+      "ltv_rub": 70000,
+      "frequency_index": 60,
+      "sales_cycle_days": 10
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 60,
+      "min_cities_for_geo": 3,
+      "min_directions_for_catalog": 10,
+      "seo_payback_months": 8,
+      "cpc_high_intent_rub": 220
+    },
+    "demand_triggers": ["курс", "обучение", "сертификат", "программа", "стоимость"],
+    "notes_ru": "Сильный сезонный пик август-сентябрь."
+  },
+  {
+    "project_code": "medical",
+    "title_ru": "Медицина и стоматология",
+    "description_ru": "Клиники, частные врачи, стоматология, диагностика.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "local": 0.55, "informational": 0.25, "commercial": 0.15, "transactional": 0.05 },
+    "seasonality": [1.05, 1.0, 1.0, 1.0, 0.95, 0.85, 0.8, 0.85, 1.0, 1.1, 1.15, 1.1],
+    "kpi": {
+      "cr_visit_to_lead": 0.05,
+      "cr_lead_to_sale": 0.55,
+      "average_order_rub": 8500,
+      "cpa_rub": 800,
+      "ltv_rub": 60000,
+      "frequency_index": 70,
+      "sales_cycle_days": 2
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 80,
+      "min_cities_for_geo": 5,
+      "min_directions_for_catalog": 15,
+      "seo_payback_months": 7,
+      "cpc_high_intent_rub": 200
+    },
+    "demand_triggers": ["приём", "запись", "цена", "врач", "отзывы"],
+    "notes_ru": "Trust-факторы критичны: лицензии, отзывы, врачи. trust_requirement=3."
+  },
+  {
+    "project_code": "legal",
+    "title_ru": "Юридические услуги",
+    "description_ru": "Юридические компании, частные юристы, нотариусы.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "informational": 0.4, "commercial": 0.35, "local": 0.2, "transactional": 0.05 },
+    "seasonality": [1.0, 1.0, 1.05, 1.0, 1.0, 0.95, 0.85, 0.95, 1.05, 1.05, 1.1, 1.0],
+    "kpi": {
+      "cr_visit_to_lead": 0.03,
+      "cr_lead_to_sale": 0.3,
+      "average_order_rub": 35000,
+      "cpa_rub": 2200,
+      "ltv_rub": 80000,
+      "frequency_index": 50,
+      "sales_cycle_days": 5
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 60,
+      "min_cities_for_geo": 3,
+      "min_directions_for_catalog": 15,
+      "seo_payback_months": 9,
+      "cpc_high_intent_rub": 480
+    },
+    "demand_triggers": ["консультация", "адвокат", "судебный", "договор", "иск"],
+    "notes_ru": "Высокий CPC, доверие через дипломы и кейсы."
+  },
+  {
+    "project_code": "realestate",
+    "title_ru": "Недвижимость",
+    "description_ru": "Агентства недвижимости, новостройки, аренда, ипотека.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "local": 0.5, "commercial": 0.3, "informational": 0.15, "transactional": 0.05 },
+    "seasonality": [0.85, 0.95, 1.1, 1.15, 1.05, 1.0, 0.95, 1.0, 1.1, 1.15, 1.05, 0.9],
+    "kpi": {
+      "cr_visit_to_lead": 0.02,
+      "cr_lead_to_sale": 0.1,
+      "average_order_rub": 250000,
+      "cpa_rub": 3500,
+      "ltv_rub": 250000,
+      "frequency_index": 65,
+      "sales_cycle_days": 30
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 200,
+      "min_cities_for_geo": 5,
+      "min_directions_for_catalog": 8,
+      "seo_payback_months": 12,
+      "cpc_high_intent_rub": 250
+    },
+    "demand_triggers": ["купить квартиру", "ипотека", "новостройка", "аренда", "новостройки"],
+    "notes_ru": "Геозависимость абсолютная — объект всегда в конкретном районе."
+  },
+  {
+    "project_code": "mobile_app",
+    "title_ru": "Мобильное приложение",
+    "description_ru": "Лендинг + воронка установки приложения (iOS/Android).",
+    "monetization": "install",
+    "intent_distribution": { "navigational": 0.45, "informational": 0.3, "commercial": 0.15, "transactional": 0.1 },
+    "seasonality": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.05, 1.05],
+    "kpi": {
+      "cr_visit_to_lead": 0.08,
+      "cr_lead_to_sale": 0.6,
+      "average_order_rub": 0,
+      "cpa_rub": 150,
+      "ltv_rub": 1500,
+      "frequency_index": 40,
+      "sales_cycle_days": 1
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 15,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 1,
+      "seo_payback_months": 4,
+      "cpc_high_intent_rub": 50
+    },
+    "demand_triggers": ["скачать", "приложение", "android", "ios", "функции"],
+    "notes_ru": "Лендинг минимальный — главное App Store / Google Play и push."
+  },
+  {
+    "project_code": "finance",
+    "title_ru": "Финансовые услуги",
+    "description_ru": "Банки, МФО, брокеры, страхование, инвестиции.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "commercial": 0.4, "informational": 0.35, "transactional": 0.15, "local": 0.1 },
+    "seasonality": [1.1, 1.05, 1.0, 1.0, 0.95, 0.9, 0.85, 0.95, 1.05, 1.05, 1.05, 1.05],
+    "kpi": {
+      "cr_visit_to_lead": 0.04,
+      "cr_lead_to_sale": 0.2,
+      "average_order_rub": 50000,
+      "cpa_rub": 1500,
+      "ltv_rub": 200000,
+      "frequency_index": 70,
+      "sales_cycle_days": 7
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 100,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 12,
+      "seo_payback_months": 10,
+      "cpc_high_intent_rub": 600
+    },
+    "demand_triggers": ["кредит", "страховка", "ставка", "оформить", "одобрение"],
+    "notes_ru": "trust_requirement=3. Лицензии, рейтинги, безопасность — обязательны."
+  },
+  {
+    "project_code": "hospitality",
+    "title_ru": "Отели и HoReCa",
+    "description_ru": "Отели, рестораны, кейтеринг, базы отдыха.",
+    "monetization": "transaction",
+    "intent_distribution": { "local": 0.5, "transactional": 0.25, "commercial": 0.15, "informational": 0.1 },
+    "seasonality": [0.7, 0.7, 0.85, 0.95, 1.1, 1.3, 1.4, 1.4, 1.1, 0.95, 0.85, 1.0],
+    "kpi": {
+      "cr_visit_to_lead": 0.05,
+      "cr_lead_to_sale": 0.6,
+      "average_order_rub": 12000,
+      "cpa_rub": 600,
+      "ltv_rub": 35000,
+      "frequency_index": 60,
+      "sales_cycle_days": 1
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 40,
+      "min_cities_for_geo": 5,
+      "min_directions_for_catalog": 6,
+      "seo_payback_months": 8,
+      "cpc_high_intent_rub": 150
+    },
+    "demand_triggers": ["забронировать", "отель", "ресторан", "номер", "цена"],
+    "notes_ru": "Жёсткая сезонность лето/новогодние праздники."
+  },
+  {
+    "project_code": "events",
+    "title_ru": "Мероприятия и event-агентства",
+    "description_ru": "Свадьбы, корпоративы, концерты, конференции.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "local": 0.45, "commercial": 0.3, "informational": 0.15, "transactional": 0.1 },
+    "seasonality": [0.7, 0.85, 1.0, 1.1, 1.2, 1.25, 1.15, 1.15, 1.1, 1.0, 0.95, 1.4],
+    "kpi": {
+      "cr_visit_to_lead": 0.04,
+      "cr_lead_to_sale": 0.35,
+      "average_order_rub": 80000,
+      "cpa_rub": 1500,
+      "ltv_rub": 80000,
+      "frequency_index": 35,
+      "sales_cycle_days": 14
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 25,
+      "min_cities_for_geo": 3,
+      "min_directions_for_catalog": 5,
+      "seo_payback_months": 9,
+      "cpc_high_intent_rub": 200
+    },
+    "demand_triggers": ["организация", "свадьба", "корпоратив", "ведущий", "цена"],
+    "notes_ru": "Сильный пик декабрь-июнь, провал январь-февраль."
+  },
+  {
+    "project_code": "nonprofit",
+    "title_ru": "Некоммерческая организация",
+    "description_ru": "Благотворительные фонды, НКО, общественные объединения.",
+    "monetization": "donation",
+    "intent_distribution": { "informational": 0.55, "navigational": 0.2, "transactional": 0.15, "commercial": 0.1 },
+    "seasonality": [1.0, 0.95, 0.95, 1.0, 1.0, 1.0, 0.9, 0.95, 1.05, 1.1, 1.15, 1.5],
+    "kpi": {
+      "cr_visit_to_lead": 0.05,
+      "cr_lead_to_sale": 0.4,
+      "average_order_rub": 1500,
+      "cpa_rub": 200,
+      "ltv_rub": 6000,
+      "frequency_index": 40,
+      "sales_cycle_days": 1
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 30,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 4,
+      "seo_payback_months": 12,
+      "cpc_high_intent_rub": 30
+    },
+    "demand_triggers": ["помощь", "пожертвовать", "благотворительность", "фонд", "поддержка"],
+    "notes_ru": "Пик пожертвований — конец года и трагические инфоповоды."
+  },
+  {
+    "project_code": "gov",
+    "title_ru": "Государственный сайт",
+    "description_ru": "Порталы органов власти, госуслуги, муниципалитеты.",
+    "monetization": "institutional",
+    "intent_distribution": { "informational": 0.55, "navigational": 0.35, "transactional": 0.05, "local": 0.05 },
+    "seasonality": [1.0, 1.0, 1.0, 1.05, 1.0, 0.95, 0.9, 0.95, 1.05, 1.05, 1.05, 0.95],
+    "kpi": {
+      "cr_visit_to_lead": 0.0,
+      "cr_lead_to_sale": 0.0,
+      "average_order_rub": 0,
+      "cpa_rub": 0,
+      "ltv_rub": 0,
+      "frequency_index": 30,
+      "sales_cycle_days": 0
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 100,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 6,
+      "seo_payback_months": 18,
+      "cpc_high_intent_rub": 0
+    },
+    "demand_triggers": ["как получить", "документы", "график работы", "услуга", "запись"],
+    "notes_ru": "Нет монетизации; оценка успеха — citizen satisfaction и indexable services."
+  },
+  {
+    "project_code": "portfolio",
+    "title_ru": "Портфолио / визитка эксперта",
+    "description_ru": "Портфолио дизайнера, разработчика, фотографа, стилиста.",
+    "monetization": "brand",
+    "intent_distribution": { "navigational": 0.5, "informational": 0.25, "commercial": 0.2, "transactional": 0.05 },
+    "seasonality": [1.0, 1.0, 1.05, 1.05, 1.0, 0.9, 0.85, 0.95, 1.1, 1.1, 1.05, 0.95],
+    "kpi": {
+      "cr_visit_to_lead": 0.02,
+      "cr_lead_to_sale": 0.3,
+      "average_order_rub": 100000,
+      "cpa_rub": 800,
+      "ltv_rub": 200000,
+      "frequency_index": 25,
+      "sales_cycle_days": 14
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 8,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 3,
+      "seo_payback_months": 6,
+      "cpc_high_intent_rub": 100
+    },
+    "demand_triggers": ["портфолио", "проекты", "кейсы", "услуги", "контакты"],
+    "notes_ru": "Малый размер сайта; основная задача — конверсия по брендовому трафику."
+  },
+  {
+    "project_code": "media",
+    "title_ru": "Медиа и тематические издания",
+    "description_ru": "Онлайн-СМИ, тематические порталы.",
+    "monetization": "advertising",
+    "intent_distribution": { "informational": 0.7, "navigational": 0.2, "commercial": 0.05, "transactional": 0.05 },
+    "seasonality": [1.0, 1.0, 1.0, 1.0, 1.0, 0.95, 0.9, 0.95, 1.05, 1.05, 1.05, 1.0],
+    "kpi": {
+      "cr_visit_to_lead": 0.0,
+      "cr_lead_to_sale": 0.0,
+      "average_order_rub": 0,
+      "cpa_rub": 0,
+      "ltv_rub": 0,
+      "frequency_index": 80,
+      "sales_cycle_days": 0
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 1000,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 12,
+      "seo_payback_months": 12,
+      "cpc_high_intent_rub": 0
+    },
+    "demand_triggers": ["новости", "обзор", "топ", "почему", "что такое"],
+    "notes_ru": "Доход через рекламу/паблишинг — главный KPI это сессии и время."
+  },
+  {
+    "project_code": "blog",
+    "title_ru": "Блог автора / нишевый блог",
+    "description_ru": "Авторский тематический блог: SEO, путешествия, рецепты, гаджеты.",
+    "monetization": "advertising",
+    "intent_distribution": { "informational": 0.75, "navigational": 0.15, "commercial": 0.05, "transactional": 0.05 },
+    "seasonality": [1.0, 1.0, 1.0, 1.0, 1.0, 0.95, 0.9, 0.95, 1.05, 1.05, 1.05, 1.0],
+    "kpi": {
+      "cr_visit_to_lead": 0.0,
+      "cr_lead_to_sale": 0.0,
+      "average_order_rub": 0,
+      "cpa_rub": 0,
+      "ltv_rub": 0,
+      "frequency_index": 55,
+      "sales_cycle_days": 0
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 200,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 6,
+      "seo_payback_months": 10,
+      "cpc_high_intent_rub": 0
+    },
+    "demand_triggers": ["как сделать", "обзор", "сравнение", "лайфхак", "пошагово"],
+    "notes_ru": "Реклама/партнёрки/инфопродукты — задача массировать инфо-трафик."
+  },
+  {
+    "project_code": "promo_event",
+    "title_ru": "Промо / разовое событие",
+    "description_ru": "Лендинг под запуск продукта, акцию, конкретное событие.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "navigational": 0.45, "transactional": 0.25, "commercial": 0.2, "informational": 0.1 },
+    "seasonality": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+    "kpi": {
+      "cr_visit_to_lead": 0.08,
+      "cr_lead_to_sale": 0.4,
+      "average_order_rub": 5000,
+      "cpa_rub": 250,
+      "ltv_rub": 5000,
+      "frequency_index": 30,
+      "sales_cycle_days": 1
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 4,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 1,
+      "seo_payback_months": 2,
+      "cpc_high_intent_rub": 80
+    },
+    "demand_triggers": ["акция", "скидка", "осталось", "успей", "бренд"],
+    "notes_ru": "SEO почти не успеет; основная воронка — paid + brand."
+  },
+  {
+    "project_code": "personal_brand",
+    "title_ru": "Личный бренд / эксперт-блогер",
+    "description_ru": "Сайт-визитка спикера, психолога, тренера, инфлюэнсера.",
+    "monetization": "brand",
+    "intent_distribution": { "navigational": 0.55, "informational": 0.25, "commercial": 0.15, "transactional": 0.05 },
+    "seasonality": [1.0, 1.0, 1.05, 1.0, 1.0, 0.9, 0.85, 0.95, 1.1, 1.1, 1.05, 0.95],
+    "kpi": {
+      "cr_visit_to_lead": 0.03,
+      "cr_lead_to_sale": 0.2,
+      "average_order_rub": 30000,
+      "cpa_rub": 500,
+      "ltv_rub": 90000,
+      "frequency_index": 30,
+      "sales_cycle_days": 7
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 12,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 3,
+      "seo_payback_months": 6,
+      "cpc_high_intent_rub": 60
+    },
+    "demand_triggers": ["имя", "консультация", "запись", "программа", "лекция"],
+    "notes_ru": "Малая структура; SEO ловит только бренд+экспертные запросы."
+  },
+  {
+    "project_code": "franchise_multi",
+    "title_ru": "Франшиза / сеть",
+    "description_ru": "Сетевой бизнес с филиалами в разных городах.",
+    "monetization": "lead_gen",
+    "intent_distribution": { "local": 0.55, "commercial": 0.25, "informational": 0.1, "transactional": 0.1 },
+    "seasonality": [0.95, 0.95, 1.0, 1.05, 1.05, 1.05, 1.0, 1.0, 1.05, 1.1, 1.05, 0.95],
+    "kpi": {
+      "cr_visit_to_lead": 0.04,
+      "cr_lead_to_sale": 0.4,
+      "average_order_rub": 7000,
+      "cpa_rub": 500,
+      "ltv_rub": 25000,
+      "frequency_index": 70,
+      "sales_cycle_days": 2
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 150,
+      "min_cities_for_geo": 12,
+      "min_directions_for_catalog": 8,
+      "seo_payback_months": 9,
+      "cpc_high_intent_rub": 130
+    },
+    "demand_triggers": ["сеть", "филиал", "наш центр в", "рядом со мной", "франшиза"],
+    "notes_ru": "Сильно зависит от количества городов — это основной множитель индексируемых страниц."
+  },
+  {
+    "project_code": "b2b_media",
+    "title_ru": "Отраслевое B2B-медиа",
+    "description_ru": "Профильное медиа для бизнес-аудитории: B2B-новости, аналитика, обзоры.",
+    "monetization": "advertising",
+    "intent_distribution": { "informational": 0.65, "navigational": 0.2, "commercial": 0.1, "transactional": 0.05 },
+    "seasonality": [1.0, 1.05, 1.1, 1.05, 1.0, 0.85, 0.75, 0.9, 1.1, 1.1, 1.1, 1.0],
+    "kpi": {
+      "cr_visit_to_lead": 0.0,
+      "cr_lead_to_sale": 0.0,
+      "average_order_rub": 0,
+      "cpa_rub": 0,
+      "ltv_rub": 0,
+      "frequency_index": 40,
+      "sales_cycle_days": 0
+    },
+    "benchmarks": {
+      "min_pages_for_growth": 500,
+      "min_cities_for_geo": 1,
+      "min_directions_for_catalog": 10,
+      "seo_payback_months": 12,
+      "cpc_high_intent_rub": 0
+    },
+    "demand_triggers": ["обзор рынка", "аналитика", "тренды", "как выбрать", "рейтинг"],
+    "notes_ru": "Доход через спецпроекты с брендами; летом провал, осенью пик."
+  }
+]

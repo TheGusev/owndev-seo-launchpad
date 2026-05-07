@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && rm -rf dist/config dist/db/migrations && cp -r config dist/config && cp -r src/db/migrations dist/db/migrations && mkdir -p dist/services/demand/profiles && cp src/services/demand/profiles/*.json dist/services/demand/profiles/",
+    "build": "tsc && rm -rf dist/config dist/db/migrations && cp -r config dist/config && cp -r src/db/migrations dist/db/migrations && mkdir -p dist/services/demand/profiles && cp src/services/demand/profiles/*.json dist/services/demand/profiles/ && mkdir -p dist/services/verticals/profiles && cp src/services/verticals/profiles/*.json dist/services/verticals/profiles/",
     "start": "node dist/index.js",
     "migrate": "node dist/db/migrate.js",
     "migrate:dev": "tsx src/db/migrate.ts",
@@ -13,7 +13,8 @@
     "test:pr2-rules-weights": "tsx src/services/preflight/__tests__/pr2-rules-weights.ts",
     "test:pr3-page-fanout": "tsx src/services/strategy/__tests__/pr3-page-fanout.ts",
     "test:pr4-self-test-matrix": "tsx src/services/strategy/__tests__/pr4-self-test-matrix.ts",
-    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix",
+    "test:pr5-vertical-profiles": "tsx src/services/verticals/__tests__/pr5-vertical-profiles.ts",
+    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts",
     "rescan:geo": "tsx scripts/rescan-geo-rating.ts"
   },
