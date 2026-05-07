@@ -52,6 +52,12 @@ export interface PipelineInput {
   // и применит фильтрацию контрактов по tier_size + взвешивание скоринга.
   // Если не передан — v3 работает как раньше (бесплатная v1 остаётся изолированной).
   engine_state?: EngineState;
+  // ───── PR-3 Fan-out ─────
+  // Пробрасываются в buildStrategy для развёртывания service-geo / category страниц +
+  // построения hub-страниц из кластеров Wordstat. Без этих полей — legacy.
+  cities?: Array<{ slug: string; label: string }>;
+  service_directions?: Array<{ slug: string; label: string }>;
+  enable_hub_pages?: boolean;
 }
 
 export interface PipelineStageResult {

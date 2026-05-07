@@ -268,6 +268,10 @@ export class PipelineOrchestrator {
         // Мост v1 → v3: пробрасываем engine_state из PRO-входа.
         // Если его нет — strategyBuilder поведёт себя ровно как раньше (legacy).
         engine_state: input.engine_state,
+        // PR-3 Fan-out: разворачиваем страницы по городам/направлениям, включаем hub-страницы.
+        cities: input.cities,
+        service_directions: input.service_directions,
+        enable_hub_pages: input.enable_hub_pages,
       });
       result.strategy = strategy;
 
