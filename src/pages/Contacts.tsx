@@ -2,15 +2,17 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Mail, Phone, MapPin, Send } from "lucide-react";
 import { motion } from "framer-motion";
+import { lazy, Suspense } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+const ContactForm = lazy(() => import("@/components/ContactForm"));
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
 import { FloatingCodeSnippets } from "@/components/ui/floating-code-snippets";
 
 const contacts = [
-  { icon: Mail, label: "Email", value: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
+  { icon: Mail, label: "Email", value: "owndev@mail.ru", href: "mailto:owndev@mail.ru" },
   { icon: Phone, label: "Телефон", value: "+7 993 928-94-88", href: "tel:+79939289488" },
   { icon: Send, label: "Telegram", value: "@one_help", href: "https://t.me/one_help" },
   { icon: MapPin, label: "Город", value: "Москва, Россия", href: undefined },
@@ -41,7 +43,7 @@ const Contacts = () => {
         <div className="absolute inset-0 pointer-events-none">
           <AnimatedGrid theme="primary" lineCount={{ h: 3, v: 4 }} />
           <FloatingCodeSnippets
-            snippets={["mailto:west-centro@mail.ru", "tg://@one_help", "tel:+79939289488", "// support 24/7"]}
+            snippets={["mailto:owndev@mail.ru", "tg://@one_help", "tel:+79939289488", "// support 24/7"]}
             mobileCount={2}
             desktopCount={4}
             opacity={0.6}
@@ -90,6 +92,10 @@ const Contacts = () => {
             </div>
           </motion.div>
         </div>
+
+        <Suspense fallback={<div className="min-h-[200px]" />}>
+          <ContactForm />
+        </Suspense>
       </main>
       <Footer />
     </div>

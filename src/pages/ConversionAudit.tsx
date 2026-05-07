@@ -477,7 +477,7 @@ const ConversionAudit = () => {
                     <><Download className="w-4 h-4 mr-2" />Скачать PDF</>
                   )}
                 </Button>
-                <a href="mailto:dpd.tuva@mail.ru?subject=Коммерческое предложение по CRO-аудиту">
+                <a href="mailto:owndev@mail.ru?subject=Коммерческое предложение по CRO-аудиту">
                   <Button variant="default" size="lg" className="w-full sm:w-auto">
                     <Mail className="w-4 h-4 mr-2" />
                     Получить коммерческое предложение

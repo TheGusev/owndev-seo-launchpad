@@ -231,7 +231,7 @@ const termsData = [
       <ul className="list-none text-muted-foreground space-y-2">
         <li><strong className="text-foreground">Наименование:</strong> OWNDEV</li>
         <li><strong className="text-foreground">Адрес:</strong> г. Москва, Россия</li>
-        <li>📧 Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a></li>
+        <li>📧 Email: <a href="mailto:owndev@mail.ru" className="text-primary hover:underline">owndev@mail.ru</a></li>
         <li>📞 Телефон: <a href="tel:+79939289488" className="text-primary hover:underline">+7 993 928-94-88</a></li>
         <li>💬 Telegram: <a href="https://t.me/one_help" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@one_help</a></li>
       </ul>

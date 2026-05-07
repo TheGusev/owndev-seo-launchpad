@@ -99,7 +99,7 @@ const SEOAuditor = () => {
           onRetry={runAudit}
         />
 
-        {normalizedResult && <ToolCTA />}
+        {normalizedResult && <ToolCTA toolName="SEO-аудитор" />}
       </div>
     </div>
   );

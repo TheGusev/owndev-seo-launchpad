@@ -242,7 +242,7 @@ const CompetitorAnalysis = () => {
           </div>
         </div>
       )}
-      <ToolCTA />
+      <ToolCTA toolName="Анализ конкурентов" />
     </div>
   );
 };

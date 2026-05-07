@@ -1,124 +1,94 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
 import { sendTelegram } from "@/lib/api";
 import { useInView } from "react-intersection-observer";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Send, Loader2, CheckCircle, Mail, MessageCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-const formSchema = z.object({
-  name: z.string().min(2, "Имя должно содержать минимум 2 символа").max(50),
-  phone: z.string().min(10, "Введите корректный номер телефона").max(20),
-  email: z.string().email("Введите корректный email").max(100),
-  service: z.string().min(1, "Выберите услугу"),
-  message: z.string().max(500).optional(),
-  consent: z.boolean().refine((val) => val === true, "Необходимо согласие")
-});
-
-type FormData = z.infer<typeof formSchema>;
+const detectChannel = (raw: string): { phone?: string; email?: string; contact: string } => {
+  const v = raw.trim();
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return { email: v, contact: v };
+  if (/^[+\d][\d\s()\-]{6,}$/.test(v)) return { phone: v, contact: v };
+  return { contact: v };
+};
 
 const ContactForm = () => {
+  const [searchParams] = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      phone: "",
-      email: "",
-      service: "",
-      message: "",
-      consent: false
-    }
-  });
+  // Контекст из query-параметров (когда переходим со страницы инструмента)
+  const source = searchParams.get("source") || undefined;
+  const subject = searchParams.get("subject") || undefined;
+  const prefillMsg = searchParams.get("message") || "";
 
-  const serviceLabels: Record<string, string> = {
-    "pseo-setup": "Настройка pSEO‑проекта",
-    "content-gen": "Генерация контента",
-    "seo-audit": "GEO‑аудит сайта",
-    "ai-optimization": "Оптимизация под AI‑поиск",
-    "custom": "Кастомная доработка",
-    consultation: "Консультация"
-  };
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const [message, setMessage] = useState(prefillMsg);
+  const [consent, setConsent] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; contact?: string; consent?: string }>({});
 
-  const onSubmit = async (data: FormData) => {
+  useEffect(() => { setMessage(prefillMsg); }, [prefillMsg]);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const next: typeof errors = {};
+    if (name.trim().length < 2) next.name = "Введите имя";
+    if (contact.trim().length < 4) next.contact = "Укажите телефон, email или Telegram";
+    if (!consent) next.consent = "Необходимо согласие";
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
     setIsSubmitting(true);
-
-    const serviceLabel = serviceLabels[data.service] || data.service;
-
+    const channel = detectChannel(contact);
     try {
       await sendTelegram({
-        name: data.name,
-        phone: data.phone,
-        email: data.email,
-        service: serviceLabel,
-        message: data.message || '',
+        name: name.trim(),
+        ...channel,
+        source: source || "Страница «Контакты»",
+        subject: subject || "Заявка с формы контактов",
+        service: source,
+        message: message.trim() || undefined,
+        page_url: typeof window !== "undefined" ? window.location.href : undefined,
       });
-
       setIsSuccess(true);
-      toast({
-        title: "Заявка отправлена!",
-        description: "Мы свяжемся с вами в течение 15 минут.",
-      });
-
+      toast({ title: "Заявка отправлена", description: "Мы свяжемся с вами в течение 15 минут." });
       setTimeout(() => {
         setIsSuccess(false);
-        form.reset();
-      }, 3000);
+        setName("");
+        setContact("");
+        setMessage("");
+        setConsent(false);
+      }, 4000);
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error("Error submitting form:", error);
       toast({
         title: "Ошибка",
-        description: "Не удалось отправить заявку. Попробуйте позвонить нам.",
-        variant: "destructive"
+        description: "Не удалось отправить заявку. Напишите в Telegram @one_help.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const services = [
-    { value: "pseo-setup", label: "Настройка pSEO‑проекта" },
-    { value: "content-gen", label: "Генерация контента" },
-    { value: "seo-audit", label: "GEO‑аудит сайта" },
-    { value: "ai-optimization", label: "Оптимизация под AI‑поиск" },
-    { value: "custom", label: "Кастомная доработка" },
-    { value: "consultation", label: "Консультация" }
-  ];
-
   const contactInfo = [
-    { icon: Mail, label: "Email", value: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
-    { icon: MessageCircle, label: "Telegram", value: "@one_help", href: "https://t.me/one_help?text=owndev" }
+    { icon: Mail, label: "Email", value: "owndev@mail.ru", href: "mailto:owndev@mail.ru" },
+    { icon: MessageCircle, label: "Telegram", value: "@one_help", href: "https://t.me/one_help?text=owndev" },
   ];
 
   return (
     <section id="contact" className="py-12 md:py-24 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(174_72%_56%/0.1),transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(217_91%_60%/0.08),transparent_50%)]" />
-      
+
       <div className="container px-4 md:px-6 relative z-10">
         <motion.div
           ref={ref}
@@ -128,10 +98,10 @@ const ContactForm = () => {
           className="text-center mb-8 md:mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 font-serif">
-            Нужна помощь с <span className="text-gradient">GEO‑оптимизацией?</span>
+            Свяжитесь с нами
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Если нужны кастомные доработки, GEO‑аудит под ключ или сопровождение — напишите нам.
+            Опишите задачу — ответим в Telegram или по телефону в течение 15 минут.
           </p>
         </motion.div>
 
@@ -145,160 +115,93 @@ const ContactForm = () => {
           >
             {isSuccess ? (
               <div className="flex flex-col items-center justify-center h-full py-12">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", duration: 0.5 }}
-                >
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}>
                   <CheckCircle className="w-20 h-20 text-success mb-6" />
                 </motion.div>
-                <h3 className="text-2xl font-bold mb-2">Заявка отправлена!</h3>
+                <h3 className="text-2xl font-bold mb-2">Заявка отправлена</h3>
                 <p className="text-muted-foreground text-center">
                   Мы свяжемся с вами в течение 15 минут.
                 </p>
               </div>
             ) : (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ваше имя *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Иван Петров" {...field} className="bg-card border-border" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Номер телефона *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="+7 (999) 123-45-67" {...field} className="bg-card border-border" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+              <form onSubmit={onSubmit} className="space-y-5">
+                {(source || subject) && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+                    <span className="text-muted-foreground">Запрос: </span>
+                    <span className="text-foreground font-medium">{subject || source}</span>
                   </div>
+                )}
 
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="ivan@company.ru" {...field} className="bg-card border-border" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="service"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Выберите услугу *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="bg-card border-border">
-                                <SelectValue placeholder="Выберите услугу" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {services.map((service) => (
-                                <SelectItem key={service.value} value={service.value}>
-                                  {service.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="message"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Кратко опишите задачу (опционально)</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Расскажите о вашем проекте..." 
-                            {...field} 
-                            className="bg-card border-border min-h-[100px]"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Ваше имя *</label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Иван"
+                    className="bg-card border-border"
                   />
+                  {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
+                </div>
 
-                  <FormField
-                    control={form.control}
-                    name="consent"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm text-muted-foreground font-normal cursor-pointer">
-                            Я согласен с{" "}
-                            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                              политикой конфиденциальности
-                            </a>{" "}
-                            и{" "}
-                            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                              пользовательским соглашением
-                            </a>
-                          </FormLabel>
-                          <FormMessage />
-                        </div>
-                      </FormItem>
-                    )}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Телефон, email или Telegram *</label>
+                  <Input
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="+7 (999) 123-45-67 / @username / mail@domain.ru"
+                    className="bg-card border-border"
                   />
+                  {errors.contact && <p className="text-xs text-destructive mt-1">{errors.contact}</p>}
+                </div>
 
-                  <GradientButton 
-                    type="submit" 
-                    size="xl" 
-                    className="w-full"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Отправляем...
-                      </>
-                    ) : (
-                      <>
-                        Записаться на консультацию
-                        <Send className="w-5 h-5 ml-2" />
-                      </>
-                    )}
-                  </GradientButton>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Сообщение (опционально)</label>
+                  <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Расскажите о вашем проекте, целях, сроках..."
+                    className="bg-card border-border min-h-[100px]"
+                  />
+                </div>
 
-                  <p className="text-sm text-muted-foreground text-center">
-                    * Как скоро я услышу ответ? В течение 15 минут.
-                  </p>
-                </form>
-              </Form>
+                <div className="flex items-start gap-2.5">
+                  <Checkbox
+                    id="contact-consent"
+                    checked={consent}
+                    onCheckedChange={(v) => setConsent(v === true)}
+                    className="mt-0.5"
+                  />
+                  <label htmlFor="contact-consent" className="text-xs text-muted-foreground cursor-pointer leading-snug">
+                    Согласен с{" "}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      политикой конфиденциальности
+                    </a>{" "}
+                    и{" "}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      пользовательским соглашением
+                    </a>
+                  </label>
+                </div>
+                {errors.consent && <p className="text-xs text-destructive -mt-3">{errors.consent}</p>}
+
+                <GradientButton type="submit" size="xl" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Отправляем
+                    </>
+                  ) : (
+                    <>
+                      Отправить заявку
+                      <Send className="w-5 h-5 ml-2" />
+                    </>
+                  )}
+                </GradientButton>
+
+                <p className="text-sm text-muted-foreground text-center">
+                  Ответ в Telegram или по телефону в течение 15 минут.
+                </p>
+              </form>
             )}
           </motion.div>
 
@@ -310,9 +213,9 @@ const ContactForm = () => {
             className="flex flex-col justify-center space-y-8"
           >
             <div>
-              <h3 className="text-2xl font-bold mb-4 font-serif">Или свяжитесь с нами напрямую</h3>
+              <h3 className="text-2xl font-bold mb-4 font-serif">Прямые контакты</h3>
               <p className="text-muted-foreground">
-                Мы всегда на связи и готовы ответить на ваши вопросы
+                Если удобнее — пишите напрямую, мы всегда на связи.
               </p>
             </div>
 
@@ -321,8 +224,8 @@ const ContactForm = () => {
                 <a
                   key={index}
                   href={item.href}
-                  target={item.href.startsWith('https') ? '_blank' : undefined}
-                  rel={item.href.startsWith('https') ? 'noopener noreferrer' : undefined}
+                  target={item.href.startsWith("https") ? "_blank" : undefined}
+                  rel={item.href.startsWith("https") ? "noopener noreferrer" : undefined}
                   className="glass rounded-xl p-4 flex items-center gap-4 card-hover block"
                 >
                   <div className="p-3 rounded-lg bg-primary/10">

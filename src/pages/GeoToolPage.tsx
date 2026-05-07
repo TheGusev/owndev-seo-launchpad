@@ -8,6 +8,7 @@ import { getToolBySlug } from "@/data/tools-registry";
 import { getRegionById, getRegionNeighbors } from "@/data/regions";
 import { GEO_BLOCKED_TOOLS } from "@/config/pseoConfig";
 import { ArrowLeft, MapPin } from "lucide-react";
+import { openLead } from "@/lib/leadCapture";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
@@ -183,12 +184,21 @@ const GeoToolPage = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <Link
-              to="/#contact"
+            <button
+              type="button"
+              onClick={() => openLead({
+                source: `GEO-страница: ${tool.name} — ${region.name}`,
+                subject: `GEO-аудит для ${region.name}`,
+                description: 'Ответим в течение 15 минут и предложим формат работы.',
+                contextData: {
+                  'Регион': region.name,
+                  'Инструмент': tool.name,
+                },
+              })}
               className="inline-flex items-center gap-2 glass px-6 py-3 rounded-full text-primary font-semibold hover:border-primary/40 transition-colors"
             >
               Получить аудит для {region.name} →
-            </Link>
+            </button>
           </motion.div>
 
           {/* Interlinking */}

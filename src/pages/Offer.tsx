@@ -115,7 +115,7 @@ const Offer = () => {
               <section>
                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">8. Контакты</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a>
+                  Email: <a href="mailto:owndev@mail.ru" className="text-primary hover:underline">owndev@mail.ru</a>
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
                   Telegram: <a href="https://t.me/one_help" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">@one_help</a>

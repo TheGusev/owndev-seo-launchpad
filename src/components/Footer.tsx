@@ -13,7 +13,7 @@ const Footer = () => {
   const location = useLocation();
 
   const contactInfo = [
-    { icon: Mail, text: "west-centro@mail.ru", href: "mailto:west-centro@mail.ru" },
+    { icon: Mail, text: "owndev@mail.ru", href: "mailto:owndev@mail.ru" },
     { icon: MapPin, text: "Москва, Россия", href: "#" },
   ];
 

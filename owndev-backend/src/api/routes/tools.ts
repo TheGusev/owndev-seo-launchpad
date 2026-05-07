@@ -243,22 +243,57 @@ export async function toolsRoutes(app: FastifyInstance): Promise<void> {
       name?: string;
       phone?: string;
       email?: string;
+      contact?: string;
       service?: string;
+      source?: string;
+      subject?: string;
+      page_url?: string;
+      context_data?: Record<string, string | number | undefined | null>;
     };
     const token = process.env.TELEGRAM_BOT_TOKEN || '';
     if (!token) return reply.status(503).send({ error: 'TELEGRAM_BOT_TOKEN не задан на сервере' });
     const chatId = body.chat_id || process.env.TELEGRAM_CHAT_ID || '';
     if (!chatId) return reply.status(400).send({ error: 'chat_id required' });
 
-    let text = body.message || body.text || '';
-    if (!text && (body.name || body.phone || body.email)) {
-      text = `📬 <b>НОВАЯ ЗАЯВКА С САЙТА</b>\n\n👤 <b>Имя:</b> ${body.name || '—'}\n📞 <b>Телефон:</b> ${body.phone || '—'}\n📧 <b>Email:</b> ${body.email || '—'}\n🛠 <b>Услуга:</b> ${body.service || '—'}\n💬 <b>Сообщение:</b>\n${(body as any).message || 'Не указано'}`;
+    const escape = (s: unknown) =>
+      String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    let text = body.message && !body.name && !body.phone && !body.contact ? body.message : '';
+    if (!text) {
+      const lines: string[] = [];
+      const subject = body.subject || body.service || 'Заявка с сайта';
+      lines.push(`📬 <b>НОВАЯ ЗАЯВКА</b> — ${escape(subject)}`);
+      if (body.source) lines.push(`📍 <b>Откуда:</b> ${escape(body.source)}`);
+      lines.push('');
+      lines.push(`👤 <b>Имя:</b> ${escape(body.name || '—')}`);
+      const contact = body.contact || body.phone || body.email;
+      if (body.phone) lines.push(`📞 <b>Телефон:</b> ${escape(body.phone)}`);
+      if (body.email) lines.push(`📧 <b>Email:</b> ${escape(body.email)}`);
+      if (!body.phone && !body.email && contact) lines.push(`✉️ <b>Контакт:</b> ${escape(contact)}`);
+      if (body.service && body.service !== subject) lines.push(`🛠 <b>Услуга:</b> ${escape(body.service)}`);
+      if (body.message) {
+        lines.push('');
+        lines.push(`💬 <b>Сообщение:</b>\n${escape(body.message)}`);
+      }
+      if (body.context_data && Object.keys(body.context_data).length > 0) {
+        lines.push('');
+        lines.push(`🧾 <b>Контекст запроса:</b>`);
+        for (const [k, v] of Object.entries(body.context_data)) {
+          if (v === undefined || v === null || v === '') continue;
+          lines.push(`• ${escape(k)}: ${escape(v)}`);
+        }
+      }
+      if (body.page_url) {
+        lines.push('');
+        lines.push(`🔗 <a href="${escape(body.page_url)}">Страница</a>`);
+      }
+      text = lines.join('\n');
     }
 
     const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }),
     });
     const data = await resp.json();
     return reply.send({ success: resp.ok, data });

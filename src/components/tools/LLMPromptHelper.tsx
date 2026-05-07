@@ -238,7 +238,7 @@ const LLMPromptHelper = () => {
               </div>
             ))}
 
-            <ToolCTA />
+            <ToolCTA toolName="LLM Prompt Helper" />
           </div>
         )}
 

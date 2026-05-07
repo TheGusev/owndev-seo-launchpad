@@ -123,7 +123,7 @@ const IndexationChecker = () => {
           </div>
         </div>
       )}
-      <ToolCTA />
+      <ToolCTA toolName="Проверка индексации" />
     </div>
   );
 };

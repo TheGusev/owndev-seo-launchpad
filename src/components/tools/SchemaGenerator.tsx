@@ -272,7 +272,7 @@ const SchemaGenerator = () => {
           </div>
         )}
       </div>
-      <ToolCTA />
+      <ToolCTA toolName="Schema.org генератор" />
     </div>
   );
 };

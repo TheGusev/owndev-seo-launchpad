@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import MarketplaceDownloadButtons from './MarketplaceDownloadButtons';
 import type { ResultResponse } from '@/lib/marketplace-audit-types';
+import { openLead } from '@/lib/leadCapture';
 
 interface Props {
   result?: ResultResponse;
@@ -25,9 +26,16 @@ export default function MarketplacePaywallCTA({ result }: Props) {
               Массовая проверка каталога и еженедельный мониторинг — скоро.
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
-              <Link to="/contacts">
-                <Button>Связаться с нами</Button>
-              </Link>
+              <Button
+                onClick={() => openLead({
+                  source: 'Marketplace Audit — отчёт',
+                  subject: 'Массовый аудит / мониторинг карточек',
+                  description: 'Расскажите про каталог — предложим формат массовой проверки и еженедельного мониторинга.',
+                  contextData: {
+                    'Интересно': 'Массовый аудит + мониторинг',
+                  },
+                })}
+              >Связаться с нами</Button>
               <Link to="/marketplace-audit">
                 <Button variant="outline">Проверить ещё карточку</Button>
               </Link>
@@ -41,9 +49,14 @@ export default function MarketplacePaywallCTA({ result }: Props) {
             Полный аудит, экспорт отчёта, массовая проверка каталога и еженедельный мониторинг — скоро.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
-            <Link to="/contacts">
-              <Button>Связаться с нами</Button>
-            </Link>
+            <Button
+              onClick={() => openLead({
+                source: 'Marketplace Audit — CTA',
+                subject: 'Полный аудит / мониторинг маркетплейсов',
+                description: 'Напишем по вашему каталогу и предложим формат работы.',
+                contextData: { 'Интересно': 'Полный аудит карточек' },
+              })}
+            >Связаться с нами</Button>
             <Link to="/marketplace-audit">
               <Button variant="outline">Проверить ещё карточку</Button>
             </Link>

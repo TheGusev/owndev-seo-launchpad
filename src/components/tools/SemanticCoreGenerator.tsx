@@ -124,7 +124,7 @@ const SemanticCoreGenerator = () => {
           })}
         </div>
       )}
-      <ToolCTA />
+      <ToolCTA toolName="Генератор семантического ядра" />
     </div>
   );
 };

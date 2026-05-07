@@ -62,7 +62,7 @@ const Refund = () => {
                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">3. Порядок обращения</h2>
                 <p className="text-muted-foreground leading-relaxed">Для оформления возврата свяжитесь с нами любым удобным способом:</p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-1">
-                  <li>Email: <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a></li>
+                  <li>Email: <a href="mailto:owndev@mail.ru" className="text-primary hover:underline">owndev@mail.ru</a></li>
                   <li>Telegram: <a href="https://t.me/one_help" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">@one_help</a></li>
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-2">
@@ -84,7 +84,7 @@ const Refund = () => {
                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-3">5. Контакты</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   По всем вопросам возврата:{" "}
-                  <a href="mailto:west-centro@mail.ru" className="text-primary hover:underline">west-centro@mail.ru</a>
+                  <a href="mailto:owndev@mail.ru" className="text-primary hover:underline">owndev@mail.ru</a>
                   {" "}или{" "}
                   <a href="https://t.me/one_help" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">@one_help</a>
                 </p>

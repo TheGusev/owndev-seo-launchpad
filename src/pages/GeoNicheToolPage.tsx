@@ -9,6 +9,7 @@ import { regions } from "@/data/regions";
 import { niches, getNicheById } from "@/data/niches";
 import { GEO_ALLOWED_TOOLS, GEO_BLOCKED_TOOLS } from "@/config/pseoConfig";
 import { MapPin } from "lucide-react";
+import { openLead } from "@/lib/leadCapture";
 import { AnimatedGrid } from "@/components/ui/animated-grid";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
@@ -205,12 +206,22 @@ const GeoNicheToolPage = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <Link
-              to="/#contact"
+            <button
+              type="button"
+              onClick={() => openLead({
+                source: `GEO+Ниша: ${tool.name} — ${niche.name} в ${region.name}`,
+                subject: `Аудит для ${niche.nameCase} в ${region.nameCase}`,
+                description: 'Предложим формат работы и расчёт по вашей нише.',
+                contextData: {
+                  'Регион': region.name,
+                  'Ниша': niche.name,
+                  'Инструмент': tool.name,
+                },
+              })}
               className="inline-flex items-center gap-2 glass px-6 py-3 rounded-full text-primary font-semibold hover:border-primary/40 transition-colors"
             >
               Получить аудит для {niche.nameCase} в {region.nameCase} →
-            </Link>
+            </button>
           </motion.div>
 
           {/* Interlinking */}

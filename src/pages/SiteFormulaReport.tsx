@@ -11,6 +11,7 @@ import { getSession, type FullReportPayload } from '@/lib/api/siteFormula';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, AlertCircle, RefreshCw, DollarSign, ChevronRight } from 'lucide-react';
+import { openLead } from '@/lib/leadCapture';
 
 const CLASS_LABELS: Record<string, string> = {
   start: 'Start',
@@ -154,13 +155,31 @@ export default function SiteFormulaReport() {
                     {report.price_estimate.note} Окупаемость от {report.price_estimate.roi_months} мес.
                   </p>
 
-                  <a
-                    href="mailto:dpd.tuva@mail.ru?subject=Расчёт стоимости разработки сайта"
+                  <button
+                    type="button"
+                    onClick={() => openLead({
+                      source: 'Сайт-формула — Blueprint',
+                      subject: 'Точный расчёт стоимости разработки',
+                      title: 'Получить точный расчёт',
+                      description: 'Ответим в течение 15 минут с фиксированной сметой и сроками.',
+                      ctaLabel: 'Запросить расчёт',
+                      contextData: {
+                        'Класс проекта': CLASS_LABELS[report.project_class] || report.project_class,
+                        'Ориентировочная цена': report.price_estimate
+                          ? `${report.price_estimate.min.toLocaleString('ru-RU')} — ${report.price_estimate.max.toLocaleString('ru-RU')} ₽`
+                          : '—',
+                        'Окупаемость': report.price_estimate ? `от ${report.price_estimate.roi_months} мес.` : '—',
+                        'Session ID': sessionId || '—',
+                      },
+                      prefillMessage: report.price_estimate?.breakdown?.length
+                        ? `Интересует расчёт по блокам:\n• ${report.price_estimate.breakdown.join('\n• ')}`
+                        : undefined,
+                    })}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
                   >
                     Получить точный расчёт
                     <ChevronRight className="h-4 w-4" />
-                  </a>
+                  </button>
                 </div>
               )}
 

@@ -154,7 +154,7 @@ const InternalLinksChecker = () => {
           </div>
         </div>
       )}
-      <ToolCTA />
+      <ToolCTA toolName="Проверка внутренних ссылок" />
     </div>
   );
 };

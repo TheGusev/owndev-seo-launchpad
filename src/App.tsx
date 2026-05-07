@@ -35,6 +35,7 @@ import AiReadyContent from "./pages/scenarios/AiReadyContent";
 import BrandPresence from "./pages/scenarios/BrandPresence";
 import Monitoring from "./pages/scenarios/Monitoring";
 import BorderBot from "@/components/mascot/BorderBot";
+import LeadModal from "@/components/LeadModal";
 import { AuditProvider } from "@/state/audit";
 import SiteFormula from "./pages/SiteFormula";
 import SiteFormulaWizard from "./pages/SiteFormulaWizard";
@@ -142,6 +143,7 @@ const App = () => (
           </Routes>
           <CookieBanner />
           <BorderBot />
+          <LeadModal />
         </BrowserRouter>
       </TooltipProvider>
       </AuditProvider>

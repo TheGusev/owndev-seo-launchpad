@@ -869,7 +869,7 @@ const FullAudit = () => {
                     <><FileText className="w-4 h-4 mr-2" /> Скачать Word</>
                   )}
                 </Button>
-                <a href="mailto:dpd.tuva@mail.ru?subject=Полный аудит сайта">
+                <a href="mailto:owndev@mail.ru?subject=Полный аудит сайта">
                   <Button size="lg" className="w-full sm:w-auto">
                     <Mail className="w-4 h-4 mr-2" />
                     Получить коммерческое предложение

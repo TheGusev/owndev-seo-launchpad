@@ -107,7 +107,7 @@ const AITextGenerator = () => {
           <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{result}</div>
         </div>
       )}
-      <ToolCTA />
+      <ToolCTA toolName="AI-генератор текстов" />
     </div>
   );
 };
