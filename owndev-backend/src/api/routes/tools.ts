@@ -250,9 +250,13 @@ export async function toolsRoutes(app: FastifyInstance): Promise<void> {
       page_url?: string;
       context_data?: Record<string, string | number | undefined | null>;
     };
-    const token = process.env.TELEGRAM_BOT_TOKEN || '';
-    if (!token) return reply.status(503).send({ error: 'TELEGRAM_BOT_TOKEN не задан на сервере' });
-    const chatId = body.chat_id || process.env.TELEGRAM_CHAT_ID || '';
+    // Fallback на in-code значения для группы "Сайты. Проекты" (бот @Own_Dev_bot).
+    // Приоритет — переменные окружения, если они заданы на сервере.
+    const TG_TOKEN_FALLBACK = '8065981666:AAG_dtQbGKag6DYz_hrTZ3fsjSKIwBz47Yk';
+    const TG_CHAT_FALLBACK = '-4770978516';
+    const token = process.env.TELEGRAM_BOT_TOKEN || TG_TOKEN_FALLBACK;
+    if (!token) return reply.status(503).send({ error: 'TELEGRAM_BOT_TOKEN не задан' });
+    const chatId = body.chat_id || process.env.TELEGRAM_CHAT_ID || TG_CHAT_FALLBACK;
     if (!chatId) return reply.status(400).send({ error: 'chat_id required' });
 
     const escape = (s: unknown) =>
