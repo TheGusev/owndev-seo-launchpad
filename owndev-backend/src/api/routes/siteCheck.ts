@@ -374,6 +374,11 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
       raw_scores: scores,
 
       is_spa: row.is_spa ?? false,
+      // SPA Detection v2 — диагностика из result-payload, в бД эти поля не хранятся отдельными колонками.
+      spa_score: result?.spa_score ?? null,
+      spa_signals: result?.spa_signals ?? null,
+      rendered_source: result?.rendered_source ?? null,
+      spa_render_failed: result?.spa_render_failed ?? null,
       error_message: row.error_message ?? null,
       created_at: row.created_at,
     });
