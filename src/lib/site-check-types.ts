@@ -182,6 +182,19 @@ export interface FullScanResponse {
   signals: Record<string, number | boolean> | null;
 
   is_spa: boolean;
+  // SPA Detection v2 — диагностика решения о Jina-рендере.
+  spa_score?: number;
+  spa_signals?: {
+    wordCount: number;
+    hasAppRoot: boolean;
+    hasFrameworkBundle: boolean;
+    hasServerRendered: boolean;
+    bodyTextRatio: number;
+    mainEmpty: boolean;
+    viteMarker: boolean;
+  };
+  rendered_source?: 'origin' | 'jina';
+  spa_render_failed?: boolean;
   error_message: string | null;
   created_at: string;
 }

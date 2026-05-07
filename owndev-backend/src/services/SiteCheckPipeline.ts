@@ -80,26 +80,95 @@ async function checkUrl(url: string): Promise<{ ok: boolean; status: number }> {
   } catch { return { ok: false, status: 0 }; }
 }
 
-// ─── SPA Detection ───
-function isSpaPage(html: string): boolean {
+// ─── SPA Detection v2 ───
+// Why v2: в v1 условие wordCount<150 было слишком жёстким. Современные Vite/React/Vue
+// SPA часто имеют 200-700 слов в SSR-shell (навигация, футер, FAQ в разметке), но основной
+// контент (карточки, каталог, динамические секции) всё равно рисуется JS-ом. Без Jina-рендера
+// движок видит пустые main-контейнеры и занижает метрики директа/контента для сотен таких сайтов.
+//
+// v2: работаем по очкам сигналов, а не по жесткому AND. Рассчитываем spaScore от 0 до 100 и
+// вызываем Jina при score >= 50. Инварианты: SSR-фреймворки (Next.js/Nuxt) исключают detection.
+export function detectSpaSignals(html: string): {
+  isSpa: boolean;
+  reason: string;
+  spaScore: number;
+  signals: {
+    wordCount: number;
+    hasAppRoot: boolean;
+    hasFrameworkBundle: boolean;
+    hasServerRendered: boolean;
+    bodyTextRatio: number;
+    mainEmpty: boolean;
+    viteMarker: boolean;
+  };
+} {
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  if (!bodyMatch) return false;
-  const bodyContent = bodyMatch[1]
+  if (!bodyMatch) {
+    return { isSpa: false, reason: 'no <body>', spaScore: 0, signals: { wordCount: 0, hasAppRoot: false, hasFrameworkBundle: false, hasServerRendered: false, bodyTextRatio: 0, mainEmpty: false, viteMarker: false } };
+  }
+  const bodyRaw = bodyMatch[1];
+  const bodyContent = bodyRaw
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   const wordCount = bodyContent.split(/\s+/).filter((w: string) => /[\p{L}\p{N}]/u.test(w)).length;
+
+  // Отношение текста к HTML — у пустого SPA shell это обычно <0.05 (много bundle-тегов, мало текста).
+  const bodyTextRatio = bodyRaw.length > 0 ? bodyContent.length / bodyRaw.length : 0;
+
   const hasAppRoot = /<div[^>]*id=["'](root|app|__next|__nuxt|___gatsby|__svelte)["']/i.test(html);
-  const hasFrameworkBundle = /(\/assets\/index[\w.-]+\.js|\/static\/js\/|\/chunks\/|_next\/static)/i.test(html);
-  // Exclude SSR frameworks (Next.js, Nuxt, Vue SSR) — they ship a thin shell
-  // with full server-rendered content already in the HTML.
+  const hasFrameworkBundle = /(\/assets\/index[\w.-]+\.js|\/static\/js\/|\/chunks\/|_next\/static|\/build\/_app\/)/i.test(html);
+  const viteMarker = /\/assets\/index-[\w]+\.js|\/@vite\/client|type=["']module["']/i.test(html);
+
+  // SSR-фреймворки — в HTML уже есть серверный рендер, второй проход не нужен.
   const hasServerRendered = /data-server-rendered=["']true["']/i.test(html)
     || /<script[^>]*id=["']__NEXT_DATA__["']/i.test(html)
     || /data-reactroot/i.test(html)
-    || /window\.__NUXT__/i.test(html);
-  return wordCount < 150 && (hasAppRoot || hasFrameworkBundle) && !hasServerRendered;
+    || /window\.__NUXT__/i.test(html)
+    || /<!--\[svelte-kit\]-->/i.test(html);
+
+  // Спецсигнал: пустой main/article/section. Если в HTML есть <main…></main> без
+  // вложенного текста — скорее всего контент приходит JS-ом.
+  const mainEmpty = (() => {
+    const m = bodyRaw.match(/<(main|article)[^>]*>([\s\S]*?)<\/\1>/i);
+    if (!m) return false;
+    const innerText = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const innerWords = innerText.split(/\s+/).filter((w: string) => /[\p{L}\p{N}]/u.test(w)).length;
+    return innerWords < 30;
+  })();
+
+  if (hasServerRendered) {
+    return { isSpa: false, reason: 'SSR framework detected', spaScore: 0, signals: { wordCount, hasAppRoot, hasFrameworkBundle, hasServerRendered, bodyTextRatio, mainEmpty, viteMarker } };
+  }
+
+  // Система очков.
+  let score = 0;
+  if (hasAppRoot) score += 35;
+  if (hasFrameworkBundle) score += 25;
+  if (viteMarker) score += 15;
+  if (mainEmpty) score += 25;
+  if (wordCount < 150) score += 30;
+  else if (wordCount < 300) score += 20;
+  else if (wordCount < 600) score += 10;
+  if (bodyTextRatio < 0.03) score += 20;
+  else if (bodyTextRatio < 0.06) score += 10;
+
+  // Инверсии — тяжёлый SSR-контент отменяет подозрения.
+  if (wordCount > 1500) score = Math.min(score, 30);
+
+  const isSpa = score >= 50 && (hasAppRoot || hasFrameworkBundle || mainEmpty);
+  const reason = isSpa
+    ? `spaScore=${score} (wordCount=${wordCount}, appRoot=${hasAppRoot}, vite=${viteMarker}, mainEmpty=${mainEmpty}, ratio=${bodyTextRatio.toFixed(3)})`
+    : `spaScore=${score} — below threshold or no framework markers`;
+
+  return { isSpa, reason, spaScore: score, signals: { wordCount, hasAppRoot, hasFrameworkBundle, hasServerRendered, bodyTextRatio, mainEmpty, viteMarker } };
+}
+
+// Legacy alias: оставляем старое имя для совместимости внутри модуля.
+function isSpaPage(html: string): boolean {
+  return detectSpaSignals(html).isSpa;
 }
 
 // ─── Fetch rendered content via Jina Reader for SPA pages ───
@@ -2034,16 +2103,22 @@ export async function runPipeline(
 
   await onProgress(10);
 
-  // SPA Detection
+  // SPA Detection v2 — взвешенная система сигналов + Jina-рендер при подозрении.
   let isSpa = false;
   let spaRenderFailed = false;
-  if (isSpaPage(html)) {
+  let renderedSource: 'origin' | 'jina' = 'origin';
+  const spaDetection = detectSpaSignals(html);
+  logger.info('PIPELINE', `SPA detect: ${spaDetection.reason}`);
+  if (spaDetection.isSpa) {
     isSpa = true;
     const renderedMd = await fetchRenderedContent(parsedUrl.toString());
     if (renderedMd) {
       html = buildEnrichedHtml(renderedMd, html);
+      renderedSource = 'jina';
+      logger.info('PIPELINE', `Jina render OK: ${parsedUrl.toString()}`);
     } else {
       spaRenderFailed = true;
+      logger.warn('PIPELINE', `Jina render FAILED: ${parsedUrl.toString()} — пайплайн продолжит на SSR-shell`);
     }
   }
 
@@ -2229,6 +2304,10 @@ export async function runPipeline(
     mode,
     theme,
     is_spa: isSpa,
+    spa_score: spaDetection.spaScore,
+    spa_signals: spaDetection.signals,
+    rendered_source: renderedSource,
+    spa_render_failed: spaRenderFailed,
     scores: finalScores,
     geoScore: geoCalc.score,
     seoScore: seoCalc.score,

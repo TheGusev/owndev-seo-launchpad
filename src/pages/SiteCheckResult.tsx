@@ -191,7 +191,13 @@ const SiteCheckResult = () => {
             {data.is_spa && (
               <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
                 <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground">Обнаружен SPA-сайт. Контент проанализирован после рендеринга JavaScript.</p>
+                <p className="text-xs text-muted-foreground">
+                  {data.rendered_source === 'jina'
+                    ? 'Обнаружен SPA-сайт. Контент проанализирован после рендеринга JavaScript.'
+                    : data.spa_render_failed
+                      ? 'Обнаружен SPA-сайт, но рендер через JS не удался — часть метрик может быть занижена.'
+                      : 'Обнаружен SPA-сайт. Контент проанализирован после рендеринга JavaScript.'}
+                </p>
               </div>
             )}
             {data.theme && <p className="text-xs text-muted-foreground mt-1">Тематика: {data.theme}</p>}
