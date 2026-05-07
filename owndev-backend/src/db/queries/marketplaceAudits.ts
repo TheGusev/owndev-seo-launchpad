@@ -56,11 +56,12 @@ export async function saveAuditResult(
     ai_summary: string;
   },
 ): Promise<void> {
+  // Note: we do NOT mark status='done' here anymore. The worker sets 'media'
+  // before this call (or right after) and finalises with 'done' once media
+  // generation completes. Existing fields are still persisted in one UPDATE.
   await sql`
     UPDATE marketplace_audits
-    SET status = 'done',
-        progress_pct = 100,
-        product_title = ${data.product_title},
+    SET product_title = ${data.product_title},
         product_description = ${data.product_description},
         category = ${data.category},
         attributes_json = ${sql.json(data.attributes_json)},
@@ -71,6 +72,20 @@ export async function saveAuditResult(
         competitors_json = ${sql.json(data.competitors_json)},
         recommendations_json = ${sql.json(data.recommendations_json)},
         ai_summary = ${data.ai_summary},
+        updated_at = NOW()
+    WHERE id = ${id}
+  `;
+}
+
+export async function saveAuditMedia(
+  id: string,
+  generatedImages: string[],
+  generatedVideoUrl: string | null,
+): Promise<void> {
+  await sql`
+    UPDATE marketplace_audits
+    SET generated_images_json = ${sql.json(generatedImages)},
+        generated_video_url = ${generatedVideoUrl},
         updated_at = NOW()
     WHERE id = ${id}
   `;

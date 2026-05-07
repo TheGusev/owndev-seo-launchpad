@@ -52,7 +52,12 @@ export async function marketplaceAuditRoutes(app: FastifyInstance): Promise<void
       `;
       await sql`
         DO $$ BEGIN
-          CREATE TYPE marketplace_audit_status AS ENUM ('pending','parsing','scoring','llm','done','error');
+          CREATE TYPE marketplace_audit_status AS ENUM ('pending','parsing','scoring','llm','media','done','error');
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$
+      `;
+      await sql`
+        DO $$ BEGIN
+          ALTER TYPE marketplace_audit_status ADD VALUE IF NOT EXISTS 'media';
         EXCEPTION WHEN duplicate_object THEN NULL; END $$
       `;
       await sql`
@@ -74,11 +79,21 @@ export async function marketplaceAuditRoutes(app: FastifyInstance): Promise<void
           competitors_json JSONB NOT NULL DEFAULT '[]'::jsonb,
           recommendations_json JSONB NOT NULL DEFAULT '{}'::jsonb,
           ai_summary TEXT,
+          generated_images_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+          generated_video_url TEXT,
           error_msg TEXT,
           rules_version VARCHAR(20) NOT NULL DEFAULT '1.0.0',
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+      `;
+      await sql`
+        ALTER TABLE marketplace_audits
+          ADD COLUMN IF NOT EXISTS generated_images_json JSONB NOT NULL DEFAULT '[]'::jsonb
+      `;
+      await sql`
+        ALTER TABLE marketplace_audits
+          ADD COLUMN IF NOT EXISTS generated_video_url TEXT
       `;
       logger.info('MA_ROUTES', 'marketplace_audits table ensured');
     } catch (e: any) {
@@ -236,6 +251,8 @@ export async function marketplaceAuditRoutes(app: FastifyInstance): Promise<void
       competitors: normalizeCompetitorsField(row.competitors_json),
       recommendations: row.recommendations_json ?? {},
       ai_summary: row.ai_summary ?? '',
+      generated_images: Array.isArray(row.generated_images_json) ? row.generated_images_json : [],
+      generated_video_url: row.generated_video_url ?? null,
       meta: {
         created_at: row.created_at,
         updated_at: row.updated_at,

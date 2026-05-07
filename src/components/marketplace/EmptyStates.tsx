@@ -9,6 +9,7 @@ const STATUS_LABELS: Record<string, string> = {
   parsing: 'Получаем данные карточки…',
   scoring: 'Оцениваем контент и поиск…',
   llm: 'AI анализирует карточку…',
+  media: 'Генерируем фото и видео…',
   done: 'Готово',
   error: 'Ошибка',
 };
