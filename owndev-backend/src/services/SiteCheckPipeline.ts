@@ -43,14 +43,23 @@ export type {
   PipelineResult,
 };
 
-const UA = 'OWNDEV-SiteCheck/2.0';
+const UA = 'Mozilla/5.0 (compatible; OwndevBot/2.0; +https://owndev.ru/audit)';
 
 // ─── Utility: fetch with timeout ───
 async function fetchWithTimeout(url: string, timeoutMs = 8000, opts: RequestInit = {}) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, { ...opts, signal: controller.signal, headers: { 'User-Agent': UA, ...(opts.headers || {}) } });
+    const resp = await fetch(url, {
+      ...opts,
+      signal: controller.signal,
+      headers: {
+        'User-Agent': UA,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
+        ...(opts.headers || {}),
+      },
+    });
     clearTimeout(id);
     return resp;
   } catch (e) {
