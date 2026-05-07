@@ -19,6 +19,7 @@ import type { PreflightReport } from '../preflight/types.js';
 import type { SuperPromptPack, ExportMode, PlatformTarget } from '../developerPack/types.js';
 import type { CrawlPageRecord } from '../CrawlEngine/types.js';
 import type { EngineState } from '../../types/siteFormula.js';
+import type { VerticalProfile } from '../verticals/types.js';
 
 export type PipelineStage = 'intake' | 'demand' | 'crawl' | 'audit' | 'preflight' | 'pack' | 'done' | 'failed';
 
@@ -90,4 +91,35 @@ export interface PipelineResultV3 {
   pack?: SuperPromptPack;
   pack_zip_size?: number;
   generated_at: string;
+  // ───── PR-6 PRO-отчёт ─────
+  // Если передан engine_state и/или есть профиль вертикали — собираем
+  // дополнительный блок для UI: project_class + decision_trace + KPI + ROI-оценка.
+  // Поле опционально; на фронтенде блок отрисовывается только при его наличии.
+  pro_report?: ProReportV3;
+}
+
+export interface ProReportV3 {
+  /** Класс проекта из v1 (start | growth | scale), если был engine_state. */
+  project_class?: 'start' | 'growth' | 'scale';
+  /** Причина класса — короткое объяснение для пользователя. */
+  project_class_reason?: string;
+  /** Решения движка v1 — что было активировано и почему. */
+  decision_trace?: Array<{ rule_id?: string; outcome?: string; reason?: string; [k: string]: unknown }>;
+  /** Использованный профиль вертикали (KPI, монетизация, бенчмарки). */
+  vertical_profile?: VerticalProfile;
+  /** Прикладные KPI-строки для UI (готовые к отображению). */
+  kpi_summary?: string[];
+  /** ROI-оценка месячного дохода/прибыли. Возвращается, если есть пагинация и KPI. */
+  roi_estimate?: {
+    expected_monthly_visits?: number;       // оценочно из preflight pages × среднего Wordstat
+    expected_monthly_leads?: number;        // visits × cr_visit_to_lead
+    expected_monthly_sales?: number;        // leads × cr_lead_to_sale
+    expected_monthly_revenue_rub?: number;  // sales × average_order_rub
+    expected_monthly_acquisition_cost_rub?: number; // leads × cpa_rub (если paid)
+    rationale_ru?: string;                  // короткое объяснение расчёта
+  };
+  /** Применённые axis-веса (зеркало preflight). */
+  axis_weights?: { SEO: number; DIRECT: number; SCHEMA: number; AI_LLM: number };
+  /** Применённый порог total_score (зеркало preflight). */
+  total_score_threshold?: number;
 }
