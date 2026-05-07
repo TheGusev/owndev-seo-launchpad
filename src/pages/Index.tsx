@@ -2,7 +2,6 @@ import { Helmet } from "react-helmet-async";
 import { lazy, Suspense } from "react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import ToolsShowcase from "@/components/ToolsShowcase";
 import Footer from "@/components/Footer";
 import { MouseGradient } from "@/components/ui/mouse-gradient";
 import { ClickRipple } from "@/components/ui/click-ripple";
@@ -14,8 +13,6 @@ import Testimonials from "@/components/landing/Testimonials";
 import FlagshipTools from "@/components/landing/FlagshipTools";
 
 const FAQ = lazy(() => import("@/components/FAQ"));
-const ContactForm = lazy(() => import("@/components/ContactForm"));
-const BlogPreview = lazy(() => import("@/components/BlogPreview"));
 
 const organizationLd = {
   "@context": "https://schema.org",
@@ -77,18 +74,11 @@ const Index = () => {
         <FlagshipTools />
         <GeoScenarios />
         <HowItWorks />
-        <ToolsShowcase />
         <ReportValue />
         <Testimonials />
         <ComparisonSection />
         <Suspense fallback={<div className="min-h-[200px]" />}>
-          <BlogPreview />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-[200px]" />}>
           <FAQ />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-[200px]" />}>
-          <ContactForm />
         </Suspense>
       </main>
       <Footer />
