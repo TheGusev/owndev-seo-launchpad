@@ -112,7 +112,7 @@ const ChoiceGroup = <T extends string>({
           type="button"
           disabled={disabled}
           onClick={() => onChange(o.value)}
-          className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors disabled:opacity-50 ${
+          className={`min-w-0 px-2 sm:px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium leading-tight whitespace-normal break-words text-center transition-colors disabled:opacity-50 ${
             value === o.value
               ? "bg-primary text-primary-foreground border-primary"
               : "bg-card border-border hover:border-primary/40 text-foreground"
@@ -243,9 +243,16 @@ const FullAudit = () => {
       ? url.trim()
       : `https://${url.trim()}`;
 
-    // Запускаем оба запроса параллельно
-    const [siteCheckResp, croResp] = await Promise.allSettled([
-      startScan(normalizedUrl, "page"),
+    // Сначала запускаем GEO/SEO скан — получаем scan_id (это быстрый вызов, просто регистрация задачи)
+    const siteCheckResp = await Promise.allSettled([startScan(normalizedUrl, "page")]).then(([r]) => r);
+    let scanIdForCro: string | null = null;
+    if (siteCheckResp.status === "fulfilled") {
+      scanIdForCro = siteCheckResp.value.scan_id;
+      setScanId(scanIdForCro);
+    }
+
+    // Теперь запускаем CRO с scan_id (бэк будет поджидать snapshot или возьмёт последний по домену)
+    const croResp = await Promise.allSettled([
       fetch(apiUrl("/conversion-audit/analyze"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -254,13 +261,14 @@ const FullAudit = () => {
           goal,
           traffic_source: traffic,
           main_problem: problem,
+          ...(scanIdForCro ? { scan_id: scanIdForCro } : {}),
         }),
       }).then(async (r) => {
         const data = await r.json();
         if (!r.ok || !data?.success) throw new Error(data?.error || `Ошибка ${r.status}`);
         return data as ConversionResult;
       }),
-    ]);
+    ]).then(([r]) => r);
 
     // CRO результат сразу
     if (croResp.status === "fulfilled") {
@@ -273,7 +281,6 @@ const FullAudit = () => {
     // SiteCheck — поллинг
     if (siteCheckResp.status === "fulfilled") {
       const id = siteCheckResp.value.scan_id;
-      setScanId(id);
       pollRef.current = window.setInterval(async () => {
         try {
           const status = await getScanStatus(id);
@@ -418,7 +425,7 @@ const FullAudit = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
       <Helmet>
         <title>Полный аудит сайта — GEO + SEO + CRO | OWNDEV</title>
         <meta
@@ -440,7 +447,7 @@ const FullAudit = () => {
       </Helmet>
       <Header />
 
-      <main className="flex-1 container px-4 md:px-6 py-10 md:py-16 max-w-5xl mx-auto">
+      <main className="flex-1 w-full container px-4 md:px-6 py-10 md:py-16 max-w-5xl mx-auto overflow-x-hidden">
         {!showResults && (
           <div className="no-print">
             <div className="text-center mb-10">
@@ -575,7 +582,7 @@ const FullAudit = () => {
         {showResults && (
           <div className="print-content space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-3 no-print">
-              <h1 className="text-2xl md:text-3xl font-bold font-serif">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-serif break-all min-w-0">
                 Полный аудит: {croData?.domain || siteCheckData?.url}
               </h1>
               <div className="flex flex-wrap gap-2">
