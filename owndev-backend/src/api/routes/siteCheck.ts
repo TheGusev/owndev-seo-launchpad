@@ -495,14 +495,44 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // POST /api/v1/site-check/llm-judge
-  app.post<{ Body: { scan_id?: string; url: string; theme?: string } }>(
+  //
+  // Determinism + stability contract:
+  //   * temperature 0 + seeded per domain  → same domain ⇒ same scores
+  //   * Redis cache 24h keyed by (domain, theme)
+  //     so a re-run from another scan_id still returns identical numbers
+  //     (the previous code only cached by scan_id, so different scans of the
+  //      same domain produced different averages — the visible "45 → 30" bug).
+  //   * On per-model failure we return `score: null` + `error_code` instead of
+  //     `score: 0`. The average is computed only over successful models, so a
+  //     single 504 doesn't drag the visible AI-видимость down by 1/6.
+  //   * If *all* models fail, `avg_score: null` is returned and the frontend
+  //     must show "—" instead of substituting 0 or a stale value.
+  app.post<{ Body: { scan_id?: string; url: string; theme?: string; force?: boolean } }>(
     '/llm-judge',
     async (req, reply) => {
-      const { url, theme, scan_id } = req.body as { url: string; theme?: string; scan_id?: string };
+      const { url, theme, scan_id, force } = req.body as { url: string; theme?: string; scan_id?: string; force?: boolean };
       if (!url) return reply.status(400).send({ error: 'url required' });
 
-      // Try cache from DB first
-      if (scan_id) {
+      const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
+      const cacheKey = `llm-judge:v2:${domain}:${(theme || '').toLowerCase().trim()}`;
+      const CACHE_TTL_SEC = 24 * 60 * 60;
+
+      // 1. Redis cache by (domain, theme) — stable across scan_ids
+      if (!force) {
+        try {
+          const cached = await redis.get(cacheKey);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            logger.info('LLM_JUDGE', `Redis cache hit for ${domain}`);
+            return reply.send({ ...parsed, _cached: true, _cache_source: 'redis' });
+          }
+        } catch (e) {
+          logger.warn('LLM_JUDGE', `Redis cache read failed: ${(e as Error).message}`);
+        }
+      }
+
+      // 2. DB cache (legacy, by scan_id)
+      if (scan_id && !force) {
         try {
           const cached = await sql<Array<{ llm_judge: any }>>`
             SELECT result->'llm_judge' AS llm_judge
@@ -511,7 +541,7 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
           `;
           const cachedJudge = cached[0]?.llm_judge;
           if (cachedJudge && typeof cachedJudge === 'object' && Array.isArray((cachedJudge as any).systems) && (cachedJudge as any).systems.length > 0) {
-            logger.info('LLM_JUDGE', `Cache hit for scan ${scan_id}`);
+            logger.info('LLM_JUDGE', `DB cache hit for scan ${scan_id}`);
             const enriched = {
               ...(cachedJudge as any),
               systems: Array.isArray((cachedJudge as any).systems)
@@ -526,19 +556,39 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
               disclaimer: (cachedJudge as any).disclaimer
                 || 'Оценки рассчитаны эвристически на основе анализа сайта. Реальные запросы к AI-системам не выполняются.',
               _cached: true,
+              _cache_source: 'db',
             };
+            // Promote DB cache to Redis for next time
+            try { await redis.setex(cacheKey, CACHE_TTL_SEC, JSON.stringify(enriched)); } catch { /* ignore */ }
             return reply.send(enriched);
           }
         } catch (e) {
-          logger.warn('LLM_JUDGE', `Cache read failed: ${(e as Error).message}`);
+          logger.warn('LLM_JUDGE', `DB cache read failed: ${(e as Error).message}`);
         }
       }
 
       const apiKey = process.env.OPENAI_API_KEY || '';
       if (!apiKey) {
-        return reply.status(503).send({ error: 'OPENAI_API_KEY не задан на сервере' });
+        // Explicit, structured error so the frontend can show "—" instead of 0.
+        return reply.status(503).send({
+          success: false,
+          error: 'OPENAI_API_KEY не задан на сервере',
+          error_code: 'NO_LLM_KEY',
+          avg_score: null,
+          systems: [],
+        });
       }
-      const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
+
+      // Stable seed per domain so OpenAI reuses the same sampling path on re-runs.
+      // Note: OpenAI 'seed' parameter is best-effort, but combined with temperature 0
+      // it gives near-deterministic output for the same prompt.
+      const seed = (() => {
+        let h = 0;
+        for (let i = 0; i < domain.length; i++) {
+          h = (h * 31 + domain.charCodeAt(i)) | 0;
+        }
+        return Math.abs(h);
+      })();
       const topicHint = theme ? ` в теме "${theme}"` : '';
       const aiSystems = [
         {
@@ -579,7 +629,10 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
                   { role: 'system', content: 'Ты эксперт по GEO (Generative Engine Optimization). Всегда отвечай ТОЛЬКО валидным JSON без markdown.' },
                   { role: 'user', content: system.prompt },
                 ],
-                temperature: 0.3,
+                // Determinism: temperature 0 + per-domain seed.
+                temperature: 0,
+                seed,
+                response_format: { type: 'json_object' },
                 max_tokens: 500,
               }),
             });
@@ -594,45 +647,65 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
           const data = await resp.json();
           const content = data?.choices?.[0]?.message?.content || '{}';
           const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
+          const rawScore = Number(parsed.score);
+          const score = Number.isFinite(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : null;
           return {
             id: system.id,
             name: system.name,
             icon: system.icon,
             color: system.color,
-            score: Number(parsed.score) || 0,
+            score,
             verdict: `${parsed.verdict || 'Нет данных'} (эмуляция на основе анализа сайта)`,
             reason: parsed.reason || '',
             suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
             simulated: true,
           };
         } catch (e) {
-          logger.warn('LLM_JUDGE', `${system.name} failed: ${(e as Error).message}`);
+          const msg = (e as Error).message;
+          logger.warn('LLM_JUDGE', `${system.name} failed: ${msg}`);
           return {
             id: system.id,
             name: system.name,
             icon: system.icon,
             color: system.color,
-            score: 0,
-            verdict: 'Ошибка анализа (эмуляция на основе анализа сайта)',
-            reason: 'Не удалось получить оценку',
+            // Important: null, NOT 0. The frontend renders "—" for null,
+            // and the average is computed only over non-null scores so a
+            // single transient failure no longer drags the average down.
+            score: null,
+            verdict: 'Не удалось получить оценку',
+            reason: '',
             suggestions: [],
             simulated: true,
+            error: msg.slice(0, 120),
           };
         }
       }
       const results = await Promise.all(aiSystems.map(queryAiSystem));
-      const avgScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
+      const validScores = results.map(r => r.score).filter((s): s is number => typeof s === 'number');
+      const avgScore = validScores.length > 0
+        ? Math.round(validScores.reduce((s, n) => s + n, 0) / validScores.length)
+        : null;
       const payload = {
         success: true,
         url,
         domain,
         avg_score: avgScore,
+        systems_total: results.length,
+        systems_ok: validScores.length,
+        systems_failed: results.length - validScores.length,
         systems: results,
         disclaimer: 'Оценки рассчитаны эвристически на основе анализа сайта. Реальные запросы к AI-системам не выполняются.',
         _pending: false,
       };
 
-      // Persist to DB inside result.llm_judge for next page load
+      // Cache layer 1: Redis by (domain, theme)
+      try {
+        await redis.setex(cacheKey, CACHE_TTL_SEC, JSON.stringify(payload));
+      } catch (e) {
+        logger.warn('LLM_JUDGE', `Redis cache write failed: ${(e as Error).message}`);
+      }
+
+      // Cache layer 2: DB by scan_id (legacy)
       if (scan_id) {
         try {
           await sql`
@@ -641,9 +714,9 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
                 updated_at = NOW()
             WHERE id = ${scan_id}
           `;
-          logger.info('LLM_JUDGE', `Cached result for scan ${scan_id}`);
+          logger.info('LLM_JUDGE', `Cached result for scan ${scan_id} (avg=${avgScore}, ok=${validScores.length}/${results.length})`);
         } catch (e) {
-          logger.warn('LLM_JUDGE', `Cache write failed: ${(e as Error).message}`);
+          logger.warn('LLM_JUDGE', `DB cache write failed: ${(e as Error).message}`);
         }
       }
 

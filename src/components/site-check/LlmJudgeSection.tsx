@@ -7,18 +7,28 @@ export interface AiSystem {
   name: string;
   icon: string;
   color: string;
-  score: number;
+  // Backend may return null when a model failed (timeout / parse error / quota).
+  // We render "—" in that case instead of a misleading 0.
+  score: number | null;
   verdict: string;
   reason: string;
   suggestions: string[];
+  error?: string;
 }
 
 export interface LlmJudgeData {
-  avg_score: number;
+  // null when ALL models failed or OPENAI_API_KEY is missing.
+  // Frontend must show "—" — never substitute a stale or 0 value.
+  avg_score: number | null;
   systems: AiSystem[];
   url?: string;
   domain?: string;
+  systems_total?: number;
+  systems_ok?: number;
+  systems_failed?: number;
+  error_code?: string;
   _pending?: boolean;
+  _cached?: boolean;
 }
 
 interface LlmJudgeSectionProps {
@@ -28,15 +38,19 @@ interface LlmJudgeSectionProps {
   onRetry?: () => void;
 }
 
-const scoreTextClass = (score: number) =>
-  score >= 70 ? 'text-success' : score >= 40 ? 'text-warning' : 'text-destructive';
+const scoreTextClass = (score: number | null) => {
+  if (score === null || score === undefined) return 'text-muted-foreground';
+  return score >= 70 ? 'text-success' : score >= 40 ? 'text-warning' : 'text-destructive';
+};
 
-const scoreBorderClass = (score: number) =>
-  score >= 70
+const scoreBorderClass = (score: number | null) => {
+  if (score === null || score === undefined) return 'border-muted/30 bg-muted/5';
+  return score >= 70
     ? 'border-success/30 bg-success/5'
     : score >= 40
     ? 'border-warning/30 bg-warning/5'
     : 'border-destructive/30 bg-destructive/5';
+};
 
 const AnimatedCounter: React.FC<{ value: number }> = ({ value }) => {
   const [display, setDisplay] = useState(0);
@@ -71,7 +85,7 @@ const SystemCard: React.FC<{ sys: AiSystem }> = ({ sys }) => {
           <span className="text-sm font-semibold text-foreground truncate">{sys.name}</span>
         </div>
         <span className={`text-2xl font-bold font-mono ${scoreTextClass(sys.score)}`}>
-          {sys.score}
+          {sys.score === null || sys.score === undefined ? '—' : sys.score}
           <span className="text-xs text-muted-foreground font-normal">/100</span>
         </span>
       </div>
@@ -146,13 +160,25 @@ const LlmJudgeSection: React.FC<LlmJudgeSectionProps> = ({ data, loading, error,
     );
   }
 
-  const avgClass = scoreTextClass(data.avg_score);
-  const recommendation =
-    data.avg_score >= 70
-      ? 'Отличная AI-видимость. Поддерживайте актуальность контента и мониторьте конкурентов.'
-      : data.avg_score >= 40
-      ? 'Частичная видимость. Усильте E-E-A-T, добавьте FAQ-контент, публикуйтесь на vc.ru, habr.com.'
-      : 'Сайт почти невидим для нейросетей. Приоритет: llms.txt, Schema.org, экспертный контент, PR.';
+  const avg = data.avg_score;
+  const avgIsNull = avg === null || avg === undefined;
+  const avgClass = scoreTextClass(avg);
+  const recommendation = avgIsNull
+    ? 'Не удалось получить оценку AI-видимости. Проверьте соединение и повторите проверку.'
+    : avg >= 70
+    ? 'Отличная AI-видимость. Поддерживайте актуальность контента и мониторьте конкурентов.'
+    : avg >= 40
+    ? 'Частичная видимость. Усильте E-E-A-T, добавьте FAQ-контент, публикуйтесь на vc.ru, habr.com.'
+    : 'Сайт почти невидим для нейросетей. Приоритет: llms.txt, Schema.org, экспертный контент, PR.';
+
+  // Border tone for the big circle and the bottom card.
+  const tone = avgIsNull
+    ? { border: 'border-muted/40', bg: 'bg-muted/5' }
+    : avg >= 70
+    ? { border: 'border-success/40', bg: 'bg-success/5' }
+    : avg >= 40
+    ? { border: 'border-warning/40', bg: 'bg-warning/5' }
+    : { border: 'border-destructive/40', bg: 'bg-destructive/5' };
 
   return (
     <section className="space-y-6">
@@ -163,19 +189,18 @@ const LlmJudgeSection: React.FC<LlmJudgeSectionProps> = ({ data, loading, error,
         </div>
 
         <div
-          className={`relative w-32 h-32 rounded-full border-4 flex items-center justify-center ${
-            data.avg_score >= 70
-              ? 'border-success/40 bg-success/5'
-              : data.avg_score >= 40
-              ? 'border-warning/40 bg-warning/5'
-              : 'border-destructive/40 bg-destructive/5'
-          }`}
+          className={`relative w-32 h-32 rounded-full border-4 flex items-center justify-center ${tone.border} ${tone.bg}`}
         >
           <div className={`text-4xl font-bold font-mono ${avgClass}`}>
-            <AnimatedCounter value={data.avg_score} />
+            {avgIsNull ? '—' : <AnimatedCounter value={avg} />}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">Средний GEO Score</p>
+        <p className="text-xs text-muted-foreground">
+          Средний балл AI-видимости
+          {typeof data.systems_ok === 'number' && typeof data.systems_total === 'number' && data.systems_total > 0 && (
+            <span className="ml-2 opacity-70">· {data.systems_ok}/{data.systems_total} моделей</span>
+          )}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -186,9 +211,11 @@ const LlmJudgeSection: React.FC<LlmJudgeSectionProps> = ({ data, loading, error,
 
       <div
         className={`flex items-start gap-3 p-4 rounded-xl border ${
-          data.avg_score >= 70
+          avgIsNull
+            ? 'border-muted/30 bg-muted/5'
+            : avg >= 70
             ? 'border-success/20 bg-success/5'
-            : data.avg_score >= 40
+            : avg >= 40
             ? 'border-warning/20 bg-warning/5'
             : 'border-destructive/20 bg-destructive/5'
         }`}
