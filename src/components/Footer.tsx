@@ -28,10 +28,6 @@ const Footer = () => {
     { label: "Проверка сайта", href: "/tools/site-check", isRoute: true },
     { label: "Site Formula", href: "/site-formula", isRoute: true },
     { label: "Аудит WB / Ozon", href: "/marketplace-audit", isRoute: true },
-    { label: "Анализ конкурентов", href: "/tools/competitor-analysis", isRoute: true },
-    { label: "AI Генератор текстов", href: "/tools/ai-text-generator", isRoute: true },
-    { label: "LLM Prompt Helper", href: "/tools/llm-prompt-helper", isRoute: true },
-    { label: "AI Brand Tracker", href: "/tools/brand-tracker", isRoute: true },
   ];
 
   const company = [
