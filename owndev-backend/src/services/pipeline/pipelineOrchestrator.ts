@@ -144,14 +144,50 @@ export class PipelineOrchestrator {
       stages.push(tIntake);
 
       // ── Stage 1: DEMAND ────────────────────────────────────────────────
+      // Авто-seed: если клиент не передал seed_keywords, но есть отрасль и города —
+      // собираем базовый набор запросов сами, чтобы DEMAND/Wordstat не пропускался.
+      // Без этого PRO-отчёт получался пустым ("всё за секунду" в UI).
+      let effectiveSeeds: string[] = Array.isArray(input.seed_keywords)
+        ? input.seed_keywords.filter((s) => typeof s === 'string' && s.trim().length > 0)
+        : [];
+      const autoSeedUsed = effectiveSeeds.length === 0 && !!input.brand?.industry;
+      if (autoSeedUsed) {
+        const industry = input.brand.industry.trim().toLowerCase();
+        const cityList: string[] = [];
+        if (input.brand.primary_city) cityList.push(input.brand.primary_city);
+        // вытаскиваем доп.города из competitive_position (туда фронт их кладёт)
+        const cpos = input.brand.competitive_position ?? '';
+        const m = cpos.match(/Города работы:\s*([^.]+)/i);
+        if (m) {
+          for (const c of m[1].split(',').map((x) => x.trim()).filter(Boolean)) {
+            if (!cityList.includes(c)) cityList.push(c);
+          }
+        }
+        const cities = cityList.length > 0 ? cityList : ['Москва'];
+        const seeds = new Set<string>();
+        seeds.add(industry);
+        for (const c of cities) {
+          const cl = c.toLowerCase();
+          seeds.add(`${industry} ${cl}`);
+          seeds.add(`${industry} ${cl} цена`);
+          seeds.add(`${industry} ${cl} заказать`);
+          seeds.add(`${industry} ${cl} стоимость`);
+        }
+        effectiveSeeds = Array.from(seeds).slice(0, 12);
+        logger.info(
+          'PIPELINE',
+          `[${input.job_id}] DEMAND auto-seed: ${effectiveSeeds.length} seeds (industry="${industry}", cities=${cities.length})`,
+        );
+      }
+
       let demand: DemandIntelligenceResult | undefined;
       const tDemand = await this.timeStage('demand', async () => {
-        if (input.skip_demand || !input.seed_keywords || input.seed_keywords.length === 0) {
+        if (input.skip_demand || effectiveSeeds.length === 0) {
           logger.info('PIPELINE', `[${input.job_id}] DEMAND skipped (no seeds or skip_demand=true)`);
           return;
         }
         try {
-          demand = await runDemandIntelligence(input.job_id, input.seed_keywords, {
+          demand = await runDemandIntelligence(input.job_id, effectiveSeeds, {
             brand_tokens: [input.brand.name],
             with_geo_distribution: true,
             with_dynamics: false,
@@ -160,7 +196,7 @@ export class PipelineOrchestrator {
           logger.warn('PIPELINE', `[${input.job_id}] DEMAND degraded: ${err.message}`);
           demand = {
             session_id: input.job_id,
-            seed_keywords: input.seed_keywords,
+            seed_keywords: effectiveSeeds,
             clusters: [],
             geo_distribution: [],
             recommended_geos: input.recommended_geos ?? ['225'],

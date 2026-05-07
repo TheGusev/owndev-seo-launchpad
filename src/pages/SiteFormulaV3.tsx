@@ -72,7 +72,10 @@ import {
   POPULAR_CITIES,
   TIER_TAB_LABELS,
   TIER_TAB_DESCRIPTIONS,
+  getServicePresetsFor,
 } from '@/data/site-formula-presets';
+import { generateSiteFormulaProWord, type ProReportContext } from '@/lib/generateSiteFormulaProWord';
+import { generateSiteFormulaProPdf } from '@/lib/generateSiteFormulaProPdf';
 
 type Stage =
   | 'pick_type'
@@ -194,6 +197,8 @@ export default function SiteFormulaV3() {
   const [cityOpen, setCityOpen] = useState(false);
   const [cityCustom, setCityCustom] = useState('');
   // Список услуг/направлений — свободный текст через запятую/перенос строк.
+  // Кнопочные пресеты услуг (по вертикали) + опц. свободный ввод.
+  const [serviceChips, setServiceChips] = useState<string[]>([]);
   const [servicesText, setServicesText] = useState('');
   const [packMode, setPackMode] = useState<ExportMode>('structured');
   const [platform, setPlatform] = useState<PlatformTarget>('lovable');
@@ -201,6 +206,7 @@ export default function SiteFormulaV3() {
   const [result, setResult] = useState<PipelineResultV3 | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<'docx' | 'pdf' | 'zip' | null>(null);
 
   useEffect(() => {
     formulaV3Api
@@ -226,6 +232,11 @@ export default function SiteFormulaV3() {
   }, [types]);
 
   function handlePickType(code: ProjectTypeCodeV3) {
+    // Сбрасываем выбранные услуги при смене типа проекта —
+    // пресеты у каждой вертикали разные.
+    if (code !== selectedType) {
+      setServiceChips([]);
+    }
     setSelectedType(code);
     setStage('fill_intake');
   }
@@ -264,11 +275,12 @@ export default function SiteFormulaV3() {
         .filter(Boolean);
       const allCities = Array.from(new Set([...cities, ...customCities]));
       const primaryCity = allCities[0]; // первый выбранный — основной
-      // Список услуг — разбиваем по запятым/строкам.
-      const services = servicesText
+      // Список услуг — выбранные кнопки-пресеты + свободный текст (через запятые/строки).
+      const customServices = servicesText
         .split(/[,;\n]/)
         .map((s) => s.trim())
         .filter(Boolean);
+      const services = Array.from(new Set([...serviceChips, ...customServices]));
       const r = await formulaV3Api.runPipeline({
         root_url: noDomain ? undefined : normalizeUrl(siteUrl),
         project_code: selectedType,
@@ -320,10 +332,99 @@ export default function SiteFormulaV3() {
     }
   }
 
-  function handleDownload() {
+  /**
+   * Скачивание Blob'а без window.open — иначе на iOS Safari/мобильных браузерах
+   * открывается белая вкладка и экран виснет (поэтому юзер жаловался на «фриз»).
+   */
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  function buildProContext(): ProReportContext | null {
+    if (!result || !selectedType) return null;
+    const customCities = cityCustom.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+    const allCities = Array.from(new Set([...cities, ...customCities]));
+    const customServices = servicesText.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+    const services = Array.from(new Set([...serviceChips, ...customServices]));
+    return {
+      result,
+      brand: {
+        name: brandName || 'Бренд',
+        industry: industry || 'услуги',
+        primary_city: allCities[0],
+        cities: allCities,
+        services,
+        project_code: selectedType,
+        project_label: types.find((tt) => tt.code === selectedType)?.name_ru,
+      },
+    };
+  }
+
+  function safeFilename(): string {
+    const slug = (brandName || 'site-formula-pro')
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яё]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'site-formula-pro';
+    return `${slug}-pro`;
+  }
+
+  async function handleDownloadDocx() {
+    const ctx = buildProContext();
+    if (!ctx) return;
+    setDownloading('docx');
+    try {
+      const blob = await generateSiteFormulaProWord(ctx);
+      downloadBlob(blob, `${safeFilename()}.docx`);
+      toast.success('Word-отчёт скачан');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`Не удалось сформировать Word: ${e.message ?? e}`);
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    const ctx = buildProContext();
+    if (!ctx) return;
+    setDownloading('pdf');
+    try {
+      const blob = await generateSiteFormulaProPdf(ctx);
+      downloadBlob(blob, `${safeFilename()}.pdf`);
+      toast.success('PDF-отчёт скачан');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`Не удалось сформировать PDF: ${e.message ?? e}`);
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function handleDownloadZip() {
     if (!result?.job_id) return;
-    const url = formulaV3Api.getPackZipUrl(result.job_id);
-    window.open(url, '_blank');
+    setDownloading('zip');
+    try {
+      const url = formulaV3Api.getPackZipUrl(result.job_id);
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      downloadBlob(blob, `${safeFilename()}-pack.zip`);
+      toast.success('ZIP-пакет скачан');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`Не удалось скачать ZIP: ${e.message ?? e}`);
+    } finally {
+      setDownloading(null);
+    }
   }
 
   // ─── render ────────────────────────────────────────────────
@@ -341,7 +442,7 @@ export default function SiteFormulaV3() {
         />
       </Helmet>
       <Header />
-      <main className="min-h-screen bg-background pt-20">
+      <main className="min-h-screen bg-background pt-20 overflow-x-hidden">
         <div className="container mx-auto py-8 px-4 max-w-5xl">
           {/* Hero в стиле обычной формулы */}
           <div className="mb-8 space-y-4">
@@ -655,21 +756,50 @@ export default function SiteFormulaV3() {
               </div>
             </div>
 
-            {/* Блок 2.5: Услуги / направления — свободный текст через запятую */}
+            {/* Блок 2.5: Услуги / направления — кнопки-пресеты по выбранной вертикали + свободный ввод */}
             <div>
-              <Label htmlFor="services">
-                Что вы делаете? <span className="text-muted-foreground font-normal">(услуги / направления через запятую)</span>
+              <Label>
+                Что вы делаете? <span className="text-muted-foreground font-normal">(услуги / направления — кликайте по подходящим)</span>
               </Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {getServicePresetsFor(selectedType).map((s) => {
+                  const active = serviceChips.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() =>
+                        setServiceChips((prev) =>
+                          prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+                        )
+                      }
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ${
+                        active
+                          ? 'border-primary bg-primary/10 text-primary font-medium'
+                          : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                      }`}
+                    >
+                      {active ? <Check className="h-3 w-3" /> : <ListChecks className="h-3 w-3" />}
+                      {s}
+                      {active && <X className="h-3 w-3 opacity-60" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {serviceChips.length > 0 && (
+                <p className="text-xs text-primary mt-2">
+                  Выбрано услуг: {serviceChips.length}
+                </p>
+              )}
               <Input
-                id="services"
-                placeholder="Напр. для санитарных услуг: трупы, потопы, пожары, фумигация, плесень…"
+                id="services-custom"
+                placeholder="Или впишите свои через запятую: фумигация, плесень…"
                 value={servicesText}
                 onChange={(e) => setServicesText(e.target.value)}
-                className="mt-1"
+                className="mt-2"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Опционально. Если укажете — из этих слов мы соберём ключевые запросы&nbsp;×&nbsp;города.
-                Иначе — бэк подберёт их сам по отрасли.
+                На основе этих слов мы соберём ключевые запросы&nbsp;×&nbsp;города для Wordstat. Если ничего не выберете — подберём сами по отрасли и городам.
               </p>
             </div>
 
@@ -818,23 +948,66 @@ export default function SiteFormulaV3() {
                 {(Object.keys(STAGE_LABELS) as StageKey[]).map((key) => {
                   const stageInfo = result?.stages.find((s) => s.stage === key);
                   const Icon = STAGE_LABELS[key].icon;
-                  const done = stageInfo?.ok === true;
+                  // Эвристика «пропущено»: бэк возвращает ok=true с duration_ms~0,
+                  // но реальных данных нет — это отличаем по отсутствию контента.
+                  const r = result as any;
+                  let skipped = false;
+                  if (stageInfo?.ok === true) {
+                    if (key === 'demand' && (!r?.demand || (r?.demand?.clusters?.length ?? 0) === 0)) skipped = true;
+                    if (key === 'crawl' && (!r?.crawl_pages || r?.crawl_pages.length === 0)) skipped = true;
+                    if (key === 'audit' && (!r?.preflight_per_page || r?.preflight_per_page.length === 0)) skipped = true;
+                    if (key === 'preflight' && (!r?.preflight_rollup)) skipped = true;
+                  }
+                  const done = stageInfo?.ok === true && !skipped;
                   const failed = stageInfo?.ok === false;
                   const inProgress = stage === 'running' && !stageInfo;
+                  const statusLabel = failed
+                    ? 'Ошибка'
+                    : skipped
+                      ? 'Пропущено'
+                      : done
+                        ? 'Готово'
+                        : inProgress
+                          ? 'Идёт…'
+                          : 'Ожидание';
+                  const hint = skipped && key === 'demand'
+                    ? 'Выберите услуги и город для реального Wordstat'
+                    : skipped && (key === 'crawl' || key === 'audit')
+                      ? 'Без URL сайта'
+                      : skipped && key === 'preflight'
+                        ? 'Нет страниц для проверки'
+                        : null;
                   return (
                     <div
                       key={key}
                       className={`border rounded-lg p-3 text-center ${
-                        done ? 'border-green-500 bg-green-50' : failed ? 'border-red-500 bg-red-50' : 'border-muted'
+                        done
+                          ? 'border-green-500 bg-green-50'
+                          : failed
+                            ? 'border-red-500 bg-red-50'
+                            : skipped
+                              ? 'border-amber-300 bg-amber-50/40'
+                              : 'border-muted'
                       }`}
                     >
                       <Icon className={`h-5 w-5 mx-auto mb-1 ${
-                        done ? 'text-green-600' : failed ? 'text-red-600' : 'text-muted-foreground'
+                        done
+                          ? 'text-green-600'
+                          : failed
+                            ? 'text-red-600'
+                            : skipped
+                              ? 'text-amber-600'
+                              : 'text-muted-foreground'
                       }`} />
                       <div className="text-xs font-medium">{STAGE_LABELS[key].ru}</div>
-                      {stageInfo && (
-                        <div className="text-[10px] text-muted-foreground mt-1">
-                          {stageInfo.duration_ms}ms
+                      <div className={`text-[10px] mt-1 font-medium ${
+                        done ? 'text-green-700' : failed ? 'text-red-700' : skipped ? 'text-amber-700' : 'text-muted-foreground'
+                      }`}>
+                        {statusLabel}
+                      </div>
+                      {hint && (
+                        <div className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                          {hint}
                         </div>
                       )}
                       {inProgress && (
@@ -882,27 +1055,57 @@ export default function SiteFormulaV3() {
             </Card>
           )}
 
-          {stage === 'done' && result?.pack && (
+          {stage === 'done' && result && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
-                  Developer Pack готов
+                  Отчёт и Developer Pack готовы
                 </CardTitle>
                 <CardDescription>
-                  Версия {result.pack.version} · режим {result.pack.export_mode ?? packMode}
-                  {result.pack_zip_size && ` · ZIP ${(result.pack_zip_size / 1024).toFixed(1)} KB`}
+                  {result.pack && <>Версия {result.pack.version} · режим {result.pack.export_mode ?? packMode}</>}
+                  {result.pack_zip_size != null && ` · ZIP ${(result.pack_zip_size / 1024).toFixed(1)} KB`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2">
-                  <Button onClick={handleDownload}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Скачать ZIP
-                  </Button>
-                  <Button variant="outline" onClick={() => { setStage('pick_type'); setResult(null); }}>
-                    Новый проект
-                  </Button>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Основной формат для чтения — Word или PDF. ZIP-архив с машиночитаемыми файлами — справа, если отдаёте в AI-конструктор или разработчику.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={handleDownloadDocx}
+                      disabled={downloading !== null}
+                      className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90"
+                    >
+                      {downloading === 'docx' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                      Скачать Word
+                    </Button>
+                    <Button
+                      onClick={handleDownloadPdf}
+                      disabled={downloading !== null}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      {downloading === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                      Скачать PDF
+                    </Button>
+                    {result.pack && (
+                      <Button
+                        onClick={handleDownloadZip}
+                        disabled={downloading !== null}
+                        variant="ghost"
+                        className="gap-2"
+                        title="Машиночитаемый пакет для AI-конструкторов / разработчиков"
+                      >
+                        {downloading === 'zip' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        ZIP для AI/разработчика
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={() => { setStage('pick_type'); setResult(null); }}>
+                      Новый проект
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
