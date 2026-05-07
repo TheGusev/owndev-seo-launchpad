@@ -88,6 +88,12 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
     const resultJsonb = {
       theme: result.theme,
       is_spa: result.is_spa,
+      // SPA Detection v2 — кладём диагностику в result JSONB,
+      // /result/:scanId читает их отсюда (отдельных колонок в БД нет).
+      spa_score: (result as any).spa_score ?? null,
+      spa_signals: (result as any).spa_signals ?? null,
+      rendered_source: (result as any).rendered_source ?? null,
+      spa_render_failed: (result as any).spa_render_failed ?? null,
       scores: result.scores,
       issues: result.issues,
       seo_data: result.seo_data,
