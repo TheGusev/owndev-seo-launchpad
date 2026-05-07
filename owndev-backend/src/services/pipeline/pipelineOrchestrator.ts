@@ -16,6 +16,7 @@
  * V2 workers which now load V3 services where appropriate.
  */
 
+import { randomUUID } from 'node:crypto';
 import { logger } from '../../utils/logger.js';
 import { runDemandIntelligence } from '../demand/index.js';
 import { crawlSite } from '../CrawlEngine/index.js';
@@ -180,6 +181,17 @@ export class PipelineOrchestrator {
         );
       }
 
+      // session_id для demand-репо должен быть валидным UUID (Postgres uuid колонка),
+      // а input.job_id может быть произвольной строкой. Минтим UUID если нужно.
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const demandSessionId = UUID_RE.test(input.job_id) ? input.job_id : randomUUID();
+      if (demandSessionId !== input.job_id) {
+        logger.info(
+          'PIPELINE',
+          `[${input.job_id}] DEMAND minted UUID session_id=${demandSessionId} (job_id is not a UUID)`,
+        );
+      }
+
       let demand: DemandIntelligenceResult | undefined;
       const tDemand = await this.timeStage('demand', async () => {
         if (input.skip_demand || effectiveSeeds.length === 0) {
@@ -187,7 +199,7 @@ export class PipelineOrchestrator {
           return;
         }
         try {
-          demand = await runDemandIntelligence(input.job_id, effectiveSeeds, {
+          demand = await runDemandIntelligence(demandSessionId, effectiveSeeds, {
             brand_tokens: [input.brand.name],
             with_geo_distribution: true,
             with_dynamics: false,
@@ -195,7 +207,7 @@ export class PipelineOrchestrator {
         } catch (err: any) {
           logger.warn('PIPELINE', `[${input.job_id}] DEMAND degraded: ${err.message}`);
           demand = {
-            session_id: input.job_id,
+            session_id: demandSessionId,
             seed_keywords: effectiveSeeds,
             clusters: [],
             geo_distribution: [],

@@ -4,15 +4,20 @@
  * The CORRECT endpoints (as per cloud.yandex.com/services/searchapi):
  *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/topRequests              (1u)
  *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/getDynamics              (2u)
- *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/getRegionsDistribution   (2u)
- *   GET   https://searchapi.api.cloud.yandex.net/v2/wordstat/getRegionsTree           (free)
+ *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/regions                  (2u)
+ *   POST  https://searchapi.api.cloud.yandex.net/v2/wordstat/getRegionsTree           (free)
  *
- * Auth: IAM token (short-lived) + folder-id header.
+ * Auth: AI Studio API-key (header `Authorization: Api-Key …`).
+ *       folderId is part of the request *body*, not a header.
  * Rate: 100 000 sync units / day per cloud (tracked by quotaTracker).
  *
  * Modes:
  *   YANDEX_WORDSTAT_MODE=mock       — synthetic data (no creds, deterministic)
  *   YANDEX_WORDSTAT_MODE=search_api — real Search API v2
+ *
+ * Env:
+ *   YANDEX_API_KEY    — AI Studio API key (preferred). Legacy alias: YANDEX_IAM_TOKEN.
+ *   YANDEX_FOLDER_ID  — folder owning the service account that minted the key.
  */
 import { logger } from '../../utils/logger.js';
 import { reserveUnits, refundUnits } from './quotaTracker.js';
@@ -27,24 +32,36 @@ import type {
 } from './types.js';
 
 const MODE = (process.env.YANDEX_WORDSTAT_MODE ?? 'mock') as 'mock' | 'search_api';
-const IAM_TOKEN = process.env.YANDEX_IAM_TOKEN;
+const API_KEY = process.env.YANDEX_API_KEY ?? process.env.YANDEX_IAM_TOKEN;
 const FOLDER_ID = process.env.YANDEX_FOLDER_ID;
 const API_BASE = 'https://searchapi.api.cloud.yandex.net/v2/wordstat';
 
+// `devices: ['all']` is our internal shorthand. Yandex expects DEVICE_* enums.
+function normalizeDevices(devices?: string[]): string[] {
+  if (!devices || devices.length === 0) return ['DEVICE_ALL'];
+  return devices.map((d) => {
+    const v = d.toUpperCase();
+    if (v === 'ALL') return 'DEVICE_ALL';
+    if (v === 'DESKTOP') return 'DEVICE_DESKTOP';
+    if (v === 'MOBILE' || v === 'PHONE') return 'DEVICE_PHONE';
+    if (v === 'TABLET') return 'DEVICE_TABLET';
+    return v.startsWith('DEVICE_') ? v : `DEVICE_${v}`;
+  });
+}
+
 // ─── HTTP plumbing ───────────────────────────────────────────
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
-  if (!IAM_TOKEN || !FOLDER_ID) {
-    throw new Error('YANDEX_IAM_TOKEN / YANDEX_FOLDER_ID not configured');
+async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  if (!API_KEY || !FOLDER_ID) {
+    throw new Error('YANDEX_API_KEY / YANDEX_FOLDER_ID not configured');
   }
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${IAM_TOKEN}`,
-      'X-Folder-Id': FOLDER_ID,
+      Authorization: `Api-Key ${API_KEY}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, folderId: FOLDER_ID }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -54,21 +71,11 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function getJson<T>(path: string): Promise<T> {
-  if (!IAM_TOKEN || !FOLDER_ID) {
-    throw new Error('YANDEX_IAM_TOKEN / YANDEX_FOLDER_ID not configured');
+  if (!API_KEY || !FOLDER_ID) {
+    throw new Error('YANDEX_API_KEY / YANDEX_FOLDER_ID not configured');
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${IAM_TOKEN}`,
-      'X-Folder-Id': FOLDER_ID,
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Wordstat ${path} HTTP ${res.status}: ${text.slice(0, 300)}`);
-  }
-  return (await res.json()) as T;
+  // The real API exposes getRegionsTree only as POST with folderId in body.
+  return postJson<T>(path, {});
 }
 
 // ─── Public surface ──────────────────────────────────────────
@@ -78,11 +85,27 @@ export async function topRequests(req: TopRequestsRequest): Promise<TopRequestsR
 
   const reservation = await reserveUnits('topRequests');
   try {
-    return await postJson<TopRequestsResponse>('/topRequests', {
+    type RawTop = {
+      results?: Array<{ phrase: string; count: number | string }>;
+      topRequests?: Array<{ phrase: string; count: number | string }>;
+      associations?: Array<{ phrase: string; count: number | string }>;
+      totalCount?: number | string;
+    };
+    const raw = await postJson<RawTop>('/topRequests', {
       phrase: req.phrase,
-      geoIds: req.geoIds ?? ['225'],
-      devices: req.devices ?? ['all'],
+      regions: req.geoIds ?? ['225'],
+      devices: normalizeDevices(req.devices),
+      numPhrases: 25,
     });
+    const toItem = (x: { phrase: string; count: number | string }) => ({
+      phrase: x.phrase,
+      count: typeof x.count === 'string' ? Number(x.count) : x.count,
+    });
+    return {
+      topRequests: (raw.results ?? raw.topRequests ?? []).map(toItem),
+      associations: (raw.associations ?? []).map(toItem),
+      totalCount: typeof raw.totalCount === 'string' ? Number(raw.totalCount) : (raw.totalCount ?? 0),
+    };
   } catch (err: any) {
     await refundUnits('topRequests', reservation.unitsReserved);
     logger.warn('WORDSTAT', `topRequests failed: ${err.message}`);
@@ -97,9 +120,9 @@ export async function getDynamics(req: GetDynamicsRequest): Promise<GetDynamicsR
   try {
     return await postJson<GetDynamicsResponse>('/getDynamics', {
       phrase: req.phrase,
-      geoIds: req.geoIds ?? ['225'],
-      devices: req.devices ?? ['all'],
-      granularity: req.granularity ?? 'MONTH',
+      regions: req.geoIds ?? ['225'],
+      devices: normalizeDevices(req.devices),
+      period: `PERIOD_${(req.granularity ?? 'MONTH').toUpperCase().replace(/LY$/, '')}LY`,
     });
   } catch (err: any) {
     await refundUnits('getDynamics', reservation.unitsReserved);
@@ -115,10 +138,22 @@ export async function getRegionsDistribution(
 
   const reservation = await reserveUnits('getRegionsDistribution');
   try {
-    return await postJson<GetRegionsDistributionResponse>('/getRegionsDistribution', {
+    type RawRegions = {
+      regions?: Array<{ region?: string | number; count?: number | string; share?: number; affinityIndex?: number }>;
+    };
+    const raw = await postJson<RawRegions>('/regions', {
       phrase: req.phrase,
-      devices: req.devices ?? ['all'],
+      devices: normalizeDevices(req.devices),
+      region: 'REGION_REGIONS',
     });
+    return {
+      regions: (raw.regions ?? []).map((r) => ({
+        geoId: String(r.region ?? ''),
+        geoName: '',
+        count: typeof r.count === 'string' ? Number(r.count) : (r.count ?? 0),
+        affinityIndex: r.affinityIndex ?? (r.share ? Math.round(r.share * 100) : 0),
+      })),
+    };
   } catch (err: any) {
     await refundUnits('getRegionsDistribution', reservation.unitsReserved);
     logger.warn('WORDSTAT', `getRegionsDistribution failed: ${err.message}`);
