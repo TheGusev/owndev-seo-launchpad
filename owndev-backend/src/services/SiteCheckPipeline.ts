@@ -131,16 +131,24 @@ export function detectSpaSignals(html: string): {
 
   // Спецсигнал: пустой main/article/section. Если в HTML есть <main…></main> без
   // вложенного текста — скорее всего контент приходит JS-ом.
+  let mainInnerWords = 0;
   const mainEmpty = (() => {
     const m = bodyRaw.match(/<(main|article)[^>]*>([\s\S]*?)<\/\1>/i);
     if (!m) return false;
     const innerText = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     const innerWords = innerText.split(/\s+/).filter((w: string) => /[\p{L}\p{N}]/u.test(w)).length;
+    mainInnerWords = innerWords;
     return innerWords < 30;
   })();
 
   if (hasServerRendered) {
     return { isSpa: false, reason: 'SSR framework detected', spaScore: 0, signals: { wordCount, hasAppRoot, hasFrameworkBundle, hasServerRendered, bodyTextRatio, mainEmpty, viteMarker } };
+  }
+
+  // Pre-rendered SPA: если в <main> уже есть >=500 слов осмысленного текста — считаем,
+  // что серверный рендер выполнен (статический prerender или SSG).
+  if (mainInnerWords >= 500) {
+    return { isSpa: false, reason: `prerendered (main has ${mainInnerWords} words)`, spaScore: 0, signals: { wordCount, hasAppRoot, hasFrameworkBundle, hasServerRendered, bodyTextRatio, mainEmpty, viteMarker } };
   }
 
   // Система очков.
