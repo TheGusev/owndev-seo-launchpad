@@ -28,6 +28,7 @@ import { technicalPassportService } from '../technicalPassport/index.js';
 import { buildGraph } from '../schemaRegistry/index.js';
 import { developerPackService, savePackArtifact } from '../developerPack/index.js';
 import { pickProfileForIndustry } from '../demand/profiles/index.js';
+import { buildProReport } from './proReportBuilder.js';
 import type {
   PipelineInput,
   PipelineResultV3,
@@ -534,6 +535,15 @@ export class PipelineOrchestrator {
       const allOk = stages.every((s) => s.ok);
       result.status = allOk ? 'done' : 'failed';
       result.generated_at = new Date().toISOString();
+
+      // PR-6 PRO-отчёт: собираем блок project_class + KPI + ROI для UI.
+      // Без engine_state и вертикального профиля вернёт undefined — фронт спокойно это переживёт.
+      try {
+        const proReport = buildProReport(input, result);
+        if (proReport) result.pro_report = proReport;
+      } catch (e) {
+        logger.warn('PIPELINE', `[${input.job_id}] PRO-report build failed: ${(e as Error).message}`);
+      }
 
       logger.info(
         'PIPELINE',

@@ -77,6 +77,7 @@ import {
 import { getIntakeShapeFor } from '@/data/site-formula-intake-shape';
 import { generateSiteFormulaProWord, type ProReportContext } from '@/lib/generateSiteFormulaProWord';
 import { generateSiteFormulaProPdf } from '@/lib/generateSiteFormulaProPdf';
+import { ProReportPanel } from '@/components/site-formula-v3/ProReportPanel';
 
 type Stage =
   | 'pick_type'
@@ -1107,6 +1108,8 @@ export default function SiteFormulaV3() {
               </CardContent>
             </Card>
           )}
+
+          {result?.pro_report && <ProReportPanel report={result.pro_report} />}
 
           {stage === 'done' && result && (
             <Card>

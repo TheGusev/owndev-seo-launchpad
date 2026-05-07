@@ -14,7 +14,8 @@
     "test:pr3-page-fanout": "tsx src/services/strategy/__tests__/pr3-page-fanout.ts",
     "test:pr4-self-test-matrix": "tsx src/services/strategy/__tests__/pr4-self-test-matrix.ts",
     "test:pr5-vertical-profiles": "tsx src/services/verticals/__tests__/pr5-vertical-profiles.ts",
-    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles",
+    "test:pr6-pro-report": "tsx src/services/pipeline/__tests__/pr6-pro-report.ts",
+    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles && npm run test:pr6-pro-report",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts",
     "rescan:geo": "tsx scripts/rescan-geo-rating.ts"
   },

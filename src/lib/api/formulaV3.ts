@@ -47,6 +47,49 @@ export interface PreflightAxisAvg {
   ai_llm: number;
 }
 
+export interface ProReportV3 {
+  project_class?: 'start' | 'growth' | 'scale';
+  project_class_reason?: string;
+  decision_trace?: Array<{ rule_id?: string; reason_human?: string; effect_detail?: string; [k: string]: unknown }>;
+  vertical_profile?: {
+    project_code: ProjectTypeCodeV3;
+    title_ru: string;
+    description_ru: string;
+    monetization: string;
+    intent_distribution: Record<string, number | undefined>;
+    seasonality: number[];
+    kpi: {
+      cr_visit_to_lead?: number;
+      cr_lead_to_sale?: number;
+      average_order_rub?: number;
+      cpa_rub?: number;
+      ltv_rub?: number;
+      frequency_index?: number;
+      sales_cycle_days?: number;
+    };
+    benchmarks: {
+      min_pages_for_growth?: number;
+      min_cities_for_geo?: number;
+      min_directions_for_catalog?: number;
+      seo_payback_months?: number;
+      cpc_high_intent_rub?: number;
+    };
+    demand_triggers: string[];
+    notes_ru?: string;
+  };
+  kpi_summary?: string[];
+  roi_estimate?: {
+    expected_monthly_visits?: number;
+    expected_monthly_leads?: number;
+    expected_monthly_sales?: number;
+    expected_monthly_revenue_rub?: number;
+    expected_monthly_acquisition_cost_rub?: number;
+    rationale_ru?: string;
+  };
+  axis_weights?: { SEO: number; DIRECT: number; SCHEMA: number; AI_LLM: number };
+  total_score_threshold?: number;
+}
+
 export interface PipelineResultV3 {
   job_id: string;
   root_url?: string;
@@ -64,6 +107,7 @@ export interface PipelineResultV3 {
   pack?: any;
   pack_zip_size?: number;
   generated_at: string;
+  pro_report?: ProReportV3;
 }
 
 export interface RunPipelineInput {
