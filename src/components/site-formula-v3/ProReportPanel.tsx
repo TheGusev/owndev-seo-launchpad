@@ -18,7 +18,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { TrendingUp, Target, BarChart3, Settings2 } from 'lucide-react';
+import { TrendingUp, Target, BarChart3, Settings2, Megaphone, CalendarRange } from 'lucide-react';
 import type { ProReportV3 } from '@/lib/api/formulaV3';
 
 interface ProReportPanelProps {
@@ -36,6 +36,20 @@ const CLASS_COLORS: Record<NonNullable<ProReportV3['project_class']>, string> = 
   growth: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   scale: 'bg-purple-100 text-purple-800 border-purple-200',
 };
+
+const COMPETITION_LABELS: Record<'low' | 'medium' | 'high', string> = {
+  low: 'Низкая',
+  medium: 'Средняя',
+  high: 'Высокая',
+};
+
+const COMPETITION_COLORS: Record<'low' | 'medium' | 'high', string> = {
+  low: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  medium: 'bg-amber-100 text-amber-800 border-amber-200',
+  high: 'bg-rose-100 text-rose-800 border-rose-200',
+};
+
+const MONTH_NAMES_RU = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
 
 const MONETIZATION_LABELS: Record<string, string> = {
   lead_gen: 'Лидогенерация',
@@ -62,6 +76,7 @@ function formatNum(v?: number): string {
 export function ProReportPanel({ report }: ProReportPanelProps) {
   const profile = report.vertical_profile;
   const roi = report.roi_estimate;
+  const ad = report.ad_market_estimate;
 
   return (
     <Card className="border-2 border-purple-200">
@@ -202,7 +217,84 @@ export function ProReportPanel({ report }: ProReportPanelProps) {
           </div>
         )}
 
-        {/* ── 4. Decision trace ── */}
+        {/* ── 4. Рынок / реклама / сезонность ── */}
+        {ad && (
+          <div className="rounded-lg border bg-amber-50/40 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold flex items-center gap-2">
+                <Megaphone className="h-4 w-4 text-amber-600" />
+                Рынок и реклама
+              </span>
+              {ad.competition_level && (
+                <Badge className={`${COMPETITION_COLORS[ad.competition_level]} border`}>
+                  Конкуренция: {COMPETITION_LABELS[ad.competition_level]}
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {ad.cpc_high_intent_rub !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground">CPC горячих</div>
+                  <div className="text-base font-bold">{formatRub(ad.cpc_high_intent_rub)}</div>
+                </div>
+              )}
+              {ad.transactional_share !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground">Горячий спрос</div>
+                  <div className="text-base font-bold">{Math.round(ad.transactional_share * 100)}%</div>
+                </div>
+              )}
+              {ad.monthly_paid_budget_rub !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground">Бюджет Я.Директа</div>
+                  <div className="text-base font-bold text-amber-700">{formatRub(ad.monthly_paid_budget_rub)}</div>
+                </div>
+              )}
+              {ad.seo_payback_months !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground">Окупаемость SEO</div>
+                  <div className="text-base font-bold">~{ad.seo_payback_months} мес</div>
+                </div>
+              )}
+            </div>
+            {(ad.seasonality_now !== undefined || ad.seasonality_peak || ad.seasonality_low) && (
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                {ad.seasonality_now !== undefined && (
+                  <div className="rounded border bg-background p-2 flex items-center gap-2">
+                    <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Сейчас</div>
+                      <div className="text-sm font-semibold">
+                        ×{ad.seasonality_now.toFixed(2)} {ad.seasonality_now >= 1 ? '(в сезон)' : '(ниже среднего)'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {ad.seasonality_peak && ad.seasonality_peak.factor > 1.0 && (
+                  <div className="rounded border bg-background p-2">
+                    <div className="text-xs text-muted-foreground">Пик сезона</div>
+                    <div className="text-sm font-semibold">
+                      {MONTH_NAMES_RU[ad.seasonality_peak.month - 1]} ×{ad.seasonality_peak.factor.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+                {ad.seasonality_low && ad.seasonality_low.factor < 1.0 && (
+                  <div className="rounded border bg-background p-2">
+                    <div className="text-xs text-muted-foreground">Спад</div>
+                    <div className="text-sm font-semibold">
+                      {MONTH_NAMES_RU[ad.seasonality_low.month - 1]} ×{ad.seasonality_low.factor.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {ad.rationale_ru && (
+              <p className="mt-3 text-xs text-muted-foreground italic">{ad.rationale_ru}.</p>
+            )}
+          </div>
+        )}
+
+        {/* ── 5. Decision trace ── */}
         {report.decision_trace && report.decision_trace.length > 0 && (
           <Accordion type="single" collapsible>
             <AccordionItem value="trace">

@@ -122,4 +122,30 @@ export interface ProReportV3 {
   axis_weights?: { SEO: number; DIRECT: number; SCHEMA: number; AI_LLM: number };
   /** Применённый порог total_score (зеркало preflight). */
   total_score_threshold?: number;
+  // ───── PR-7: Wordstat / реклама / сезонность ─────
+  /**
+   * Рекламно-рыночный блок: оценка бюджета Я.Директа, сезонный коэффициент
+   * на текущий месяц, индикатор конкурентности по составу интентов в demand.
+   * Включается только если есть demand или есть профиль вертикали и данные о страницах.
+   */
+  ad_market_estimate?: {
+    /** Высоконамеренный CPC, руб. (из бенчмарков ниши). */
+    cpc_high_intent_rub?: number;
+    /** Доля транзакционно-коммерческих интентов в demand (0..1). */
+    transactional_share?: number;
+    /** Оценочный месячный бюджет Я.Директа на «горячую» долю спроса, ₽. */
+    monthly_paid_budget_rub?: number;
+    /** Уровень конкурентности по интентам и CPC: low | medium | high. */
+    competition_level?: 'low' | 'medium' | 'high';
+    /** Окупаемость SEO-вложений из бенчмарка ниши, месяцев. */
+    seo_payback_months?: number;
+    /** Сезонный коэффициент на текущий месяц (1.0 = средний год). */
+    seasonality_now?: number;
+    /** Лучший месяц года по сезонности и сам коэффициент. */
+    seasonality_peak?: { month: number; factor: number };
+    /** Худший месяц года по сезонности и сам коэффициент. */
+    seasonality_low?: { month: number; factor: number };
+    /** Короткое объяснение расчёта на русском. */
+    rationale_ru?: string;
+  };
 }
