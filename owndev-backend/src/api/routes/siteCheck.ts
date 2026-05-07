@@ -1186,6 +1186,110 @@ export async function siteCheckRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // GET /api/v1/site-check/geo-rating/count — быстрый счётчик для Hero главной (Sprint 9)
+  app.get('/geo-rating/count', async (_req, reply) => {
+    try {
+      const rows = await sql<Array<{ count: string }>>`SELECT COUNT(*)::text AS count FROM geo_rating`;
+      const count = Number(rows?.[0]?.count ?? 0);
+      reply.header('Cache-Control', 'public, max-age=60');
+      return reply.send({ count });
+    } catch {
+      return reply.send({ count: 0 });
+    }
+  });
+
+  // POST /api/v1/site-check/admin/cleanup-geo-rating
+  // Sprint 9 — удаляет нерезолвящиеся / недоступные домены + домены с score < min_score.
+  // dry_run=true — только посмотреть, ничего не удалять.
+  app.post<{
+    Body: {
+      dry_run?: boolean;
+      min_score?: number;
+      check_http?: boolean;
+    };
+  }>('/admin/cleanup-geo-rating', async (req, reply) => {
+    const adminToken = process.env.ADMIN_TOKEN || '';
+    const provided = (req.headers['x-admin-token'] || '') as string;
+    if (!adminToken || provided !== adminToken) {
+      return reply.status(401).send({ success: false, error: 'invalid admin token' });
+    }
+
+    const { dry_run = true, min_score = 0, check_http = true } = (req.body || {}) as {
+      dry_run?: boolean;
+      min_score?: number;
+      check_http?: boolean;
+    };
+
+    const all = await sql<Array<{ domain: string; llm_score: number; seo_score: number }>>`
+      SELECT domain, llm_score, seo_score FROM geo_rating
+    `;
+
+    const toRemove: Array<{ domain: string; reason: string }> = [];
+
+    // 1. Порог по скору
+    for (const r of all) {
+      const overall = Math.max(r.llm_score || 0, r.seo_score || 0);
+      if (overall < min_score) {
+        toRemove.push({ domain: r.domain, reason: `score ${overall} < ${min_score}` });
+      }
+    }
+
+    // 2. Проверка HTTP-доступности (параллельно батчами по 10)
+    if (check_http) {
+      const removeSet = new Set(toRemove.map(r => r.domain));
+      const candidates = all.filter(r => !removeSet.has(r.domain));
+      const batchSize = 10;
+      for (let i = 0; i < candidates.length; i += batchSize) {
+        const batch = candidates.slice(i, i + batchSize);
+        const results = await Promise.allSettled(
+          batch.map(async (r) => {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 8000);
+            try {
+              const resp = await fetch(`https://${r.domain}`, {
+                method: 'HEAD',
+                redirect: 'follow',
+                signal: ctrl.signal,
+                headers: { 'User-Agent': 'OwnDev-Health/1.0' },
+              });
+              if (!resp.ok && resp.status >= 400 && resp.status < 600 && resp.status !== 401 && resp.status !== 403) {
+                // 4xx/5xx — недоступен (кроме 401/403 — это защищённые, но живые)
+                return { domain: r.domain, dead: true, reason: `HTTP ${resp.status}` };
+              }
+              return { domain: r.domain, dead: false };
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : String(e);
+              return { domain: r.domain, dead: true, reason: `fetch failed: ${msg.slice(0, 80)}` };
+            } finally {
+              clearTimeout(timer);
+            }
+          })
+        );
+        for (const res of results) {
+          if (res.status === 'fulfilled' && res.value.dead) {
+            toRemove.push({ domain: res.value.domain, reason: res.value.reason || 'unreachable' });
+          }
+        }
+      }
+    }
+
+    if (dry_run) {
+      return reply.send({ success: true, dry_run: true, total: all.length, to_remove: toRemove.length, items: toRemove });
+    }
+
+    let removed = 0;
+    for (const item of toRemove) {
+      try {
+        await sql`DELETE FROM geo_rating WHERE domain = ${item.domain}`;
+        removed++;
+      } catch (e) {
+        logger.warn('SITE_CHECK_ADMIN', `Failed to delete ${item.domain}: ${(e as Error).message}`);
+      }
+    }
+    logger.info('SITE_CHECK_ADMIN', `Cleanup removed ${removed}/${toRemove.length} domains`);
+    return reply.send({ success: true, total: all.length, removed, items: toRemove });
+  });
+
   // GET /api/v1/site-check/geo-rating — GEO Rating data from local DB or Supabase proxy
   app.get('/geo-rating', async (_req, reply) => {
     try {

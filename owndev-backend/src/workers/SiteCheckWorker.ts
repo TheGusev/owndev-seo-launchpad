@@ -142,9 +142,32 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
       } catch {
         hostname = null;
       }
+
+      // Sprint 9 — порог попадания в публичный рейтинг.
+      // Ниже этого балла (лучший из GEO/SEO) — сайт не добавляем.
+      // Дефолт 60 — чтобы отсечь заведомо сырые сайты. Переопределяется env.
+      const minScore = Number(process.env.GEO_RATING_MIN_SCORE ?? 60);
+      const overall = Math.max(
+        result.geoScore ?? 0,
+        result.seoScore ?? 0,
+        result.scores?.total ?? 0,
+      );
+
+      let alreadyInRating = false;
+      if (hostname && overall < minScore) {
+        // Уже в рейтинге? Тогда обновляем (чтобы баллы были свежими), но новых ниже порога не пускаем.
+        const exists = await sql<Array<{ domain: string }>>`
+          SELECT domain FROM geo_rating WHERE domain = ${hostname} LIMIT 1
+        `;
+        alreadyInRating = exists.length > 0;
+        if (!alreadyInRating) {
+          logger.info('SITE_CHECK_WORKER', `geo_rating skip: ${hostname} score ${overall} < ${minScore}`);
+        }
+      }
+
       if (!hostname) {
         logger.error('SITE_CHECK_WORKER', `geo_rating upsert skipped: invalid URL ${url}`);
-      } else {
+      } else if (overall >= minScore || alreadyInRating) {
         await sql`
           CREATE TABLE IF NOT EXISTS geo_rating (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -224,7 +247,7 @@ async function processSiteCheckJob(job: Job<SiteCheckJobData>): Promise<void> {
             top_errors = EXCLUDED.top_errors,
             last_checked_at = NOW()
         `;
-        logger.info('SITE_CHECK_WORKER', `Upserted ${hostname} into geo_rating`);
+        logger.info('SITE_CHECK_WORKER', `Upserted ${hostname} into geo_rating (score ${overall})`);
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);

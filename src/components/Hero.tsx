@@ -12,6 +12,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { saveLastUrl } from "@/utils/lastUrl";
+import { useGeoRatingCount } from "@/hooks/useGeoRatingCount";
+
+// Русские плюралы: 1 сайт / 2 сайта / 5 сайтов
+function pluralize(n: number, forms: [string, string, string]): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
+  return forms[2];
+}
 
 const capabilities = [
   { icon: Search, text: "SEO-аудит по 18 параметрам" },
@@ -33,6 +43,7 @@ const trustItems = [
 const Hero = () => {
   const [url, setUrl] = useState("");
   const [capIndex, setCapIndex] = useState(0);
+  const ratingCount = useGeoRatingCount();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -98,7 +109,7 @@ const Hero = () => {
             className="space-y-4"
           >
             <h1 className="text-[clamp(2rem,7vw,4.5rem)] font-bold tracking-tight font-serif leading-[1.1]">
-              132 сайта{" "}
+              {ratingCount} {pluralize(ratingCount, ["сайт", "сайта", "сайтов"])}{" "}
               <br className="hidden sm:block" />
               уже в <span className="brand-highlight">GEO-рейтинге</span>.{" "}
               <br className="hidden sm:block" />
@@ -187,7 +198,7 @@ const Hero = () => {
               <Button asChild variant="ghost" size="sm" className="gap-2 text-sm text-muted-foreground hover:text-primary">
                 <Link to="/geo-rating">
                   <Trophy className="w-4 h-4" />
-                  Смотреть весь рейтинг (132 сайта)
+                  Смотреть весь рейтинг ({ratingCount} {pluralize(ratingCount, ["сайт", "сайта", "сайтов"])})
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </Button>
