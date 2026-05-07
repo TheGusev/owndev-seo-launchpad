@@ -46,9 +46,12 @@ jobs:
             fi
 
             echo "=== PM2 restart with env ==="
-            # Build ecosystem.config.cjs via repo script.
+            # Build ecosystem.config.cjs via repo script (located at repo root, not in owndev-backend/).
+            # The script writes ecosystem.config.cjs into CWD; PM2 app spec sets cwd to owndev-backend
+            # so dist/index.js resolves correctly regardless of where the config sits.
             # Reads .env layered (root first, owndev-backend/.env second so it wins).
             # Fails the deploy if OPENAI_API_KEY is missing.
+            cd /var/www/owndev.ru
             node scripts/build-pm2-ecosystem.cjs
             pm2 delete owndev-backend || true
             pm2 start ecosystem.config.cjs
