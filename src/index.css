@@ -1049,4 +1049,54 @@
       animation: none !important;
     }
   }
+
+  /* PRO shimmer text — переливающийся градиент как в логотипе owndev */
+  .pro-shimmer-text {
+    background-image: linear-gradient(
+      90deg,
+      hsl(43 96% 56%) 0%,
+      hsl(292 84% 61%) 25%,
+      hsl(258 90% 66%) 50%,
+      hsl(292 84% 61%) 75%,
+      hsl(43 96% 56%) 100%
+    );
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: shimmer-text 4s ease-in-out infinite;
+    will-change: background-position;
+  }
+
+  /* PRO shimmer для бейджей/кнопок — overlay sweep */
+  .pro-shimmer-overlay {
+    position: relative;
+    overflow: hidden;
+  }
+  .pro-shimmer-overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      110deg,
+      transparent 30%,
+      hsl(0 0% 100% / 0.25) 50%,
+      transparent 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-sweep 3s linear infinite;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pro-shimmer-text {
+      animation: none !important;
+      background-position: 0 0 !important;
+    }
+    .pro-shimmer-overlay::after {
+      animation: none !important;
+      display: none;
+    }
+  }
 }

@@ -84,7 +84,7 @@ export default function SiteFormula() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Wordstat-данные, Preflight 4-осей, техпаспорт + super_prompt_pack для Lovable / Cursor.
                 </p>
-                <Button asChild className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90 w-full">
+                <Button asChild className="pro-shimmer-overlay gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90 w-full">
                   <Link to="/site-formula/v3">
                     Получить PRO <ArrowRight className="h-4 w-4" />
                   </Link>

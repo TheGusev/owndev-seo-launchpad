@@ -14,6 +14,8 @@ import { buildAiWellKnown } from './aiWellKnownBuilder.js';
 import { buildSitemapXml } from './sitemapBuilder.js';
 import { buildDataLayer } from './dataLayerBuilder.js';
 import { buildHeaders, flattenHeaders } from './headersBuilder.js';
+import { buildJsonLdGraph } from './jsonLdGraphBuilder.js';
+import { buildHeadTemplates } from './headTemplatesBuilder.js';
 
 export class TechnicalPassportService {
   build(inputs: PassportInputs, strategy: SiteStrategy): TechnicalPassportArtifacts {
@@ -23,6 +25,8 @@ export class TechnicalPassportService {
     const sitemap_xml = buildSitemapXml(inputs, strategy);
     const dataLayer = buildDataLayer(strategy);
     const headerRules = buildHeaders(inputs);
+    const jsonLd = buildJsonLdGraph(inputs, strategy);
+    const headTemplates = buildHeadTemplates(inputs, strategy);
 
     return {
       llms_txt,
@@ -39,6 +43,10 @@ export class TechnicalPassportService {
       ai_bots_allowed: robots.allowed,
       ai_bots_blocked: robots.blocked,
       csp_recommendation: headerRules.csp_recommendation,
+      json_ld_script: jsonLd.script_tag,
+      json_ld_raw: jsonLd.raw_json,
+      base_head: headTemplates.base_head,
+      head_per_page: headTemplates.per_page,
     };
   }
 }

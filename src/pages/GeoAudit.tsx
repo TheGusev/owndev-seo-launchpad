@@ -124,11 +124,11 @@ const GeoAudit = () => {
             </p>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto mb-10">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-lg mx-auto mb-10">
               {stats.map((s, i) => (
-                <div key={i} className="glass rounded-xl p-4">
-                  <div className="text-2xl md:text-3xl font-bold text-primary">{s.value}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+                <div key={i} className="glass rounded-xl p-3 sm:p-4">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-primary">{s.value}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-tight">{s.label}</div>
                 </div>
               ))}
             </div>

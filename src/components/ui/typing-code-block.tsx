@@ -153,6 +153,14 @@ export const TypingCodeBlock = ({
     );
   }
 
+  // Резервируем высоту контейнера, чтобы контент при наборе не двигал layout страницы.
+  // Считаем количество строк × line-height; учитываем mobile/desktop режимы.
+  const reserveLineCount = lines.length;
+  // Base font-size в px (соответствует tailwind text-[12.5px]/[11px])
+  const fontPx = compact ? 11 : variant === "minimal" && isMobile ? 11 : 12.5;
+  // line-height ≈ 1.625 (tailwind leading-relaxed)
+  const reservedHeightPx = Math.ceil(reserveLineCount * fontPx * 1.625);
+
   // ── Minimal (no chrome, no line numbers) ────────────────────────────────
   if (variant === "minimal") {
     return (
@@ -160,9 +168,13 @@ export const TypingCodeBlock = ({
         aria-hidden
         className={cn(
           "rounded-lg border border-primary/15 bg-card/30 backdrop-blur-md p-3 font-mono leading-relaxed",
-          isMobile ? "text-[11px] max-h-[160px] overflow-hidden" : "text-[12.5px]",
+          isMobile ? "text-[11px] overflow-hidden" : "text-[12.5px]",
           className
         )}
+        style={{
+          minHeight: `${reservedHeightPx + 24}px`, // +24 для p-3 (12px×2)
+          maxHeight: isMobile ? `${reservedHeightPx + 24}px` : undefined,
+        }}
       >
         {displayed.map((line, i) => (
           <div key={i} className="whitespace-pre text-foreground/90 break-all">
@@ -182,13 +194,20 @@ export const TypingCodeBlock = ({
   }
 
   // ── IDE (default; compact on mobile) ────────────────────────────────────
+  // Резервированная высота для IDE: header (~32-40px) + padding + строки
+  const ideHeaderPx = compact ? 32 : 40;
+  const idePaddingPx = compact ? 24 : 32; // p-3 / p-4 в обе стороны
+  const ideReservedPx = ideHeaderPx + idePaddingPx + reservedHeightPx;
   return (
     <div
       className={cn(
         "rounded-xl border border-primary/20 bg-card/40 backdrop-blur-md overflow-hidden shadow-[0_0_40px_hsl(var(--primary)/0.08)]",
-        compact && "max-h-[180px]",
         className
       )}
+      style={{
+        minHeight: `${ideReservedPx}px`,
+        maxHeight: compact ? `${ideReservedPx}px` : undefined,
+      }}
       aria-hidden
     >
       <div className={cn(

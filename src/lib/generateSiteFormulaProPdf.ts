@@ -227,23 +227,53 @@ export async function generateSiteFormulaProPdf(ctx: ProReportContext): Promise<
   // ── 5. Технический паспорт ─────────────────────────────────────────────
   const passport: any = (result as any).passport;
   if (passport) {
-    y = drawSectionHeader(doc, y, '5. Технический паспорт');
-    y = drawText(doc, y, 'Готовые к публикации файлы для индексации поисковиками и AI-ботами.', { size: 9 });
+    y = drawSectionHeader(doc, y, '5. Файлы для размещения на сайте — копируйте как есть');
+    y = drawText(
+      doc,
+      y,
+      'Раздел содержит готовые файлы и фрагменты для размещения на сайте. Без этих файлов ПС и AI-боты не понимают ваш сайт — из-за пропуска в GEO-аудите баллы падают ниже 70.',
+      { size: 9 },
+    );
     if (passport.llms_txt) {
-      y = drawCaption(doc, y, 'llms.txt');
-      y = drawText(doc, y, String(passport.llms_txt).slice(0, 2500), { size: 8 });
+      y = drawCaption(doc, y, '5.1. /llms.txt — в корне сайта');
+      y = drawText(doc, y, String(passport.llms_txt), { size: 8 });
     }
     if (passport.robots_txt) {
-      y = drawCaption(doc, y, 'robots.txt (фрагмент)');
-      y = drawText(doc, y, String(passport.robots_txt).slice(0, 1500), { size: 8 });
+      y = drawCaption(doc, y, '5.2. /robots.txt — в корне сайта');
+      y = drawText(doc, y, String(passport.robots_txt), { size: 8 });
+    }
+    if (passport.sitemap_xml) {
+      y = drawCaption(doc, y, '5.3. /sitemap.xml — в корне сайта');
+      y = drawText(doc, y, String(passport.sitemap_xml), { size: 8 });
     }
     if (passport.ai_well_known) {
-      y = drawCaption(doc, y, '.well-known/ai (17 AI-ботов)');
+      y = drawCaption(doc, y, '5.4. /.well-known/ai — карта 17 AI-ботов');
       const txt =
         typeof passport.ai_well_known === 'string'
           ? passport.ai_well_known
           : JSON.stringify(passport.ai_well_known, null, 2);
-      y = drawText(doc, y, txt.slice(0, 2000), { size: 8 });
+      y = drawText(doc, y, txt, { size: 8 });
+    }
+    if (passport.json_ld_script) {
+      y = drawCaption(doc, y, '5.5. JSON-LD graph — в <head> каждой страницы');
+      y = drawText(
+        doc,
+        y,
+        'Organization + WebSite + BreadcrumbList — обязательный минимум для rich-snippets.',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
+      y = drawText(doc, y, String(passport.json_ld_script), { size: 8 });
+    }
+    if (passport.base_head) {
+      y = drawCaption(doc, y, '5.6. Базовый <head>-блок для всех страниц');
+      y = drawText(doc, y, String(passport.base_head), { size: 8 });
+    }
+    if (Array.isArray(passport.head_per_page) && passport.head_per_page.length > 0) {
+      y = drawCaption(doc, y, '5.7. Шаблоны <head> по типам страниц');
+      for (const entry of passport.head_per_page.slice(0, 8)) {
+        y = drawText(doc, y, `— ${entry.page_type}  (${entry.url_pattern})`, { size: 9, bold: true });
+        y = drawText(doc, y, String(entry.head_html), { size: 7 });
+      }
     }
   }
 

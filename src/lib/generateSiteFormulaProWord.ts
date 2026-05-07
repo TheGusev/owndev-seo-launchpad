@@ -280,23 +280,60 @@ export async function generateSiteFormulaProWord(ctx: ProReportContext): Promise
   // ─── 5. Технический паспорт ─────────────────────────────────────────────
   const passport: any = (result as any).passport;
   if (passport) {
-    children.push(h1('5. Технический паспорт'));
-    children.push(p('Готовые к публикации файлы для индексации поисковиками и AI-ботами.'));
+    children.push(h1('5. Файлы для размещения на сайте — копируйте как есть'));
+    children.push(
+      p(
+        'Раздел содержит готовые файлы и фрагменты, которые нужно разместить на сайте. Это ключ к 100/100 в GEO-аудите — без этих файлов ПС и AI-боты не понимают ваш сайт. Блоки описывают, в какой файл/раздел копировать содержимое.',
+      ),
+    );
     if (passport.llms_txt) {
-      children.push(caption('llms.txt'));
-      children.push(p(String(passport.llms_txt).slice(0, 4000), { size: 16 }));
+      children.push(caption('5.1. /llms.txt — разместить в корне сайта'));
+      children.push(p(String(passport.llms_txt), { size: 16 }));
     }
     if (passport.robots_txt) {
-      children.push(caption('robots.txt (фрагмент)'));
-      children.push(p(String(passport.robots_txt).slice(0, 2000), { size: 16 }));
+      children.push(caption('5.2. /robots.txt — разместить в корне сайта'));
+      children.push(p(String(passport.robots_txt), { size: 16 }));
+    }
+    if (passport.sitemap_xml) {
+      children.push(caption('5.3. /sitemap.xml — разместить в корне сайта'));
+      children.push(p(String(passport.sitemap_xml), { size: 16 }));
     }
     if (passport.ai_well_known) {
-      children.push(caption('.well-known/ai (карта 17 AI-ботов)'));
+      children.push(caption('5.4. /.well-known/ai — карта 17 AI-ботов и политика обучения'));
       const txt =
         typeof passport.ai_well_known === 'string'
           ? passport.ai_well_known
           : JSON.stringify(passport.ai_well_known, null, 2);
-      children.push(p(txt.slice(0, 3000), { size: 16 }));
+      children.push(p(txt, { size: 16 }));
+    }
+    if (passport.json_ld_script) {
+      children.push(caption('5.5. JSON-LD graph — вставить в <head> каждой страницы'));
+      children.push(
+        p(
+          'Organization + WebSite + BreadcrumbList — обязательный минимум для rich-snippets и понимания ПС/AI «что за бренд и сайт».',
+          { size: 16, italics: true, color: MUTED },
+        ),
+      );
+      children.push(p(String(passport.json_ld_script), { size: 16 }));
+    }
+    if (passport.base_head) {
+      children.push(caption('5.6. Базовый <head>-блок — общий для всех страниц'));
+      children.push(p(String(passport.base_head), { size: 16 }));
+    }
+    if (Array.isArray(passport.head_per_page) && passport.head_per_page.length > 0) {
+      children.push(caption('5.7. Шаблоны <head> по типам страниц'));
+      children.push(
+        p(
+          'На каждый тип страницы из стратегии — свой набор title/description/canonical/OG/Twitter. Копируйте в соответствующую страницу.',
+          { size: 16, italics: true, color: MUTED },
+        ),
+      );
+      for (const entry of passport.head_per_page.slice(0, 12)) {
+        children.push(
+          p(`— ${entry.page_type}  (${entry.url_pattern})`, { bold: true, size: 18 }),
+        );
+        children.push(p(String(entry.head_html), { size: 14 }));
+      }
     }
   }
 

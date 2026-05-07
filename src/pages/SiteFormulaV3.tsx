@@ -200,6 +200,7 @@ export default function SiteFormulaV3() {
   // Кнопочные пресеты услуг (по вертикали) + опц. свободный ввод.
   const [serviceChips, setServiceChips] = useState<string[]>([]);
   const [servicesText, setServicesText] = useState('');
+  const [servicesOpen, setServicesOpen] = useState(false); // блок услуг свёрнут по умолчанию
   const [packMode, setPackMode] = useState<ExportMode>('structured');
   const [platform, setPlatform] = useState<PlatformTarget>('lovable');
 
@@ -463,7 +464,7 @@ export default function SiteFormulaV3() {
             </div>
             <h1 className="font-['Playfair_Display'] text-3xl sm:text-4xl font-bold tracking-tight">
               Site Formula{' '}
-              <span className="bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 bg-clip-text text-transparent">
+              <span className="pro-shimmer-text">
                 PRO
               </span>
             </h1>
@@ -746,7 +747,7 @@ export default function SiteFormulaV3() {
                 )}
                 <Input
                   className="mt-2"
-                  placeholder="Или впишите через запятую: Краснодар, Крым весь, Сочи, Ростов…"
+                  placeholder="Добавить свои через запятую: Новороссийск, Анапа…"
                   value={cityCustom}
                   onChange={(e) => setCityCustom(e.target.value)}
                 />
@@ -756,51 +757,71 @@ export default function SiteFormulaV3() {
               </div>
             </div>
 
-            {/* Блок 2.5: Услуги / направления — кнопки-пресеты по выбранной вертикали + свободный ввод */}
-            <div>
-              <Label>
-                Что вы делаете? <span className="text-muted-foreground font-normal">(услуги / направления — кликайте по подходящим)</span>
-              </Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {getServicePresetsFor(selectedType).map((s) => {
-                  const active = serviceChips.includes(s);
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() =>
-                        setServiceChips((prev) =>
-                          prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-                        )
-                      }
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ${
-                        active
-                          ? 'border-primary bg-primary/10 text-primary font-medium'
-                          : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                      }`}
-                    >
-                      {active ? <Check className="h-3 w-3" /> : <ListChecks className="h-3 w-3" />}
-                      {s}
-                      {active && <X className="h-3 w-3 opacity-60" />}
-                    </button>
-                  );
-                })}
-              </div>
-              {serviceChips.length > 0 && (
-                <p className="text-xs text-primary mt-2">
-                  Выбрано услуг: {serviceChips.length}
+            {/* Блок 2.5: Услуги / направления — СВЁРНУТ по умолчанию (опционально) */}
+            <div className="rounded-lg border border-dashed border-border bg-muted/20">
+              <button
+                type="button"
+                onClick={() => setServicesOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/40 transition-colors rounded-lg"
+              >
+                <span className="flex items-center gap-2">
+                  <ListChecks className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    Уточнить услуги вручную
+                    <span className="text-muted-foreground font-normal"> · опционально</span>
+                  </span>
+                  {serviceChips.length > 0 && (
+                    <Badge variant="outline" className="border-primary/40 text-primary text-[10px]">
+                      {serviceChips.length}
+                    </Badge>
+                  )}
+                </span>
+                <ArrowRight className={`h-4 w-4 transition-transform ${servicesOpen ? 'rotate-90' : ''}`} />
+              </button>
+              {!servicesOpen && (
+                <p className="px-4 pb-3 -mt-1 text-xs text-muted-foreground">
+                  Формула уже знает ваш тип проекта. Она сама подберёт ключевые запросы по отрасли и городам. Откройте блок, если хотите сузить фокус на конкретных услугах.
                 </p>
               )}
-              <Input
-                id="services-custom"
-                placeholder="Или впишите свои через запятую: фумигация, плесень…"
-                value={servicesText}
-                onChange={(e) => setServicesText(e.target.value)}
-                className="mt-2"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                На основе этих слов мы соберём ключевые запросы&nbsp;×&nbsp;города для Wordstat. Если ничего не выберете — подберём сами по отрасли и городам.
-              </p>
+              {servicesOpen && (
+                <div className="px-4 pb-4 pt-1">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Кликайте по подходящим услугам — это сузит seed-запросы для Wordstat.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {getServicePresetsFor(selectedType).map((s) => {
+                      const active = serviceChips.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() =>
+                            setServiceChips((prev) =>
+                              prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+                            )
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ${
+                            active
+                              ? 'border-primary bg-primary/10 text-primary font-medium'
+                              : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                          }`}
+                        >
+                          {active ? <Check className="h-3 w-3" /> : <ListChecks className="h-3 w-3" />}
+                          {s}
+                          {active && <X className="h-3 w-3 opacity-60" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Input
+                    id="services-custom"
+                    placeholder="Добавить свои через запятую…"
+                    value={servicesText}
+                    onChange={(e) => setServicesText(e.target.value)}
+                    className="mt-3"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Блок 3: Целевая аудитория чипами */}
@@ -913,19 +934,21 @@ export default function SiteFormulaV3() {
               )}
             </div>
 
-            <div className="flex gap-2 pt-4">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4">
+              <Button variant="outline" size="lg" onClick={() => setStage('pick_type')} className="sm:order-1">
+                <ArrowLeft className="h-4 w-4 mr-1" /> Назад
+              </Button>
               <Button
                 onClick={handleRun}
                 disabled={busy || !brandName || (!noDomain && !siteUrl)}
                 size="lg"
-                className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90"
+                className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90 sm:order-2 flex-1"
               >
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                 {!busy && <Crown className="h-4 w-4" />}
                 Запустить PRO pipeline
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="lg" onClick={() => setStage('pick_type')}>Назад</Button>
             </div>
           </CardContent>
         </Card>

@@ -44,4 +44,12 @@ export interface TechnicalPassportArtifacts {
   ai_bots_allowed: string[];
   ai_bots_blocked: string[];
   csp_recommendation: string;
+  /** JSON-LD graph: готовый <script> блок для вставки в <head>. */
+  json_ld_script: string;
+  /** Сырой JSON-LD graph (Organization+WebSite+BreadcrumbList[+LocalBusiness]). */
+  json_ld_raw: string;
+  /** Базовый <head>-блок, общий для всех страниц. */
+  base_head: string;
+  /** Шаблоны <head> по типам страниц из стратегии. */
+  head_per_page: Array<{ page_type: string; url_pattern: string; head_html: string }>;
 }
