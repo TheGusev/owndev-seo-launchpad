@@ -26,7 +26,7 @@ import { loadActiveRules } from '../preflight/repository.js';
 import { buildStrategy } from '../strategy/index.js';
 import { technicalPassportService } from '../technicalPassport/index.js';
 import { buildGraph } from '../schemaRegistry/index.js';
-import { developerPackService } from '../developerPack/index.js';
+import { developerPackService, savePackArtifact } from '../developerPack/index.js';
 import type {
   PipelineInput,
   PipelineResultV3,
@@ -484,6 +484,31 @@ export class PipelineOrchestrator {
         );
         result.pack = bundle.pack;
         result.pack_zip_size = bundle.zip_buffer?.length;
+
+        // Persist pack artifact (migration 034: pack_artifacts).
+        // Без try/catch ошибка БД упадёт в timeStage и пометит stage 'pack' как failed,
+        // что корректно отразит реальное состояние результата.
+        try {
+          const artifactId = await savePackArtifact({
+            formula_job_id: input.job_id,
+            pack: bundle.pack,
+            mode: bundle.mode,
+            platform_target: bundle.platform ?? null,
+            zip_size_bytes: bundle.zip_buffer?.length ?? null,
+            zip_storage_key: null, // ZIP пока в памяти, отдаётся через /api/v3/pack/:job/zip
+          });
+          logger.info(
+            'PIPELINE',
+            `[${input.job_id}] pack artifact saved id=${artifactId} mode=${bundle.mode} ` +
+              `zip=${bundle.zip_buffer?.length ?? 0}B`,
+          );
+        } catch (err: any) {
+          logger.warn(
+            'PIPELINE',
+            `[${input.job_id}] savePackArtifact failed: ${err.message}`,
+          );
+          throw err;
+        }
       });
       stages.push(tPack);
 
