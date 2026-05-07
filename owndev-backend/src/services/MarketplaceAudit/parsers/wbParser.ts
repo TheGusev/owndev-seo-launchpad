@@ -52,6 +52,38 @@ async function fetchWbDetail(nm: number, withSpp: boolean): Promise<any | null> 
   }
 }
 
+function countCardJsonVideos(cardJson: any): number {
+  let count = 0;
+  if (Array.isArray(cardJson?.media_files)) {
+    for (const m of cardJson.media_files) {
+      const t = String(m?.type ?? m?.kind ?? '').toLowerCase();
+      if (t.includes('video')) count++;
+    }
+  }
+  if (Array.isArray(cardJson?.nm_colors)) {
+    for (const c of cardJson.nm_colors) {
+      if (Array.isArray(c?.videos)) count += c.videos.length;
+    }
+  }
+  if (Array.isArray(cardJson?.videos)) count += cardJson.videos.length;
+  return count;
+}
+
+function pickCardJsonCategory(cardJson: any): string {
+  const candidates = [
+    cardJson?.subj_name,
+    cardJson?.subj_root_name,
+    cardJson?.kinds?.[0]?.name,
+    Array.isArray(cardJson?.kinds) && typeof cardJson.kinds[0] === 'string' ? cardJson.kinds[0] : '',
+    cardJson?.matrix_name,
+  ];
+  for (const c of candidates) {
+    const v = String(c ?? '').trim();
+    if (v) return v;
+  }
+  return '';
+}
+
 export async function parseWb(input: string): Promise<ParsedProduct> {
   const nm = extractWbNm(input);
   if (!nm) throw new Error('Не удалось определить артикул WB из значения');
@@ -68,10 +100,11 @@ export async function parseWb(input: string): Promise<ParsedProduct> {
   let brand = product?.brand?.trim() || '';
   let category = product?.entity || product?.subj_root_name || product?.subjectName || '';
   let images: string[] = [];
-  const picsCount = Number(product?.pics ?? 0);
+  const picsFromProduct = Number(product?.pics ?? 0);
 
-  // 2) detailed card.json from basket — for description / characteristics
+  // 2) detailed card.json from basket — for description / characteristics / images fallback
   let cardJson: any = null;
+  let basketHost = '';
   for (const host of WB_BASKET_HOSTS) {
     try {
       const r = await fetch(basketUrl(nm, host), {
@@ -80,7 +113,8 @@ export async function parseWb(input: string): Promise<ParsedProduct> {
       });
       if (r.ok) {
         cardJson = await r.json();
-        if (picsCount > 0) images = imagesFor(nm, Math.min(picsCount, 12), host);
+        basketHost = host;
+        if (picsFromProduct > 0) images = imagesFor(nm, Math.min(picsFromProduct, 12), host);
         break;
       }
     } catch { /* try next basket */ }
@@ -88,8 +122,23 @@ export async function parseWb(input: string): Promise<ParsedProduct> {
 
   if (cardJson) {
     if (!title && typeof cardJson.imt_name === 'string') title = cardJson.imt_name;
+    if (!category) category = pickCardJsonCategory(cardJson);
+    // Fallback for images: when v2 detail returned no pics but cardJson loaded — try inferring count
+    if (images.length === 0 && basketHost) {
+      let inferred = 0;
+      if (Array.isArray(cardJson.nm_colors)) {
+        for (const c of cardJson.nm_colors) {
+          const p = Number(c?.photo_count ?? c?.pics ?? c?.photoCount ?? 0);
+          if (Number.isFinite(p)) inferred = Math.max(inferred, p);
+        }
+      }
+      if (!inferred && Number.isFinite(Number(cardJson.photo_count))) inferred = Number(cardJson.photo_count);
+      if (!inferred) inferred = 1; // basket succeeded → at least the cover image is on CDN
+      images = imagesFor(nm, Math.min(inferred, 12), basketHost);
+    }
   }
   const description = String(cardJson?.description ?? '').trim();
+  const videoCount = countCardJsonVideos(cardJson);
 
   const attributes: Record<string, string> = {};
   if (Array.isArray(cardJson?.options)) {
@@ -123,9 +172,10 @@ export async function parseWb(input: string): Promise<ParsedProduct> {
     category: category || 'Не определена',
     attributes,
     images,
+    videoCount,
     reviewsCount: Number(product?.feedbacks ?? 0),
     rating: Number(product?.reviewRating ?? 0),
     url: `https://www.wildberries.ru/catalog/${nm}/detail.aspx`,
-    sourceData: { nm, picsCount },
+    sourceData: { nm, picsFromProduct, picsResolved: images.length, videoCount, basketHost },
   };
 }
