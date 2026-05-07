@@ -107,7 +107,13 @@ function pickClusterForPage(
 }
 
 export async function buildStrategy(input: StrategyBuildInput): Promise<SiteStrategy> {
-  const contracts = await listV3Contracts(input.project_code);
+  // ───── Мост v1 → v3 ─────
+  // 1) Если явно передан tier_size — используем его.
+  // 2) Иначе — если есть engine_state.project_class из ядра v1, берём его.
+  // 3) Иначе — undefined (legacy: выбираются все контракты любого tier_size).
+  const effectiveTier = input.tier_size ?? input.engine_state?.project_class;
+
+  const contracts = await listV3Contracts(input.project_code, effectiveTier);
   if (contracts.length === 0) {
     throw new Error(`No V3 page contracts seeded for project type ${input.project_code}`);
   }

@@ -18,6 +18,7 @@ import type { TechnicalPassportArtifacts } from '../technicalPassport/types.js';
 import type { PreflightReport } from '../preflight/types.js';
 import type { SuperPromptPack, ExportMode, PlatformTarget } from '../developerPack/types.js';
 import type { CrawlPageRecord } from '../CrawlEngine/types.js';
+import type { EngineState } from '../../types/siteFormula.js';
 
 export type PipelineStage = 'intake' | 'demand' | 'crawl' | 'audit' | 'preflight' | 'pack' | 'done' | 'failed';
 
@@ -46,6 +47,11 @@ export interface PipelineInput {
   skip_demand?: boolean;
   skip_crawl?: boolean;
   max_crawl_pages?: number;
+  // ───── Мост v1 → v3 (опционально, без слома обратной совместимости) ─────
+  // Если передан, v3 поднимет project_class/dimensions/decision_trace из ядра v1
+  // и применит фильтрацию контрактов по tier_size + взвешивание скоринга.
+  // Если не передан — v3 работает как раньше (бесплатная v1 остаётся изолированной).
+  engine_state?: EngineState;
 }
 
 export interface PipelineStageResult {

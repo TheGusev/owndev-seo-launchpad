@@ -41,6 +41,25 @@ const runSchema = z.object({
   skip_demand: z.boolean().optional(),
   skip_crawl: z.boolean().optional(),
   max_crawl_pages: z.number().int().min(1).max(100).optional(),
+  // ───── Мост v1 → v3 (опционально) ─────
+  // engine_state приходит из серверного ядра v1 (бесплатный SiteFormula).
+  // На PRO-эндпоинте валидируем только ключевые поля — остальные пускаем как passthrough,
+  // чтобы не дублировать разметку вывода v1 (источник истины — src/types/siteFormula.ts).
+  engine_state: z
+    .object({
+      project_class: z.enum(['start', 'growth', 'scale']),
+      project_class_reason: z.string().optional(),
+      dimensions: z.record(z.number()).optional(),
+      derived_scores: z.record(z.number()).optional(),
+      activated_layers: z.array(z.string()).optional(),
+      activated_blocks: z.array(z.string()).optional(),
+      activated_checks: z.array(z.string()).optional(),
+      flags: z.record(z.boolean()).optional(),
+      decision_trace: z.array(z.any()).optional(),
+      rule_conflicts: z.array(z.any()).optional(),
+    })
+    .passthrough()
+    .optional(),
 });
 
 // In-memory cache of recent pipeline results (so /pack/:job_id can read them).
@@ -89,6 +108,8 @@ export async function pipelineRoutes(app: FastifyInstance) {
         skip_demand: input.skip_demand,
         skip_crawl: input.skip_crawl,
         max_crawl_pages: input.max_crawl_pages,
+        // Мост v1 → v3: пробрасываем engine_state, если передан.
+        engine_state: input.engine_state as any,
       });
 
       // Cache result for /pack/:job_id retrieval

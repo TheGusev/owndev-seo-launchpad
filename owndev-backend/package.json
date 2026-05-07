@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "migrate": "node dist/db/migrate.js",
     "migrate:dev": "tsx src/db/migrate.ts",
+    "test:v1-untouched": "tsx src/services/SiteFormula/__tests__/v1-untouched.ts",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts",
     "rescan:geo": "tsx scripts/rescan-geo-rating.ts"
   },
