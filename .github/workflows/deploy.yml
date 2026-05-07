@@ -46,27 +46,10 @@ jobs:
             fi
 
             echo "=== PM2 restart with env ==="
-            node -e "
-              const fs=require('fs');
-              const env={};
-              const envPath='/var/www/owndev.ru/.env';
-              if(fs.existsSync(envPath)){
-                fs.readFileSync(envPath,'utf8').split('\n').forEach(line=>{
-                  const m=line.match(/^([^#=]+)=(.*)/);
-                  if(m) env[m[1].trim()]=m[2].trim();
-                });
-              } else { console.log('WARNING: .env not found at',envPath); }
-              const config={apps:[{
-                name:'owndev-backend',
-                script:'dist/index.js',
-                cwd:'/var/www/owndev.ru/owndev-backend',
-                instances:1,
-                autorestart:true,
-                env:env
-              }]};
-              fs.writeFileSync('ecosystem.config.cjs','module.exports='+JSON.stringify(config,null,2));
-              console.log('Ecosystem written. OPENAI key present:', !!env['OPENAI_API_KEY']);
-            "
+            # Build ecosystem.config.cjs via repo script.
+            # Reads .env layered (root first, owndev-backend/.env second so it wins).
+            # Fails the deploy if OPENAI_API_KEY is missing.
+            node scripts/build-pm2-ecosystem.cjs
             pm2 delete owndev-backend || true
             pm2 start ecosystem.config.cjs
             pm2 save
