@@ -1,26 +1,47 @@
-# OWNDEV
-> SEO-оптимизация и разработка SaaS решений. 13 бесплатных SEO-инструментов для анализа, генерации и оптимизации сайтов.
+# OWNDEV — GEO и AI-ready аудит сайта
+> Сервис двойного аудита: классическое SEO + готовность к генеративным поисковикам (ChatGPT, Perplexity, Яндекс Нейро, Gemini, Claude). 13 бесплатных SEO-инструментов, отчёт за 60 секунд, экспорт в PDF и Word.
 
 ## Offered
-- Бесплатная проверка сайта (SEO аудит + LLM-видимость + Яндекс.Директ)
+- Бесплатная проверка сайта (SEO + GEO + CRO + Яндекс.Директ + Schema.org)
 - LLM-Friendly SEO Auditor — двойной аудит: классический SEO + AI-готовность
 - Генератор семантического ядра — AI-кластеризация по интентам
-- pSEO Generator — генерация GEO-страниц для масштабирования
-- Анализ конкурентов — сравнение SEO-метрик двух страниц
+- pSEO Generator — массовая генерация GEO-страниц для масштабирования
+- Анализ конкурентов — сравнение SEO/GEO-метрик двух страниц
 - Schema.org генератор — JSON-LD разметка для AI-цитирования
 - AI Генератор текстов — SEO-тексты, meta, FAQ, описания
 - LLM Prompt Helper — готовые промты для ChatGPT/Perplexity
 - Проверка индексации — meta robots, canonical, X-Robots-Tag
 - Проверка внутренних ссылок — битые ссылки и перелинковка
 
-## Links
-- https://owndev.ru/: Главная
-- https://owndev.ru/tools: Все 13 инструментов
-- https://owndev.ru/tools/site-check: Проверка сайта (flagship)
-- https://owndev.ru/tools/seo-auditor: LLM-Friendly SEO Auditor
-- https://owndev.ru/tools/semantic-core: Генератор семантического ядра
-- https://owndev.ru/tools/schema-generator: Schema.org генератор
-- https://owndev.ru/tools/pseo-generator: pSEO Generator
-- https://owndev.ru/tools/competitor-analysis: Анализ конкурентов
-- https://owndev.ru/blog: Блог — статьи по SEO, LLM-оптимизации, pSEO
-- https://owndev.ru/contacts: Контакты
+## Tools
+- [Главная — OWNDEV](https://owndev.ru/)
+- [Все 13 инструментов](https://owndev.ru/tools)
+- [Проверка сайта — флагман GEO+SEO+CRO](https://owndev.ru/tools/site-check)
+- [LLM-Friendly SEO Auditor](https://owndev.ru/tools/seo-auditor)
+- [Генератор семантического ядра](https://owndev.ru/tools/semantic-core)
+- [Schema.org генератор](https://owndev.ru/tools/schema-generator)
+- [pSEO Generator](https://owndev.ru/tools/pseo-generator)
+- [Анализ конкурентов](https://owndev.ru/tools/competitor-analysis)
+- [AI Генератор текстов](https://owndev.ru/tools/ai-text-generator)
+- [LLM Prompt Helper](https://owndev.ru/tools/llm-prompt-helper)
+- [Проверка индексации](https://owndev.ru/tools/indexing-check)
+- [Проверка внутренних ссылок](https://owndev.ru/tools/internal-links)
+- [Калькулятор Site Formula](https://owndev.ru/tools/site-formula)
+
+## Resources
+- [Блог OWNDEV — SEO, GEO, LLM-оптимизация, pSEO](https://owndev.ru/blog)
+- [GEO-рейтинг сайтов Рунета](https://owndev.ru/geo-rating)
+- [Контакты и поддержка](https://owndev.ru/contacts)
+- [Полный llms-full.txt](https://owndev.ru/llms-full.txt)
+- [Политика конфиденциальности](https://owndev.ru/privacy)
+
+## Pricing
+- [Free — 0 ₽: базовый GEO-аудит одной страницы](https://owndev.ru/pricing#free)
+- [Pro — от 4 990 ₽ / месяц: безлимит проверок, PDF/Word](https://owndev.ru/pricing#pro)
+- [Agency — от 19 990 ₽ / месяц: до 50 сайтов, white-label](https://owndev.ru/pricing#agency)
+- [Enterprise — от 99 000 ₽: SLA и кастомные интеграции](https://owndev.ru/pricing#enterprise)
+
+## Contact
+- Email: [hello@owndev.ru](mailto:hello@owndev.ru)
+- Telegram: [@one_help](https://t.me/one_help)
+- Телефон: [+7 (906) 998-98-88](tel:+79069989888)
