@@ -32,9 +32,9 @@ const CLASS_LABELS: Record<NonNullable<ProReportV3['project_class']>, string> = 
 };
 
 const CLASS_COLORS: Record<NonNullable<ProReportV3['project_class']>, string> = {
-  start: 'bg-blue-100 text-blue-800 border-blue-200',
-  growth: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  scale: 'bg-purple-100 text-purple-800 border-purple-200',
+  start: 'bg-sky-500/15 text-sky-600 dark:text-sky-300 border-sky-500/30',
+  growth: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30',
+  scale: 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30',
 };
 
 const COMPETITION_LABELS: Record<'low' | 'medium' | 'high', string> = {
@@ -44,9 +44,9 @@ const COMPETITION_LABELS: Record<'low' | 'medium' | 'high', string> = {
 };
 
 const COMPETITION_COLORS: Record<'low' | 'medium' | 'high', string> = {
-  low: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  medium: 'bg-amber-100 text-amber-800 border-amber-200',
-  high: 'bg-rose-100 text-rose-800 border-rose-200',
+  low: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30',
+  medium: 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30',
+  high: 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30',
 };
 
 const MONTH_NAMES_RU = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
@@ -79,10 +79,10 @@ export function ProReportPanel({ report }: ProReportPanelProps) {
   const ad = report.ad_market_estimate;
 
   return (
-    <Card className="border-2 border-purple-200">
+    <Card className="border-2 border-primary/30">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-purple-600" />
+          <BarChart3 className="h-5 w-5 text-primary" />
           PRO-отчёт
         </CardTitle>
         <CardDescription>
@@ -175,9 +175,9 @@ export function ProReportPanel({ report }: ProReportPanelProps) {
 
         {/* ── 3. ROI-оценка ── */}
         {roi && (
-          <div className="rounded-lg border bg-emerald-50/50 p-4">
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
             <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
               <span className="text-sm font-semibold">ROI-оценка месяц</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -200,7 +200,7 @@ export function ProReportPanel({ report }: ProReportPanelProps) {
               {roi.expected_monthly_revenue_rub !== undefined && (
                 <div>
                   <div className="text-xs text-muted-foreground">Доход / мес</div>
-                  <div className="text-lg font-bold text-emerald-700">
+                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                     {formatRub(roi.expected_monthly_revenue_rub)}
                   </div>
                 </div>
@@ -219,10 +219,10 @@ export function ProReportPanel({ report }: ProReportPanelProps) {
 
         {/* ── 4. Рынок / реклама / сезонность ── */}
         {ad && (
-          <div className="rounded-lg border bg-amber-50/40 p-4">
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-amber-600" />
+                <Megaphone className="h-4 w-4 text-amber-500" />
                 Рынок и реклама
               </span>
               {ad.competition_level && (
@@ -247,7 +247,7 @@ export function ProReportPanel({ report }: ProReportPanelProps) {
               {ad.monthly_paid_budget_rub !== undefined && (
                 <div>
                   <div className="text-xs text-muted-foreground">Бюджет Я.Директа</div>
-                  <div className="text-base font-bold text-amber-700">{formatRub(ad.monthly_paid_budget_rub)}</div>
+                  <div className="text-base font-bold text-amber-600 dark:text-amber-400">{formatRub(ad.monthly_paid_budget_rub)}</div>
                 </div>
               )}
               {ad.seo_payback_months !== undefined && (

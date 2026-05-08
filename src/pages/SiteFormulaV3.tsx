@@ -1091,26 +1091,26 @@ export default function SiteFormulaV3() {
                       key={key}
                       className={`border rounded-lg p-3 text-center ${
                         done
-                          ? 'border-green-500 bg-green-50'
+                          ? 'border-emerald-500/40 bg-emerald-500/10'
                           : failed
-                            ? 'border-red-500 bg-red-50'
+                            ? 'border-destructive/40 bg-destructive/10'
                             : skipped
-                              ? 'border-amber-300 bg-amber-50/40'
+                              ? 'border-amber-500/40 bg-amber-500/10'
                               : 'border-muted'
                       }`}
                     >
                       <Icon className={`h-5 w-5 mx-auto mb-1 ${
                         done
-                          ? 'text-green-600'
+                          ? 'text-emerald-500'
                           : failed
-                            ? 'text-red-600'
+                            ? 'text-destructive'
                             : skipped
-                              ? 'text-amber-600'
+                              ? 'text-amber-500'
                               : 'text-muted-foreground'
                       }`} />
-                      <div className="text-xs font-medium">{STAGE_LABELS[key].ru}</div>
+                      <div className="text-xs font-medium text-foreground">{STAGE_LABELS[key].ru}</div>
                       <div className={`text-[10px] mt-1 font-medium ${
-                        done ? 'text-green-700' : failed ? 'text-red-700' : skipped ? 'text-amber-700' : 'text-muted-foreground'
+                        done ? 'text-emerald-600 dark:text-emerald-400' : failed ? 'text-destructive' : skipped ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
                       }`}>
                         {statusLabel}
                       </div>
