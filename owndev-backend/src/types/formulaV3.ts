@@ -60,6 +60,38 @@ export type ProjectTypeCodeV3 =
   | 'service_auto'
   | 'service_beauty';
 
+/**
+ * Runtime-массив всех 27 кодов V3.
+ *
+ * ИСТОЧНИК ИСТИНЫ для zod.enum, фронт-каталога и self-test матрицы.
+ * Если добавляете новую нишу — продлевайте оба: тип `ProjectTypeCodeV3`
+ * и этот массив. TS-проверка `_assertCoverage` ниже сломает билд,
+ * если массив разъедется с типом.
+ */
+export const PROJECT_TYPE_CODES_V3 = [
+  // Tier A — Web/SEO-driven
+  'service_geo', 'service_pro', 'service_b2b', 'ecommerce', 'marketplace',
+  'saas', 'education', 'medical', 'legal', 'realestate',
+  // Tier B — App-driven
+  'mobile_app',
+  // Tier C — Special verticals (existing)
+  'finance', 'hospitality', 'events', 'nonprofit', 'gov', 'portfolio',
+  'media', 'blog',
+  // Tier C — V3-new
+  'promo_event', 'personal_brand', 'franchise_multi', 'b2b_media',
+  // Tier A — подкатегории service_geo (PR-10)
+  'service_pest_control', 'service_repair_home', 'service_auto', 'service_beauty',
+] as const satisfies readonly ProjectTypeCodeV3[];
+
+// Compile-time страховка: тип ⊆ массив (если в типе появится новый код,
+// а в массиве нет — TS-билд упадёт здесь).
+type _AssertProjectTypeCodesCoverage =
+  Exclude<ProjectTypeCodeV3, (typeof PROJECT_TYPE_CODES_V3)[number]> extends never
+    ? true
+    : never;
+const _assertCoverage: _AssertProjectTypeCodesCoverage = true;
+void _assertCoverage;
+
 // V3 engine module names (used in formula_project_types.engine_modules)
 export type EngineModule =
   | 'intake'

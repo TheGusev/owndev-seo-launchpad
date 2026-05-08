@@ -9,15 +9,16 @@ import { z } from 'zod';
 import { pipelineOrchestrator } from '../../../services/pipeline/index.js';
 import { logger } from '../../../utils/logger.js';
 import { randomUUID } from 'node:crypto';
+import { PROJECT_TYPE_CODES_V3 } from '../../../types/formulaV3.js';
+import {
+  setPipelineResult,
+  getPipelineResult,
+} from '../../../db/queries/v3PipelineResults.js';
 
-const PROJECT_CODES_V3 = [
-  'service_geo', 'service_pro', 'service_b2b', 'ecommerce', 'marketplace',
-  'saas', 'education', 'medical', 'legal', 'realestate',
-  'mobile_app',
-  'finance', 'hospitality', 'events', 'nonprofit', 'gov', 'portfolio',
-  'media', 'blog',
-  'promo_event', 'personal_brand', 'franchise_multi', 'b2b_media',
-] as const;
+// PR-14: zod.enum берёт все 27 кодов из единого источника истины
+// (`PROJECT_TYPE_CODES_V3` в types/formulaV3.ts), чтобы ни одна ниша из PR-10
+// не падала в 400 Invalid input.
+const PROJECT_CODES_V3 = PROJECT_TYPE_CODES_V3;
 
 const runSchema = z.object({
   job_id: z.string().min(1).optional(),
@@ -72,21 +73,18 @@ const runSchema = z.object({
   enable_hub_pages: z.boolean().optional(),
 });
 
-// In-memory cache of recent pipeline results (so /pack/:job_id can read them).
-// For production this should be persisted to formula_jobs/pack_artifacts.
-const RESULT_CACHE = new Map<string, any>();
-const RESULT_TTL_MS = 60 * 60 * 1000; // 1 hour
+// PR-14 (B2): кэш результатов вынесен в `db/queries/v3PipelineResults.ts`,
+// где пишется в таблицу `v3_pipeline_results` (PostgreSQL). Это необходимо
+// для PM2 cluster: иначе GET /pack/:job_id и GET /result/:job_id, попавшие
+// на другой worker, отвечают 404. Memory-fallback остался внутри модуля
+// для тестов, где DATABASE_URL не задан.
 
-function evictExpired() {
-  const now = Date.now();
-  for (const [k, v] of RESULT_CACHE) {
-    if (v._cached_at && now - v._cached_at > RESULT_TTL_MS) RESULT_CACHE.delete(k);
-  }
-}
-
-export function getCachedPipelineResult(jobId: string): any | null {
-  evictExpired();
-  return RESULT_CACHE.get(jobId) ?? null;
+/**
+ * Обратносовместимый алиас для pack.ts — теперь async.
+ * Старый импорт `getCachedPipelineResult` в pack.ts обновлён рядом.
+ */
+export async function getCachedPipelineResult(jobId: string): Promise<any | null> {
+  return getPipelineResult(jobId);
 }
 
 export async function pipelineRoutes(app: FastifyInstance) {
@@ -126,8 +124,8 @@ export async function pipelineRoutes(app: FastifyInstance) {
         enable_hub_pages: input.enable_hub_pages,
       });
 
-      // Cache result for /pack/:job_id retrieval
-      RESULT_CACHE.set(jobId, { ...result, _cached_at: Date.now() });
+      // PR-14 (B2): persist в БД — работает и в PM2 cluster.
+      await setPipelineResult(jobId, result);
 
       // Strip the ZIP buffer-related raw fields from response payload
       reply.send({
@@ -146,7 +144,7 @@ export async function pipelineRoutes(app: FastifyInstance) {
 
   app.get('/result/:job_id', async (req, reply) => {
     const { job_id } = req.params as { job_id: string };
-    const cached = getCachedPipelineResult(job_id);
+    const cached = await getPipelineResult(job_id);
     if (!cached) {
       reply.status(404).send({ success: false, error: 'Result not found or expired' });
       return;

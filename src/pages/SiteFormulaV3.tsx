@@ -20,6 +20,7 @@ import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -668,7 +669,13 @@ export default function SiteFormulaV3() {
                       <Briefcase className="h-4 w-4 opacity-50 ml-2" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <PopoverContent
+                    className="w-[var(--radix-popover-trigger-width)] p-0 z-[60]"
+                    align="start"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                  >
                     <Command
                       filter={(value, search) => {
                         if (!search) return 1;
@@ -741,7 +748,13 @@ export default function SiteFormulaV3() {
                       <Globe className="h-4 w-4 opacity-50 ml-2" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <PopoverContent
+                    className="w-[var(--radix-popover-trigger-width)] p-0 z-[60]"
+                    align="start"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                  >
                     <Command
                       filter={(value, search) => {
                         if (!search) return 1;
@@ -878,12 +891,13 @@ export default function SiteFormulaV3() {
                       );
                     })}
                   </div>
-                  <Input
+                  <Textarea
                     id="services-custom"
                     placeholder={shape.servicesCustomPlaceholder}
                     value={servicesText}
                     onChange={(e) => setServicesText(e.target.value)}
-                    className="mt-3"
+                    className="mt-3 min-h-[60px] resize-y break-words"
+                    rows={2}
                   />
                 </div>
               )}
@@ -919,11 +933,12 @@ export default function SiteFormulaV3() {
                   );
                 })}
               </div>
-              <Input
-                className="mt-2"
+              <Textarea
+                className="mt-2 min-h-[60px] resize-y break-words"
                 placeholder="Своё описание аудитории (опц.) — напр. «владельцы кафе в спальных районах»"
                 value={audienceCustom}
                 onChange={(e) => setAudienceCustom(e.target.value)}
+                rows={2}
               />
             </div>
 
@@ -1002,14 +1017,18 @@ export default function SiteFormulaV3() {
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4">
-              <Button variant="outline" size="lg" onClick={() => setStage('pick_type')} className="sm:order-1">
+              {/* PR-14: обе кнопки одинаковой высоты (h-12) и идентичных в mobile-stack. */}
+              <Button
+                variant="outline"
+                onClick={() => setStage('pick_type')}
+                className="sm:order-1 h-12 text-base font-medium"
+              >
                 <ArrowLeft className="h-4 w-4 mr-1" /> Назад
               </Button>
               <Button
                 onClick={handleRun}
                 disabled={busy || !brandName || (!noDomain && !siteUrl)}
-                size="lg"
-                className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90 sm:order-2 flex-1"
+                className="gap-2 bg-gradient-to-r from-amber-500 via-fuchsia-500 to-violet-500 text-white hover:opacity-90 sm:order-2 flex-1 h-12 text-base font-medium"
               >
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                 {!busy && <Crown className="h-4 w-4" />}
@@ -1147,14 +1166,17 @@ export default function SiteFormulaV3() {
 
           {result?.pro_report && <ProReportPanel report={result.pro_report} />}
 
-          {stage === 'done' && result && (
+          {(stage === 'done' || stage === 'failed') && result && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
-                  Отчёт и Developer Pack готовы
+                  {stage === 'done' ? 'Отчёт и Developer Pack готовы' : 'Частичный отчёт доступен'}
                 </CardTitle>
                 <CardDescription>
+                  {stage === 'failed' && (
+                    <>Pipeline завершился с ошибкой, но вы можете скачать промежуточные данные в Word или PDF. </>
+                  )}
                   {result.pack && <>Версия {result.pack.version} · режим {result.pack.export_mode ?? packMode}</>}
                   {result.pack_zip_size != null && ` · ZIP ${(result.pack_zip_size / 1024).toFixed(1)} KB`}
                 </CardDescription>
@@ -1162,7 +1184,9 @@ export default function SiteFormulaV3() {
               <CardContent>
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Основной формат для чтения — Word или PDF. ZIP-архив с машиночитаемыми файлами — справа, если отдаёте в AI-конструктор или разработчику.
+                    {stage === 'done'
+                      ? 'Основной формат для чтения — Word или PDF. ZIP-архив с машиночитаемыми файлами — справа, если отдаёте в AI-конструктор или разработчику.'
+                      : 'Word/PDF собираются из тех секций, которые успели пройти. Если ZIP-пакет не сформировался — кнопки ZIP не будет.'}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button
