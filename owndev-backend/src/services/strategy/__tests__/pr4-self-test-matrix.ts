@@ -40,6 +40,8 @@ const PROJECT_TYPES: ProjectTypeCodeV3[] = [
   'finance', 'hospitality', 'events', 'nonprofit',
   'gov', 'portfolio', 'media', 'blog',
   'promo_event', 'personal_brand', 'franchise_multi', 'b2b_media',
+  // PR-10: подкатегории локальных услуг
+  'service_pest_control', 'service_repair_home', 'service_auto', 'service_beauty',
 ];
 
 const SIZES: ProjectClass[] = ['start', 'growth', 'scale'];
@@ -318,9 +320,10 @@ for (const code of PROJECT_TYPES) {
   }
 }
 
-// 23 × 3 × 3 × 3 = 621
-expectEq(fullMatrixChecks, 621, 'Полная матрица: 23 × 3 × 3 × 3 = 621 комбинация');
-expectEq(fullMatrixPassed, 621, 'Все 621 комбинаций должны давать weighted ≥ 90 + passed=true');
+// PR-10: каталог расширен до 27. Полная матрица: 27 × 3 × 3 × 3 = 729.
+const EXPECTED_FULL_MATRIX = PROJECT_TYPES.length * SIZES.length * 3 * 3;
+expectEq(fullMatrixChecks, EXPECTED_FULL_MATRIX, `Полная матрица: ${PROJECT_TYPES.length} × 3 × 3 × 3 = ${EXPECTED_FULL_MATRIX} комбинаций`);
+expectEq(fullMatrixPassed, EXPECTED_FULL_MATRIX, `Все ${EXPECTED_FULL_MATRIX} комбинаций должны давать weighted ≥ 90 + passed=true`);
 
 // ────────── 5. axis_weights для всех 23 типов нормализованы и осмысленны ──────────
 

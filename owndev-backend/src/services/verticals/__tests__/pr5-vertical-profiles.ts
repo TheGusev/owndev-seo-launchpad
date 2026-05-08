@@ -28,6 +28,8 @@ const ALL_CODES: ProjectTypeCodeV3[] = [
   'finance', 'hospitality', 'events', 'nonprofit',
   'gov', 'portfolio', 'media', 'blog',
   'promo_event', 'personal_brand', 'franchise_multi', 'b2b_media',
+  // PR-10: подкатегории локальных услуг
+  'service_pest_control', 'service_repair_home', 'service_auto', 'service_beauty',
 ];
 
 const failures: string[] = [];
@@ -41,7 +43,8 @@ function expectEq<T>(actual: T, expected: T, label: string) {
 // ────────── 1. Все 23 кода имеют профиль ──────────
 {
   const all = listVerticalProfiles();
-  expectEq(all.length, 23, 'listVerticalProfiles: ровно 23 профиля');
+  // PR-10: каталог расширен до 27 (добавлены 4 подкатегории service_geo).
+  expectEq(all.length, 27, 'listVerticalProfiles: ровно 27 профилей');
 
   for (const code of ALL_CODES) {
     const p = getVerticalProfile(code);

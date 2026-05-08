@@ -20,19 +20,43 @@ export interface IndustryPreset {
 
 /** ~50 популярных отраслей малого/среднего бизнеса в РФ. */
 export const INDUSTRY_PRESETS: IndustryPreset[] = [
-  // service_geo — локальные услуги
+  // service_geo — локальные услуги (общие)
   { label: 'Грузоперевозки', matches: ['service_geo'] },
-  { label: 'Ремонт квартир', matches: ['service_geo'] },
   { label: 'Клининг / уборка', matches: ['service_geo'] },
-  { label: 'Автосервис / СТО', matches: ['service_geo'] },
-  { label: 'Шиномонтаж', matches: ['service_geo'] },
-  { label: 'Эвакуатор', matches: ['service_geo'] },
   { label: 'Натяжные потолки', matches: ['service_geo'] },
   { label: 'Окна и двери', matches: ['service_geo'] },
   { label: 'Сантехнические услуги', matches: ['service_geo'] },
   { label: 'Электромонтаж', matches: ['service_geo'] },
   { label: 'Бурение скважин', matches: ['service_geo'] },
   { label: 'Изготовление мебели на заказ', matches: ['service_geo'] },
+
+  // PR-10: service_pest_control — дезинфекция / дератизация
+  { label: 'Дезинфекция помещений', matches: ['service_pest_control'] },
+  { label: 'Уничтожение насекомых (тараканы, клопы)', matches: ['service_pest_control'] },
+  { label: 'Дератизация (крысы, мыши)', matches: ['service_pest_control'] },
+  { label: 'Удаление плесени', matches: ['service_pest_control'] },
+  { label: 'Санитарная обработка', matches: ['service_pest_control'] },
+
+  // PR-10: service_repair_home — ремонт квартир и домов
+  { label: 'Ремонт квартир под ключ', matches: ['service_repair_home'] },
+  { label: 'Косметический ремонт', matches: ['service_repair_home'] },
+  { label: 'Дизайнерский ремонт', matches: ['service_repair_home'] },
+  { label: 'Ремонт ванной и санузла', matches: ['service_repair_home'] },
+  { label: 'Капитальный ремонт', matches: ['service_repair_home'] },
+
+  // PR-10: service_auto — автосервис и услуги для авто
+  { label: 'Автосервис / СТО', matches: ['service_auto'] },
+  { label: 'Шиномонтаж', matches: ['service_auto'] },
+  { label: 'Эвакуатор', matches: ['service_auto'] },
+  { label: 'Автомойка', matches: ['service_auto'] },
+  { label: 'Кузовной ремонт', matches: ['service_auto'] },
+
+  // PR-10: service_beauty — салоны красоты и мастера
+  { label: 'Салон красоты', matches: ['service_beauty'] },
+  { label: 'Барбершоп', matches: ['service_beauty'] },
+  { label: 'Маникюр / педикюр', matches: ['service_beauty'] },
+  { label: 'Бровист / ресницы', matches: ['service_beauty'] },
+  { label: 'Парикмахерская', matches: ['service_beauty'] },
 
   // service_pro — профессиональные услуги
   { label: 'Юридические услуги', matches: ['service_pro', 'legal'] },
@@ -207,11 +231,30 @@ export const TIER_TAB_DESCRIPTIONS: Record<'A' | 'B' | 'C', string> = {
  */
 export const SERVICE_PRESETS: Record<string, string[]> = {
   service_geo: [
-    'Грузоперевозки', 'Ремонт квартир', 'Клининг', 'Автосервис',
-    'Шиномонтаж', 'Эвакуатор', 'Натяжные потолки', 'Окна и двери',
+    'Грузоперевозки', 'Клининг', 'Натяжные потолки', 'Окна и двери',
     'Сантехника', 'Электромонтаж', 'Бурение скважин', 'Мебель на заказ',
-    'Дезинфекция', 'Дератизация', 'Фумигация', 'Уборка после пожара',
-    'Уборка после потопа', 'Санитарная обработка', 'Уничтожение плесени',
+    'Уборка после пожара', 'Уборка после потопа', 'Изготовление памятников',
+  ],
+  // PR-10: подкатегории локальных услуг
+  service_pest_control: [
+    'Дезинфекция', 'Дезинсекция', 'Дератизация', 'Фумигация',
+    'Уничтожение тараканов', 'Уничтожение клопов', 'Уничтожение муравьёв',
+    'Санитарная обработка', 'Уничтожение плесени', 'Озонирование помещений',
+  ],
+  service_repair_home: [
+    'Ремонт квартир под ключ', 'Косметический ремонт', 'Дизайнерский ремонт',
+    'Ремонт ванной', 'Ремонт кухни', 'Ремонт жилья', 'Капитальный ремонт',
+    'Отделка частного дома', 'Ремонт офисов',
+  ],
+  service_auto: [
+    'Автосервис', 'Шиномонтаж', 'Эвакуатор', 'Автомойка',
+    'Кузовной ремонт', 'Развал-схождение', 'Диагностика', 'Замена масла',
+    'Ремонт двигателя', 'Полировка', 'Автоэлектрика',
+  ],
+  service_beauty: [
+    'Салон красоты', 'Барбершоп', 'Парикмахерская', 'Маникюр',
+    'Педикюр', 'Бровист', 'Наращивание ресниц', 'Окрашивание волос',
+    'Стрижка', 'Косметология', 'Массаж', 'Депиляция',
   ],
   service_pro: [
     'Юридические услуги', 'Бухгалтерское сопровождение', 'Налоговый консалтинг',

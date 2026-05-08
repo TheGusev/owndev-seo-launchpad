@@ -255,9 +255,11 @@ function audit(code: ProjectTypeCodeV3, size: 'start' | 'growth' | 'scale') {
 
 // ─── Запускаем по всем 23 нишам × 3 размерам ───
 const profiles = listVerticalProfiles();
-if (profiles.length !== 23) {
+// PR-10: каталог расширен до 27 профилей.
+const EXPECTED_PROFILES = 27;
+if (profiles.length !== EXPECTED_PROFILES) {
   // eslint-disable-next-line no-console
-  console.error(`❌ Ожидали 23 профиля, получили ${profiles.length}`);
+  console.error(`❌ Ожидали ${EXPECTED_PROFILES} профиля, получили ${profiles.length}`);
   process.exit(1);
 }
 
@@ -298,4 +300,4 @@ if (criticals.length > 0) {
 }
 
 // eslint-disable-next-line no-console
-console.log(`\n✅ PR-8 регресс: 23 ниши × 3 размера = ${totalCombos} комбинаций — критичных ляпов нет`);
+console.log(`\n✅ PR-8 регресс: ${profiles.length} ниш × 3 размера = ${totalCombos} комбинаций — критичных ляпов нет`);
