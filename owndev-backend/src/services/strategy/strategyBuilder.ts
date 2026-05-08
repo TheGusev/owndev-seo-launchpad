@@ -44,6 +44,11 @@ const PRIMARY_CTA: Record<ProjectTypeCodeV3, CtaPrimary> = {
   personal_brand: 'consultation_book',
   franchise_multi: 'lead_form',
   b2b_media: 'subscribe',
+  // PR-10: подкатегории локальных услуг
+  service_pest_control: 'phone_call',
+  service_repair_home: 'consultation_book',
+  service_auto: 'phone_call',
+  service_beauty: 'lead_form',
 };
 
 // Page-type → funnel stage

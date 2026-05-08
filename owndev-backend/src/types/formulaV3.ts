@@ -53,7 +53,12 @@ export type ProjectTypeCodeV3 =
   | 'promo_event'
   | 'personal_brand'
   | 'franchise_multi'
-  | 'b2b_media';
+  | 'b2b_media'
+  // Tier A — подкатегории service_geo (PR-10)
+  | 'service_pest_control'
+  | 'service_repair_home'
+  | 'service_auto'
+  | 'service_beauty';
 
 // V3 engine module names (used in formula_project_types.engine_modules)
 export type EngineModule =
