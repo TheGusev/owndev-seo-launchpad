@@ -551,17 +551,14 @@ export default function SiteFormulaV3() {
             ) : (
               <Tabs defaultValue="A">
                 <TabsList className="grid grid-cols-3 w-full h-auto gap-1 p-1">
-                  <TabsTrigger value="A" className="text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
+                  <TabsTrigger value="A" className="pro-tab text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
                     {TIER_TAB_LABELS.A}
-                    <span className="ml-1 opacity-60">· {groupedByTier.A?.length ?? 0}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="B" className="text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
+                  <TabsTrigger value="B" className="pro-tab text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
                     {TIER_TAB_LABELS.B}
-                    <span className="ml-1 opacity-60">· {groupedByTier.B?.length ?? 0}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="C" className="text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
+                  <TabsTrigger value="C" className="pro-tab text-xs sm:text-sm px-2 py-2 whitespace-normal h-auto leading-tight">
                     {TIER_TAB_LABELS.C}
-                    <span className="ml-1 opacity-60">· {groupedByTier.C?.length ?? 0}</span>
                   </TabsTrigger>
                 </TabsList>
                 {(['A', 'B', 'C'] as const).map((tier) => (
@@ -570,18 +567,23 @@ export default function SiteFormulaV3() {
                       {TIER_TAB_DESCRIPTIONS[tier]}
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                      {(groupedByTier[tier] ?? []).map((t) => (
-                        <button
-                          key={t.code}
-                          onClick={() => handlePickType(t.code)}
-                          className="text-left border rounded-lg p-4 hover:border-primary hover:bg-accent transition-colors"
-                        >
-                          <div className="font-semibold mb-1">{t.name_ru}</div>
-                          {t.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">{t.description}</p>
-                          )}
-                        </button>
-                      ))}
+                      {(groupedByTier[tier] ?? []).map((t) => {
+                        const isSelected = selectedType === t.code;
+                        return (
+                          <button
+                            key={t.code}
+                            onClick={() => handlePickType(t.code)}
+                            className={`pro-card text-left rounded-lg p-4 bg-card${
+                              isSelected ? ' is-selected' : ''
+                            }`}
+                          >
+                            <div className="font-semibold mb-1">{t.name_ru}</div>
+                            {t.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">{t.description}</p>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </TabsContent>
                 ))}
