@@ -16,7 +16,8 @@
     "test:pr5-vertical-profiles": "tsx src/services/verticals/__tests__/pr5-vertical-profiles.ts",
     "test:pr6-pro-report": "tsx src/services/pipeline/__tests__/pr6-pro-report.ts",
     "test:pr7-ad-market": "tsx src/services/pipeline/__tests__/pr7-ad-market.ts",
-    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles && npm run test:pr6-pro-report && npm run test:pr7-ad-market",
+    "test:pr8-vertical-audit": "tsx src/services/pipeline/__tests__/pr8-vertical-audit.ts",
+    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles && npm run test:pr6-pro-report && npm run test:pr7-ad-market && npm run test:pr8-vertical-audit",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts",
     "rescan:geo": "tsx scripts/rescan-geo-rating.ts"
   },
