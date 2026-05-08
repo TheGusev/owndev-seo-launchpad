@@ -61,7 +61,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-[85vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-20">
+    <section className="hero-light-bg relative min-h-[85vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-20">
       <CornerDecorations size="lg" />
       <FloatingParticles count={15} className="absolute inset-0 z-[3] pointer-events-none" />
 
@@ -214,7 +214,7 @@ const Hero = () => {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="yoursite.ru"
-                  className="flex-1 h-14 min-h-[48px] rounded-xl border border-border bg-card/60 backdrop-blur-xl px-5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-base"
+                  className="flex-1 h-14 min-h-[48px] rounded-xl border border-border bg-card backdrop-blur-xl px-5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-base"
                 />
                 <Button type="submit" variant="default" size="lg" disabled={!url.trim()} className="h-14 min-h-[44px] px-8 shrink-0 text-base font-semibold">
                   <span className="sm:hidden">Проверить →</span>

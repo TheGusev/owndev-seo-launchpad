@@ -59,9 +59,11 @@
   }
 
   /* Светлая тема — в стиле Linear / Vercel.
-     Активируется классом .light на <html>. Дефолт по-прежнему — dark (в :root). */
+     Активируется классом .light на <html>. Дефолт по-прежнему — dark (в :root).
+     PR-15: повышена контрастность — фон tinted-slate, карточки чисто-белые,
+     границы темнее → возникает глубина "карточка над фоном". */
   .light {
-    --background: 0 0% 100%;
+    --background: 220 25% 97%;
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -76,8 +78,8 @@
     --secondary: 262 60% 50%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 220 18% 94%;
+    --muted-foreground: 220 9% 38%;
 
     --accent: 217 80% 50%;
     --accent-foreground: 0 0% 100%;
@@ -91,26 +93,42 @@
     --destructive: 0 75% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 220 16% 86%;
+    --input: 220 16% 86%;
     --ring: 174 60% 38%;
 
-    --glow-primary: 0 0 60px hsl(174 60% 38% / 0.18);
-    --glow-secondary: 0 0 60px hsl(262 60% 50% / 0.14);
-    --glow-accent: 0 0 60px hsl(217 80% 50% / 0.14);
+    --glow-primary: 0 0 60px hsl(174 60% 38% / 0.22);
+    --glow-secondary: 0 0 60px hsl(262 60% 50% / 0.18);
+    --glow-accent: 0 0 60px hsl(217 80% 50% / 0.18);
     --gradient-hero: linear-gradient(135deg, hsl(174 60% 38%) 0%, hsl(217 80% 50%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(220 14% 98%) 0%, hsl(0 0% 100%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(220 25% 99%) 0%, hsl(0 0% 100%) 100%);
     --gradient-text: linear-gradient(90deg, hsl(174 60% 38%) 0%, hsl(217 80% 50%) 50%, hsl(174 60% 38%) 100%);
-    --glass-bg: hsl(0 0% 100% / 0.7);
-    --glass-border: hsl(220 13% 85%);
+    --glass-bg: hsl(0 0% 100% / 0.85);
+    --glass-border: hsl(220 16% 82%);
+  }
+
+  /* PR-15: усилить «глубину» Hero и карточек в светлой теме.
+     Добавляем мягкие radial-градиенты под Hero и тень под карточками с bg-card. */
+  .light section { background-color: transparent; }
+  .light .glass {
+    background: hsl(0 0% 100% / 0.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid hsl(220 16% 84%);
+    box-shadow: 0 1px 2px hsl(220 30% 20% / 0.04), 0 4px 12px hsl(220 30% 20% / 0.04);
+  }
+  /* Карточки на белом фоне получают тонкую тень для глубины */
+  .light [class*="bg-card"] {
+    box-shadow: 0 1px 2px hsl(220 30% 20% / 0.04), 0 2px 8px hsl(220 30% 20% / 0.03);
+  }
+  /* Hero radial-фон: цветные пятна заметнее на tinted-slate подложке */
+  .light .hero-light-bg {
+    background-image:
+      radial-gradient(ellipse 60% 50% at 50% 0%, hsl(174 60% 90% / 0.6), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 15% 30%, hsl(217 80% 90% / 0.5), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 85% 60%, hsl(262 60% 92% / 0.45), transparent 70%);
   }
 
   /* Отключаем тяжёлые глоу/бекграунд-градиенты в светлой теме — чистый Linear-look */
-  .light .glass {
-    background: hsl(0 0% 100% / 0.85);
-    backdrop-filter: blur(8px);
-    border-color: hsl(220 13% 91%);
-  }
   .light body { background-color: hsl(var(--background)); }
 
   /* Gradient Button CSS Properties */
