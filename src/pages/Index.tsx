@@ -74,9 +74,9 @@ const Index = () => {
         <FlagshipTools />
         <GeoScenarios />
         <HowItWorks />
+        <ComparisonSection />
         <ReportValue />
         <Testimonials />
-        <ComparisonSection />
         <Suspense fallback={<div className="min-h-[200px]" />}>
           <FAQ />
         </Suspense>
