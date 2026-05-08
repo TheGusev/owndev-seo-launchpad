@@ -26,7 +26,7 @@ export async function packV3Routes(app: FastifyInstance) {
     if (wantsZip) job_id = job_id.replace(/\.zip$/, '');
 
     let pack: any = null;
-    const cached = getCachedPipelineResult(job_id);
+    const cached = await getCachedPipelineResult(job_id);
     if (cached?.pack) {
       pack = cached.pack;
     } else {
@@ -69,7 +69,7 @@ export async function packV3Routes(app: FastifyInstance) {
     }
     let pack = parsed.data.pack;
     if (!pack && parsed.data.job_id) {
-      const cached = getCachedPipelineResult(parsed.data.job_id);
+      const cached = await getCachedPipelineResult(parsed.data.job_id);
       pack = cached?.pack ?? (await loadLatestPack(parsed.data.job_id).catch(() => null));
     }
     if (!pack) {
@@ -101,7 +101,7 @@ export async function packV3Routes(app: FastifyInstance) {
 
   app.get('/:job_id/validate', async (req, reply) => {
     const { job_id } = req.params as { job_id: string };
-    const cached = getCachedPipelineResult(job_id);
+    const cached = await getCachedPipelineResult(job_id);
     const pack = cached?.pack ?? (await loadLatestPack(job_id).catch(() => null));
     if (!pack) {
       reply.status(404).send({ success: false, error: 'Pack not found' });
