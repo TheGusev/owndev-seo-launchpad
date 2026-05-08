@@ -1,6 +1,6 @@
 /**
  * Site Formula V3 — единая страница: визуальные этапы 0-7
- *   0. Выбор типа проекта (Tier A/B/C — 23 вертикали)
+ *   0. Выбор типа проекта (Tier A/B/C — 27 вертикалей)
  *   1. Ввод бренда + URL + seeds
  *   2. INTAKE
  *   3. DEMAND (Wordstat)
@@ -234,11 +234,22 @@ export default function SiteFormulaV3() {
     return by;
   }, [types]);
 
+  // Динамическое количество типов (подхватывает любые новые ниши без правки hero-текста).
+  // Фоллбэк 27 — на случай если список ещё не загружен.
+  const typesCount = types.length || 27;
+
   function handlePickType(code: ProjectTypeCodeV3) {
-    // Сбрасываем выбранные услуги при смене типа проекта —
-    // пресеты у каждой вертикали разные.
+    // При смене типа проекта сбрасываем весь состояние Шага 2 — пресеты
+    // индустрии, аудитории, города и услуги у каждой вертикали свои. Без сброса юзер
+    // видит старые выборы от предыдущего типа (например "МФО" в интернет-магазине).
     if (code !== selectedType) {
       setServiceChips([]);
+      setServicesText('');
+      setIndustry('');
+      setAudienceChips([]);
+      setAudienceCustom('');
+      setCities([]);
+      setCityCustom('');
     }
     setSelectedType(code);
     setStage('fill_intake');
@@ -474,7 +485,7 @@ export default function SiteFormulaV3() {
         <title>Site Formula PRO — точный blueprint с Wordstat и Preflight | OWNDEV</title>
         <meta
           name="description"
-          content="Site Formula PRO — 23 типа проекта, спрос из Wordstat, техпаспорт (llms.txt + 17 AI-ботов), Preflight 4-осей и super_prompt_pack для Lovable / Cursor / v0 / Claude Code."
+          content="Site Formula PRO — 27 типов проекта, спрос из Wordstat, техпаспорт (llms.txt + 17 AI-ботов), Preflight 4-осей и super_prompt_pack для Lovable / Cursor / v0 / Claude Code."
         />
       </Helmet>
       <Header />
@@ -504,7 +515,7 @@ export default function SiteFormulaV3() {
               </span>
             </h1>
             <p className="text-muted-foreground max-w-2xl">
-              23 типа проекта, спрос из Wordstat, технический паспорт (llms.txt + 17 AI-ботов),
+              {typesCount} типов проекта, спрос из Wordstat, технический паспорт (llms.txt + 17 AI-ботов),
               Preflight 4-осей и super_prompt_pack для Lovable / Cursor / v0 / Claude Code.
             </p>
             {/* Прогресс wizard'а */}
@@ -535,7 +546,7 @@ export default function SiteFormulaV3() {
             {typesLoading ? (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Загружаем 23 типа…
+                Загружаем типы проектов…
               </div>
             ) : (
               <Tabs defaultValue="A">

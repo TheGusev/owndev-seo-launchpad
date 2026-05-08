@@ -36,7 +36,7 @@ const COMPARISON: Array<{
   { feature: 'Расчёт стоимости разработки', free: true, pro: true },
   { feature: 'Экспорт PDF / Markdown', free: true, pro: true },
 
-  { feature: '23 типа проекта (Tier A/B/C — гео, e-commerce, SaaS, медицина…)', free: false, pro: true, highlight: true },
+  { feature: '27 типов проекта (Tier A/B/C — гео, e-commerce, SaaS, медицина…)', free: false, pro: true, highlight: true },
   { feature: 'Реальный спрос из Wordstat (частоты + кластеры)', free: false, pro: true, highlight: true },
   { feature: 'Технический паспорт: llms.txt + robots для 17 AI-ботов', free: false, pro: true, highlight: true },
   { feature: 'Preflight 4-осей (SEO ≥ 85 / Direct ≥ 90 / Schema = 100 / AI-LLM ≥ 85)', free: false, pro: true, highlight: true },
