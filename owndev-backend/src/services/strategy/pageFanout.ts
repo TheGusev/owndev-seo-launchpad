@@ -1,13 +1,21 @@
 /**
  * services/strategy/pageFanout.ts
  *
- * PR-3 «Развёртывание страниц».
+ * PR-3 «Развёртывание страниц» + PR-11 cross-product.
  *
  * Принимает результат buildStrategy (массив SitePage) и расширяет его:
- *   • для page_type='service-geo' и 'location' — N экземпляров по городам;
- *   • для page_type='service' (если задан service_directions[]) — M экземпляров;
- *   • для page_type='category' — M экземпляров по directions;
+ *   • для page_type='service-geo' и 'location' — строим полный cross-product
+ *     «направление × город» с лимитом FANOUT_MAX_PAGES (защита от взрыва);
+ *   • для page_type='service'/'category' (если задан service_directions[]) — M экземпляров;
  *   • hub-страницы из крупных кластеров Wordstat (если enable_hub_pages !== false).
+ *
+ * Cross-product (PR-11):
+ *   • включается автоматически, когда cities.length >= 2 && service_directions.length >= 2;
+ *   • каждая пара (city, direction) → отдельная посадка /[direction]/[city];
+ *   • лимит посадок: ctx.fanout_max_pages ∨ 50 (защита от 24-города×12-направлений=288 страниц);
+ *   • приоритизация: первые города × все направления, затем вторые города × все направления и т.д.;
+ *   • SEO-priority падает от 0.85 до 0.55 по порядку пар;
+ *   • выключается флагом ctx.disable_cross_product = true (legacy).
  *
  * Принципы:
  *   • если cities/directions не заданы — fan-out не происходит, поведение legacy;
@@ -34,6 +42,10 @@ export interface FanoutContext {
   service_directions?: Array<{ slug: string; label: string }>;
   clusters?: DemandClusterV3[];
   enable_hub_pages?: boolean;
+  // PR-11: лимит общего количества fan-out страниц (защита от взрыва), default 50.
+  fanout_max_pages?: number;
+  // PR-11: флаг отключения cross-product (легаси поведение PR-3).
+  disable_cross_product?: boolean;
 }
 
 /**
@@ -74,24 +86,96 @@ export function applyPageFanout(
 function expandSinglePage(page: SitePage, ctx: FanoutContext): SitePage[] {
   const cities = (ctx.cities ?? []).filter((c) => !!c.slug);
   const dirs = (ctx.service_directions ?? []).filter((d) => !!d.slug);
+  const allowCross = ctx.disable_cross_product !== true;
+  const fanoutMax = ctx.fanout_max_pages ?? 50;
 
-  // 1) GEO-страницы → разворачиваем по городам.
+  // 1a) PR-11: GEO-страницы + multi-direction → cross-product (city × direction).
+  // Это главный кейс для service_pest_control / service_geo / service_repair_home и др.
+  if (
+    allowCross &&
+    GEO_PAGE_TYPES.has(page.page_type) &&
+    cities.length >= 2 &&
+    dirs.length >= 2
+  ) {
+    return makeCrossProductInstances(page, cities, dirs, fanoutMax);
+  }
+
+  // 1b) GEO-страницы без направлений → разворачиваем по городам.
   if (GEO_PAGE_TYPES.has(page.page_type) && cities.length > 1) {
     return cities.map((city, i) => makeCityInstance(page, city, i, cities.length));
   }
 
   // 2) Direction-страницы → разворачиваем по направлениям.
-  // Учитываем только если page_type подлежит fan-out по направлениям И dirs > 1.
   if (DIRECTION_PAGE_TYPES.has(page.page_type) && dirs.length > 1) {
     return dirs.map((d, i) => makeDirectionInstance(page, d, i, dirs.length));
   }
 
-  // 3) Комбинация: service-geo с двумя осями (город × направление) — даёт city × dir.
-  // В этой версии оставляем только одну ось (приоритет — город), чтобы избежать
-  // взрывного роста страниц. Cross-product можно включить отдельным флагом в будущем.
-
-  // 4) Иначе — возвращаем страницу как есть (legacy для одиночных home/pricing/contacts).
+  // 3) Иначе — возвращаем страницу как есть (legacy для одиночных home/pricing/contacts).
   return [page];
+}
+
+/**
+ * PR-11: Строит cross-product «направление × город» с лимитом.
+ *
+ * Порядок перебора:
+ *   for city in cities (первые — выше):
+ *     for dir in directions:
+ *       собираем экземпляр
+ *
+ * Этот порядок гарантирует что при обрезании по лимиту в приоритете остаются все направления
+ * для главного города, а не получаем обрезок всех направлений в первом городе.
+ */
+function makeCrossProductInstances(
+  base: SitePage,
+  cities: Array<{ slug: string; label: string }>,
+  dirs: Array<{ slug: string; label: string }>,
+  maxPages: number,
+): SitePage[] {
+  const result: SitePage[] = [];
+  const total = cities.length * dirs.length;
+  const limit = Math.min(total, Math.max(1, maxPages));
+  let idx = 0;
+  for (let ci = 0; ci < cities.length && result.length < limit; ci++) {
+    for (let di = 0; di < dirs.length && result.length < limit; di++) {
+      const city = cities[ci];
+      const dir = dirs[di];
+      // Приоритет падает от 0.85 до 0.55 по порядку.
+      const priority = limit > 1
+        ? Math.max(0.55, 0.85 - (idx / Math.max(1, limit - 1)) * 0.30)
+        : base.priority;
+      const contract = substituteContract(base.contract, {
+        city: city.label,
+        geo: city.slug,
+        slug: dir.slug,
+        service: dir.label,
+        direction: dir.label,
+      });
+      const url = substituteUrl(base.url_pattern, {
+        geo: city.slug,
+        city: city.slug,
+        slug: dir.slug,
+        service: dir.slug,
+        direction: dir.slug,
+      });
+      // Если url_pattern не имеет обоих плейсхолдеров, склеиваем принудительно:
+      // /[direction]/[city]/.
+      const finalUrl = (url.includes(dir.slug) && url.includes(city.slug))
+        ? url
+        : `/${dir.slug}/${city.slug}`;
+      result.push({
+        ...base,
+        url_pattern: finalUrl,
+        priority: round2(priority),
+        contract: { ...contract, url_pattern: finalUrl },
+        page_instance_key: `${dir.slug}-${city.slug}`,
+        page_instance_label: `${dir.label} — ${city.label}`,
+        page_instance_kind: 'city',
+        reasoning: `${base.reasoning} → направление «${dir.label}» в городе ${city.label} (cross-product PR-11)`,
+      });
+      idx++;
+    }
+  }
+  return result;
 }
 
 function makeCityInstance(
@@ -276,5 +360,7 @@ export function fanoutContextFromInput(input: StrategyBuildInput): FanoutContext
     service_directions: input.service_directions,
     clusters: input.clusters,
     enable_hub_pages: input.enable_hub_pages,
+    fanout_max_pages: input.fanout_max_pages,
+    disable_cross_product: input.disable_cross_product,
   };
 }

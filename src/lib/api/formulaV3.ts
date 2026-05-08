@@ -145,6 +145,11 @@ export interface RunPipelineInput {
   skip_demand?: boolean;
   skip_crawl?: boolean;
   max_crawl_pages?: number;
+  // PR-11: структурированные города и направления для page fan-out
+  // (раньше это было только в competitive_position как текст — fan-out не запускался).
+  cities?: Array<{ slug: string; label: string }>;
+  service_directions?: Array<{ slug: string; label: string }>;
+  enable_hub_pages?: boolean;
 }
 
 async function getJson<T>(path: string): Promise<T> {

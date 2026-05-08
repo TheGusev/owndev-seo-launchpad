@@ -36,6 +36,34 @@ const API_KEY = process.env.YANDEX_API_KEY ?? process.env.YANDEX_IAM_TOKEN;
 const FOLDER_ID = process.env.YANDEX_FOLDER_ID;
 const API_BASE = 'https://searchapi.api.cloud.yandex.net/v2/wordstat';
 
+// ─── PR-11: явная проверка режима в проде ───
+// Если NODE_ENV=production или V3_ENV=prod, mock-режим должен быть явным выбором.
+const IS_PROD =
+  process.env.NODE_ENV === 'production' || process.env.V3_ENV === 'prod';
+const MOCK_EXPLICITLY_ALLOWED = process.env.YANDEX_WORDSTAT_ALLOW_MOCK === 'true';
+
+if (IS_PROD && MODE === 'mock' && !MOCK_EXPLICITLY_ALLOWED) {
+  // eslint-disable-next-line no-console
+  console.error(
+    '[WORDSTAT] КРИТИЧЕСКИ: в production включён mock-режим Wordstat. ' +
+      'Данные будут синтетическими. Установите YANDEX_WORDSTAT_MODE=search_api ' +
+      '+ YANDEX_API_KEY + YANDEX_FOLDER_ID, либо явно разрешите mock через ' +
+      'YANDEX_WORDSTAT_ALLOW_MOCK=true.',
+  );
+}
+if (MODE === 'mock') {
+  logger.warn(
+    'WORDSTAT',
+    `Режим MOCK активен (env=${IS_PROD ? 'prod' : 'dev'}). Реальных данных Wordstat нет — ` +
+      `отчёты будут помечены data_source=mock.`,
+  );
+}
+
+// Экспорты для других модулей (pro_report проверяет isWordstatMock).
+export const isWordstatMock = (): boolean => MODE === 'mock';
+export const wordstatDataSource = (): 'mock' | 'real_wordstat' =>
+  MODE === 'mock' ? 'mock' : 'real_wordstat';
+
 // `devices: ['all']` is our internal shorthand. Yandex expects DEVICE_* enums.
 function normalizeDevices(devices?: string[]): string[] {
   if (!devices || devices.length === 0) return ['DEVICE_ALL'];

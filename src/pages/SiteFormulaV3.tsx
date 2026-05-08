@@ -290,6 +290,25 @@ export default function SiteFormulaV3() {
         .map((s) => s.trim())
         .filter(Boolean);
       const services = Array.from(new Set([...serviceChips, ...customServices]));
+
+      // PR-11: Структурируем cities/service_directions для fan-out.
+      // Слугификация — латиница с проверкой кириллицы → транслит.
+      const TRANSLIT: Record<string, string> = {
+        а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh',
+        з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o',
+        п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c',
+        ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+      };
+      const slugify = (s: string): string =>
+        s.toLowerCase().trim()
+          .split('').map((ch) => TRANSLIT[ch] ?? ch).join('')
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-').replace(/-+/g, '-')
+          .slice(0, 40) || 'item';
+
+      const structuredCities = allCities.map((label) => ({ slug: slugify(label), label }));
+      const structuredDirections = services.map((label) => ({ slug: slugify(label), label }));
+
       const r = await formulaV3Api.runPipeline({
         root_url: noDomain ? undefined : normalizeUrl(siteUrl),
         project_code: selectedType,
@@ -320,6 +339,10 @@ export default function SiteFormulaV3() {
                 allCities.length > 0 ? allCities.map((c) => `${s} ${c.toLowerCase()}`) : [s]
               )
             : undefined,
+        // PR-11: структурированные поля для page fan-out (бэк развернёт посадки по городам × направлениям).
+        cities: structuredCities.length > 0 ? structuredCities : undefined,
+        service_directions: structuredDirections.length > 0 ? structuredDirections : undefined,
+        enable_hub_pages: true,
         pack_mode: packMode,
         platform_target: packMode === 'platform_specific' ? platform : undefined,
         ai_training_policy: 'allow_with_attribution',
