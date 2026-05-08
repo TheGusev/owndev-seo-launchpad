@@ -77,7 +77,12 @@ export function buildProReport(
 
       const leads = Math.round(visits * cr1);
       const sales = Math.round(leads * cr2);
-      const revenue = Math.round(sales * aov);
+      // Revenue считаем только для вертикалей с прямой монетизацией.
+      // Для advertising/donation/institutional/brand/install/commission «revenue» не имеет смысла.
+      const monetizationCountsRevenue = profile.monetization === 'lead_gen'
+        || profile.monetization === 'transaction'
+        || profile.monetization === 'subscription';
+      const revenue = monetizationCountsRevenue ? Math.round(sales * aov) : 0;
       const acqCost = Math.round(leads * cpa);
 
       const rationaleParts: string[] = [];
