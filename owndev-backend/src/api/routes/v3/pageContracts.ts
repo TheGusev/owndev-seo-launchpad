@@ -15,6 +15,8 @@ const VALID_CODES = new Set<ProjectTypeCodeV3>([
   'finance', 'hospitality', 'events', 'nonprofit', 'gov', 'portfolio',
   'media', 'blog',
   'promo_event', 'personal_brand', 'franchise_multi', 'b2b_media',
+  // PR-10/11: подкатегории локальных услуг
+  'service_pest_control', 'service_repair_home', 'service_auto', 'service_beauty',
 ]);
 
 export async function pageContractsV3Routes(app: FastifyInstance) {

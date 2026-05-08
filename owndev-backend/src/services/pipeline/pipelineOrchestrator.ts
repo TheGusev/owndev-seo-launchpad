@@ -273,6 +273,9 @@ export class PipelineOrchestrator {
         cities: input.cities,
         service_directions: input.service_directions,
         enable_hub_pages: input.enable_hub_pages,
+        // PR-11: защита от взрыва cross-product (направления × города).
+        fanout_max_pages: input.fanout_max_pages,
+        disable_cross_product: input.disable_cross_product,
       });
       result.strategy = strategy;
 

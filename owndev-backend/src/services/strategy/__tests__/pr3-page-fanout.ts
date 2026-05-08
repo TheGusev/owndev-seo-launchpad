@@ -151,7 +151,9 @@ const FIVE_CITIES = [moscow, spb, ekb, kzn, nsk];
 }
 
 // ────────── 7. service-geo × 5 городов + 3 направления ──────────
-// В этой версии fan-out не делает cross-product (приоритет — города).
+// PR-11: бывшее поведение «одна ось» было дефектом. Теперь идёт cross-product
+// с лимитом (по умолчанию 50). 5 городов × 3 направления = 15 посадок.
+// Отключить можно флагом disable_cross_product=true.
 {
   const base = [makePage('service-geo', '/services/{geo}/{slug}')];
   const out = applyPageFanout(base, {
@@ -163,7 +165,20 @@ const FIVE_CITIES = [moscow, spb, ekb, kzn, nsk];
     ],
     enable_hub_pages: false,
   });
-  expectEq(out.length, 5, 'service-geo: cross-product не делаем, города приоритетны → 5 страниц');
+  expectEq(out.length, 15, 'service-geo: PR-11 cross-product 5 городов × 3 направления → 15 посадок');
+
+  // Проверяем, что флаг disable_cross_product=true откатывает старое поведение (только города).
+  const outLegacy = applyPageFanout(base, {
+    cities: FIVE_CITIES,
+    service_directions: [
+      { slug: 'a', label: 'A' },
+      { slug: 'b', label: 'B' },
+      { slug: 'c', label: 'C' },
+    ],
+    enable_hub_pages: false,
+    disable_cross_product: true,
+  });
+  expectEq(outLegacy.length, 5, 'PR-11: disable_cross_product=true → только 5 городов');
 }
 
 // ────────── 8. Один город — fan-out не происходит ──────────

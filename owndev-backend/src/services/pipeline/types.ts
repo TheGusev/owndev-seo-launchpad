@@ -59,6 +59,12 @@ export interface PipelineInput {
   cities?: Array<{ slug: string; label: string }>;
   service_directions?: Array<{ slug: string; label: string }>;
   enable_hub_pages?: boolean;
+  // ───── PR-11 Cross-product fan-out защита ─────
+  // Лимит общего числа сгенерированных посадок (направление × город).
+  // По умолчанию 50 — защита от взрыва (24 города × 12 направлений = 288).
+  fanout_max_pages?: number;
+  // Если true, cross-product отключён — генерируется одна ось (cities или directions).
+  disable_cross_product?: boolean;
 }
 
 export interface PipelineStageResult {
@@ -148,4 +154,14 @@ export interface ProReportV3 {
     /** Короткое объяснение расчёта на русском. */
     rationale_ru?: string;
   };
+  // ───── PR-11: прозрачность источника данных ─────
+  /**
+   * Источник Wordstat-данных в этом отчёте.
+   *  - 'real_wordstat' — были реальные вызовы Yandex Search API v2;
+   *  - 'mock' — синтетические детерминированные данные (базовый режим без API-ключа).
+   * UI при 'mock' показывает явный баннер «Демо-данные».
+   */
+  data_source?: 'mock' | 'real_wordstat';
+  /** Баннер-предупреждение для UI, если data_source='mock'. */
+  data_source_warning?: string;
 }

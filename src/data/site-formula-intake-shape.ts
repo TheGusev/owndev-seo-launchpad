@@ -50,7 +50,7 @@ export interface IntakeShape {
   servicesCustomPlaceholder: string;
 }
 
-/** Карта 23 кодов → семейство. */
+/** Карта 27 кодов → семейство (PR-11). */
 const FAMILY_BY_CODE: Record<ProjectTypeCodeV3, IntakeFamily> = {
   // local_service — нужен геобинд
   service_geo: 'local_service',
@@ -62,6 +62,11 @@ const FAMILY_BY_CODE: Record<ProjectTypeCodeV3, IntakeFamily> = {
   hospitality: 'local_service',
   events: 'local_service',
   finance: 'local_service',
+  // PR-11: подкатегории локальных услуг — все требуют геобинда
+  service_pest_control: 'local_service',
+  service_repair_home: 'local_service',
+  service_auto: 'local_service',
+  service_beauty: 'local_service',
   // ecom — города опциональны (самовывоз / офлайн-точки)
   ecommerce: 'ecom',
   marketplace: 'ecom',

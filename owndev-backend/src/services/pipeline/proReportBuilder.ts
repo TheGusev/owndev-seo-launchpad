@@ -19,6 +19,7 @@ import type { PipelineInput, PipelineResultV3, ProReportV3 } from './types.js';
 import { getVerticalProfile, formatKpiSummary } from '../verticals/index.js';
 import type { SeasonalityVector, VerticalProfile } from '../verticals/types.js';
 import type { DemandIntelligenceResult } from '../demand/types.js';
+import { isWordstatMock, wordstatDataSource } from '../demand/wordstatClient.js';
 
 export function buildProReport(
   input: PipelineInput,
@@ -113,6 +114,16 @@ export function buildProReport(
   // ── PR-7: рынок / реклама / сезонность ──
   if (profile) {
     report.ad_market_estimate = buildAdMarketEstimate(profile, result.demand);
+  }
+
+  // ── PR-11: явный флаг источника Wordstat-данных ──
+  // UI при data_source='mock' показывает баннер «Демо-данные»,
+  // чтобы клиент не принял синтетику за реальный рынок.
+  report.data_source = wordstatDataSource();
+  if (isWordstatMock()) {
+    report.data_source_warning =
+      'Демо-данные: Wordstat работает в mock-режиме (синтетическая частотность на основе хэша). ' +
+      'Для реальных вызовов установите YANDEX_WORDSTAT_MODE=search_api + YANDEX_API_KEY + YANDEX_FOLDER_ID.';
   }
 
   return report;

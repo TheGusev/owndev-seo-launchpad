@@ -85,4 +85,8 @@ export interface StrategyBuildInput {
   service_directions?: Array<{ slug: string; label: string }>;
   // Добавить ли hub-страницы из кластеров Wordstat (по умолчанию — да).
   enable_hub_pages?: boolean;
+  // PR-11: лимит cross-product fan-out (по умолчанию 50). Защита от взрыва.
+  fanout_max_pages?: number;
+  // PR-11: отключение cross-product (легаси PR-3 поведение).
+  disable_cross_product?: boolean;
 }

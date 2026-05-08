@@ -156,6 +156,39 @@ export const RECIPES: Record<string, Record<string, GraphRecipe>> = {
     home: { nodes: ['org', 'website', 'webpage'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
     article: ARTICLE_BASE,
   },
+  // PR-10/11: подкатегории локальных услуг — полный блок как у service_geo
+  service_pest_control: {
+    home: { ...HOME_BASE, variant: 'default' },
+    service: { ...SERVICE_BASE, variant: 'default' },
+    'service-geo': { ...SERVICE_BASE, variant: 'default' },
+    pricing: SERVICE_BASE,
+    contacts: { nodes: ['org', 'website', 'localbusiness', 'webpage', 'breadcrumb'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
+    article: ARTICLE_BASE,
+  },
+  service_repair_home: {
+    home: { ...HOME_BASE, variant: 'default' },
+    service: { ...SERVICE_BASE, variant: 'default' },
+    'service-geo': { ...SERVICE_BASE, variant: 'default' },
+    pricing: SERVICE_BASE,
+    contacts: { nodes: ['org', 'website', 'localbusiness', 'webpage', 'breadcrumb'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
+    article: ARTICLE_BASE,
+  },
+  service_auto: {
+    home: { ...HOME_BASE, variant: 'default' },
+    service: { ...SERVICE_BASE, variant: 'default' },
+    'service-geo': { ...SERVICE_BASE, variant: 'default' },
+    pricing: SERVICE_BASE,
+    contacts: { nodes: ['org', 'website', 'localbusiness', 'webpage', 'breadcrumb'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
+    article: ARTICLE_BASE,
+  },
+  service_beauty: {
+    home: { ...HOME_BASE, variant: 'default' },
+    service: { ...SERVICE_BASE, variant: 'default' },
+    'service-geo': { ...SERVICE_BASE, variant: 'default' },
+    pricing: SERVICE_BASE,
+    contacts: { nodes: ['org', 'website', 'localbusiness', 'webpage', 'breadcrumb'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
+    article: ARTICLE_BASE,
+  },
 };
 
 export function getRecipe(
