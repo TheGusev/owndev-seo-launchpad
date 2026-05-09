@@ -24,29 +24,25 @@ interface Row {
 }
 
 const rows: Row[] = [
-  // GEO / AI-ready
-  { feature: "GEO / AI-ready аудит", hint: "Site Check: готовность к ChatGPT, Perplexity, Алисе", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "LLM Score (AI-видимость)", hint: "Вероятность попасть в AI-ответ", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "llms.txt — генератор и анализ", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "Schema.org JSON-LD (12 типов)", owndev: true, semrush: false, screaming: false, arsenkin: "partial" },
+  // GEO/AI — фишка только OWNDEV, никто из конкурентов не делает
+  { feature: "GEO / AI-ready аудит", hint: "Готовность к выдаче в ChatGPT, Perplexity, Алисе", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "LLM Score (AI-видимость)", hint: "Оценка вероятности попасть в AI-ответ", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "Анализ llms.txt", hint: "Парсинг и валидация политики для AI-ботов", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "Schema.org JSON-LD генератор", hint: "12 типов разметки готовыми блоками", owndev: true, semrush: false, screaming: false, arsenkin: "partial" },
   { feature: "GEO-рейтинг Рунета", hint: "Открытый рейтинг 92+ сайтов", owndev: true, semrush: false, screaming: false, arsenkin: false },
 
-  // Архитектура и контент
-  { feature: "Site Formula — blueprint сайта", hint: "Структура и блоки под нишу", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "Site Formula PRO — промпт-пакет", hint: "ZIP с ТЗ для Lovable / Cursor", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  // SEO-ядро — где OWNDEV паритетен и обходит
   { feature: "Семантика 150+ ключей с Wordstat", owndev: true, semrush: true, screaming: false, arsenkin: true },
+  { feature: "Анализ конкурентов в SERP", owndev: true, semrush: true, screaming: false, arsenkin: "partial" },
   { feature: "Минус-слова для Яндекс.Директ", owndev: true, semrush: false, screaming: false, arsenkin: true },
+  { feature: "Технический SEO-аудит", owndev: true, semrush: true, screaming: true, arsenkin: "partial" },
   { feature: "E-E-A-T анализ авторитета", owndev: true, semrush: "partial", screaming: false, arsenkin: false },
 
-  // Маркетплейсы
-  { feature: "Аудит карточек Wildberries / Ozon", hint: "Контент, поиск, конверсия, реклама", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "Анализ конкурентов в SERP", owndev: true, semrush: true, screaming: false, arsenkin: "partial" },
-
-  // Удобство
-  { feature: "Технический SEO-аудит", owndev: true, semrush: true, screaming: true, arsenkin: "partial" },
+  // Доступность и удобство
   { feature: "Полностью на русском", owndev: true, semrush: "partial", screaming: false, arsenkin: true },
-  { feature: "PDF + Word без watermark", owndev: true, semrush: "partial", screaming: false, arsenkin: false },
-  { feature: "Бесплатный тариф без лимитов", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "PDF + Word отчёт без водяных знаков", owndev: true, semrush: "partial", screaming: false, arsenkin: false },
+  { feature: "super_prompt_pack для Lovable / Cursor", hint: "ZIP с готовым ТЗ для AI-разработки", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "Бесплатный тариф без ограничений", owndev: true, semrush: false, screaming: false, arsenkin: false },
 ];
 
 const competitors = [
@@ -97,37 +93,36 @@ const score = (key: typeof competitors[number]["key"]) => {
 };
 
 const Cell = ({ value, accent }: { value: CellState; accent?: boolean }) => {
-  const base = "inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-md md:rounded-lg";
   if (value === true) {
     return (
       <span
-        className={`${base} ${
+        className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${
           accent
             ? "bg-primary text-primary-foreground shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
             : "bg-success/15 text-success"
         }`}
         aria-label="Есть"
       >
-        <Check className="w-3.5 h-3.5 md:w-4 md:h-4" strokeWidth={3} />
+        <Check className="w-4 h-4" strokeWidth={3} />
       </span>
     );
   }
   if (value === "partial") {
     return (
       <span
-        className={`${base} bg-warning/15 text-warning`}
+        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-warning/15 text-warning"
         aria-label="Частично"
       >
-        <Minus className="w-3.5 h-3.5 md:w-4 md:h-4" strokeWidth={3} />
+        <Minus className="w-4 h-4" strokeWidth={3} />
       </span>
     );
   }
   return (
     <span
-      className={`${base} bg-muted text-muted-foreground/40`}
+      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-muted text-muted-foreground/40"
       aria-label="Нет"
     >
-      <X className="w-3.5 h-3.5 md:w-4 md:h-4" strokeWidth={2.5} />
+      <X className="w-4 h-4" strokeWidth={2.5} />
     </span>
   );
 };
@@ -214,39 +209,83 @@ const ComparisonSection = () => {
           })}
         </motion.div>
 
-        {/* Единая компактная таблица — на мобиле горизонтальный скролл при необходимости */}
+        {/* Mobile: карточки по фичам — каждая карточка показывает все 4 конкурента полным именем */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="rounded-xl md:rounded-2xl border border-border overflow-hidden bg-card"
+          className="md:hidden space-y-2"
+        >
+          {rows.map((row, i) => (
+            <div
+              key={i}
+              className="rounded-xl border border-border bg-card p-3"
+            >
+              {/* Название фичи */}
+              <div className="mb-2.5 pb-2 border-b border-border/60">
+                <h3 className="text-sm font-semibold text-foreground leading-tight">
+                  {row.feature}
+                </h3>
+                {row.hint && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    {row.hint}
+                  </p>
+                )}
+              </div>
+              {/* 4 конкурента — название слева, иконка справа */}
+              <div className="space-y-1.5">
+                {competitors.map((c) => {
+                  const v = row[c.key as keyof Row] as CellState;
+                  return (
+                    <div
+                      key={c.key}
+                      className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg ${
+                        c.isUs ? "bg-primary/5 border border-primary/20" : ""
+                      }`}
+                    >
+                      <span
+                        className={`text-xs font-medium ${
+                          c.isUs ? "text-primary" : "text-foreground"
+                        }`}
+                      >
+                        {c.name}
+                      </span>
+                      <Cell value={v} accent={c.isUs} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* Desktop: классическая таблица */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={inView ? { opacity: 1 } : {}}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="hidden md:block rounded-2xl border border-border overflow-hidden bg-card"
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-xs md:text-sm min-w-[480px] md:min-w-[640px]">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-2.5 py-2 md:px-4 md:py-3 font-semibold text-muted-foreground">
+                  <th className="text-left p-4 font-semibold text-muted-foreground">
                     Функция
                   </th>
                   {competitors.map((c) => (
                     <th
                       key={c.key}
-                      className={`px-1.5 py-2 md:px-3 md:py-3 font-semibold text-center align-bottom ${
+                      className={`p-4 font-semibold text-center ${
                         c.isUs
-                          ? "text-primary bg-primary/[0.08] border-x border-primary/20"
+                          ? "text-primary bg-primary/8 border-x border-primary/20"
                           : "text-foreground"
                       }`}
                     >
                       <div className="flex flex-col items-center gap-0.5">
-                        <abbr
-                          title={c.name}
-                          className="no-underline"
-                        >
-                          <span className="hidden sm:inline">{c.name}</span>
-                          <span className="sm:hidden text-[11px]">{c.short}</span>
-                        </abbr>
+                        <span>{c.name}</span>
                         <span
-                          className={`text-[9px] md:text-[10px] font-mono leading-tight ${
+                          className={`text-[10px] font-mono ${
                             c.isUs ? "text-primary/80" : "text-muted-foreground/70"
                           }`}
                         >
@@ -263,10 +302,10 @@ const ComparisonSection = () => {
                     key={i}
                     className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors"
                   >
-                    <td className="px-2.5 py-2 md:px-4 md:py-3 font-medium text-foreground align-middle">
-                      <div className="leading-tight">{row.feature}</div>
+                    <td className="p-4 font-medium text-foreground">
+                      <div>{row.feature}</div>
                       {row.hint && (
-                        <div className="hidden sm:block text-[11px] md:text-xs text-muted-foreground font-normal mt-0.5 leading-snug">
+                        <div className="text-xs text-muted-foreground font-normal mt-0.5">
                           {row.hint}
                         </div>
                       )}
@@ -276,8 +315,8 @@ const ComparisonSection = () => {
                       return (
                         <td
                           key={c.key}
-                          className={`px-1.5 py-2 md:px-3 md:py-3 text-center ${
-                            c.isUs ? "bg-primary/[0.08] border-x border-primary/20" : ""
+                          className={`p-4 text-center ${
+                            c.isUs ? "bg-primary/8 border-x border-primary/20" : ""
                           }`}
                         >
                           <div className="flex justify-center">
@@ -294,9 +333,9 @@ const ComparisonSection = () => {
         </motion.div>
 
         {/* Подпись */}
-        <p className="text-center text-muted-foreground text-[11px] md:text-xs mt-4 md:mt-6 max-w-2xl mx-auto px-2">
-          Сравнение по публичным данным конкурентов на октябрь 2026.
-          Цены за минимальный тариф; OWNDEV — единственный полностью бесплатный сервис.
+        <p className="text-center text-muted-foreground text-xs mt-4 md:mt-6 max-w-2xl mx-auto">
+          Сравнение по публичным данным конкурентов на май 2026.
+          Цены приведены за минимальный тариф; OWNDEV — единственный полностью бесплатный сервис.
         </p>
       </div>
     </section>
