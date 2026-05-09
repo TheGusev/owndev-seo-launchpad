@@ -19,26 +19,84 @@ interface TypingCodeBlockProps {
   mobileVariant?: "compact" | "hidden";
 }
 
-const KEYWORDS = /\b(const|let|var|function|return|if|else|for|while|import|from|export|default|async|await|class|new|true|false|null|undefined|GET|POST|HTTP|JSON)\b/g;
-const STRINGS = /(["'`])(?:\\.|(?!\1).)*\1/g;
-const COMMENTS = /(\/\/[^\n]*|#[^\n]*|>\s.*)/g;
-const NUMBERS = /\b(\d+(?:\.\d+)?)\b/g;
-const CHECKMARKS = /(✓|✗|→|⚡|✦)/g;
+// Single-pass tokenizer — avoids regex passes over already-injected HTML
+// (which previously corrupted the inline output by matching quotes inside
+//  style="…" attributes of earlier replacements).
+const KEYWORDS = new Set([
+  "const","let","var","function","return","if","else","for","while","import","from",
+  "export","default","async","await","class","new","true","false","null","undefined",
+  "GET","POST","HTTP","JSON",
+]);
+const MARKS = new Set(["✓","✗","→","⚡","✦"]);
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function wrap(token: string, color: string): string {
+  return `<span style="color:hsl(var(${color}))">${escapeHtml(token)}</span>`;
+}
 
 function highlight(line: string): string {
-  // Escape HTML first
-  let html = line
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-  // Order matters: comments → strings → keywords → numbers → marks
-  html = html.replace(COMMENTS, '<span style="color:hsl(var(--muted-foreground))">$1</span>');
-  html = html.replace(STRINGS, (m) => `<span style="color:hsl(var(--accent))">${m}</span>`);
-  html = html.replace(KEYWORDS, '<span style="color:hsl(var(--secondary))">$1</span>');
-  html = html.replace(NUMBERS, '<span style="color:hsl(var(--primary))">$1</span>');
-  html = html.replace(CHECKMARKS, '<span style="color:hsl(var(--primary))">$1</span>');
-  return html;
+  let out = "";
+  let i = 0;
+  const n = line.length;
+  while (i < n) {
+    const ch = line[i];
+    // Line comment "//..." or "#..." or "> ..."
+    if (
+      (ch === "/" && line[i + 1] === "/") ||
+      ch === "#" ||
+      (ch === ">" && line[i + 1] === " ")
+    ) {
+      out += wrap(line.slice(i), "--muted-foreground");
+      break;
+    }
+    // Strings
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const quote = ch;
+      let j = i + 1;
+      while (j < n) {
+        if (line[j] === "\\") { j += 2; continue; }
+        if (line[j] === quote) { j++; break; }
+        j++;
+      }
+      out += wrap(line.slice(i, j), "--accent");
+      i = j;
+      continue;
+    }
+    // Marks
+    if (MARKS.has(ch)) {
+      out += wrap(ch, "--primary");
+      i++;
+      continue;
+    }
+    // Numbers
+    if (ch >= "0" && ch <= "9") {
+      let j = i;
+      while (j < n && (line[j] === "." || (line[j] >= "0" && line[j] <= "9"))) j++;
+      out += wrap(line.slice(i, j), "--primary");
+      i = j;
+      continue;
+    }
+    // Identifiers / keywords
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_]/.test(line[j])) j++;
+      const word = line.slice(i, j);
+      if (KEYWORDS.has(word)) {
+        out += wrap(word, "--secondary");
+      } else {
+        out += escapeHtml(word);
+      }
+      i = j;
+      continue;
+    }
+    // Default — escape single char
+    out += escapeHtml(ch);
+    i++;
+  }
+  return out;
 }
 
 export const TypingCodeBlock = ({
