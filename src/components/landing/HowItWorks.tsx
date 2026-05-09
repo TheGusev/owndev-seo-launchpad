@@ -53,8 +53,9 @@ const HowItWorks = () => {
           ))}
         </div>
 
-        <div className="mt-10 flex justify-center">
-          <TypingCodeBlock
+        <div className="mt-10 flex justify-center px-2">
+          <div className="w-full max-w-[420px] h-[28px] flex items-center justify-center overflow-hidden rounded-md">
+            <TypingCodeBlock
             variant="inline"
             loop
             speed={32}
@@ -65,7 +66,8 @@ const HowItWorks = () => {
               "→ analyzing schema.org... ✓",
               "→ generating report... ✓ done",
             ]}
-          />
+            />
+          </div>
         </div>
       </div>
     </section>
