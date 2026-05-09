@@ -1,59 +1,53 @@
-## Что происходит
+## Что не так в тёмной теме
 
-В `index.html` внутри `<div id="root">` лежит большой статический SEO-fallback (header / main / footer / pricing / FAQ / форма) — строки 46–179. Это сделано **намеренно** для краулеров без JS (GPTBot, ClaudeBot, PerplexityBot, Яндекс) — им важно увидеть текстовый контент до загрузки React.
+На скриншотах видно две группы поломок:
 
-Но у живого пользователя сценарий такой:
-1. Браузер парсит HTML и **сразу рендерит fallback** (он же не знает, что React его заменит).
-2. Скачивается `/src/main.tsx` (ESM-модуль + куча чанков).
-3. React монтируется и заменяет содержимое `#root`.
+1. **Тайлы стадий пайплайна** (`Preflight 4-осей`, `Спрос Wordstat`, `Crawl Sitemap`, `Аудит страниц`, `Developer Pack` и т.п.) — фон `bg-green-50 / bg-red-50 / bg-amber-50/40`, текст «Готово / Ошибка» — `text-green-700 / text-red-700`. В тёмной теме сам тайл остаётся бледно-зелёным/красным, а основная подпись наследует светлый foreground → **белое на белом, читается только статус мелким шрифтом**.
 
-Между шагами 1 и 3 проходит 200–800 мс на холодной загрузке — именно эту «голую» страницу ты и поймал на скрине. Tailwind / темы тоже ещё не применены, потому что CSS грузится из бандла.
+2. **Карточки PRO-отчёта** (`ProReportPanel.tsx`) — большие блоки с фонами `bg-emerald-50/50` (ROI-оценка) и `bg-amber-50/40` (Рынок и реклама) + хардкод-тексты `text-emerald-700`, `text-amber-700`. Внутри них дочерние строки используют `text-muted-foreground` (светло-серый, рассчитан на тёмный фон) → **серый текст «Стоимость привлечения лидов», «CPC горячих», «Бюджет Я.Директа» сливается со светлым фоном** (точно то, что видно на IMG_6559).
 
-## Решение
+   Плюс badges `CLASS_COLORS` (`bg-blue-100 text-blue-800`), `COMPETITION_COLORS` (`bg-rose-100 text-rose-800`) и рамка карточки `border-purple-200` — в dark выглядят как пастельные кляксы и плохо контрастят.
 
-Скрыть fallback от реальных пользователей через инлайн-CSS, **не убирая его из DOM** — боты без JS читают текст из исходника, им CSS неважен. Боты с JS (Googlebot, Яндекс) увидят уже React-версию.
+Проблемы 100% воспроизводимы в `light` и `dark` — их источник один: используются tailwind-палитры без `dark:`-вариантов, вместо семантических токенов из `index.css` (`--background`, `--foreground`, `--muted`, `--primary`, `--destructive` и пр.).
 
-Конкретно — добавить в `<head>` (рядом со строкой 16) один блок:
+## Что меняю
 
-```html
-<style id="ssr-fallback-hide">
-  /* Скрываем статический SEO-fallback от живых пользователей до монтирования React.
-     Краулеры без JS всё равно парсят текст из DOM. */
-  #root > header,
-  #root > main,
-  #root > footer { display: none !important; }
-</style>
-```
+### 1. `src/components/site-formula-v3/ProReportPanel.tsx`
 
-Это самодостаточно: как только React сделает `createRoot(...).render(<App/>)`, исходные `<header>/<main>/<footer>` удалятся, появится приложение, селектор перестанет на что-либо влиять.
+Перевожу карточки на токен-стиль с лёгким цветным акцентом через `*/10..15` opacity (работает и в light, и в dark, текст всегда контрастен):
 
-### Бонус: страховка от мерцания фона
+- Карточка PRO: `border-2 border-purple-200` → `border-2 border-primary/30`.
+- Иконка `BarChart3 text-purple-600` → `text-primary`.
+- `CLASS_COLORS`:
+  - `start` → `bg-sky-500/15 text-sky-600 dark:text-sky-300 border-sky-500/30`
+  - `growth` → `bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30`
+  - `scale` → `bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30`
+- `COMPETITION_COLORS`: аналогично через `*/15` + `dark:text-*-300`.
+- ROI-блок: `bg-emerald-50/50` → `bg-emerald-500/5 border-emerald-500/20`. `text-emerald-700` → `text-emerald-600 dark:text-emerald-400`. `TrendingUp text-emerald-600` оставляю как есть (читается на обоих фонах).
+- «Рынок и реклама»: `bg-amber-50/40` → `bg-amber-500/5 border-amber-500/20`. `text-amber-700` → `text-amber-600 dark:text-amber-400`. `Megaphone text-amber-600` ок.
+- Внутренние «мини-карточки» `bg-background` оставляю — они уже на токене, просто проверяю что `text-muted-foreground` контрастен (он работает в обоих режимах, проблема была именно из-за родительского светлого фона).
 
-Сейчас `body` без явного фона — пока CSS-бандл не приехал, видно белое полотно с тёмным текстом. Дополню тот же inline `<style>` правилом:
+### 2. `src/pages/SiteFormulaV3.tsx` — тайлы стадий пайплайна (строки 1090–1125)
 
-```css
-html, body { background: #0f172a; color: #e5e7eb; }
-```
+Светлые фоны на состояниях done/failed/skipped → акцентные с opacity:
 
-(совпадает с дефолтным dark-фоном — если позже пользователь переключит в light, скрипт `pre-paint theme application` уже добавил класс `light` ДО парсинга `<body>`, можно зарефаренсить:)
+- `border-green-500 bg-green-50` → `border-emerald-500/40 bg-emerald-500/10`
+- `border-red-500 bg-red-50` → `border-destructive/40 bg-destructive/10`
+- `border-amber-300 bg-amber-50/40` → `border-amber-500/40 bg-amber-500/10`
+- Цвета иконок (`text-green-600 / text-red-600 / text-amber-600`) → `text-emerald-500 / text-destructive / text-amber-500` (одинаково контрастны в обеих темах).
+- Подписи статусов `text-green-700 / text-red-700 / text-amber-700` → `text-emerald-600 dark:text-emerald-400 / text-destructive / text-amber-600 dark:text-amber-400`.
+- Главное: основной `text-xs font-medium` для названия стадии (сейчас наследует foreground) — оборачиваю в явный `text-foreground`, чтобы при любой теме была чёткая надпись (это убирает «белое на белом» с IMG_6557).
 
-```css
-html.light, html.light body { background: #ffffff; color: #0f172a; }
-```
+### 3. Не трогаю
 
-Так не будет вспышки белого даже при супер-медленном CSS.
+- `PreviewCard.tsx` — там уже корректные `bg-*-500/20 text-*-400` (dark-friendly).
+- `PROUpsellBlock.tsx` — тоже на `*/15` opacity, видимость в порядке.
+- Никаких изменений в backend / роутах / логике.
 
-## Файл, который меняю
+### Проверка
 
-- `index.html` — добавить один `<style>` в `<head>`. Никаких других изменений.
-
-### Что НЕ трогаю
-
-- Сам SEO-fallback оставляю как есть (важен для GEO-готовности — это весь смысл проекта).
-- React-роутинг, Tailwind, тема — без правок.
-
-## Проверка
-
-1. Hard reload главной с `Disable cache` в DevTools → fallback не должен мелькать; пустой тёмный фон → React-приложение.
-2. `view-source:` показывает весь fallback-HTML (для краулеров).
-3. Curl `curl -A "GPTBot" https://owndev.ru/ | grep "GEO-аудит"` — текст на месте.
+После правок открыть `SiteFormulaV3` в тёмной и светлой теме → убедиться, что:
+- Тайлы Preflight Rollup читаются (название стадии + «Готово/Ошибка»).
+- В блоке «ROI-оценка месяц» видны все цифры и подписи `Стоимость привлечения лидов`, `Доход / мес`.
+- В блоке «Рынок и реклама» видны `CPC горячих`, `Горячий спрос`, `Бюджет Я.Директа`, `Окупаемость SEO`, бэдж конкуренции.
+- Бэйдж класса проекта (Стартап/Рост/Масштаб) контрастен.
