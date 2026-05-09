@@ -198,11 +198,13 @@ export const TypingCodeBlock = ({
         aria-hidden
         className={cn(
           "inline-flex items-center gap-2 font-mono text-[12px] md:text-[13px] text-primary/90",
+          "max-w-full h-[22px] leading-[22px] overflow-hidden",
           className
         )}
       >
-        <span className="text-muted-foreground">&gt;</span>
+        <span className="text-muted-foreground shrink-0">&gt;</span>
         <span
+          className="truncate whitespace-nowrap"
           dangerouslySetInnerHTML={{
             __html: highlight(last) + (!done ? '<span class="code-cursor" style="color:hsl(var(--primary))">▎</span>' : ""),
           }}
