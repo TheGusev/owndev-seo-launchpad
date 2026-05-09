@@ -97,36 +97,37 @@ const score = (key: typeof competitors[number]["key"]) => {
 };
 
 const Cell = ({ value, accent }: { value: CellState; accent?: boolean }) => {
+  const base = "inline-flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-md md:rounded-lg";
   if (value === true) {
     return (
       <span
-        className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${
+        className={`${base} ${
           accent
             ? "bg-primary text-primary-foreground shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
             : "bg-success/15 text-success"
         }`}
         aria-label="Есть"
       >
-        <Check className="w-4 h-4" strokeWidth={3} />
+        <Check className="w-3.5 h-3.5 md:w-4 md:h-4" strokeWidth={3} />
       </span>
     );
   }
   if (value === "partial") {
     return (
       <span
-        className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-warning/15 text-warning"
+        className={`${base} bg-warning/15 text-warning`}
         aria-label="Частично"
       >
-        <Minus className="w-4 h-4" strokeWidth={3} />
+        <Minus className="w-3.5 h-3.5 md:w-4 md:h-4" strokeWidth={3} />
       </span>
     );
   }
   return (
     <span
-      className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-muted text-muted-foreground/40"
+      className={`${base} bg-muted text-muted-foreground/40`}
       aria-label="Нет"
     >
-      <X className="w-4 h-4" strokeWidth={2.5} />
+      <X className="w-3.5 h-3.5 md:w-4 md:h-4" strokeWidth={2.5} />
     </span>
   );
 };
