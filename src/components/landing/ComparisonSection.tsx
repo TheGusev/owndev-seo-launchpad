@@ -213,83 +213,39 @@ const ComparisonSection = () => {
           })}
         </motion.div>
 
-        {/* Mobile: карточки по фичам — каждая карточка показывает все 4 конкурента полным именем */}
+        {/* Единая компактная таблица — на мобиле горизонтальный скролл при необходимости */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="md:hidden space-y-2"
-        >
-          {rows.map((row, i) => (
-            <div
-              key={i}
-              className="rounded-xl border border-border bg-card p-3"
-            >
-              {/* Название фичи */}
-              <div className="mb-2.5 pb-2 border-b border-border/60">
-                <h3 className="text-sm font-semibold text-foreground leading-tight">
-                  {row.feature}
-                </h3>
-                {row.hint && (
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                    {row.hint}
-                  </p>
-                )}
-              </div>
-              {/* 4 конкурента — название слева, иконка справа */}
-              <div className="space-y-1.5">
-                {competitors.map((c) => {
-                  const v = row[c.key as keyof Row] as CellState;
-                  return (
-                    <div
-                      key={c.key}
-                      className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg ${
-                        c.isUs ? "bg-primary/5 border border-primary/20" : ""
-                      }`}
-                    >
-                      <span
-                        className={`text-xs font-medium ${
-                          c.isUs ? "text-primary" : "text-foreground"
-                        }`}
-                      >
-                        {c.name}
-                      </span>
-                      <Cell value={v} accent={c.isUs} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Desktop: классическая таблица */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={inView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="hidden md:block rounded-2xl border border-border overflow-hidden bg-card"
+          className="rounded-xl md:rounded-2xl border border-border overflow-hidden bg-card"
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
+            <table className="w-full text-xs md:text-sm min-w-[480px] md:min-w-[640px]">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left p-4 font-semibold text-muted-foreground">
+                  <th className="text-left px-2.5 py-2 md:px-4 md:py-3 font-semibold text-muted-foreground">
                     Функция
                   </th>
                   {competitors.map((c) => (
                     <th
                       key={c.key}
-                      className={`p-4 font-semibold text-center ${
+                      className={`px-1.5 py-2 md:px-3 md:py-3 font-semibold text-center align-bottom ${
                         c.isUs
-                          ? "text-primary bg-primary/8 border-x border-primary/20"
+                          ? "text-primary bg-primary/[0.08] border-x border-primary/20"
                           : "text-foreground"
                       }`}
                     >
                       <div className="flex flex-col items-center gap-0.5">
-                        <span>{c.name}</span>
+                        <abbr
+                          title={c.name}
+                          className="no-underline"
+                        >
+                          <span className="hidden sm:inline">{c.name}</span>
+                          <span className="sm:hidden text-[11px]">{c.short}</span>
+                        </abbr>
                         <span
-                          className={`text-[10px] font-mono ${
+                          className={`text-[9px] md:text-[10px] font-mono leading-tight ${
                             c.isUs ? "text-primary/80" : "text-muted-foreground/70"
                           }`}
                         >
@@ -306,10 +262,10 @@ const ComparisonSection = () => {
                     key={i}
                     className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors"
                   >
-                    <td className="p-4 font-medium text-foreground">
-                      <div>{row.feature}</div>
+                    <td className="px-2.5 py-2 md:px-4 md:py-3 font-medium text-foreground align-middle">
+                      <div className="leading-tight">{row.feature}</div>
                       {row.hint && (
-                        <div className="text-xs text-muted-foreground font-normal mt-0.5">
+                        <div className="hidden sm:block text-[11px] md:text-xs text-muted-foreground font-normal mt-0.5 leading-snug">
                           {row.hint}
                         </div>
                       )}
@@ -319,8 +275,8 @@ const ComparisonSection = () => {
                       return (
                         <td
                           key={c.key}
-                          className={`p-4 text-center ${
-                            c.isUs ? "bg-primary/8 border-x border-primary/20" : ""
+                          className={`px-1.5 py-2 md:px-3 md:py-3 text-center ${
+                            c.isUs ? "bg-primary/[0.08] border-x border-primary/20" : ""
                           }`}
                         >
                           <div className="flex justify-center">
@@ -337,9 +293,9 @@ const ComparisonSection = () => {
         </motion.div>
 
         {/* Подпись */}
-        <p className="text-center text-muted-foreground text-xs mt-4 md:mt-6 max-w-2xl mx-auto">
-          Сравнение по публичным данным конкурентов на май 2026.
-          Цены приведены за минимальный тариф; OWNDEV — единственный полностью бесплатный сервис.
+        <p className="text-center text-muted-foreground text-[11px] md:text-xs mt-4 md:mt-6 max-w-2xl mx-auto px-2">
+          Сравнение по публичным данным конкурентов на октябрь 2026.
+          Цены за минимальный тариф; OWNDEV — единственный полностью бесплатный сервис.
         </p>
       </div>
     </section>
