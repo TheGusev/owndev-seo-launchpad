@@ -24,25 +24,29 @@ interface Row {
 }
 
 const rows: Row[] = [
-  // GEO/AI — фишка только OWNDEV, никто из конкурентов не делает
-  { feature: "GEO / AI-ready аудит", hint: "Готовность к выдаче в ChatGPT, Perplexity, Алисе", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "LLM Score (AI-видимость)", hint: "Оценка вероятности попасть в AI-ответ", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "Анализ llms.txt", hint: "Парсинг и валидация политики для AI-ботов", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "Schema.org JSON-LD генератор", hint: "12 типов разметки готовыми блоками", owndev: true, semrush: false, screaming: false, arsenkin: "partial" },
+  // GEO / AI-ready
+  { feature: "GEO / AI-ready аудит", hint: "Site Check: готовность к ChatGPT, Perplexity, Алисе", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "LLM Score (AI-видимость)", hint: "Вероятность попасть в AI-ответ", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "llms.txt — генератор и анализ", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "Schema.org JSON-LD (12 типов)", owndev: true, semrush: false, screaming: false, arsenkin: "partial" },
   { feature: "GEO-рейтинг Рунета", hint: "Открытый рейтинг 92+ сайтов", owndev: true, semrush: false, screaming: false, arsenkin: false },
 
-  // SEO-ядро — где OWNDEV паритетен и обходит
+  // Архитектура и контент
+  { feature: "Site Formula — blueprint сайта", hint: "Структура и блоки под нишу", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "Site Formula PRO — промпт-пакет", hint: "ZIP с ТЗ для Lovable / Cursor", owndev: true, semrush: false, screaming: false, arsenkin: false },
   { feature: "Семантика 150+ ключей с Wordstat", owndev: true, semrush: true, screaming: false, arsenkin: true },
-  { feature: "Анализ конкурентов в SERP", owndev: true, semrush: true, screaming: false, arsenkin: "partial" },
   { feature: "Минус-слова для Яндекс.Директ", owndev: true, semrush: false, screaming: false, arsenkin: true },
-  { feature: "Технический SEO-аудит", owndev: true, semrush: true, screaming: true, arsenkin: "partial" },
   { feature: "E-E-A-T анализ авторитета", owndev: true, semrush: "partial", screaming: false, arsenkin: false },
 
-  // Доступность и удобство
+  // Маркетплейсы
+  { feature: "Аудит карточек Wildberries / Ozon", hint: "Контент, поиск, конверсия, реклама", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "Анализ конкурентов в SERP", owndev: true, semrush: true, screaming: false, arsenkin: "partial" },
+
+  // Удобство
+  { feature: "Технический SEO-аудит", owndev: true, semrush: true, screaming: true, arsenkin: "partial" },
   { feature: "Полностью на русском", owndev: true, semrush: "partial", screaming: false, arsenkin: true },
-  { feature: "PDF + Word отчёт без водяных знаков", owndev: true, semrush: "partial", screaming: false, arsenkin: false },
-  { feature: "super_prompt_pack для Lovable / Cursor", hint: "ZIP с готовым ТЗ для AI-разработки", owndev: true, semrush: false, screaming: false, arsenkin: false },
-  { feature: "Бесплатный тариф без ограничений", owndev: true, semrush: false, screaming: false, arsenkin: false },
+  { feature: "PDF + Word без watermark", owndev: true, semrush: "partial", screaming: false, arsenkin: false },
+  { feature: "Бесплатный тариф без лимитов", owndev: true, semrush: false, screaming: false, arsenkin: false },
 ];
 
 const competitors = [
