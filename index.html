@@ -38,6 +38,13 @@
   <meta name="twitter:title" content="OWNDEV — GEO и AI-ready аудит сайта | SEO + AI видимость">
   <meta property="og:description" content="OWNDEV — первый GEO и AI-ready аудит сайта в Рунете. Двойной аудит: SEO Score + LLM Score. Бесплатные инструменты для SEO и AI-видимости. Проверка готовности к нейропоиску.">
   <meta name="twitter:description" content="OWNDEV — первый GEO и AI-ready аудит сайта в Рунете. Двойной аудит: SEO Score + LLM Score. Бесплатные инструменты для SEO и AI-видимости. Проверка готовности к нейропоиску.">
+  <style id="ssr-fallback-hide">
+    /* Скрываем статический SEO-фолбэк от живых браузеров, пока React монтируется.
+       Боты (GPTBot, PerplexityBot, ClaudeBot, YandexBot) парсят HTML напрямую и CSS не применяют —
+       SEO/GEO контент для них остаётся видимым. */
+    #root > header, #root > main, #root > footer { display: none !important; }
+    html, body { background: #0f172a; color: #e5e7eb; margin: 0; }
+  </style>
 </head>
 
   <body>
