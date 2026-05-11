@@ -195,7 +195,7 @@ export async function siteFormulaRoutes(app: FastifyInstance): Promise<void> {
       const { id } = req.params;
 
       const [session] = await sql<any[]>`
-        SELECT id, status, raw_answers, preview_payload, full_report_payload,
+        SELECT id, status, raw_answers, engine_state, preview_payload, full_report_payload,
                rules_version, template_version, created_at, updated_at
         FROM blueprint_sessions WHERE id = ${id}
       `;
@@ -209,6 +209,10 @@ export async function siteFormulaRoutes(app: FastifyInstance): Promise<void> {
         status: session.status,
         raw_answers: session.raw_answers,
         preview_payload: session.preview_payload,
+        // PR-16 мост v1→v3: engine_state доступен для PRO-апгрейда.
+        // Это безопасно — engine_state содержит только результат
+        // детерминированного движка, ничего секретного.
+        engine_state: session.engine_state ?? null,
         rules_version: session.rules_version,
         template_version: session.template_version,
         created_at: session.created_at,

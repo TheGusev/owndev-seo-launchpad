@@ -80,6 +80,12 @@ export interface SessionData {
   raw_answers: Record<string, any> | null;
   preview_payload: PreviewPayload | null;
   full_report_payload?: FullReportPayload | null;
+  /**
+   * PR-16 мост v1→v3: фактический engine_state из ядра v1.
+   * Содержит project_class, decision_trace, derived_scores, flags.
+   * Передаётся в /api/v3/pipeline/run для KEY DECISIONS в PRO-отчёте.
+   */
+  engine_state?: Record<string, any> | null;
   rules_version: string;
   template_version: string;
   created_at: string;

@@ -150,6 +150,14 @@ export interface RunPipelineInput {
   cities?: Array<{ slug: string; label: string }>;
   service_directions?: Array<{ slug: string; label: string }>;
   enable_hub_pages?: boolean;
+  /**
+   * PR-16 мост v1→v3. Если у пользователя есть активная v1 free-сессия,
+   * фронт подтягивает её engine_state и прокидывает сюда. Бэк подмешает
+   * project_class + decision_trace в pro_report, благодаря чему PRO-PDF
+   * получает раздел KEY DECISIONS со списком архитектурных решений.
+   * passthrough — структуру валидирует zod на бэке (см. pipeline.ts).
+   */
+  engine_state?: Record<string, any>;
 }
 
 async function getJson<T>(path: string): Promise<T> {

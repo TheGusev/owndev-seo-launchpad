@@ -26,6 +26,7 @@ import {
   WidthType,
 } from 'docx';
 import type { PipelineResultV3 } from '@/lib/api/formulaV3';
+import { explainP0Code } from '@/lib/p0Dictionary';
 
 export interface ProReportContext {
   result: PipelineResultV3;
@@ -154,6 +155,55 @@ export async function generateSiteFormulaProWord(ctx: ProReportContext): Promise
   );
   children.push(p('', { spacing: { after: 200 } }));
 
+  // ─── 1.5. KEY DECISIONS — архитектурные решения (PR-16) ─────────────────
+  // Источник: pro_report.project_class + decision_trace из engine_state v1,
+  // плюс PRIMARY_CTA / activated_layers если есть. Раздел рисуется только
+  // когда есть engine_state — без него ничего не выводится.
+  const pro: any = (result as any).pro_report ?? {};
+  const decisionTrace: any[] = Array.isArray(pro.decision_trace) ? pro.decision_trace : [];
+  if (pro.project_class || decisionTrace.length > 0) {
+    children.push(h1('1.5. Ключевые архитектурные решения (KEY DECISIONS)'));
+    children.push(
+      p(
+        'Это список архитектурных решений, которые движок выбрал для вашего проекта. ' +
+          'Каждый пункт — ответ на вопрос «как этот сайт должен быть устроен», полученный ' +
+          'детерминированно из ваших ответов в free-форме SiteFormula.',
+        { color: MUTED },
+      ),
+    );
+    if (pro.project_class) {
+      children.push(
+        kv(
+          'Класс проекта',
+          `${String(pro.project_class).toUpperCase()}${
+            pro.project_class_reason ? ` — ${pro.project_class_reason}` : ''
+          }`,
+        ),
+      );
+    }
+    if (decisionTrace.length > 0) {
+      children.push(h2('Решения движка'));
+      for (const t of decisionTrace.slice(0, 30)) {
+        const reason = t?.reason ?? t?.outcome ?? t?.rule_id ?? '—';
+        // bullet формирует абзац — не используем здесь, потому что нужен жирный rule_id
+        if (t?.rule_id) {
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `• ${t.rule_id}: `, bold: true, size: 20 }),
+                new TextRun({ text: String(reason), size: 20 }),
+              ],
+              spacing: { before: 60, after: 40 },
+              indent: { left: 200 },
+            }),
+          );
+        } else {
+          children.push(bullet(String(reason)));
+        }
+      }
+    }
+  }
+
   // ─── 2. Архитектурный blueprint ─────────────────────────────────────────
   const strategy: any = (result as any).strategy;
   if (strategy) {
@@ -205,21 +255,32 @@ export async function generateSiteFormulaProWord(ctx: ProReportContext): Promise
     if (demand.total_volume) children.push(kv('Суммарный объём', String(demand.total_volume)));
     if (demand.recommended_geos?.length) children.push(kv('География', demand.recommended_geos.join(', ')));
     children.push(h2('Топ-кластеры'));
+    // PR-16: фактическая структура DemandClusterV3 — { cluster_label, total_frequency, keywords: { phrase, frequency }[] }.
+    // Старые fallback'и (head_keyword/total_volume/k.keyword) давали '—' и [object Object].
     for (const c of demand.clusters.slice(0, 30)) {
-      const head = c.head_keyword ?? c.head ?? c.cluster_name ?? '—';
-      const vol = c.total_volume ?? c.volume ?? 0;
+      const head =
+        c.cluster_label ?? c.head_keyword ?? c.head ?? c.cluster_name ?? c.seed_keyword ?? '—';
+      const vol = c.total_frequency ?? c.total_volume ?? c.volume ?? 0;
+      const volStr = Number(vol).toLocaleString('ru-RU');
       children.push(
         new Paragraph({
           children: [
             new TextRun({ text: `• ${head}`, bold: true, size: 20 }),
-            new TextRun({ text: `   ${vol} показов/мес`, size: 18, color: MUTED }),
+            new TextRun({ text: `   ${volStr} показов/мес`, size: 18, color: MUTED }),
           ],
           indent: { left: 200 },
         }),
       );
       if (Array.isArray(c.keywords) && c.keywords.length > 0) {
-        const kws = c.keywords.slice(0, 6).map((k: any) => k.keyword ?? k).join(', ');
-        children.push(p(`   ${kws}`, { size: 18, color: MUTED, indent: { left: 360 } }));
+        const kws = c.keywords
+          .slice(0, 6)
+          .map((k: any) => {
+            if (typeof k === 'string') return k;
+            return k?.phrase ?? k?.keyword ?? '';
+          })
+          .filter(Boolean)
+          .join(', ');
+        if (kws) children.push(p(`   ${kws}`, { size: 18, color: MUTED, indent: { left: 360 } }));
       }
     }
   }
@@ -241,8 +302,30 @@ export async function generateSiteFormulaProWord(ctx: ProReportContext): Promise
       ]),
     );
     if (r.failed_p0_codes?.length) {
-      children.push(h2('Критические fail-коды (P0)'));
-      for (const code of r.failed_p0_codes) children.push(bullet(code));
+      children.push(h2('Критические fail-коды (P0) — что это и что делать'));
+      // PR-16: вместо голых кодов — title / why / Что делать из P0-словаря.
+      for (const code of r.failed_p0_codes) {
+        const ex = explainP0Code(code);
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${code}: `, bold: true, size: 20, color: 'B91C1C' }),
+              new TextRun({ text: ex.title, bold: true, size: 20 }),
+            ],
+            spacing: { before: 120, after: 40 },
+          }),
+        );
+        children.push(p(ex.why, { size: 18, color: MUTED, indent: { left: 200 } }));
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Что делать: ', bold: true, size: 18 }),
+              new TextRun({ text: ex.whatToDo, size: 18 }),
+            ],
+            indent: { left: 200 },
+          }),
+        );
+      }
     }
 
     const reports: any[] = (result as any).preflight_per_page ?? [];
@@ -264,7 +347,9 @@ export async function generateSiteFormulaProWord(ctx: ProReportContext): Promise
           }
         }
         if (Array.isArray(rep.failed_p0) && rep.failed_p0.length > 0) {
-          children.push(p(`   ⚠ P0: ${rep.failed_p0.join(', ')}`, { size: 18, color: 'B91C1C', indent: { left: 200 } }));
+          // PR-16: вместо голых кодов — «КОД (краткий title)» через P0-словарь.
+          const labels = rep.failed_p0.map((code: string) => `${code} (${explainP0Code(code).title})`);
+          children.push(p(`   ⚠ P0: ${labels.join('; ')}`, { size: 18, color: 'B91C1C', indent: { left: 200 } }));
         }
       }
     }
@@ -286,20 +371,74 @@ export async function generateSiteFormulaProWord(ctx: ProReportContext): Promise
         'Раздел содержит готовые файлы и фрагменты, которые нужно разместить на сайте. Это ключ к 100/100 в GEO-аудите — без этих файлов ПС и AI-боты не понимают ваш сайт. Блоки описывают, в какой файл/раздел копировать содержимое.',
       ),
     );
+    // PR-16: вместо «копируйте как есть» каждый файл сопровождаем
+    // короткой триадой «Зачем · Куда положить · Что меняет».
     if (passport.llms_txt) {
-      children.push(caption('5.1. /llms.txt — разместить в корне сайта'));
+      children.push(caption('5.1. /llms.txt'));
+      children.push(
+        p('Зачем: официальный стандарт для AI-агентов (ChatGPT, Perplexity, Claude). Описывает структуру сайта и ключевые страницы.', {
+          size: 16,
+          color: MUTED,
+        }),
+      );
+      children.push(p('Куда положить: в корень сайта, доступ по адресу /llms.txt.', { size: 16, color: MUTED }));
+      children.push(
+        p('Что меняет: AI-ассистенты получают навигацию по сайту → выше шанс попасть в AI-цитирование и AI-выдачу.', {
+          size: 16,
+          color: MUTED,
+        }),
+      );
       children.push(p(String(passport.llms_txt), { size: 16 }));
     }
     if (passport.robots_txt) {
-      children.push(caption('5.2. /robots.txt — разместить в корне сайта'));
+      children.push(caption('5.2. /robots.txt'));
+      children.push(
+        p('Зачем: правила для поисковых краулеров и AI-ботов (GPTBot, ClaudeBot, PerplexityBot, YandexGPT).', {
+          size: 16,
+          color: MUTED,
+        }),
+      );
+      children.push(p('Куда положить: в корень сайта, доступ по адресу /robots.txt.', { size: 16, color: MUTED }));
+      children.push(
+        p('Что меняет: без явных Allow-правил AI-боты могут блокироваться wildcard-правилами — сайт пропадает из AI-выдачи.', {
+          size: 16,
+          color: MUTED,
+        }),
+      );
       children.push(p(String(passport.robots_txt), { size: 16 }));
     }
     if (passport.sitemap_xml) {
-      children.push(caption('5.3. /sitemap.xml — разместить в корне сайта'));
+      children.push(caption('5.3. /sitemap.xml'));
+      children.push(
+        p('Зачем: карта индексируемых страниц для поисковиков, ускоряет индексацию и помогает с обновлением канонических URL.', {
+          size: 16,
+          color: MUTED,
+        }),
+      );
+      children.push(p('Куда положить: в корень сайта, доступ по адресу /sitemap.xml. Прописать также в robots.txt: Sitemap: https://<домен>/sitemap.xml.', { size: 16, color: MUTED }));
+      children.push(
+        p('Что меняет: страницы попадают в индекс на 30–50% быстрее, поисковик понимает приоритеты и частоту обновлений.', {
+          size: 16,
+          color: MUTED,
+        }),
+      );
       children.push(p(String(passport.sitemap_xml), { size: 16 }));
     }
     if (passport.ai_well_known) {
       children.push(caption('5.4. /.well-known/ai — карта 17 AI-ботов и политика обучения'));
+      children.push(
+        p('Зачем: явное согласие или запрет на обучение AI-моделей на содержимом сайта.', {
+          size: 16,
+          color: MUTED,
+        }),
+      );
+      children.push(p('Куда положить: в каталог /.well-known/ai на сайте.', { size: 16, color: MUTED }));
+      children.push(
+        p('Что меняет: AI-операторы видят политику и привязывают атрибуцию (имя бренда) к цитированиям.', {
+          size: 16,
+          color: MUTED,
+        }),
+      );
       const txt =
         typeof passport.ai_well_known === 'string'
           ? passport.ai_well_known
