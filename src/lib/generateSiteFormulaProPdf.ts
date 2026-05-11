@@ -6,6 +6,7 @@ import { jsPDF } from 'jspdf';
 import { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } from '@/fonts/roboto-base64';
 import { PRINT_COLORS } from '@/lib/reportHelpers';
 import type { ProReportContext } from '@/lib/generateSiteFormulaProWord';
+import { explainP0Code } from '@/lib/p0Dictionary';
 
 const PAGE_W = 210;
 const PAGE_H = 297;
@@ -123,6 +124,43 @@ export async function generateSiteFormulaProPdf(ctx: ProReportContext): Promise<
   y = drawKv(doc, y, 'Job ID', result.job_id);
   y += 4;
 
+  // ── 1.5. KEY DECISIONS — архитектурные решения (PR-16) ─────────────────
+  // Источник: pro_report.project_class + decision_trace из engine_state v1.
+  // Раздел рисуется только когда есть engine_state — иначе ничего не выводим.
+  const pro: any = (result as any).pro_report ?? {};
+  const decisionTrace: any[] = Array.isArray(pro.decision_trace) ? pro.decision_trace : [];
+  if (pro.project_class || decisionTrace.length > 0) {
+    y = drawSectionHeader(doc, y, '1.5. Ключевые архитектурные решения (KEY DECISIONS)');
+    y = drawText(
+      doc,
+      y,
+      'Список архитектурных решений, которые движок выбрал для вашего проекта. Каждый пункт — ответ на вопрос «как этот сайт должен быть устроен», полученный детерминированно из ваших ответов в free-форме SiteFormula.',
+      { size: 9, color: PRINT_COLORS.text_secondary },
+    );
+    if (pro.project_class) {
+      y = drawKv(
+        doc,
+        y,
+        'Класс проекта',
+        `${String(pro.project_class).toUpperCase()}${
+          pro.project_class_reason ? ` — ${pro.project_class_reason}` : ''
+        }`,
+      );
+    }
+    if (decisionTrace.length > 0) {
+      y = drawSubHeader(doc, y, 'Решения движка');
+      for (const t of decisionTrace.slice(0, 30)) {
+        const reason = t?.reason ?? t?.outcome ?? '';
+        if (t?.rule_id) {
+          y = drawText(doc, y, `• ${t.rule_id}: ${reason}`, { size: 9 });
+        } else if (reason) {
+          y = drawBullet(doc, y, String(reason));
+        }
+      }
+    }
+    y += 4;
+  }
+
   // ── 2. Архитектурный blueprint ─────────────────────────────────────────
   const strategy: any = (result as any).strategy;
   if (strategy) {
@@ -169,13 +207,26 @@ export async function generateSiteFormulaProPdf(ctx: ProReportContext): Promise<
     y = drawKv(doc, y, 'Всего кластеров', String(demand.clusters.length));
     if (demand.total_volume) y = drawKv(doc, y, 'Суммарный объём', String(demand.total_volume));
     y = drawSubHeader(doc, y, 'Топ-кластеры');
+    // PR-16: фактическая структура DemandClusterV3 — { cluster_label, total_frequency, keywords: { phrase, frequency }[] }.
+    // Старые fallback'и (head_keyword/total_volume/k.keyword) давали '—' и [object Object].
     for (const c of demand.clusters.slice(0, 30)) {
-      const head = c.head_keyword ?? c.head ?? c.cluster_name ?? '—';
-      const vol = c.total_volume ?? c.volume ?? 0;
-      y = drawText(doc, y, `${head}  —  ${vol} показов/мес`, { size: 9, bold: true });
+      const head =
+        c.cluster_label ?? c.head_keyword ?? c.head ?? c.cluster_name ?? c.seed_keyword ?? '—';
+      const vol = c.total_frequency ?? c.total_volume ?? c.volume ?? 0;
+      y = drawText(doc, y, `${head}  —  ${Number(vol).toLocaleString('ru-RU')} показов/мес`, {
+        size: 9,
+        bold: true,
+      });
       if (Array.isArray(c.keywords) && c.keywords.length > 0) {
-        const kws = c.keywords.slice(0, 6).map((k: any) => k.keyword ?? k).join(', ');
-        y = drawText(doc, y, `   ${kws}`, { size: 8, color: PRINT_COLORS.text_secondary });
+        const kws = c.keywords
+          .slice(0, 6)
+          .map((k: any) => {
+            if (typeof k === 'string') return k;
+            return k?.phrase ?? k?.keyword ?? '';
+          })
+          .filter(Boolean)
+          .join(', ');
+        if (kws) y = drawText(doc, y, `   ${kws}`, { size: 8, color: PRINT_COLORS.text_secondary });
       }
     }
   }
@@ -193,8 +244,13 @@ export async function generateSiteFormulaProPdf(ctx: ProReportContext): Promise<
     y = drawKv(doc, y, 'AI / LLM', `${r.axis_avg.ai_llm} (порог 85)`);
     y = drawKv(doc, y, 'Итог', `${r.avg_total_score} / 100`);
     if (r.failed_p0_codes?.length) {
-      y = drawSubHeader(doc, y, 'Критические fail-коды (P0)');
-      for (const code of r.failed_p0_codes) y = drawBullet(doc, y, code);
+      y = drawSubHeader(doc, y, 'Критические fail-коды (P0) — что это и что делать');
+      for (const code of r.failed_p0_codes) {
+        const ex = explainP0Code(code);
+        y = drawText(doc, y, `${code}: ${ex.title}`, { size: 9, bold: true, color: '#B91C1C' });
+        y = drawText(doc, y, ex.why, { size: 8, color: PRINT_COLORS.text_secondary });
+        y = drawText(doc, y, `Что делать: ${ex.whatToDo}`, { size: 8 });
+      }
     }
     const reports: any[] = (result as any).preflight_per_page ?? [];
     if (reports.length > 0) {
@@ -210,7 +266,9 @@ export async function generateSiteFormulaProPdf(ctx: ProReportContext): Promise<
           y = drawText(doc, y, axesStr, { size: 8, color: PRINT_COLORS.text_secondary });
         }
         if (Array.isArray(rep.failed_p0) && rep.failed_p0.length > 0) {
-          y = drawText(doc, y, `⚠ P0: ${rep.failed_p0.join(', ')}`, { size: 8, color: '#B91C1C' });
+          // PR-16: вместо голых кодов выводим краткий title из P0-словаря.
+          const labels = rep.failed_p0.map((code: string) => `${code} (${explainP0Code(code).title})`);
+          y = drawText(doc, y, `⚠ P0: ${labels.join('; ')}`, { size: 8, color: '#B91C1C' });
         }
       }
     }
@@ -234,20 +292,87 @@ export async function generateSiteFormulaProPdf(ctx: ProReportContext): Promise<
       'Раздел содержит готовые файлы и фрагменты для размещения на сайте. Без этих файлов ПС и AI-боты не понимают ваш сайт — из-за пропуска в GEO-аудите баллы падают ниже 70.',
       { size: 9 },
     );
+    // PR-16: каждый файл сопровождается триадой «Зачем · Куда положить · Что меняет».
     if (passport.llms_txt) {
-      y = drawCaption(doc, y, '5.1. /llms.txt — в корне сайта');
+      y = drawCaption(doc, y, '5.1. /llms.txt');
+      y = drawText(
+        doc,
+        y,
+        'Зачем: официальный стандарт для AI-агентов (ChatGPT, Perplexity, Claude). Описывает структуру сайта и ключевые страницы.',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
+      y = drawText(doc, y, 'Куда положить: в корень сайта, доступ по /llms.txt.', {
+        size: 8,
+        color: PRINT_COLORS.text_secondary,
+      });
+      y = drawText(
+        doc,
+        y,
+        'Что меняет: AI-ассистенты получают навигацию → выше шанс попасть в AI-цитирование.',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
       y = drawText(doc, y, String(passport.llms_txt), { size: 8 });
     }
     if (passport.robots_txt) {
-      y = drawCaption(doc, y, '5.2. /robots.txt — в корне сайта');
+      y = drawCaption(doc, y, '5.2. /robots.txt');
+      y = drawText(
+        doc,
+        y,
+        'Зачем: правила для поисковых краулеров и AI-ботов (GPTBot, ClaudeBot, PerplexityBot, YandexGPT).',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
+      y = drawText(doc, y, 'Куда положить: в корень сайта, доступ по /robots.txt.', {
+        size: 8,
+        color: PRINT_COLORS.text_secondary,
+      });
+      y = drawText(
+        doc,
+        y,
+        'Что меняет: без явных Allow-правил AI-боты блокируются wildcard-правилами — сайт пропадает из AI-выдачи.',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
       y = drawText(doc, y, String(passport.robots_txt), { size: 8 });
     }
     if (passport.sitemap_xml) {
-      y = drawCaption(doc, y, '5.3. /sitemap.xml — в корне сайта');
+      y = drawCaption(doc, y, '5.3. /sitemap.xml');
+      y = drawText(
+        doc,
+        y,
+        'Зачем: карта индексируемых страниц, ускоряет индексацию на 30–50% и помогает с canonical.',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
+      y = drawText(
+        doc,
+        y,
+        'Куда положить: в корень + прописать в robots.txt строку «Sitemap: https://<домен>/sitemap.xml».',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
+      y = drawText(
+        doc,
+        y,
+        'Что меняет: страницы попадают в индекс быстрее, поисковик понимает приоритеты обновлений.',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
       y = drawText(doc, y, String(passport.sitemap_xml), { size: 8 });
     }
     if (passport.ai_well_known) {
       y = drawCaption(doc, y, '5.4. /.well-known/ai — карта 17 AI-ботов');
+      y = drawText(
+        doc,
+        y,
+        'Зачем: явное согласие или запрет на обучение AI-моделей на содержимом сайта.',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
+      y = drawText(doc, y, 'Куда положить: в каталог /.well-known/ai/ на сайте.', {
+        size: 8,
+        color: PRINT_COLORS.text_secondary,
+      });
+      y = drawText(
+        doc,
+        y,
+        'Что меняет: AI-операторы видят политику и привязывают атрибуцию (имя бренда) к цитированиям.',
+        { size: 8, color: PRINT_COLORS.text_secondary },
+      );
       const txt =
         typeof passport.ai_well_known === 'string'
           ? passport.ai_well_known

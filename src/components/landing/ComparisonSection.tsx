@@ -4,12 +4,15 @@ import { Check, X, Minus, Crown, Sparkles } from "lucide-react";
 import { ScanLine } from "@/components/ui/scan-line";
 
 /**
- * PR-15: переработка блока сравнения с конкурентами
- *  — данные актуализированы (Wordstat-семантика, Schema, llms.txt, GEO)
- *  — эмодзи заменены на иконки lucide в брендовых цветах
- *  — мобильный layout: карточный вид с ПОЛНЫМИ названиями конкурентов
- *  — поднят выше (после HowItWorks, до Testimonials)
- *  — преимущество OWNDEV подчёркнуто: 10/10 vs 2-4/10 у конкурентов
+ * PR-16: компактная единая таблица для всех брейкпоинтов.
+ *  — на мобилке вместо «портянки» из карточек — горизонтальный скролл
+ *    единой таблицы с sticky левой колонкой и фиксированной высотой строк.
+ *  — иконки lucide (Check / Minus / X) вместо эмодзи.
+ *  — компактный шрифт (text-xs/sm), читается на iPhone SE (375 px).
+ *
+ * История:
+ *  — PR-15 ввёл карточный mobile-вид и фид «портянка»: пользователь
+ *    попросил откатить к таблице.
  */
 
 type CellState = true | false | "partial";
@@ -209,83 +212,34 @@ const ComparisonSection = () => {
           })}
         </motion.div>
 
-        {/* Mobile: карточки по фичам — каждая карточка показывает все 4 конкурента полным именем */}
+        {/* Единая таблица — на мобилке скроллится горизонтально,
+            левая колонка с фичей прибивается к краю (sticky). */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="md:hidden space-y-2"
-        >
-          {rows.map((row, i) => (
-            <div
-              key={i}
-              className="rounded-xl border border-border bg-card p-3"
-            >
-              {/* Название фичи */}
-              <div className="mb-2.5 pb-2 border-b border-border/60">
-                <h3 className="text-sm font-semibold text-foreground leading-tight">
-                  {row.feature}
-                </h3>
-                {row.hint && (
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                    {row.hint}
-                  </p>
-                )}
-              </div>
-              {/* 4 конкурента — название слева, иконка справа */}
-              <div className="space-y-1.5">
-                {competitors.map((c) => {
-                  const v = row[c.key as keyof Row] as CellState;
-                  return (
-                    <div
-                      key={c.key}
-                      className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg ${
-                        c.isUs ? "bg-primary/5 border border-primary/20" : ""
-                      }`}
-                    >
-                      <span
-                        className={`text-xs font-medium ${
-                          c.isUs ? "text-primary" : "text-foreground"
-                        }`}
-                      >
-                        {c.name}
-                      </span>
-                      <Cell value={v} accent={c.isUs} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Desktop: классическая таблица */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={inView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="hidden md:block rounded-2xl border border-border overflow-hidden bg-card"
+          className="rounded-2xl border border-border overflow-hidden bg-card"
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
+            <table className="w-full text-xs sm:text-sm min-w-[560px] sm:min-w-[640px] border-collapse">
               <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left p-4 font-semibold text-muted-foreground">
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="sticky left-0 z-10 bg-muted/95 backdrop-blur-sm text-left px-3 py-3 sm:px-4 sm:py-4 font-semibold text-muted-foreground border-r border-border min-w-[180px] sm:min-w-[260px]">
                     Функция
                   </th>
                   {competitors.map((c) => (
                     <th
                       key={c.key}
-                      className={`p-4 font-semibold text-center ${
+                      className={`px-2 py-3 sm:px-4 sm:py-4 font-semibold text-center min-w-[78px] sm:min-w-[120px] ${
                         c.isUs
                           ? "text-primary bg-primary/8 border-x border-primary/20"
                           : "text-foreground"
                       }`}
                     >
                       <div className="flex flex-col items-center gap-0.5">
-                        <span>{c.name}</span>
+                        <span className="truncate max-w-[88px] sm:max-w-none">{c.name}</span>
                         <span
-                          className={`text-[10px] font-mono ${
+                          className={`text-[9px] sm:text-[10px] font-mono ${
                             c.isUs ? "text-primary/80" : "text-muted-foreground/70"
                           }`}
                         >
@@ -300,12 +254,12 @@ const ComparisonSection = () => {
                 {rows.map((row, i) => (
                   <tr
                     key={i}
-                    className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors"
+                    className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors h-14 sm:h-16"
                   >
-                    <td className="p-4 font-medium text-foreground">
-                      <div>{row.feature}</div>
+                    <td className="sticky left-0 z-10 bg-card/95 backdrop-blur-sm border-r border-border/60 px-3 py-2 sm:px-4 sm:py-3 font-medium text-foreground">
+                      <div className="leading-tight">{row.feature}</div>
                       {row.hint && (
-                        <div className="text-xs text-muted-foreground font-normal mt-0.5">
+                        <div className="text-[10px] sm:text-xs text-muted-foreground font-normal mt-0.5 leading-snug line-clamp-2">
                           {row.hint}
                         </div>
                       )}
@@ -315,7 +269,7 @@ const ComparisonSection = () => {
                       return (
                         <td
                           key={c.key}
-                          className={`p-4 text-center ${
+                          className={`px-2 py-2 sm:px-4 sm:py-3 text-center ${
                             c.isUs ? "bg-primary/8 border-x border-primary/20" : ""
                           }`}
                         >
@@ -330,6 +284,10 @@ const ComparisonSection = () => {
               </tbody>
             </table>
           </div>
+          {/* Подсказка для мобилки про горизонтальный скролл */}
+          <p className="md:hidden text-[10px] text-muted-foreground/70 text-center px-3 py-2 border-t border-border/40">
+            Сдвиньте таблицу влево, чтобы увидеть всех конкурентов
+          </p>
         </motion.div>
 
         {/* Подпись */}

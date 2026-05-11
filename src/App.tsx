@@ -36,6 +36,7 @@ import BrandPresence from "./pages/scenarios/BrandPresence";
 import Monitoring from "./pages/scenarios/Monitoring";
 import BorderBot from "@/components/mascot/BorderBot";
 import LeadModal from "@/components/LeadModal";
+import { GlobalAurora } from "@/components/ui/global-aurora";
 import { AuditProvider } from "@/state/audit";
 import SiteFormula from "./pages/SiteFormula";
 import SiteFormulaWizard from "./pages/SiteFormulaWizard";
@@ -71,6 +72,7 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <RouteTracker />
+          <GlobalAurora />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/privacy" element={<Privacy />} />
