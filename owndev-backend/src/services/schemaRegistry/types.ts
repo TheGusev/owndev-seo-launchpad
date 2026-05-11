@@ -103,6 +103,35 @@ export interface EventContext {
   offer_currency?: string;
 }
 
+export interface MobileApplicationContext {
+  name: string;
+  description?: string;
+  operating_system?: string;        // 'iOS', 'Android', 'iOS, Android'
+  application_category?: string;    // 'BusinessApplication' | 'HealthApplication' | ...
+  application_sub_category?: string;
+  download_url?: string;
+  install_url?: string;
+  screenshot?: string | string[];
+  file_size?: string;                // '45 MB'
+  software_version?: string;
+  in_languages?: string[];
+  price?: { value: number; currency: string }; // 0 — бесплатно
+  aggregate_rating?: { rating_value: number; review_count: number };
+}
+
+export interface NGOContext {
+  name?: string;          // если не задано — берём brand_name из SchemaContext
+  legal_name?: string;
+  description?: string;
+  tax_id?: string;        // ИНН/EIN
+  nonprofit_status?: string; // например, 'NonprofitType:NPO'
+  founder?: string;
+  founding_date?: string;
+  funder?: string[];
+  area_served?: string[];
+  knows_about?: string[]; // тематические области
+}
+
 // ─── Schema graph ────────────────────────────────────────────
 
 export type SchemaTypeName =

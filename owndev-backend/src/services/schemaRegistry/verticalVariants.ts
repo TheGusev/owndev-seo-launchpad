@@ -105,8 +105,8 @@ export const RECIPES: Record<string, Record<string, GraphRecipe>> = {
   },
   // Tier B
   mobile_app: {
-    home: { nodes: ['org', 'website', 'webpage'], variant: 'mobile_app', rich_eligible_google: true, rich_eligible_yandex: true },
-    feature: { nodes: ['org', 'website', 'webpage', 'breadcrumb', 'service', 'faq'], variant: 'mobile_app', rich_eligible_google: true, rich_eligible_yandex: true },
+    home: { nodes: ['org', 'website', 'webpage', 'mobileapp'], variant: 'mobile_app', rich_eligible_google: true, rich_eligible_yandex: true },
+    feature: { nodes: ['org', 'website', 'webpage', 'breadcrumb', 'mobileapp', 'service', 'faq'], variant: 'mobile_app', rich_eligible_google: true, rich_eligible_yandex: true },
   },
   // Tier C
   finance: {
@@ -122,7 +122,9 @@ export const RECIPES: Record<string, Record<string, GraphRecipe>> = {
     event: { nodes: ['org', 'website', 'webpage', 'breadcrumb', 'event', 'faq'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
   },
   nonprofit: {
-    home: { nodes: ['org', 'website', 'webpage'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
+    home: { nodes: ['ngo', 'website', 'webpage'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
+    about: { nodes: ['ngo', 'website', 'webpage', 'breadcrumb'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
+    donate: { nodes: ['ngo', 'website', 'webpage', 'breadcrumb', 'faq'], variant: 'default', rich_eligible_google: true, rich_eligible_yandex: true },
   },
   gov: {
     home: { nodes: ['org', 'website', 'webpage'], variant: 'default', rich_eligible_google: false, rich_eligible_yandex: true },

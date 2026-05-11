@@ -19,7 +19,8 @@
     "test:pr8-vertical-audit": "tsx src/services/pipeline/__tests__/pr8-vertical-audit.ts",
     "test:pr11-cross-product": "tsx src/services/strategy/__tests__/pr11-cross-product-fanout.ts",
     "test:pr19-engine-modules": "tsx src/services/pipeline/__tests__/pr19-engine-modules-whitelist.ts",
-    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles && npm run test:pr6-pro-report && npm run test:pr7-ad-market && npm run test:pr8-vertical-audit && npm run test:pr11-cross-product && npm run test:pr19-engine-modules",
+    "test:pr20-mobileapp-ngo": "tsx src/services/schemaRegistry/__tests__/pr20-mobileapp-ngo.ts",
+    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles && npm run test:pr6-pro-report && npm run test:pr7-ad-market && npm run test:pr8-vertical-audit && npm run test:pr11-cross-product && npm run test:pr19-engine-modules && npm run test:pr20-mobileapp-ngo",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts",
     "rescan:geo": "tsx scripts/rescan-geo-rating.ts"
   },

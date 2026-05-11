@@ -6,6 +6,7 @@
 import type {
   SchemaContext, ServiceContext, ProductContext,
   FaqItem, BreadcrumbItem, ArticleContext, PersonContext, EventContext,
+  MobileApplicationContext, NGOContext,
   VerticalVariant,
 } from './types.js';
 
@@ -265,6 +266,111 @@ export function buildEvent(ctx: EventContext): Record<string, any> {
       availability: 'https://schema.org/InStock',
       url: ctx.url,
     };
+  }
+  return removeUndefined(out);
+}
+
+// ─── MobileApplication ───────────────────────────────────────
+export function buildMobileApplication(
+  ctx: MobileApplicationContext,
+  schemaCtx: SchemaContext,
+): Record<string, any> {
+  const idBase = stripTrailingSlash(schemaCtx.url);
+  const out: Record<string, any> = {
+    '@type': 'MobileApplication',
+    '@id': `${idBase}/#mobileapp`,
+    name: ctx.name,
+    description: ctx.description,
+    operatingSystem: ctx.operating_system,
+    applicationCategory: ctx.application_category,
+    applicationSubCategory: ctx.application_sub_category,
+    downloadUrl: ctx.download_url,
+    installUrl: ctx.install_url,
+    screenshot: ctx.screenshot,
+    fileSize: ctx.file_size,
+    softwareVersion: ctx.software_version,
+    inLanguage: ctx.in_languages && ctx.in_languages.length ? ctx.in_languages : undefined,
+    publisher: { '@id': `${idBase}/#organization` },
+  };
+  if (ctx.price) {
+    out.offers = {
+      '@type': 'Offer',
+      price: ctx.price.value,
+      priceCurrency: ctx.price.currency,
+      availability: 'https://schema.org/InStock',
+    };
+  }
+  if (ctx.aggregate_rating) {
+    out.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: ctx.aggregate_rating.rating_value,
+      reviewCount: ctx.aggregate_rating.review_count,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+  return removeUndefined(out);
+}
+
+// ─── NGO (NonprofitOrganization) ─────────────────────────────
+export function buildNGO(
+  schemaCtx: SchemaContext,
+  ngoCtx: NGOContext = {},
+): Record<string, any> {
+  const idBase = stripTrailingSlash(schemaCtx.url);
+  const out: Record<string, any> = {
+    '@type': 'NGO',
+    '@id': `${idBase}/#ngo`,
+    name: ngoCtx.name ?? schemaCtx.brand_name,
+    legalName: ngoCtx.legal_name ?? schemaCtx.legal_name ?? schemaCtx.brand_name,
+    description: ngoCtx.description,
+    url: schemaCtx.url,
+  };
+  if (schemaCtx.logo_url) {
+    out.logo = {
+      '@type': 'ImageObject',
+      url: schemaCtx.logo_url,
+    };
+  }
+  if (schemaCtx.address) {
+    out.address = {
+      '@type': 'PostalAddress',
+      streetAddress: schemaCtx.address.street,
+      addressLocality: schemaCtx.address.city,
+      addressRegion: schemaCtx.address.region,
+      postalCode: schemaCtx.address.postal_code,
+      addressCountry: schemaCtx.address.country ?? 'RU',
+    };
+  }
+  if (schemaCtx.phone || schemaCtx.email) {
+    const cp: Record<string, any> = { '@type': 'ContactPoint', contactType: 'customer service' };
+    if (schemaCtx.phone) cp.telephone = schemaCtx.phone;
+    if (schemaCtx.email) cp.email = schemaCtx.email;
+    cp.areaServed = 'RU';
+    cp.availableLanguage = ['ru', 'en'];
+    out.contactPoint = [cp];
+  }
+  if (schemaCtx.social_profiles && schemaCtx.social_profiles.length) {
+    out.sameAs = schemaCtx.social_profiles;
+  }
+  if (ngoCtx.tax_id || schemaCtx.inn || schemaCtx.ogrn) {
+    out.identifier = [
+      ngoCtx.tax_id ? { '@type': 'PropertyValue', name: 'taxID', value: ngoCtx.tax_id } : null,
+      schemaCtx.inn ? { '@type': 'PropertyValue', name: 'ИНН', value: schemaCtx.inn } : null,
+      schemaCtx.ogrn ? { '@type': 'PropertyValue', name: 'ОГРН', value: schemaCtx.ogrn } : null,
+    ].filter(Boolean);
+  }
+  if (ngoCtx.nonprofit_status) out.nonprofitStatus = ngoCtx.nonprofit_status;
+  if (ngoCtx.founder) out.founder = { '@type': 'Person', name: ngoCtx.founder };
+  if (ngoCtx.founding_date) out.foundingDate = ngoCtx.founding_date;
+  if (ngoCtx.funder && ngoCtx.funder.length) {
+    out.funder = ngoCtx.funder.map((name) => ({ '@type': 'Organization', name }));
+  }
+  if (ngoCtx.area_served && ngoCtx.area_served.length) {
+    out.areaServed = ngoCtx.area_served.map((name) => ({ '@type': 'AdministrativeArea', name }));
+  }
+  if (ngoCtx.knows_about && ngoCtx.knows_about.length) {
+    out.knowsAbout = ngoCtx.knows_about;
   }
   return removeUndefined(out);
 }
