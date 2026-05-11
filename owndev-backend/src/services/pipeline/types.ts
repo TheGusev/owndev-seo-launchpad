@@ -11,7 +11,7 @@
  *                    super_prompt_pack v1 → ZIP
  */
 
-import type { ProjectTypeCodeV3 } from '../../types/formulaV3.js';
+import type { ProjectTypeCodeV3, EngineModule } from '../../types/formulaV3.js';
 import type { DemandIntelligenceResult } from '../demand/types.js';
 import type { SiteStrategy } from '../strategy/types.js';
 import type { TechnicalPassportArtifacts } from '../technicalPassport/types.js';
@@ -65,6 +65,22 @@ export interface PipelineInput {
   fanout_max_pages?: number;
   // Если true, cross-product отключён — генерируется одна ось (cities или directions).
   disable_cross_product?: boolean;
+  // ───── PR-19 engine_modules whitelist ─────
+  // Если задан — переопределяет engine_modules из БД (использует тестами и для DI).
+  // Если не задан — оркестратор грузит whitelist из formula_project_types.engine_modules
+  // для project_code. Стадии, отсутствующие в whitelist, помечаются как
+  // skipped/'engine_modules_disabled' и не выполняются. Существующие skip_* остаются
+  // как user override и имеют приоритет в decision_trace.
+  engine_modules?: EngineModule[];
+}
+
+// ───── PR-19 decision trace ─────
+// Прозрачно фиксирует, какие стадии оркестратора были пропущены и почему,
+// чтобы UI/тесты могли проверить применение whitelist'а.
+export interface PipelineDecisionTraceEntry {
+  stage: PipelineStage;
+  status: 'enabled' | 'skipped';
+  reason?: 'engine_modules_disabled' | 'user_skip_flag' | 'no_url' | 'no_seeds';
 }
 
 export interface PipelineStageResult {
@@ -97,6 +113,9 @@ export interface PipelineResultV3 {
   pack?: SuperPromptPack;
   pack_zip_size?: number;
   generated_at: string;
+  // ───── PR-19 ─────
+  // Решения по гейтингу стадий: engine_modules whitelist vs skip_* флаги.
+  decision_trace?: PipelineDecisionTraceEntry[];
   // ───── PR-6 PRO-отчёт ─────
   // Если передан engine_state и/или есть профиль вертикали — собираем
   // дополнительный блок для UI: project_class + decision_trace + KPI + ROI-оценка.

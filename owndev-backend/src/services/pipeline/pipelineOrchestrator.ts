@@ -18,6 +18,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { logger } from '../../utils/logger.js';
+import { sql } from '../../db/client.js';
 import { runDemandIntelligence } from '../demand/index.js';
 import { crawlSite } from '../CrawlEngine/index.js';
 import { auditService } from '../audit/index.js';
@@ -34,7 +35,9 @@ import type {
   PipelineResultV3,
   PipelineStage,
   PipelineStageResult,
+  PipelineDecisionTraceEntry,
 } from './types.js';
+import type { EngineModule, ProjectTypeCodeV3 } from '../../types/formulaV3.js';
 import type { CrawlPageRecord } from '../CrawlEngine/types.js';
 import type { DemandIntelligenceResult } from '../demand/types.js';
 import type { SiteStrategy, SitePage } from '../strategy/types.js';
@@ -113,38 +116,138 @@ function pickPageContractFor(strategy: SiteStrategy, pageUrl: string): SitePage 
   return undefined;
 }
 
+// PR-19: маппинг стадий оркестратора на имена модулей в БД
+// (formula_project_types.engine_modules). Стадия 'pack' в коде = модуль
+// 'developerPack' в БД. Все остальные совпадают по имени.
+const STAGE_TO_MODULE: Record<Exclude<PipelineStage, 'done' | 'failed'>, EngineModule> = {
+  intake: 'intake',
+  demand: 'demand',
+  crawl: 'crawl',
+  audit: 'audit',
+  preflight: 'preflight',
+  pack: 'developerPack',
+};
+
+// PR-19: грузит whitelist из БД для указанного project_code.
+// Если запись не найдена или engine_modules пустые — возвращает null,
+// что означает «гейтинг отключён, поведение как до PR-19».
+async function loadEngineModulesFromDb(
+  project_code: ProjectTypeCodeV3,
+): Promise<EngineModule[] | null> {
+  try {
+    const rows = await sql<Array<{ engine_modules: string[] | null }>>`
+      SELECT engine_modules
+      FROM formula_project_types
+      WHERE code = ${project_code}
+      LIMIT 1
+    `;
+    const arr = rows[0]?.engine_modules;
+    if (!arr || arr.length === 0) return null;
+    return arr as EngineModule[];
+  } catch (err: any) {
+    logger.warn(
+      'PIPELINE',
+      `engine_modules load failed for ${project_code}: ${err.message} — gating disabled`,
+    );
+    return null;
+  }
+}
+
 export class PipelineOrchestrator {
   async run(input: PipelineInput): Promise<PipelineResultV3> {
     const stages: PipelineStageResult[] = [];
+    const decisionTrace: PipelineDecisionTraceEntry[] = [];
     const startAll = Date.now();
     const result: PipelineResultV3 = {
       job_id: input.job_id,
       root_url: input.root_url ?? undefined,
       status: 'failed',
       stages,
+      decision_trace: decisionTrace,
       generated_at: new Date().toISOString(),
     };
+
+    // PR-19: грузим engine_modules whitelist. Приоритет: input override → БД.
+    // Если ничего нет — гейтинг отключён (поведение как до PR-19).
+    let engineModules: EngineModule[] | null = null;
+    if (input.engine_modules && input.engine_modules.length > 0) {
+      engineModules = input.engine_modules;
+    } else if (input.project_code) {
+      engineModules = await loadEngineModulesFromDb(input.project_code);
+    }
+    if (engineModules) {
+      logger.info(
+        'PIPELINE',
+        `[${input.job_id}] engine_modules whitelist: [${engineModules.join(',')}]`,
+      );
+    }
+
+    // PR-19: предварительно вычисляем решение по каждой стадии и пишем
+    // decision_trace заранее. Это гарантирует, что трасса будет полной даже
+    // если оркестратор упадёт на промежуточной стадии (например, при ошибке
+    // buildStrategy между demand и audit). whitelist приоритетнее skip_*:
+    // если стадия отключена в engine_modules — это 'engine_modules_disabled',
+    // даже когда юзер выставил skip-флаг.
+    const stageDecision: Record<Exclude<PipelineStage, 'done' | 'failed'>, boolean> = {
+      intake: true, demand: true, crawl: true, audit: true, preflight: true, pack: true,
+    };
+    const decide = (
+      stage: Exclude<PipelineStage, 'done' | 'failed'>,
+      userSkip?: boolean,
+    ): void => {
+      const moduleName = STAGE_TO_MODULE[stage];
+      const whitelistAllows =
+        engineModules === null ? true : engineModules.includes(moduleName);
+      if (!whitelistAllows) {
+        decisionTrace.push({
+          stage,
+          status: 'skipped',
+          reason: 'engine_modules_disabled',
+        });
+        stageDecision[stage] = false;
+        return;
+      }
+      if (userSkip === true) {
+        decisionTrace.push({ stage, status: 'skipped', reason: 'user_skip_flag' });
+        stageDecision[stage] = false;
+        return;
+      }
+      decisionTrace.push({ stage, status: 'enabled' });
+    };
+    decide('intake');
+    decide('demand', input.skip_demand);
+    decide('crawl', input.skip_crawl);
+    decide('audit');
+    decide('preflight');
+    decide('pack');
+    const isStageEnabled = (stage: Exclude<PipelineStage, 'done' | 'failed'>) =>
+      stageDecision[stage];
 
     try {
       // ── Stage 0: INTAKE ────────────────────────────────────────────────
       // root_url опционален — клиент может ещё не иметь домена.
       const hasUrl = !!input.root_url && input.root_url.trim().length > 0;
-      const tIntake = await this.timeStage('intake', async () => {
-        if (!input.project_code) {
-          throw new Error('project_code is required');
-        }
-        if (!input.brand?.name) {
-          throw new Error('brand.name is required');
-        }
-        if (hasUrl) {
-          try {
-            new URL(input.root_url!);
-          } catch {
-            throw new Error(`Invalid root_url: ${input.root_url}`);
+      // intake — валидация входа, по сути обязательная стадия. Если в whitelist
+      // её нет — пропускаем валидацию (но всё равно проверяем project_code,
+      // потому что без него мы не смогли бы даже загрузить whitelist).
+      if (isStageEnabled('intake')) {
+        const tIntake = await this.timeStage('intake', async () => {
+          if (!input.project_code) {
+            throw new Error('project_code is required');
           }
-        }
-      });
-      stages.push(tIntake);
+          if (!input.brand?.name) {
+            throw new Error('brand.name is required');
+          }
+          if (hasUrl) {
+            try {
+              new URL(input.root_url!);
+            } catch {
+              throw new Error(`Invalid root_url: ${input.root_url}`);
+            }
+          }
+        });
+        stages.push(tIntake);
+      }
 
       // ── Stage 1: DEMAND ────────────────────────────────────────────────
       // Авто-seed: если клиент не передал seed_keywords, но есть отрасль и города —
@@ -203,55 +306,59 @@ export class PipelineOrchestrator {
       }
 
       let demand: DemandIntelligenceResult | undefined;
-      const tDemand = await this.timeStage('demand', async () => {
-        if (input.skip_demand || effectiveSeeds.length === 0) {
-          logger.info('PIPELINE', `[${input.job_id}] DEMAND skipped (no seeds or skip_demand=true)`);
-          return;
-        }
-        try {
-          demand = await runDemandIntelligence(demandSessionId, effectiveSeeds, {
-            brand_tokens: [input.brand.name],
-            with_geo_distribution: true,
-            with_dynamics: false,
-          });
-        } catch (err: any) {
-          logger.warn('PIPELINE', `[${input.job_id}] DEMAND degraded: ${err.message}`);
-          demand = {
-            session_id: demandSessionId,
-            seed_keywords: effectiveSeeds,
-            clusters: [],
-            geo_distribution: [],
-            recommended_geos: input.recommended_geos ?? ['225'],
-            total_volume: 0,
-            quota_used: 0,
-            generated_at: new Date().toISOString(),
-          };
-        }
-      });
-      stages.push(tDemand);
+      if (isStageEnabled('demand')) {
+        const tDemand = await this.timeStage('demand', async () => {
+          if (effectiveSeeds.length === 0) {
+            logger.info('PIPELINE', `[${input.job_id}] DEMAND skipped (no seeds)`);
+            return;
+          }
+          try {
+            demand = await runDemandIntelligence(demandSessionId, effectiveSeeds, {
+              brand_tokens: [input.brand.name],
+              with_geo_distribution: true,
+              with_dynamics: false,
+            });
+          } catch (err: any) {
+            logger.warn('PIPELINE', `[${input.job_id}] DEMAND degraded: ${err.message}`);
+            demand = {
+              session_id: demandSessionId,
+              seed_keywords: effectiveSeeds,
+              clusters: [],
+              geo_distribution: [],
+              recommended_geos: input.recommended_geos ?? ['225'],
+              total_volume: 0,
+              quota_used: 0,
+              generated_at: new Date().toISOString(),
+            };
+          }
+        });
+        stages.push(tDemand);
+      }
       result.demand = demand;
 
       // ── Stage 2: CRAWL ─────────────────────────────────────────────────
       let crawlPages: CrawlPageRecord[] = [];
-      const tCrawl = await this.timeStage('crawl', async () => {
-        if (input.skip_crawl || !hasUrl) {
-          logger.info('PIPELINE', `[${input.job_id}] CRAWL skipped (no URL or skip_crawl)`);
-          return;
-        }
-        const session = await crawlSite({
-          rootUrl: input.root_url!,
-          maxPages: input.max_crawl_pages ?? 30,
-          respectRobots: true,
-          enableJinaFallback: true,
-          sessionId: input.job_id,
+      if (isStageEnabled('crawl')) {
+        const tCrawl = await this.timeStage('crawl', async () => {
+          if (!hasUrl) {
+            logger.info('PIPELINE', `[${input.job_id}] CRAWL skipped (no URL)`);
+            return;
+          }
+          const session = await crawlSite({
+            rootUrl: input.root_url!,
+            maxPages: input.max_crawl_pages ?? 30,
+            respectRobots: true,
+            enableJinaFallback: true,
+            sessionId: input.job_id,
+          });
+          crawlPages = session.pages ?? [];
+          logger.info(
+            'PIPELINE',
+            `[${input.job_id}] CRAWL collected ${crawlPages.length} pages (status=${session.status})`,
+          );
         });
-        crawlPages = session.pages ?? [];
-        logger.info(
-          'PIPELINE',
-          `[${input.job_id}] CRAWL collected ${crawlPages.length} pages (status=${session.status})`,
-        );
-      });
-      stages.push(tCrawl);
+        stages.push(tCrawl);
+      }
       result.crawl_pages = crawlPages;
 
       // ── Stage 1b/3 prep: build STRATEGY ────────────────────────────────
@@ -312,7 +419,8 @@ export class PipelineOrchestrator {
 
       // ── Stage 3: AUDIT (PageEvidence per page) ─────────────────────────
       const evidences: Array<{ page: SitePage | undefined; evidence: PageEvidence; record: CrawlPageRecord }> = [];
-      const tAudit = await this.timeStage('audit', async () => {
+      const auditEnabled = isStageEnabled('audit');
+      const tAudit = auditEnabled ? await this.timeStage('audit', async () => {
         if (!hasUrl) {
           logger.info('PIPELINE', `[${input.job_id}] AUDIT skipped (no URL)`);
           return;
@@ -381,35 +489,37 @@ export class PipelineOrchestrator {
 
           evidences.push({ page: sitePage, evidence: out.evidence, record: rec });
         }
-      });
-      stages.push(tAudit);
+      }) : null;
+      if (tAudit) stages.push(tAudit);
 
       // ── Stage 4: PREFLIGHT (per-page + rollup) ─────────────────────────
       const reports: PreflightReport[] = [];
-      const tPreflight = await this.timeStage('preflight', async () => {
-        for (const e of evidences) {
-          try {
-            const report = await preflightService.run(
-              e.evidence,
-              {
-                project_code: input.project_code,
-                page_type: e.page?.page_type ?? e.evidence.page_type,
-                // PR-2 Мост v1→v3: engine_state пробрасываем в preflight,
-                // чтобы подмешались v1-guardrails и считался weighted_total_score.
-                engine_state: input.engine_state,
-              },
-              input.job_id,
-            );
-            reports.push(report);
-          } catch (err: any) {
-            logger.warn(
-              'PIPELINE',
-              `[${input.job_id}] PREFLIGHT failed for ${e.evidence.url}: ${err.message}`,
-            );
+      if (isStageEnabled('preflight')) {
+        const tPreflight = await this.timeStage('preflight', async () => {
+          for (const e of evidences) {
+            try {
+              const report = await preflightService.run(
+                e.evidence,
+                {
+                  project_code: input.project_code,
+                  page_type: e.page?.page_type ?? e.evidence.page_type,
+                  // PR-2 Мост v1→v3: engine_state пробрасываем в preflight,
+                  // чтобы подмешались v1-guardrails и считался weighted_total_score.
+                  engine_state: input.engine_state,
+                },
+                input.job_id,
+              );
+              reports.push(report);
+            } catch (err: any) {
+              logger.warn(
+                'PIPELINE',
+                `[${input.job_id}] PREFLIGHT failed for ${e.evidence.url}: ${err.message}`,
+              );
+            }
           }
-        }
-      });
-      stages.push(tPreflight);
+        });
+        stages.push(tPreflight);
+      }
       result.preflight_per_page = reports;
 
       // Rollup
@@ -440,7 +550,8 @@ export class PipelineOrchestrator {
       }
 
       // ── Stage 5: PACK (super_prompt_pack v1 + ZIP) ─────────────────────
-      const tPack = await this.timeStage('pack', async () => {
+      const packEnabled = isStageEnabled('pack');
+      const tPack = packEnabled ? await this.timeStage('pack', async () => {
         // Build per-page schema graphs so the pack carries ready-to-paste JSON-LD.
         const schemaPerPage: Array<{
           page_type: string;
@@ -532,8 +643,8 @@ export class PipelineOrchestrator {
           );
           throw err;
         }
-      });
-      stages.push(tPack);
+      }) : null;
+      if (tPack) stages.push(tPack);
 
       const allOk = stages.every((s) => s.ok);
       result.status = allOk ? 'done' : 'failed';
