@@ -150,6 +150,16 @@ const RULES: Record<string, TypeRule> = {
     google_rich_required: ['url', 'name'],
     yandex_rich_required: ['url', 'name'],
   },
+  MobileApplication: {
+    required_fields: [
+      { path: 'name', required: true, type: 'string', min_length: 2 },
+      { path: 'operatingSystem', required: false, type: 'string' },
+      { path: 'applicationCategory', required: false, type: 'string' },
+    ],
+    google_rich_required: ['name'],
+    yandex_rich_required: ['name'],
+    notes: ['MobileApplication should declare operatingSystem and applicationCategory when available'],
+  },
 };
 
 // Add aliases for vertical types
@@ -162,6 +172,8 @@ RULES.RealEstateAgent = RULES.LocalBusiness;
 RULES.EducationalOrganization = RULES.Organization;
 RULES.GovernmentOrganization = RULES.Organization;
 RULES.NGO = RULES.Organization;
+RULES.NonprofitOrganization = RULES.Organization;
+RULES.SoftwareApplication = RULES.MobileApplication;
 RULES.ProfessionalService = RULES.LocalBusiness;
 RULES.Physician = RULES.Person;
 RULES.Attorney = RULES.Person;

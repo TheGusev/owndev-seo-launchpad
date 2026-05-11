@@ -36,4 +36,6 @@ export {
   buildArticle,
   buildPerson,
   buildEvent,
+  buildMobileApplication,
+  buildNGO,
 } from './templateBuilder.js';

@@ -16,10 +16,13 @@ import {
   buildArticle,
   buildPerson,
   buildEvent,
+  buildMobileApplication,
+  buildNGO,
 } from './templateBuilder.js';
 import type {
   SchemaContext, ServiceContext, ProductContext,
   FaqItem, BreadcrumbItem, ArticleContext, PersonContext, EventContext,
+  MobileApplicationContext, NGOContext,
   SchemaGraphV3,
 } from './types.js';
 
@@ -39,6 +42,8 @@ export interface GraphBuildInput {
   article_ctx?: ArticleContext;
   person_ctx?: PersonContext;
   event_ctx?: EventContext;
+  mobileapp_ctx?: MobileApplicationContext;
+  ngo_ctx?: NGOContext;
 }
 
 export interface GraphBuildResult {
@@ -136,6 +141,22 @@ export function buildGraph(input: GraphBuildInput): GraphBuildResult {
         } else {
           warnings.push('event requested but no event_ctx provided');
         }
+        break;
+      case 'mobileapp':
+        if (input.mobileapp_ctx) {
+          graph.push(buildMobileApplication(input.mobileapp_ctx, input.schema_ctx));
+        } else {
+          // Минимальный fallback по brand_name: схема валидна, лучше Yandex/Google
+          // увидят MobileApplication даже без детальных мета-данных, чем не увидят
+          // вовсе. Поля без значений не выводятся через removeUndefined.
+          graph.push(
+            buildMobileApplication({ name: input.schema_ctx.brand_name }, input.schema_ctx),
+          );
+          warnings.push('mobileapp_ctx not provided — emitted minimal MobileApplication node');
+        }
+        break;
+      case 'ngo':
+        graph.push(buildNGO(input.schema_ctx, input.ngo_ctx));
         break;
       default:
         warnings.push(`Unknown recipe node: ${node}`);
