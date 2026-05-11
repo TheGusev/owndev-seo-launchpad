@@ -41,15 +41,16 @@
   <style id="ssr-fallback-hide">
     /* Скрываем статический SEO-фолбэк от живых браузеров, пока React монтируется.
        Боты (GPTBot, PerplexityBot, ClaudeBot, YandexBot) парсят HTML напрямую и CSS не применяют —
-       SEO/GEO контент для них остаётся видимым. */
-    #root > header, #root > main, #root > footer { display: none !important; }
-    html, body { background: #0f172a; color: #e5e7eb; margin: 0; }
+       SEO/GEO контент для них остаётся видимым. Узкий селектор по data-атрибуту не задевает
+       реальные React-компоненты внутри #root. */
+    #root > [data-ssr-fallback] { display: none; }
   </style>
 </head>
 
   <body>
     <div id="root">
       <!-- Static SEO/GEO fallback for crawlers without JS. React replaces this on mount. -->
+      <div data-ssr-fallback>
       <header>
         <a href="/" rel="home"><strong>OWNDEV</strong></a>
         <nav aria-label="Главное меню">
@@ -183,6 +184,7 @@
       <footer>
         <p>© 2026 OWNDEV.ru · Сделано ❤️ в России 🇷🇺</p>
       </footer>
+      </div>
     </div>
     <script>
       // Pre-paint theme application — избегаем FOUC при перезагрузке в светлой теме.
