@@ -58,6 +58,14 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import {
   formulaV3Api,
@@ -79,6 +87,7 @@ import { getIntakeShapeFor } from '@/data/site-formula-intake-shape';
 import { generateSiteFormulaProWord, type ProReportContext } from '@/lib/generateSiteFormulaProWord';
 import { generateSiteFormulaProPdf } from '@/lib/generateSiteFormulaProPdf';
 import { ProReportPanel } from '@/components/site-formula-v3/ProReportPanel';
+import { getSession as getV1Session } from '@/lib/api/siteFormula';
 
 type Stage =
   | 'pick_type'
@@ -183,6 +192,7 @@ const PLATFORMS: Array<{ v: PlatformTarget; label: string; desc: string }> = [
 ];
 
 export default function SiteFormulaV3() {
+  const isMobile = useIsMobile();
   const [stage, setStage] = useState<Stage>('pick_type');
   const [types, setTypes] = useState<ProjectTypeV3[]>([]);
   const [typesLoading, setTypesLoading] = useState(true);
@@ -211,6 +221,10 @@ export default function SiteFormulaV3() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<'docx' | 'pdf' | 'zip' | null>(null);
+  // PR-16: engine_state из активной v1 free-сессии (если есть).
+  // Используется как мост v1→v3, чтобы PRO-отчёт содержал KEY DECISIONS
+  // и project_class из ядра v1. Если v1-сессии нет — undefined, всё работает как раньше.
+  const [v1EngineState, setV1EngineState] = useState<Record<string, any> | null>(null);
 
   useEffect(() => {
     formulaV3Api
@@ -221,6 +235,20 @@ export default function SiteFormulaV3() {
         toast.error('Не удалось загрузить список типов проектов');
       })
       .finally(() => setTypesLoading(false));
+  }, []);
+
+  // PR-16: подгружаем engine_state из активной v1 free-сессии (если есть).
+  // Тихо, без тоста: это бонусный мост, не критический функционал.
+  useEffect(() => {
+    const sid = typeof window !== 'undefined' ? localStorage.getItem('owndev_sf_session_id') : null;
+    if (!sid) return;
+    getV1Session(sid)
+      .then((s) => {
+        if (s && s.engine_state) setV1EngineState(s.engine_state);
+      })
+      .catch(() => {
+        // нет сессии или истекла — игнорируем
+      });
   }, []);
 
   const groupedByTier = useMemo(() => {
@@ -359,6 +387,10 @@ export default function SiteFormulaV3() {
         platform_target: packMode === 'platform_specific' ? platform : undefined,
         ai_training_policy: 'allow_with_attribution',
         max_crawl_pages: 20,
+        // PR-16 мост v1→v3: пробрасываем engine_state, если у пользователя
+        // была free-сессия SiteFormula. Бэк подмешает project_class + decision_trace
+        // в pro_report, благодаря чему PRO-PDF получит раздел KEY DECISIONS.
+        engine_state: v1EngineState ?? undefined,
       });
       setResult(r.result);
       setStage(r.result.status === 'done' ? 'done' : 'failed');
@@ -732,13 +764,16 @@ export default function SiteFormulaV3() {
                     {shape.citiesOptional ? '(опционально)' : '(можно несколько)'}
                   </span>
                 </Label>
-                <Popover open={cityOpen} onOpenChange={setCityOpen}>
-                  <PopoverTrigger asChild>
+                {/* PR-16: на мобилке — bottom-sheet (Drawer/vaul) вместо Popover.
+                    Это убирает прыжки popover'а и наезд хедера при открытии iOS-клавиатуры. */}
+                {isMobile ? (
+                  <>
                     <Button
                       type="button"
                       variant="outline"
                       role="combobox"
                       className="w-full justify-between font-normal"
+                      onClick={() => setCityOpen(true)}
                     >
                       <span className={cities.length > 0 ? 'text-foreground' : 'text-muted-foreground'}>
                         {cities.length === 0
@@ -747,54 +782,136 @@ export default function SiteFormulaV3() {
                       </span>
                       <Globe className="h-4 w-4 opacity-50 ml-2" />
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-[var(--radix-popover-trigger-width)] p-0 z-[60]"
-                    align="start"
-                    side="bottom"
-                    sideOffset={4}
-                    avoidCollisions={false}
-                  >
-                    <Command
-                      filter={(value, search) => {
-                        if (!search) return 1;
-                        return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-                      }}
+                    <Drawer
+                      open={cityOpen}
+                      onOpenChange={setCityOpen}
+                      shouldScaleBackground={false}
                     >
-                      <CommandInput placeholder="Найти город…" />
-                      <CommandList>
-                        <CommandEmpty className="text-xs text-muted-foreground p-3">
-                          Ничего не найдено — добавьте вручную в поле ниже.
-                        </CommandEmpty>
-                        <CommandGroup heading={`Топ-города РФ · клик для выбора (${POPULAR_CITIES.length})`}>
-                          {POPULAR_CITIES.map((c) => {
-                            const checked = cities.includes(c);
-                            return (
-                              <CommandItem
-                                key={c}
-                                value={c}
-                                onSelect={() => {
-                                  setCities((prev) =>
-                                    prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+                      <DrawerContent className="z-[80] max-h-[85vh] flex flex-col">
+                        <DrawerHeader className="text-left pb-2">
+                          <DrawerTitle>Города работы</DrawerTitle>
+                          <DrawerDescription>
+                            Выбрано: {cities.length} · можно несколько
+                          </DrawerDescription>
+                        </DrawerHeader>
+                        <div className="flex-1 min-h-0 overflow-hidden">
+                          <Command
+                            filter={(value, search) => {
+                              if (!search) return 1;
+                              return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                            }}
+                          >
+                            <CommandInput placeholder="Найти город…" />
+                            <CommandList className="max-h-[55vh]">
+                              <CommandEmpty className="text-xs text-muted-foreground p-3">
+                                Ничего не найдено — добавьте вручную в поле ниже.
+                              </CommandEmpty>
+                              <CommandGroup heading={`Топ-города РФ · клик для выбора (${POPULAR_CITIES.length})`}>
+                                {POPULAR_CITIES.map((c) => {
+                                  const checked = cities.includes(c);
+                                  return (
+                                    <CommandItem
+                                      key={c}
+                                      value={c}
+                                      onSelect={() => {
+                                        setCities((prev) =>
+                                          prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+                                        );
+                                      }}
+                                    >
+                                      <Checkbox checked={checked} className="mr-2 pointer-events-none" tabIndex={-1} />
+                                      {c}
+                                    </CommandItem>
                                   );
-                                }}
-                              >
-                                <Checkbox checked={checked} className="mr-2 pointer-events-none" tabIndex={-1} />
-                                {c}
-                              </CommandItem>
-                            );
-                          })}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                    <div className="flex justify-between p-2 border-t">
-                      <Button variant="ghost" size="sm" onClick={() => setCities([])} disabled={cities.length === 0}>
-                        Очистить
+                                })}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </div>
+                        <div
+                          className="flex justify-between gap-2 p-3 border-t bg-background"
+                          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCities([])}
+                            disabled={cities.length === 0}
+                          >
+                            Очистить
+                          </Button>
+                          <Button size="sm" onClick={() => setCityOpen(false)}>
+                            Готово
+                          </Button>
+                        </div>
+                      </DrawerContent>
+                    </Drawer>
+                  </>
+                ) : (
+                  <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between font-normal"
+                      >
+                        <span className={cities.length > 0 ? 'text-foreground' : 'text-muted-foreground'}>
+                          {cities.length === 0
+                            ? 'Выбрать из списка…'
+                            : `Выбрано городов: ${cities.length}`}
+                        </span>
+                        <Globe className="h-4 w-4 opacity-50 ml-2" />
                       </Button>
-                      <Button size="sm" onClick={() => setCityOpen(false)}>Готово</Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[var(--radix-popover-trigger-width)] p-0 z-[60]"
+                      align="start"
+                      side="bottom"
+                      sideOffset={4}
+                      avoidCollisions={false}
+                    >
+                      <Command
+                        filter={(value, search) => {
+                          if (!search) return 1;
+                          return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                        }}
+                      >
+                        <CommandInput placeholder="Найти город…" />
+                        <CommandList>
+                          <CommandEmpty className="text-xs text-muted-foreground p-3">
+                            Ничего не найдено — добавьте вручную в поле ниже.
+                          </CommandEmpty>
+                          <CommandGroup heading={`Топ-города РФ · клик для выбора (${POPULAR_CITIES.length})`}>
+                            {POPULAR_CITIES.map((c) => {
+                              const checked = cities.includes(c);
+                              return (
+                                <CommandItem
+                                  key={c}
+                                  value={c}
+                                  onSelect={() => {
+                                    setCities((prev) =>
+                                      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+                                    );
+                                  }}
+                                >
+                                  <Checkbox checked={checked} className="mr-2 pointer-events-none" tabIndex={-1} />
+                                  {c}
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                      <div className="flex justify-between p-2 border-t">
+                        <Button variant="ghost" size="sm" onClick={() => setCities([])} disabled={cities.length === 0}>
+                          Очистить
+                        </Button>
+                        <Button size="sm" onClick={() => setCityOpen(false)}>Готово</Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
                 {/* Выбранные города чипами */}
                 {cities.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1053,13 +1170,13 @@ export default function SiteFormulaV3() {
               <CardDescription>{siteUrl} · {selectedType}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                {(Object.keys(STAGE_LABELS) as StageKey[]).map((key) => {
+              {/* Timeline: горизонтальная полоса с точками + компактные строки.
+                  PR-16 заменил квадратные stage-карточки. */}
+              {(() => {
+                const stageKeys = Object.keys(STAGE_LABELS) as StageKey[];
+                const r = result as any;
+                const computeState = (key: StageKey) => {
                   const stageInfo = result?.stages.find((s) => s.stage === key);
-                  const Icon = STAGE_LABELS[key].icon;
-                  // Эвристика «пропущено»: бэк возвращает ok=true с duration_ms~0,
-                  // но реальных данных нет — это отличаем по отсутствию контента.
-                  const r = result as any;
                   let skipped = false;
                   if (stageInfo?.ok === true) {
                     if (key === 'demand' && (!r?.demand || (r?.demand?.clusters?.length ?? 0) === 0)) skipped = true;
@@ -1086,46 +1203,100 @@ export default function SiteFormulaV3() {
                       : skipped && key === 'preflight'
                         ? 'Нет страниц для проверки'
                         : null;
-                  return (
-                    <div
-                      key={key}
-                      className={`border rounded-lg p-3 text-center ${
-                        done
-                          ? 'border-emerald-500/40 bg-emerald-500/10'
-                          : failed
-                            ? 'border-destructive/40 bg-destructive/10'
-                            : skipped
-                              ? 'border-amber-500/40 bg-amber-500/10'
-                              : 'border-muted'
-                      }`}
-                    >
-                      <Icon className={`h-5 w-5 mx-auto mb-1 ${
-                        done
-                          ? 'text-emerald-500'
-                          : failed
-                            ? 'text-destructive'
-                            : skipped
-                              ? 'text-amber-500'
-                              : 'text-muted-foreground'
-                      }`} />
-                      <div className="text-xs font-medium text-foreground">{STAGE_LABELS[key].ru}</div>
-                      <div className={`text-[10px] mt-1 font-medium ${
-                        done ? 'text-emerald-600 dark:text-emerald-400' : failed ? 'text-destructive' : skipped ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
-                      }`}>
-                        {statusLabel}
+                  const ms = stageInfo?.duration_ms;
+                  return { stageInfo, done, failed, skipped, inProgress, statusLabel, hint, ms };
+                };
+                const states = stageKeys.map((k) => ({ key: k, ...computeState(k) }));
+                const completedCount = states.filter((s) => s.done || s.skipped || s.failed).length;
+                const progressPct = Math.round((completedCount / states.length) * 100);
+
+                return (
+                  <div className="space-y-4">
+                    {/* Горизонтальная полоса прогресса с точками */}
+                    <div className="relative pt-2">
+                      <div className="relative h-1 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-[width] duration-500 ease-out"
+                          style={{ width: `${progressPct}%` }}
+                        />
                       </div>
-                      {hint && (
-                        <div className="text-[10px] text-muted-foreground mt-1 leading-tight">
-                          {hint}
-                        </div>
-                      )}
-                      {inProgress && (
-                        <Loader2 className="h-3 w-3 animate-spin mx-auto mt-1 text-primary" />
-                      )}
+                      <div className="absolute inset-x-0 top-0 flex justify-between">
+                        {states.map((s) => {
+                          const dotColor = s.failed
+                            ? 'bg-red-500 ring-red-500/20'
+                            : s.skipped
+                              ? 'bg-amber-400 ring-amber-400/20'
+                              : s.done
+                                ? 'bg-primary ring-primary/30'
+                                : s.inProgress
+                                  ? 'bg-primary ring-primary/40 animate-pulse'
+                                  : 'bg-muted-foreground/30 ring-muted-foreground/10';
+                          return (
+                            <div key={s.key} className="flex flex-col items-center -mt-1.5">
+                              <span
+                                className={`block h-3 w-3 rounded-full ring-4 ${dotColor}`}
+                                aria-label={`${STAGE_LABELS[s.key].ru} — ${s.statusLabel}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Компактный список строк: stage · status · ms */}
+                    <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+                      {states.map((s) => {
+                        const Icon = STAGE_LABELS[s.key].icon;
+                        const statusColor = s.failed
+                          ? 'text-red-600'
+                          : s.skipped
+                            ? 'text-amber-600'
+                            : s.done
+                              ? 'text-green-600'
+                              : s.inProgress
+                                ? 'text-primary'
+                                : 'text-muted-foreground';
+                        return (
+                          <li
+                            key={s.key}
+                            className="flex items-center gap-3 px-3 py-2 sm:px-4 min-h-[40px] hover:bg-muted/30 transition-colors"
+                          >
+                            <Icon className={`h-4 w-4 shrink-0 ${statusColor}`} />
+                            <span className="text-sm font-medium text-foreground flex-1 truncate">
+                              {STAGE_LABELS[s.key].ru}
+                            </span>
+                            {s.inProgress && (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                            )}
+                            <span className={`text-xs font-medium ${statusColor}`}>
+                              {s.statusLabel}
+                            </span>
+                            {typeof s.ms === 'number' && s.ms > 0 && (
+                              <span className="text-[10px] font-mono text-muted-foreground tabular-nums w-14 text-right">
+                                {s.ms} мс
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    {/* Подсказки только для skipped (ниже списка, чтобы не ломать строй) */}
+                    {states.some((s) => s.skipped && s.hint) && (
+                      <div className="space-y-1 px-1">
+                        {states
+                          .filter((s) => s.skipped && s.hint)
+                          .map((s) => (
+                            <p key={s.key} className="text-[11px] text-muted-foreground leading-snug">
+                              <span className="font-medium text-amber-600">{STAGE_LABELS[s.key].ru}:</span>{' '}
+                              {s.hint}
+                            </p>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 

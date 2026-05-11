@@ -35,6 +35,13 @@ const FLOAT_CLASSES = [
 /**
  * Slowly drifting semi-transparent code fragments — pure decoration.
  * Mobile-aware: fewer items + smaller font.
+ *
+ * PR-16 CLS-fix:
+ *  — isMobile инициализируется СИНХРОННО через matchMedia в useState-инициалайзере,
+ *    чтобы первый рендер сразу выдал финальное количество снипетов и не было
+ *    «вспышки» с 5 desktop-элементами на мобилке.
+ *  — Контейнер: absolute inset-0 + contain: strict — родительский layout
+ *    не сдвигается даже при изменении содержимого внутри (zero CLS).
  */
 export const FloatingCodeSnippets = ({
   className,
@@ -43,7 +50,13 @@ export const FloatingCodeSnippets = ({
   desktopCount = 5,
   opacity = 1,
 }: FloatingCodeSnippetsProps) => {
-  const [isMobile, setIsMobile] = useState(false);
+  // Синхронная инициализация: при первом рендере уже знаем mobile/desktop.
+  // Это устраняет CLS-вспышку, когда после первого useEffect количество
+  // снипетов меняется с 5 на 2.
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 768px)").matches;
+  });
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
@@ -72,7 +85,9 @@ export const FloatingCodeSnippets = ({
         "absolute inset-0 overflow-hidden pointer-events-none",
         className
       )}
-      style={{ contain: "layout paint", opacity }}
+      // contain: strict — изолируем layout/paint/size, чтобы внутренние спаны
+      // не могли подвинуть родителя ни при каких обстоятельствах (zero CLS).
+      style={{ contain: "strict", opacity }}
     >
       {items.map((it, i) => (
         <span
