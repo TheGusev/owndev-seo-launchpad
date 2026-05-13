@@ -67,6 +67,7 @@ import {
 } from '@/components/ui/drawer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { saveFileForUser } from '@/lib/saveFileForUser';
 import {
   formulaV3Api,
   type ProjectTypeV3,
@@ -408,20 +409,11 @@ export default function SiteFormulaV3() {
     }
   }
 
-  /**
-   * Скачивание Blob'а без window.open — иначе на iOS Safari/мобильных браузерах
-   * открывается белая вкладка и экран виснет (поэтому юзер жаловался на «фриз»).
-   */
-  function downloadBlob(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  // iOS Safari игнорирует <a download> — общий хелпер `saveFileForUser`
+  // на iPhone сначала пробует Web Share API, иначе открывает Blob в новой
+  // вкладке (юзер сохраняет через Поделиться → Файлы).
+  async function downloadBlob(blob: Blob, filename: string): Promise<'share' | 'download' | 'open'> {
+    return saveFileForUser(blob, filename);
   }
 
   function buildProContext(): ProReportContext | null {
@@ -463,8 +455,14 @@ export default function SiteFormulaV3() {
     setDownloading('docx');
     try {
       const blob = await generateSiteFormulaProWord(ctx);
-      downloadBlob(blob, `${safeFilename()}.docx`);
-      toast.success('Word-отчёт скачан');
+      const mode = await downloadBlob(blob, `${safeFilename()}.docx`);
+      if (mode === 'open') {
+        toast.success('Word-отчёт готов', {
+          description: 'Файл открыт в новой вкладке. Нажмите иконку Поделиться → Сохранить в Файлы',
+        });
+      } else {
+        toast.success('Word-отчёт скачан');
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(`Не удалось сформировать Word: ${e.message ?? e}`);
@@ -479,8 +477,14 @@ export default function SiteFormulaV3() {
     setDownloading('pdf');
     try {
       const blob = await generateSiteFormulaProPdf(ctx);
-      downloadBlob(blob, `${safeFilename()}.pdf`);
-      toast.success('PDF-отчёт скачан');
+      const mode = await downloadBlob(blob, `${safeFilename()}.pdf`);
+      if (mode === 'open') {
+        toast.success('PDF-отчёт готов', {
+          description: 'Файл открыт в новой вкладке. Нажмите иконку Поделиться → Сохранить в Файлы',
+        });
+      } else {
+        toast.success('PDF-отчёт скачан');
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(`Не удалось сформировать PDF: ${e.message ?? e}`);
@@ -497,8 +501,14 @@ export default function SiteFormulaV3() {
       const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      downloadBlob(blob, `${safeFilename()}-pack.zip`);
-      toast.success('ZIP-пакет скачан');
+      const mode = await downloadBlob(blob, `${safeFilename()}-pack.zip`);
+      if (mode === 'open') {
+        toast.success('ZIP-пакет готов', {
+          description: 'Файл открыт в новой вкладке. Нажмите иконку Поделиться → Сохранить в Файлы',
+        });
+      } else {
+        toast.success('ZIP-пакет скачан');
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(`Не удалось скачать ZIP: ${e.message ?? e}`);
@@ -1210,8 +1220,25 @@ export default function SiteFormulaV3() {
                 const completedCount = states.filter((s) => s.done || s.skipped || s.failed).length;
                 const progressPct = Math.round((completedCount / states.length) * 100);
 
+                const demandSkipped = states.some((s) => s.key === 'demand' && s.skipped);
+
                 return (
                   <div className="space-y-4">
+                    {/* Заметный warning, если Wordstat пропущен — иначе юзер
+                        не понимает, почему отчёт без реального спроса. */}
+                    {demandSkipped && (
+                      <Alert className="border-yellow-500/50 bg-yellow-500/10 text-foreground">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        <AlertTitle className="text-yellow-700 dark:text-yellow-400">
+                          Wordstat пропущен
+                        </AlertTitle>
+                        <AlertDescription>
+                          Спрос не подтянулся, потому что услуги не выбраны из справочника.
+                          Перезапустите аудит, выбрав конкретные услуги из списка.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     {/* Горизонтальная полоса прогресса с точками */}
                     <div className="relative pt-2">
                       <div className="relative h-1 rounded-full bg-muted overflow-hidden">

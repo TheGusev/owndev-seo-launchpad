@@ -3,6 +3,7 @@ import ToolCTA from "@/components/tools/ToolCTA";
 import { Input } from "@/components/ui/input";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Sparkles, Copy, CheckCircle, Loader2, Download, Clock, RefreshCw } from "lucide-react";
+import { saveFileForUser } from "@/lib/saveFileForUser";
 import { toast } from "@/hooks/use-toast";
 import { generateSemanticCore } from "@/lib/api";
 import EmptyState from "@/components/ui/empty-state";
@@ -49,19 +50,14 @@ const SemanticCoreGenerator = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownloadCSV = () => {
+  const handleDownloadCSV = async () => {
     const header = "Кластер,Интент,Ключевое слово";
     const lines = clusters.flatMap(c =>
       c.keywords.map(kw => [c.name, c.intent, kw].map(v => `"${v.replace(/"/g, '""')}"`).join(","))
     );
     const csv = [header, ...lines].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "semantic-core.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    await saveFileForUser(blob, "semantic-core.csv");
   };
 
   const totalKeywords = clusters.reduce((sum, c) => sum + c.keywords.length, 0);

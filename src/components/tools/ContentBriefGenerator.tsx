@@ -11,6 +11,7 @@ import {
   Hash, BookOpen, Target, Brain, Search, ChevronRight,
 } from "lucide-react";
 import { useAudit } from "@/state/audit";
+import { saveFileForUser } from "@/lib/saveFileForUser";
 
 interface BriefStructureItem {
   tag: string;
@@ -90,14 +91,11 @@ const ContentBriefGenerator = () => {
     return lines.join("\n");
   };
 
-  const downloadTxt = () => {
+  const downloadTxt = async () => {
     if (!brief) return;
     const blob = new Blob([buildTxtContent(brief)], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `brief-${query.trim().slice(0, 30).replace(/\s+/g, "-")}.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const filename = `brief-${query.trim().slice(0, 30).replace(/\s+/g, "-")}.txt`;
+    await saveFileForUser(blob, filename);
   };
 
   const metaTitleLen = brief?.meta_title?.length ?? 0;

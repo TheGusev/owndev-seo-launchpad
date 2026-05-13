@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { saveFileForUser } from './saveFileForUser';
 import {
   PRINT_COLORS, getSeverityColor, getSeverityLabel,
   getCategoryLabel, getScoreStatus,
@@ -622,5 +623,6 @@ export async function generatePdfReport(data: ReportData): Promise<void> {
   const fileName = data.cro
     ? `owndev_full_audit_${data.domain}_${new Date().toISOString().split('T')[0]}.pdf`
     : `owndev_audit_${data.domain}_${new Date().toISOString().split('T')[0]}.pdf`;
-  doc.save(fileName);
+  const pdfBlob = doc.output('blob');
+  await saveFileForUser(pdfBlob, fileName);
 }

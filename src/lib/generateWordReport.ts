@@ -5,7 +5,7 @@ import {
   PageBreak, Header, Footer, PageNumber,
   convertInchesToTwip,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import { saveFileForUser } from './saveFileForUser';
 import {
   PRINT_COLORS,
   getSeverityLabel, getCategoryLabel,
@@ -405,5 +405,5 @@ export async function generateWordReport(data: ReportData): Promise<void> {
 
   const blob = await Packer.toBlob(doc);
   const fileName = `owndev_audit_${data.domain}_${new Date().toISOString().split('T')[0]}.docx`;
-  saveAs(blob, fileName);
+  await saveFileForUser(blob, fileName);
 }
