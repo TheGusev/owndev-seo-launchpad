@@ -169,12 +169,11 @@ function toCSV(rows: PageRow[]): string {
   return [header, ...lines].join("\n");
 }
 
+import { saveFileForUser } from "@/lib/saveFileForUser";
+
 function downloadBlob(content: string, filename: string, type: string) {
   const blob = new Blob(["\uFEFF" + content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  void saveFileForUser(blob, filename);
 }
 
 /* ─── Step indicator ─── */

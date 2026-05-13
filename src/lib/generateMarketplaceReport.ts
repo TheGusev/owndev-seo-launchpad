@@ -6,7 +6,7 @@ import {
   PageBreak, Header as DocxHeader, Footer as DocxFooter, PageNumber,
   convertInchesToTwip,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import { saveFileForUser } from './saveFileForUser';
 import {
   PRINT_COLORS, getSeverityLabel, formatDate, truncate,
 } from './reportHelpers';
@@ -308,7 +308,8 @@ export async function generateMarketplacePdf(result: ResultResponse): Promise<vo
   }
 
   const fname = `owndev_marketplace_${result.platform}_${slugify(product.title)}.pdf`;
-  doc.save(fname);
+  const pdfBlob = doc.output('blob');
+  await saveFileForUser(pdfBlob, fname);
 }
 
 // ─────────────────────────────────────────────────
@@ -511,5 +512,5 @@ export async function generateMarketplaceWord(result: ResultResponse): Promise<v
 
   const blob = await Packer.toBlob(docx);
   const fname = `owndev_marketplace_${result.platform}_${slugify(product.title)}.docx`;
-  saveAs(blob, fname);
+  await saveFileForUser(blob, fname);
 }

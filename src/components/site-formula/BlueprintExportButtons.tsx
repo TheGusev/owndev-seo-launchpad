@@ -5,20 +5,10 @@ import { toast } from 'sonner';
 import type { FullReportPayload } from '@/lib/api/siteFormula';
 import { generateSiteFormulaPdf } from '@/lib/generateSiteFormulaPdf';
 import { generateSiteFormulaWord } from '@/lib/generateSiteFormulaWord';
+import { saveFileForUser } from '@/lib/saveFileForUser';
 
 interface Props {
   report: FullReportPayload;
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 export default function BlueprintExportButtons({ report }: Props) {
@@ -29,8 +19,14 @@ export default function BlueprintExportButtons({ report }: Props) {
     setPdfLoading(true);
     try {
       const blob = await generateSiteFormulaPdf(report);
-      downloadBlob(blob, `site-formula-blueprint-${report.project_class}.pdf`);
-      toast.success('PDF готов');
+      const mode = await saveFileForUser(blob, `site-formula-blueprint-${report.project_class}.pdf`);
+      if (mode === 'open') {
+        toast.success('PDF готов', {
+          description: 'Файл открыт в новой вкладке. Нажмите иконку Поделиться → Сохранить в Файлы',
+        });
+      } else {
+        toast.success('PDF готов');
+      }
     } catch (e: any) {
       toast.error(`Ошибка PDF: ${e.message}`);
     } finally {
@@ -42,8 +38,14 @@ export default function BlueprintExportButtons({ report }: Props) {
     setWordLoading(true);
     try {
       const blob = await generateSiteFormulaWord(report);
-      downloadBlob(blob, `site-formula-blueprint-${report.project_class}.docx`);
-      toast.success('Word готов');
+      const mode = await saveFileForUser(blob, `site-formula-blueprint-${report.project_class}.docx`);
+      if (mode === 'open') {
+        toast.success('Word готов', {
+          description: 'Файл открыт в новой вкладке. Нажмите иконку Поделиться → Сохранить в Файлы',
+        });
+      } else {
+        toast.success('Word готов');
+      }
     } catch (e: any) {
       toast.error(`Ошибка Word: ${e.message}`);
     } finally {

@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { saveAs } from "file-saver";
+import { saveFileForUser } from "@/lib/saveFileForUser";
 
 interface DirectAdSuggestion {
   headline1: string;
@@ -103,7 +103,7 @@ const DirectAdPreview = ({ adSuggestion, readinessScore, url, checks }: DirectAd
     const csv = [headers.map(h => esc(h)).join(";"), values.join(";")].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const hostname = (() => { try { return new URL(url).hostname.replace("www.", ""); } catch { return "ad"; } })();
-    saveAs(blob, `owndev_direct_ad_${hostname}.csv`);
+    void saveFileForUser(blob, `owndev_direct_ad_${hostname}.csv`);
     toast({ title: "✅ CSV готов", description: "Импортируйте в Яндекс.Директ Коммандер" });
   };
 
