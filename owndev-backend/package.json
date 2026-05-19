@@ -22,7 +22,8 @@
     "test:pr20-mobileapp-ngo": "tsx src/services/schemaRegistry/__tests__/pr20-mobileapp-ngo.ts",
     "test:pr21-llmstxt-kpi": "tsx src/services/technicalPassport/__tests__/pr21-llmstxt-kpi.ts",
     "test:pr22-page-contracts-count": "tsx src/services/pageContracts/__tests__/pr22-page-contracts-count.ts",
-    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles && npm run test:pr6-pro-report && npm run test:pr7-ad-market && npm run test:pr8-vertical-audit && npm run test:pr11-cross-product && npm run test:pr19-engine-modules && npm run test:pr20-mobileapp-ngo && npm run test:pr21-llmstxt-kpi && npm run test:pr22-page-contracts-count",
+    "test:pr26-direct-export": "tsx scripts/test-pr26-direct-export.ts",
+    "test:bridge": "npm run test:v1-untouched && npm run test:pr2-rules-weights && npm run test:pr3-page-fanout && npm run test:pr4-self-test-matrix && npm run test:pr5-vertical-profiles && npm run test:pr6-pro-report && npm run test:pr7-ad-market && npm run test:pr8-vertical-audit && npm run test:pr11-cross-product && npm run test:pr19-engine-modules && npm run test:pr20-mobileapp-ngo && npm run test:pr21-llmstxt-kpi && npm run test:pr22-page-contracts-count && npm run test:pr26-direct-export",
     "migrate:geo-rating": "tsx scripts/migrate-geo-rating-from-supabase.ts",
     "rescan:geo": "tsx scripts/rescan-geo-rating.ts"
   },

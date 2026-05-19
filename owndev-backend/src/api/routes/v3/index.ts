@@ -21,6 +21,7 @@ import { projectTypesV3Routes } from './projectTypes.js';
 import { pageContractsV3Routes } from './pageContracts.js';
 import { schemaRegistryV3Routes } from './schemaRegistry.js';
 import { packV3Routes } from './pack.js';
+import { directExportRoutes } from './directExport.js';
 
 export async function v3Routes(app: FastifyInstance) {
   await app.register(pipelineRoutes, { prefix: '/pipeline' });
@@ -28,4 +29,5 @@ export async function v3Routes(app: FastifyInstance) {
   await app.register(pageContractsV3Routes, { prefix: '/page-contracts' });
   await app.register(schemaRegistryV3Routes, { prefix: '/schema' });
   await app.register(packV3Routes, { prefix: '/pack' });
+  await app.register(directExportRoutes, { prefix: '/direct-export' });
 }

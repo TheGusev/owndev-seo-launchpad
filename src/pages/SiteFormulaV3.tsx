@@ -88,6 +88,7 @@ import {
 import { getIntakeShapeFor } from '@/data/site-formula-intake-shape';
 import { generateSiteFormulaProWord, type ProReportContext } from '@/lib/generateSiteFormulaProWord';
 import { generateSiteFormulaProPdf } from '@/lib/generateSiteFormulaProPdf';
+import { generateDirectExportXlsx } from '@/lib/site-formula-v3/generateDirectExportXlsx';
 import { ProReportPanel } from '@/components/site-formula-v3/ProReportPanel';
 import { getSession as getV1Session } from '@/lib/api/siteFormula';
 
@@ -222,7 +223,7 @@ export default function SiteFormulaV3() {
   const [result, setResult] = useState<PipelineResultV3 | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState<'docx' | 'pdf' | 'zip' | null>(null);
+  const [downloading, setDownloading] = useState<'docx' | 'pdf' | 'zip' | 'xlsx' | null>(null);
   // PR-16: engine_state из активной v1 free-сессии (если есть).
   // Используется как мост v1→v3, чтобы PRO-отчёт содержал KEY DECISIONS
   // и project_class из ядра v1. Если v1-сессии нет — undefined, всё работает как раньше.
@@ -513,6 +514,40 @@ export default function SiteFormulaV3() {
     } catch (e: any) {
       console.error(e);
       toast.error(`Не удалось скачать ZIP: ${e.message ?? e}`);
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  // PR-26: экспорт готовых групп Я.Директа в XLSX.
+  async function handleDownloadDirectXlsx() {
+    const r = result as any;
+    const clusters = r?.demand?.clusters as any[] | undefined;
+    if (!clusters || clusters.length === 0) {
+      toast.error('Нет данных Wordstat — экспорт Я.Директа недоступен');
+      return;
+    }
+    setDownloading('xlsx');
+    try {
+      const customCities = cityCustom.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+      const allCities = Array.from(new Set([...cities, ...customCities]));
+      const { blob, filename } = await generateDirectExportXlsx(clusters, {
+        brand: brandName || undefined,
+        cityName: allCities[0],
+        vertical: industry || undefined,
+        data_source: r?.demand?.data_source,
+      });
+      const mode = await downloadBlob(blob, filename);
+      if (mode === 'open') {
+        toast.success('XLSX готов', {
+          description: 'Файл открыт в новой вкладке. Нажмите иконку Поделиться → Сохранить в Файлы',
+        });
+      } else {
+        toast.success('XLSX для Я.Директа скачан');
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`Не удалось сформировать XLSX: ${e.message ?? e}`);
     } finally {
       setDownloading(null);
     }
@@ -1469,6 +1504,18 @@ export default function SiteFormulaV3() {
                       >
                         {downloading === 'zip' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         ZIP для AI/разработчика
+                      </Button>
+                    )}
+                    {(result as any)?.demand?.clusters?.length > 0 && (
+                      <Button
+                        onClick={handleDownloadDirectXlsx}
+                        disabled={downloading !== null}
+                        variant="outline"
+                        className="gap-2"
+                        title="Готовые группы объявлений Я.Директа из кластеров спроса"
+                      >
+                        {downloading === 'xlsx' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        Экспорт в Я.Директ (XLSX)
                       </Button>
                     )}
                     <Button variant="outline" onClick={() => { setStage('pick_type'); setResult(null); }}>

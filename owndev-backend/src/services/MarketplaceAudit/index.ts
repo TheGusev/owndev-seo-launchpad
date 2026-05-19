@@ -20,6 +20,7 @@ import { calcConversionScore } from './scoring/conversionScore.js';
 import { calcAdReadinessScore } from './scoring/adReadinessScore.js';
 import { calcTotalScore } from './scoring/totalScore.js';
 import { runRuleEngine, getRulesVersion } from './scoring/ruleEngine.js';
+import { computeDataConfidence } from './scoring/dataConfidence.js';
 import { callJsonLlm } from './llm/runLlm.js';
 import {
   buildContentAuditMessages,
@@ -86,6 +87,11 @@ export interface OrchestratorResult {
   recommendations: RecommendationsBlock;
   ai_summary: string;
   rules_version: string;
+  data_confidence: {
+    pct: number;
+    missing_fields: string[];
+    notes: string[];
+  };
 }
 
 async function parseInput(input: OrchestratorInput): Promise<ParsedProduct> {
@@ -140,6 +146,9 @@ export async function runMarketplaceAudit(
 ): Promise<OrchestratorResult> {
   await onProgress?.('parsing', 15);
   const product = await parseInput(input);
+
+  // PR-26: data_confidence — прозрачность точности парсинга карточки.
+  const dataConfidence = computeDataConfidence(product);
 
   await onProgress?.('scoring', 50);
   const content = calcContentScore(product);
@@ -284,5 +293,10 @@ export async function runMarketplaceAudit(
     recommendations,
     ai_summary: summarize(scores, issues.length),
     rules_version: getRulesVersion(),
+    data_confidence: {
+      pct: dataConfidence.data_confidence_pct,
+      missing_fields: dataConfidence.missing_fields,
+      notes: dataConfidence.notes,
+    },
   };
 }
