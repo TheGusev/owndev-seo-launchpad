@@ -49,6 +49,8 @@ export async function startServer() {
     await app.register(aliceRoutes, { prefix: '/api/v1/alice' });
     const { conversionAuditRoutes } = await import('./routes/conversionAudit.js');
     await app.register(conversionAuditRoutes, { prefix: '/api/v1/conversion-audit' });
+    const { diagRoutes } = await import('./routes/diag.js');
+    await app.register(diagRoutes);
 
     // ── Formula v2 деактивирована ──
     // Роуты /api/v2/formula, /api/v2/wordstat, /api/v2/audit, /api/v2/jobs,

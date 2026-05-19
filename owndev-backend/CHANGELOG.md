@@ -1,5 +1,13 @@
 # Changelog
 
+## PR-26 — Я.Директ-экспорт, Wordstat diag, data_confidence
+
+- GET /api/v1/diag/wordstat — статус Wordstat-интеграции без раскрытия секретов
+- POST /api/v3/direct-export/json|csv — готовые группы объявлений Я.Директа из кластеров спроса
+- MarketplaceAudit: новое поле data_confidence (pct + missing_fields) для прозрачности парсинга WB/Ozon
+- Новый тест test:pr26-direct-export добавлен в test:bridge (теперь 14/14)
+- Frontend: кнопка «Экспорт в Я.Директ (XLSX)» в Pro-отчёте
+
 ## [Unreleased]
 
 ### Fixed (Accuracy pass 2 — 11 правок аудита точности)
