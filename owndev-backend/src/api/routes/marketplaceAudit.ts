@@ -233,6 +233,11 @@ export async function marketplaceAuditRoutes(app: FastifyInstance): Promise<void
     const row = await getMarketplaceAudit(req.params.id);
     if (!row) return reply.status(404).send({ success: false, error: 'Аудит не найден' });
 
+    // PR-28: data_confidence лежит внутри scores_json — вытаскиваем в top-level
+    // для удобства фронта. Резерв: старые аудиты (до PR-26/28) отдают null.
+    const scoresAll = (row.scores_json ?? {}) as Record<string, any>;
+    const { data_confidence: dataConfidence, ...scoresPublic } = scoresAll;
+
     return reply.send({
       id: row.id,
       status: row.status,
@@ -245,7 +250,8 @@ export async function marketplaceAuditRoutes(app: FastifyInstance): Promise<void
         images: Array.isArray(row.images_json) ? row.images_json : [],
         attributes: row.attributes_json ?? {},
       },
-      scores: row.scores_json ?? {},
+      data_confidence: dataConfidence ?? null,
+      scores: scoresPublic,
       issues: Array.isArray(row.issues_json) ? row.issues_json : [],
       keywords: row.keywords_json ?? { covered: [], missing: [], coveragePct: 0 },
       competitors: normalizeCompetitorsField(row.competitors_json),
