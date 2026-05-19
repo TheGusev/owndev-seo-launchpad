@@ -28,7 +28,9 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks(id: string) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
+            // ВАЖНО: проверяем @radix-ui/* ДО react, потому что радикс-пакеты называются
+            // `@radix-ui/react-*` и ловятся подстрокой 'react'. Раньше это разрывало
+            // named-экспорты React (createContext) между чанками — белый экран.
             if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('vaul')) return 'vendor-radix';
             if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) return 'vendor-motion';
             if (id.includes('jspdf')) return 'vendor-pdf';
@@ -37,6 +39,11 @@ export default defineConfig(({ mode }) => ({
             if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
             if (id.includes('@supabase')) return 'vendor-supabase';
             if (id.includes('@tanstack')) return 'vendor-query';
+            // Строгая проверка по сегменту пути — только сам react/react-dom/scheduler
+            // плюс jsx-runtime/use-sync-external-store/object-assign, на которые они опираются.
+            if (
+              /[\\/]node_modules[\\/](react|react-dom|scheduler|react-is|use-sync-external-store|object-assign|prop-types)[\\/]/.test(id)
+            ) return 'vendor-react';
             return 'vendor';
           }
           if (id.includes('src/fonts/roboto-base64')) return 'fonts-roboto';
