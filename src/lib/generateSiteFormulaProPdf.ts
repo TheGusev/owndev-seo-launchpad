@@ -7,7 +7,6 @@
  * blueprint'а.
  */
 import { jsPDF } from 'jspdf';
-import { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } from '@/fonts/roboto-base64';
 import { PRINT_COLORS } from '@/lib/reportHelpers';
 import type { ProReportContext } from '@/lib/generateSiteFormulaProWord';
 import { explainP0Code } from '@/lib/p0Dictionary';
@@ -18,7 +17,8 @@ const PAGE_H = 297;
 const MARGIN = 14;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 
-function setupFonts(doc: jsPDF) {
+async function setupFonts(doc: jsPDF) {
+  const { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } = await import('@/fonts/roboto-base64');
   doc.addFileToVFS('Roboto-Regular.ttf', ROBOTO_REGULAR_BASE64);
   doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
   doc.addFileToVFS('Roboto-Bold.ttf', ROBOTO_BOLD_BASE64);
@@ -152,7 +152,7 @@ function renderBlock(doc: jsPDF, y: number, block: BlueprintBlock): number {
 export async function generateSiteFormulaProPdf(ctx: ProReportContext): Promise<Blob> {
   const { result, brand } = ctx;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  setupFonts(doc);
+  await setupFonts(doc);
 
   // ─── Cover ────────────────────────────────────────────────────────────
   doc.setFillColor(PRINT_COLORS.accent);
