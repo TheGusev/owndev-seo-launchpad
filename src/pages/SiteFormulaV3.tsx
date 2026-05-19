@@ -211,6 +211,17 @@ export default function SiteFormulaV3() {
   // Города — мульти-выбор (чипы) + опц. свободный ввод.
   const [cities, setCities] = useState<string[]>([]);
   const [cityOpen, setCityOpen] = useState(false);
+
+  // PR-30: сортировка городов по алфавиту с пиннингом Москвы и СПб наверх.
+  // Так пользователю проще найти нужный город (раньше был приоритет по
+  // населению, что нелогично для поиска).
+  const POPULAR_CITIES_SORTED = useMemo(() => {
+    const pinned = ['Москва', 'Санкт-Петербург'];
+    const rest = POPULAR_CITIES
+      .filter((c) => !pinned.includes(c))
+      .sort((a, b) => a.localeCompare(b, 'ru'));
+    return [...pinned.filter((c) => POPULAR_CITIES.includes(c)), ...rest];
+  }, []);
   const [cityCustom, setCityCustom] = useState('');
   // Список услуг/направлений — свободный текст через запятую/перенос строк.
   // Кнопочные пресеты услуг (по вертикали) + опц. свободный ввод.
@@ -852,8 +863,8 @@ export default function SiteFormulaV3() {
                               <CommandEmpty className="text-xs text-muted-foreground p-3">
                                 Ничего не найдено — добавьте вручную в поле ниже.
                               </CommandEmpty>
-                              <CommandGroup heading={`Топ-города РФ · клик для выбора (${POPULAR_CITIES.length})`}>
-                                {POPULAR_CITIES.map((c) => {
+                              <CommandGroup heading={`Города РФ · клик для выбора (${POPULAR_CITIES_SORTED.length})`}>
+                                {POPULAR_CITIES_SORTED.map((c) => {
                                   const checked = cities.includes(c);
                                   return (
                                     <CommandItem
@@ -928,8 +939,8 @@ export default function SiteFormulaV3() {
                           <CommandEmpty className="text-xs text-muted-foreground p-3">
                             Ничего не найдено — добавьте вручную в поле ниже.
                           </CommandEmpty>
-                          <CommandGroup heading={`Топ-города РФ · клик для выбора (${POPULAR_CITIES.length})`}>
-                            {POPULAR_CITIES.map((c) => {
+                          <CommandGroup heading={`Города РФ · клик для выбора (${POPULAR_CITIES_SORTED.length})`}>
+                            {POPULAR_CITIES_SORTED.map((c) => {
                               const checked = cities.includes(c);
                               return (
                                 <CommandItem
