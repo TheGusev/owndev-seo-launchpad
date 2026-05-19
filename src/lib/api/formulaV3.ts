@@ -90,6 +90,10 @@ export interface ProReportV3 {
   };
   axis_weights?: { SEO: number; DIRECT: number; SCHEMA: number; AI_LLM: number };
   total_score_threshold?: number;
+  // PR-24: источник Wordstat-данных. 'mock' — синтетические цифры, 'real_wordstat' — реальные.
+  data_source?: 'mock' | 'real_wordstat';
+  /** Текст баннера для UI, если data_source='mock'. */
+  data_source_warning?: string;
   // PR-7: рынок / реклама / сезонность
   ad_market_estimate?: {
     cpc_high_intent_rub?: number;

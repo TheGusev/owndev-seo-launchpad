@@ -83,6 +83,7 @@ import {
   TIER_TAB_DESCRIPTIONS,
   getServicePresetsFor,
   getIndustryPresetsFor,
+  SERVICE_PRESETS_FALLBACK,
 } from '@/data/site-formula-presets';
 import { getIntakeShapeFor } from '@/data/site-formula-intake-shape';
 import { generateSiteFormulaProWord, type ProReportContext } from '@/lib/generateSiteFormulaProWord';
@@ -1026,6 +1027,60 @@ export default function SiteFormulaV3() {
                     className="mt-3 min-h-[60px] resize-y break-words"
                     rows={2}
                   />
+                  {(() => {
+                    // PR-24: inline autocomplete под textarea «Услуги».
+                    // Парсим последний фрагмент после ,/;/\n и фильтруем
+                    // пресеты ниши + общий fallback по подстроке (case-insensitive).
+                    const lastSepIdx = Math.max(
+                      servicesText.lastIndexOf(','),
+                      servicesText.lastIndexOf(';'),
+                      servicesText.lastIndexOf('\n'),
+                    );
+                    const fragment = servicesText.slice(lastSepIdx + 1).trim();
+                    if (fragment.length < 2) return null;
+                    const needle = fragment.toLowerCase();
+                    const pool = Array.from(
+                      new Set([
+                        ...getServicePresetsFor(selectedType),
+                        ...SERVICE_PRESETS_FALLBACK,
+                      ]),
+                    );
+                    const matches = pool
+                      .filter((s) => s.toLowerCase().includes(needle) && !serviceChips.includes(s))
+                      .slice(0, 8);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="mt-2">
+                        <p className="text-[11px] text-muted-foreground mb-1.5">
+                          Подсказки от формулы — нажмите, чтобы добавить
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {matches.map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => {
+                                setServiceChips((prev) => Array.from(new Set([...prev, m])));
+                                setServicesText((prev) => {
+                                  const i = Math.max(
+                                    prev.lastIndexOf(','),
+                                    prev.lastIndexOf(';'),
+                                    prev.lastIndexOf('\n'),
+                                  );
+                                  // Сохраняем разделитель и пробел после него, обрезаем недопечатанный фрагмент.
+                                  return i >= 0 ? prev.slice(0, i + 1) + ' ' : '';
+                                });
+                              }}
+                              className="inline-flex items-center gap-1 rounded-full border border-dashed border-primary/40 bg-primary/5 px-2.5 py-0.5 text-[11px] text-primary hover:bg-primary/10 transition-colors"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
