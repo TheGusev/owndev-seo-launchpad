@@ -22,4 +22,28 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
+            if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('vaul')) return 'vendor-radix';
+            if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) return 'vendor-motion';
+            if (id.includes('jspdf')) return 'vendor-pdf';
+            if (id.includes('docx')) return 'vendor-docx';
+            if (id.includes('xlsx') || id.includes('file-saver')) return 'vendor-files';
+            if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+            if (id.includes('@supabase')) return 'vendor-supabase';
+            if (id.includes('@tanstack')) return 'vendor-query';
+            return 'vendor';
+          }
+          if (id.includes('src/fonts/roboto-base64')) return 'fonts-roboto';
+          if (id.includes('src/lib/proBlueprintSections')) return 'pro-blueprint';
+          if (id.includes('src/lib/generateSiteFormulaPro')) return 'pro-blueprint';
+        }
+      }
+    }
+  }
 }));

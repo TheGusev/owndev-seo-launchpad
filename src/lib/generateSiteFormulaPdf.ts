@@ -1,5 +1,4 @@
 import { jsPDF } from 'jspdf';
-import { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } from '@/fonts/roboto-base64';
 import { PRINT_COLORS } from '@/lib/reportHelpers';
 import type { FullReportPayload } from '@/lib/api/siteFormula';
 
@@ -14,7 +13,8 @@ const CLASS_LABELS: Record<string, string> = {
   scale: 'Scale',
 };
 
-function setupFonts(doc: jsPDF) {
+async function setupFonts(doc: jsPDF) {
+  const { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } = await import('@/fonts/roboto-base64');
   doc.addFileToVFS('Roboto-Regular.ttf', ROBOTO_REGULAR_BASE64);
   doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
   doc.addFileToVFS('Roboto-Bold.ttf', ROBOTO_BOLD_BASE64);
@@ -75,7 +75,7 @@ function renderValue(doc: jsPDF, value: any, x: number, y: number, maxWidth: num
 
 export async function generateSiteFormulaPdf(report: FullReportPayload): Promise<Blob> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  setupFonts(doc);
+  await setupFonts(doc);
 
   // Cover header
   doc.setFillColor(PRINT_COLORS.accent);
