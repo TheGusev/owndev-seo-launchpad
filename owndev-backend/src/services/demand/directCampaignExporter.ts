@@ -50,6 +50,13 @@ export interface BuildDirectExportOptions {
   cityName?: string;
   vertical?: string;
   data_source?: string;
+  // PR-31: профиль вертикали — опциональный. Если передан, его
+  // vertical_minus_words добавляются к глобальному CAMPAIGN_MINUS_WORDS
+  // с дедупликацией и сохранением порядка.
+  profile?: {
+    id: string;
+    vertical_minus_words?: string[];
+  };
 }
 
 const CAMPAIGN_MINUS_WORDS: string[] = [
@@ -183,7 +190,7 @@ export function buildDirectExport(
   clusters: DemandClusterV3[],
   options: BuildDirectExportOptions = {},
 ): DirectExportResult {
-  const { brand, cityName, data_source } = options;
+  const { brand, cityName, data_source, profile } = options;
   const groups: DirectExportGroup[] = [];
   let totalKw = 0;
 
@@ -215,9 +222,30 @@ export function buildDirectExport(
     });
   }
 
+  // PR-31: к глобальным минусам докидываем vertical_minus_words из профиля,
+  // дедуп через Set с сохранением порядка (сначала глобальные, потом vertical).
+  const campaignMinus: string[] = [];
+  const seenMinus = new Set<string>();
+  for (const w of CAMPAIGN_MINUS_WORDS) {
+    const k = w.toLowerCase();
+    if (!seenMinus.has(k)) {
+      seenMinus.add(k);
+      campaignMinus.push(w);
+    }
+  }
+  for (const w of profile?.vertical_minus_words ?? []) {
+    const trimmed = String(w).trim();
+    if (trimmed.length === 0) continue;
+    const k = trimmed.toLowerCase();
+    if (!seenMinus.has(k)) {
+      seenMinus.add(k);
+      campaignMinus.push(trimmed);
+    }
+  }
+
   return {
     groups,
-    campaign_minus_words: CAMPAIGN_MINUS_WORDS.slice(),
+    campaign_minus_words: campaignMinus,
     recommendations: buildRecommendations(),
     meta: {
       generated_at: new Date().toISOString(),
