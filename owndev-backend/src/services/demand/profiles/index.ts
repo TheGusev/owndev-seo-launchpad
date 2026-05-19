@@ -54,6 +54,16 @@ export interface IndustryProfile {
   id: string;
   title: string;
   match: string[];
+  // Синонимы базовой услуги (например, для дезинфекции — "обработка",
+  // "санобработка", "дезинсекция", "уничтожение"). Опционально для обратной
+  // совместимости со старыми JSON-профилями.
+  synonyms?: string[];
+  // Объекты услуги ("от тараканов", "квартиры", "склада" и т.д.). Используются
+  // в keywordSeedBuilder для раскрытия семантики запроса.
+  targets?: string[];
+  // Минус-слова, специфичные для вертикали. Добавляются к глобальным минусам
+  // в directCampaignExporter поверх общих стоп-слов.
+  vertical_minus_words?: string[];
   modifiers_per_city: string[];
   modifiers_global: string[];
 }
@@ -80,6 +90,15 @@ function normalizeProfile(raw: unknown): IndustryProfile | null {
     id: r.id,
     title: typeof r.title === 'string' ? r.title : r.id,
     match: r.match.map((m) => String(m).toLowerCase()),
+    synonyms: Array.isArray(r.synonyms)
+      ? r.synonyms.map((m) => String(m)).filter((s) => s.length > 0)
+      : [],
+    targets: Array.isArray(r.targets)
+      ? r.targets.map((m) => String(m)).filter((s) => s.length > 0)
+      : [],
+    vertical_minus_words: Array.isArray(r.vertical_minus_words)
+      ? r.vertical_minus_words.map((m) => String(m)).filter((s) => s.length > 0)
+      : [],
     modifiers_per_city: r.modifiers_per_city.map((m) => String(m)),
     modifiers_global: Array.isArray(r.modifiers_global)
       ? r.modifiers_global.map((m) => String(m))

@@ -1,5 +1,25 @@
 # Changelog
 
+## PR-31 — Раскрытие семантики DEMAND-seeds и вертикальные минусы
+
+Что было:
+- Авто-seed строил плоский шаблон `<industry> <city> [modifier]` (16 фраз). Для жалобы пользователя «дезинфекция» система НЕ понимала синонимы (обработка, санобработка, дезинсекция, дератизация, травля, уничтожение) и НЕ покрывала объекты (от тараканов, от клопов, от муравьёв и т.д.).
+- `directCampaignExporter` использовал один захардкоженный массив `CAMPAIGN_MINUS_WORDS` для ВСЕХ вертикалей.
+
+Что изменено:
+- `IndustryProfile` расширен опциональными полями `synonyms[]`, `targets[]`, `vertical_minus_words[]`. Все 9 JSON-профилей (`services_emergency`, `services_default`, `medical`, `beauty`, `repair`, `education`, `auto`, `realestate`, `b2b_wholesale`) получили адекватные значения.
+- Добавлен `services/demand/keywordSeedBuilder.ts` с диагональным обходом `synonym × target × city` и лимитом 24 (Wordstat-квота). Старые профили без synonyms/targets уходят в fallback-ветку и работают как раньше.
+- `pipelineOrchestrator` в блоке `autoSeedUsed` теперь вызывает `buildKeywordSeeds(...)` и логирует `auto-seed v2: ... synonyms=N, targets=M`.
+- `buildDirectExport` принимает опцию `profile: { id, vertical_minus_words }`. К глобальным минусам докидывает vertical-специфичные через Set с сохранением порядка.
+
+Регрессы:
+- Новый `test:pr31-seed-builder` (5 сценариев, включая «дезинфекция × 3 города → 24 seeds с >=3 синонимами и >=3 targets», fallback для профиля без synonyms/targets, vertical_minus_words в exporter).
+- Включён в `test:bridge` (теперь 15 шагов).
+
+Пример «до/после» для «дезинфекция» × Москва/СПб/Казань:
+- До: 6-8 фраз вида `дезинфекция москва`, `дезинфекция москва цена`.
+- После: 24 фразы, включая `обработка от тараканов москва`, `санобработка от клопов москва`, `дезинсекция от муравьёв москва`, `дератизация от тараканов москва`, `травля от тараканов москва`, `выведение от клопов москва`.
+
 ## PR-26 — Я.Директ-экспорт, Wordstat diag, data_confidence
 
 - GET /api/v1/diag/wordstat — статус Wordstat-интеграции без раскрытия секретов

@@ -2,6 +2,14 @@
   "id": "services_default",
   "title": "Услуги (по умолчанию)",
   "match": ["услуг", "сервис", "обслуживание", "default"],
+  "synonyms": [],
+  "targets": [],
+  "vertical_minus_words": [
+    "бесплатно",
+    "своими руками",
+    "инструкция",
+    "википедия"
+  ],
   "modifiers_per_city": [
     "цена",
     "стоимость",

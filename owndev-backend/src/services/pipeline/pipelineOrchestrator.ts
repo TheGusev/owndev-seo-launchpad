@@ -29,6 +29,7 @@ import { technicalPassportService } from '../technicalPassport/index.js';
 import { buildGraph } from '../schemaRegistry/index.js';
 import { developerPackService, savePackArtifact } from '../developerPack/index.js';
 import { pickProfileForIndustry } from '../demand/profiles/index.js';
+import { buildKeywordSeeds } from '../demand/keywordSeedBuilder.js';
 import { buildProReport } from './proReportBuilder.js';
 import type {
   PipelineInput,
@@ -271,25 +272,20 @@ export class PipelineOrchestrator {
         }
         const cities = cityList.length > 0 ? cityList : ['Москва'];
         const profile = pickProfileForIndustry(industry);
-        const seeds = new Set<string>();
-        // базовый seed — сама отрасль
-        seeds.add(industry);
-        // seed «отрасль + город» и с модификаторами по профилю
-        for (const c of cities) {
-          const cl = c.toLowerCase();
-          seeds.add(`${industry} ${cl}`);
-          for (const mod of profile.modifiers_per_city) {
-            seeds.add(`${industry} ${cl} ${mod}`);
-          }
-        }
-        // глобальные модификаторы без города (инфо/обзоры)
-        for (const mod of profile.modifiers_global) {
-          seeds.add(`${industry} ${mod}`);
-        }
-        effectiveSeeds = Array.from(seeds).slice(0, 16);
+        // PR-31: вместо плоского industry×city×modifier раскручиваем seed-набор
+        // через synonyms/targets профиля. Старые JSON без этих полей работают
+        // по fallback-ветке внутри buildKeywordSeeds (см. модуль).
+        const { seeds, expansion_stats } = buildKeywordSeeds({
+          industry,
+          cities,
+          profile,
+          maxSeeds: 24,
+        });
+        effectiveSeeds = seeds;
         logger.info(
           'PIPELINE',
-          `[${input.job_id}] DEMAND auto-seed: ${effectiveSeeds.length} seeds ` +
+          `[${input.job_id}] DEMAND auto-seed v2: ${seeds.length} seeds, ` +
+            `synonyms=${expansion_stats.synonym_used}, targets=${expansion_stats.target_count} ` +
             `(industry="${industry}", profile="${profile.id}", cities=${cities.length})`,
         );
       }
