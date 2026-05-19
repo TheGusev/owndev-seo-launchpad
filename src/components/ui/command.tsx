@@ -45,6 +45,9 @@ const CommandInput = React.forwardRef<
       ref={ref}
       className={cn(
         "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        // PR-30: убираем браузерный focus-ring (ярко-зелёная обводка в Yandex/Chrome
+        // выходила за границы поля в мобильном выборе городов).
+        "focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
         className,
       )}
       {...props}
