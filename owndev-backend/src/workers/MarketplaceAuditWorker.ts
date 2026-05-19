@@ -55,7 +55,8 @@ async function processJob(job: Job<MarketplaceAuditJob>): Promise<void> {
       category: result.product.category,
       attributes_json: result.product.attributes,
       images_json: result.product.images,
-      scores_json: result.scores,
+      // PR-28: пробрасываем data_confidence через scores_json чтобы не менять схему БД
+      scores_json: { ...result.scores, data_confidence: result.data_confidence },
       issues_json: result.issues,
       keywords_json: result.keywords,
       competitors_json: result.competitors,
