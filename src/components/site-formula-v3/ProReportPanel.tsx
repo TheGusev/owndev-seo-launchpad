@@ -18,7 +18,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { TrendingUp, Target, BarChart3, Settings2, Megaphone, CalendarRange } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { TrendingUp, Target, BarChart3, Settings2, Megaphone, CalendarRange, AlertTriangle } from 'lucide-react';
 import type { ProReportV3 } from '@/lib/api/formulaV3';
 
 interface ProReportPanelProps {
@@ -90,6 +91,18 @@ export function ProReportPanel({ report }: ProReportPanelProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* PR-24: warning о синтетическом источнике Wordstat-данных. */}
+        {(report.data_source === 'mock' || report.data_source_warning) && (
+          <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertTitle>Wordstat: демо-данные</AlertTitle>
+            <AlertDescription>
+              {report.data_source_warning ??
+                'Реальные вызовы Wordstat сейчас недоступны. Цифры частотности — синтетические, для оценки структуры спроса. Структура страниц и стратегия — реальные.'}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* ── 1. Класс проекта ── */}
         {report.project_class && (
           <div className="rounded-lg border bg-muted/30 p-4">
